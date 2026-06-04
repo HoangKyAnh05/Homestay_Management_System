@@ -1,0 +1,59 @@
+# IntelliJ IDEA
+
+.idea/
+*.iml
+
+# Maven
+
+target/
+
+# Gradle
+
+.gradle/
+build/
+
+# Logs
+
+*.log
+
+# OS files
+
+.DS_Store
+Thumbs.db
+
+# Environment variables
+
+.env
+
+# Application local config (nếu chứa mật khẩu)
+
+application-local.properties
+application-local.yml
+
+# Spring Boot
+
+spring.log
+
+# Generated files
+
+out/
+
+# VS Code
+
+.vscode/
+
+# Eclipse
+
+.project
+.classpath
+.settings/
+
+# NetBeans
+
+nbproject/private/
+build/
+dist/
+
+# Java
+
+*.class
