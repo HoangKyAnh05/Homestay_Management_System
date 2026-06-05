@@ -1,8 +1,21 @@
 const API_BASE_URL = 'http://localhost:8080/api'
 const TOKEN_KEY = 'homeStayAccessToken'
 const USER_KEY = 'homeStayUser'
+const REMEMBER_KEY = 'homeStayRememberEmail'
 
-export async function login(email, password) {
+// Trả về storage phù hợp: localStorage nếu remember, sessionStorage nếu không
+function getAuthStorage(remember) {
+  return remember ? localStorage : sessionStorage
+}
+
+// Lấy storage đang lưu token (kiểm tra cả hai)
+function findAuthStorage() {
+  if (localStorage.getItem(TOKEN_KEY)) return localStorage
+  if (sessionStorage.getItem(TOKEN_KEY)) return sessionStorage
+  return null
+}
+
+export async function login(email, password, remember = false) {
   let response
 
   try {
@@ -23,8 +36,16 @@ export async function login(email, password) {
     throw new Error(data.message || 'Đăng nhập thất bại')
   }
 
-  localStorage.setItem(TOKEN_KEY, data.accessToken)
-  localStorage.setItem(USER_KEY, JSON.stringify(data.user))
+  const storage = getAuthStorage(remember)
+  storage.setItem(TOKEN_KEY, data.accessToken)
+  storage.setItem(USER_KEY, JSON.stringify(data.user))
+
+  // Lưu email để tự điền lần sau nếu remember
+  if (remember) {
+    localStorage.setItem(REMEMBER_KEY, email)
+  } else {
+    localStorage.removeItem(REMEMBER_KEY)
+  }
 
   return data
 }
@@ -50,9 +71,62 @@ export async function loginWithGoogle(accessToken) {
     throw new Error(data.message || 'Dang nhap Google that bai')
   }
 
+  // Google login luôn dùng localStorage (coi như remember)
   localStorage.setItem(TOKEN_KEY, data.accessToken)
   localStorage.setItem(USER_KEY, JSON.stringify(data.user))
 
+  return data
+}
+
+export function getRememberedEmail() {
+  return localStorage.getItem(REMEMBER_KEY) || ''
+}
+
+export async function forgotPassword(email) {
+  let response
+  try {
+    response = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    })
+  } catch {
+    throw new Error('Không kết nối được backend. Hãy kiểm tra Spring Boot đã chạy ở cổng 8080.')
+  }
+  const data = await response.json().catch(() => ({}))
+  if (!response.ok) throw new Error(data.message || 'Gửi mã OTP thất bại')
+  return data
+}
+
+export async function verifyOtp(email, otp) {
+  let response
+  try {
+    response = await fetch(`${API_BASE_URL}/auth/verify-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, otp }),
+    })
+  } catch {
+    throw new Error('Không kết nối được backend. Hãy kiểm tra Spring Boot đã chạy ở cổng 8080.')
+  }
+  const data = await response.json().catch(() => ({}))
+  if (!response.ok) throw new Error(data.message || 'Mã OTP không hợp lệ')
+  return data
+}
+
+export async function resetPassword(email, otp, newPassword) {
+  let response
+  try {
+    response = await fetch(`${API_BASE_URL}/auth/reset-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, otp, newPassword }),
+    })
+  } catch {
+    throw new Error('Không kết nối được backend. Hãy kiểm tra Spring Boot đã chạy ở cổng 8080.')
+  }
+  const data = await response.json().catch(() => ({}))
+  if (!response.ok) throw new Error(data.message || 'Đặt lại mật khẩu thất bại')
   return data
 }
 
@@ -99,7 +173,8 @@ export async function updateCurrentProfile(profile) {
     body: JSON.stringify(profile),
   })
 
-  localStorage.setItem(USER_KEY, JSON.stringify(data))
+  const storage = findAuthStorage()
+  if (storage) storage.setItem(USER_KEY, JSON.stringify(data))
 
   return data
 }
@@ -113,13 +188,17 @@ export async function updateCurrentAvatar(file) {
     body: formData,
   })
 
-  localStorage.setItem(USER_KEY, JSON.stringify(data))
+  const storage = findAuthStorage()
+  if (storage) storage.setItem(USER_KEY, JSON.stringify(data))
 
   return data
 }
 
 export function getStoredUser() {
-  const userJson = localStorage.getItem(USER_KEY)
+  const storage = findAuthStorage()
+  if (!storage) return null
+
+  const userJson = storage.getItem(USER_KEY)
 
   if (!userJson) {
     return null
@@ -128,16 +207,19 @@ export function getStoredUser() {
   try {
     return JSON.parse(userJson)
   } catch {
-    localStorage.removeItem(USER_KEY)
+    storage.removeItem(USER_KEY)
     return null
   }
 }
 
 export function getStoredToken() {
-  return localStorage.getItem(TOKEN_KEY)
+  const storage = findAuthStorage()
+  return storage ? storage.getItem(TOKEN_KEY) : null
 }
 
 export function logout() {
   localStorage.removeItem(TOKEN_KEY)
   localStorage.removeItem(USER_KEY)
+  sessionStorage.removeItem(TOKEN_KEY)
+  sessionStorage.removeItem(USER_KEY)
 }

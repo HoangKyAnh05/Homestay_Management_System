@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import ForgotPasswordPage from './pages/ForgotPassword/ForgotPasswordPage'
 import HomePage from './pages/Home/HomePage'
 import LoginPage from './pages/Login/LoginPage'
 import ProfilePage from './pages/Profile/ProfilePage'
@@ -29,6 +30,10 @@ function App() {
 
   if (currentPath === '/register') {
     return <RegisterPage />
+  }
+
+  if (currentPath === '/forgot') {
+    return <ForgotPasswordPage />
   }
 
   if (currentPath === '/profile') {

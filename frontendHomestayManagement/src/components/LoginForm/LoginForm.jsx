@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { login, loginWithGoogle } from '../../services/authService'
+import { getRememberedEmail, login, loginWithGoogle } from '../../services/authService'
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID
 const hasGoogleClientId = GOOGLE_CLIENT_ID && !GOOGLE_CLIENT_ID.includes('YOUR_GOOGLE_CLIENT_ID')
@@ -7,12 +7,39 @@ const hasGoogleClientId = GOOGLE_CLIENT_ID && !GOOGLE_CLIENT_ID.includes('YOUR_G
 function LoginForm() {
   const googleTokenClientRef = useRef(null)
   const [showPassword, setShowPassword] = useState(false)
-  const [email, setEmail] = useState('')
+  const rememberedEmail = getRememberedEmail()
+  const [email, setEmail] = useState(rememberedEmail)
   const [password, setPassword] = useState('')
+  const [remember, setRemember] = useState(!!rememberedEmail)
   const [errorMessage, setErrorMessage] = useState('')
+  const [successMessage] = useState(() => {
+    // Kiểm tra query param ?reset=1 sau khi đổi mật khẩu thành công
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('reset') === '1') {
+      window.history.replaceState(null, '', '/login')
+      return 'Đặt lại mật khẩu thành công. Vui lòng đăng nhập lại.'
+    }
+    return ''
+  })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   const [isGoogleReady, setIsGoogleReady] = useState(false)
+
+  // Tự động lấy credentials đã lưu từ password manager của trình duyệt
+  useEffect(() => {
+    if (!window.PasswordCredential || !navigator.credentials) return
+
+    navigator.credentials
+      .get({ password: true, mediation: 'optional' })
+      .then((credential) => {
+        if (credential instanceof window.PasswordCredential) {
+          setEmail(credential.id)
+          setPassword(credential.password)
+          setRemember(true)
+        }
+      })
+      .catch(() => {})
+  }, [])
 
   const handleGoogleAccessToken = useCallback(async (response) => {
     if (response.error) {
@@ -92,7 +119,14 @@ function LoginForm() {
     setIsSubmitting(true)
 
     try {
-      await login(email, password)
+      await login(email, password, remember)
+
+      // Báo cho trình duyệt lưu credentials (trigger password manager)
+      if (window.PasswordCredential) {
+        const credential = new window.PasswordCredential({ id: email, password })
+        await navigator.credentials.store(credential)
+      }
+
       window.location.assign('/home')
     } catch (error) {
       setErrorMessage(error.message)
@@ -134,6 +168,8 @@ function LoginForm() {
       </div>
 
       <form className="login-form" onSubmit={handleSubmit}>
+        {successMessage && <p className="auth-success">{successMessage}</p>}
+
         <label className="field-group" htmlFor="email">
           <span>Email</span>
           <input
@@ -141,6 +177,7 @@ function LoginForm() {
             name="email"
             type="email"
             placeholder="Nhập email"
+            autoComplete="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             required
@@ -158,6 +195,7 @@ function LoginForm() {
               name="password"
               type={showPassword ? 'text' : 'password'}
               placeholder="Nhập mật khẩu"
+              autoComplete="current-password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               required
@@ -188,7 +226,12 @@ function LoginForm() {
         {errorMessage && <p className="auth-error">{errorMessage}</p>}
 
         <label className="remember-row">
-          <input type="checkbox" name="remember" />
+          <input
+            type="checkbox"
+            name="remember"
+            checked={remember}
+            onChange={(event) => setRemember(event.target.checked)}
+          />
           <span>Ghi nhớ đăng nhập</span>
         </label>
 

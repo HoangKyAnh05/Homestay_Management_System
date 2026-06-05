@@ -1,9 +1,13 @@
 package com.homestayManagement.homestayManagement.controller;
 
+import com.homestayManagement.homestayManagement.dto.request.ForgotPasswordRequest;
 import com.homestayManagement.homestayManagement.dto.request.GoogleLoginRequest;
 import com.homestayManagement.homestayManagement.dto.request.LoginRequest;
+import com.homestayManagement.homestayManagement.dto.request.ResetPasswordRequest;
+import com.homestayManagement.homestayManagement.dto.request.VerifyOtpRequest;
 import com.homestayManagement.homestayManagement.dto.response.AuthResponse;
 import com.homestayManagement.homestayManagement.service.AuthService;
+import com.homestayManagement.homestayManagement.service.PasswordResetService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -19,9 +23,11 @@ import java.util.Map;
 @RequestMapping("/api/auth")
 public class AuthController {
     private final AuthService authService;
+    private final PasswordResetService passwordResetService;
 
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService, PasswordResetService passwordResetService) {
         this.authService = authService;
+        this.passwordResetService = passwordResetService;
     }
 
     @PostMapping("/login")
@@ -32,6 +38,25 @@ public class AuthController {
     @PostMapping("/google")
     public AuthResponse loginWithGoogle(@Valid @RequestBody GoogleLoginRequest request) {
         return authService.loginWithGoogle(request);
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<Map<String, String>> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        passwordResetService.sendOtp(request);
+        // Luôn trả về thành công để không lộ email có tồn tại hay không
+        return ResponseEntity.ok(Map.of("message", "Nếu email tồn tại, mã OTP đã được gửi"));
+    }
+
+    @PostMapping("/verify-otp")
+    public ResponseEntity<Map<String, String>> verifyOtp(@Valid @RequestBody VerifyOtpRequest request) {
+        passwordResetService.verifyOtp(request);
+        return ResponseEntity.ok(Map.of("message", "Mã OTP hợp lệ"));
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<Map<String, String>> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        passwordResetService.resetPassword(request);
+        return ResponseEntity.ok(Map.of("message", "Đặt lại mật khẩu thành công"));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

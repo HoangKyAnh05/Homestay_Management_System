@@ -114,16 +114,18 @@
 .form-panel {
   display: grid;
   place-items: center;
-  padding: 48px 56px;
+  padding: 48px 56px 64px;
 }
 
 .login-card {
   width: min(100%, 382px);
   text-align: left;
+  display: flex;
+  flex-direction: column;
 }
 
 .login-heading {
-  margin-bottom: 36px;
+  margin-bottom: 28px;
 }
 
 .login-heading h2 {
@@ -285,6 +287,17 @@
   line-height: 1.35;
 }
 
+.auth-success {
+  margin: -4px 0 4px;
+  padding: 10px 12px;
+  border: 1px solid #b7dfc0;
+  border-radius: 8px;
+  color: #1a5c2a;
+  background: #f0faf3;
+  font-size: 14px;
+  line-height: 1.35;
+}
+
 .divider {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
@@ -348,7 +361,7 @@
 }
 
 .signup-text {
-  margin: 52px 0 0;
+  margin: 24px 0 0;
   color: #1e211d;
   text-align: center;
   font-size: 16px;
