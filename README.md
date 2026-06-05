@@ -2,8 +2,6 @@
 
 ## 📋 Giới Thiệu Dự Án
 
-## 📋 Giới Thiệu Dự Án(test)
-
 **Hệ Thống Quản Lý Homestay** là một ứng dụng web toàn diện được xây dựng để hỗ trợ quản lý các cơ sở lưu trú kiểu homestay. Ứng dụng cho phép:
 
 - 👤 Quản lý tài khoản người dùng (đăng ký, đăng nhập, xác thực)
