@@ -1,250 +1,116 @@
-# Hệ Thống Quản Lý Homestay
+# Homestay Management System
 
-## 📋 Giới Thiệu Dự Án
-
-**Hệ Thống Quản Lý Homestay** là một ứng dụng web toàn diện được xây dựng để hỗ trợ quản lý các cơ sở lưu trú kiểu homestay. Ứng dụng cho phép:
-
-- 👤 Quản lý tài khoản người dùng (đăng ký, đăng nhập, xác thực)
-- 🏠 Quản lý thông tin homestay
-- 📋 Quản lý đơn đặt phòng
-- 👥 Quản lý người dùng và vai trò
-- 🔐 Hệ thống bảo mật với xác thực JWT
+Hệ thống quản lý và đặt phòng homestay, hỗ trợ đăng nhập thường và đăng nhập Google, quản lý hồ sơ người dùng, đặt lại mật khẩu qua OTP email.
 
 ---
 
-## 🛠 Công Nghệ Sử Dụng
+## Công nghệ sử dụng
 
-### Frontend
-- **Framework**: React 18 (Vite)
-- **Build Tool**: Vite
-- **Linting**: ESLint
-- **Package Manager**: npm
+**Backend**
+- Java 21
+- Spring Boot 4.0.6
+- Spring Security + JWT
+- Spring Data JPA + Hibernate
+- MySQL 8
+- JavaMailSender (Gmail SMTP)
 
-### Backend
-- **Framework**: Spring Boot 3.x
-- **Language**: Java
-- **Build Tool**: Maven
-- **Database**: MySQL/PostgreSQL (cấu hình trong application.properties)
-- **Authentication**: JWT (JSON Web Tokens)
-- **Security**: Spring Security
+**Frontend**
+- React 19
+- Vite 8
+- Google Identity Services (OAuth 2.0)
 
 ---
 
-## 📁 Cấu Trúc Thư Mục Code
+## Cấu trúc dự án
 
 ```
 Homestay_Management_System/
 │
-├── 📂 frontendHomestayManagement/          # Frontend React + Vite
-│   ├── package.json
-│   ├── vite.config.js
-│   ├── eslint.config.js
-│   ├── index.html
-│   ├── 📂 public/                          # Tài nguyên tĩnh công khai
-│   ├── 📂 src/                             # Mã nguồn chính
-│   │   ├── main.jsx                        # Entry point của ứng dụng
-│   │   ├── App.jsx                         # Component Root
-│   │   ├── index.css                       # CSS toàn cục
-│   │   ├── 📂 assets/                      # Hình ảnh, fonts, media
-│   │   ├── 📂 components/                  # Các component tái sử dụng
-│   │   │   ├── HomeSearch/
-│   │   │   ├── LoginForm/
-│   │   │   ├── LoginHero/
-│   │   │   └── RegisterForm/
-│   │   ├── 📂 pages/                       # Các trang chính
-│   │   │   ├── Home/
-│   │   │   ├── Login/
-│   │   │   └── Register/
-│   │   ├── 📂 routes/                      # Cấu hình routing
-│   │   ├── 📂 services/                    # API services
-│   │   │   └── authService.js              # Xác thực, gọi API
-│   │   └── 📂 public/                      # Public assets khác
-│   │
-│   └── node_modules/                       # Thư viện npm
+├── homestayManagement/              # Backend Spring Boot
+│   └── src/main/java/.../
+│       ├── config/                  # Cấu hình Security, CORS, Jackson
+│       ├── controller/              # REST API endpoints
+│       ├── dto/
+│       │   ├── request/             # Các request body
+│       │   └── response/            # Các response body
+│       ├── entity/                  # JPA entities (database models)
+│       ├── repository/              # Spring Data JPA repositories
+│       ├── security/                # JWT filter & authentication
+│       └── service/
+│           ├── impl/                # Implementations
+│           └── ...                  # Service interfaces
 │
-├── 📂 homestayManagement/                  # Backend Spring Boot
-│   ├── pom.xml                             # Maven configuration
-│   ├── mvnw & mvnw.cmd                     # Maven wrapper
-│   ├── 📂 src/
-│   │   ├── 📂 main/
-│   │   │   ├── 📂 java/com/homestayManagement/homestayManagement/
-│   │   │   │   ├── HomestayManagementApplication.java         # Main class
-│   │   │   │   ├── 📂 config/                                # Cấu hình ứng dụng
-│   │   │   │   ├── 📂 controller/                            # REST Controllers
-│   │   │   │   ├── 📂 dto/                                   # Data Transfer Objects
-│   │   │   │   │   ├── request/                              # Request DTOs
-│   │   │   │   │   └── response/                             # Response DTOs
-│   │   │   │   ├── 📂 entity/                                # JPA Entities / Models
-│   │   │   │   ├── 📂 repository/                            # Data Access Layer
-│   │   │   │   ├── 📂 service/                               # Business Logic Layer
-│   │   │   │   │   ├── AuthService.java
-│   │   │   │   │   └── impl/                                 # Service implementations
-│   │   │   │   ├── 📂 security/                              # Security & Authentication
-│   │   │   │   └── 📂 exception/                             # Custom Exceptions
-│   │   │   │
-│   │   │   └── 📂 resources/
-│   │   │       ├── application.properties  # Cấu hình DB, server port
-│   │   │       └── 📂 static/              # Static files (CSS, JS, images)
-│   │   │
-│   │   └── 📂 test/
-│   │       └── 📂 java/                    # Unit tests
-│   │
-│   ├── 📂 target/                          # Build output
-│   └── 📂 uploads/                         # Thư mục upload file
-
-└── README.md                               # Tập tin này
+└── frontendHomestayManagement/      # Frontend React + Vite
+    └── src/
+        ├── components/              # Các component dùng chung
+        ├── pages/                   # Các trang (Home, Login, Register, Profile, ForgotPassword)
+        └── services/                # Toàn bộ API calls
 ```
 
 ---
 
-## 🚀 Hướng Dẫn Chạy Dự Án
+## Hướng dẫn chạy dự án
 
-### Yêu Cầu Hệ Thống
+### Bước 1 — Cấu hình Backend
 
-#### Backend
-- **Java JDK**: 11 hoặc cao hơn
-- **Maven**: 3.6 hoặc cao hơn (hoặc sử dụng Maven Wrapper)
-- **Database**: MySQL 5.7+ hoặc PostgreSQL
+Tạo file mới tại đường dẫn:
 
-#### Frontend
-- **Node.js**: 16 hoặc cao hơn
-- **npm**: 8 hoặc cao hơn
+```
+homestayManagement/src/main/resources/application-local.properties
+```
 
----
-
-### ⚙️ Hướng Dẫn Chạy Backend
-
-#### Bước 1: Cấu Hình Database
-Mở file `homestayManagement/src/main/resources/application.properties` và cấu hình kết nối database:
+Dán nội dung sau vào, **chỉ thay `DB_PORT`** thành port MySQL trên máy bạn (thường là `3306`), các giá trị còn lại do trưởng nhóm cung cấp:
 
 ```properties
-# MySQL
-spring.datasource.url=jdbc:mysql://localhost:3306/homestay_db
-spring.datasource.username=root
-spring.datasource.password=your_password
-spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
-spring.jpa.hibernate.ddl-auto=update
-spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.MySQL8Dialect
-
-# PostgreSQL (tùy chọn)
-# spring.datasource.url=jdbc:postgresql://localhost:5432/homestay_db
-# spring.datasource.username=postgres
-# spring.datasource.password=your_password
+DB_PORT=3306
+DB_USERNAME=root
+DB_PASSWORD=123456
+JWT_SECRET=<do_truong_nhom_cung_cap>
+GOOGLE_CLIENT_ID=<do_truong_nhom_cung_cap>
+MAIL_USERNAME=<do_truong_nhom_cung_cap>
+MAIL_PASSWORD=<do_truong_nhom_cung_cap>
 ```
 
-#### Bước 2: Build Backend
-Trong thư mục `homestayManagement/`, chạy lệnh:
+### Bước 2 — Cấu hình Frontend
 
-**Trên Windows:**
-```bash
-mvnw.cmd clean install
+Tạo file mới tại đường dẫn:
+
+```
+frontendHomestayManagement/.env
 ```
 
-**Trên Linux/Mac:**
-```bash
-./mvnw clean install
+Dán nội dung sau vào, dùng cùng `GOOGLE_CLIENT_ID` với backend:
+
+```env
+VITE_GOOGLE_CLIENT_ID=<do_truong_nhom_cung_cap>
 ```
 
-Hoặc nếu đã cài Maven:
+### Bước 3 — Chạy Backend
+
+Đảm bảo MySQL đang chạy, sau đó mở terminal tại thư mục gốc:
+
 ```bash
-mvn clean install
+cd homestayManagement
+./mvnw spring-boot:run
 ```
 
-#### Bước 3: Chạy Backend
+Trên Windows:
+
 ```bash
+cd homestayManagement
 mvnw.cmd spring-boot:run
 ```
 
-Hoặc:
-```bash
-mvn spring-boot:run
-```
+Backend chạy tại: `http://localhost:8080`
 
-Backend sẽ chạy tại: **http://localhost:8080**
+### Bước 4 — Chạy Frontend
 
----
-
-### 🎨 Hướng Dẫn Chạy Frontend
-
-#### Bước 1: Cài Đặt Dependencies
-Trong thư mục `frontendHomestayManagement/`, chạy:
+Mở terminal mới:
 
 ```bash
+cd frontendHomestayManagement
 npm install
-```
-
-#### Bước 2: Cấu Hình API Endpoint (nếu cần)
-Kiểm tra file `src/services/authService.js` và các service khác để đảm bảo API endpoint trỏ đúng:
-
-```javascript
-// Ví dụ
-const API_BASE_URL = 'http://localhost:8080/api';
-```
-
-#### Bước 3: Chạy Development Server
-```bash
 npm run dev
 ```
 
-Frontend sẽ chạy tại: **http://localhost:5173** (hoặc port khác nếu 5173 bận)
-
-#### Bước 4: Build Production (tùy chọn)
-```bash
-npm run build
-```
-
----
-
-## 📝 Các Lệnh Hữu Ích
-
-### Backend
-```bash
-# Clean build
-mvn clean package
-
-# Chạy tests
-mvn test
-
-# Chỉ compile
-mvn compile
-```
-
-### Frontend
-```bash
-# Kiểm tra linting
-npm run lint
-
-# Build cho production
-npm run build
-
-# Preview production build
-npm run preview
-```
-
----
-
-## 🔐 Bảo Mật
-
-- Ứng dụng sử dụng **Spring Security** và **JWT tokens** cho xác thực
-- Mật khẩu được mã hóa bằng **BCrypt**
-- CORS được cấu hình để cho phép frontend access backend
-
----
-
-## 📞 Hỗ Trợ
-
-Nếu gặp vấn đề:
-1. Kiểm tra database connection
-2. Xác nhận ports 8080 (backend) và 5173 (frontend) không bận
-3. Kiểm tra phiên bản Java, Node.js và npm
-4. Xem logs chi tiết trong console
-
----
-
-## 📄 Licen
-
-Dự án này được tạo cho mục đích học tập.
-
----
-
-**Cập nhật lần cuối:** Tháng 6, 2026
+Frontend chạy tại: `http://localhost:5173`
