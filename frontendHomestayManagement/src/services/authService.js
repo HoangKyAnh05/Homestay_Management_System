@@ -82,6 +82,58 @@ export function getRememberedEmail() {
   return localStorage.getItem(REMEMBER_KEY) || ''
 }
 
+export async function register(fullName, email, phone, password) {
+  let response
+  try {
+    response = await fetch(`${API_BASE_URL}/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fullName, email, phone, password }),
+    })
+  } catch {
+    throw new Error('Không kết nối được backend. Hãy kiểm tra Spring Boot đã chạy ở cổng 8080.')
+  }
+  const data = await response.json().catch(() => ({}))
+  if (!response.ok) throw new Error(data.message || 'Đăng ký thất bại')
+  return data
+}
+
+export async function verifyEmail(email, otp) {
+  let response
+  try {
+    response = await fetch(`${API_BASE_URL}/auth/verify-email`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, otp }),
+    })
+  } catch {
+    throw new Error('Không kết nối được backend. Hãy kiểm tra Spring Boot đã chạy ở cổng 8080.')
+  }
+  const data = await response.json().catch(() => ({}))
+  if (!response.ok) throw new Error(data.message || 'Xác minh thất bại')
+
+  // Đăng nhập luôn sau khi xác minh thành công
+  localStorage.setItem(TOKEN_KEY, data.accessToken)
+  localStorage.setItem(USER_KEY, JSON.stringify(data.user))
+  return data
+}
+
+export async function resendVerifyEmail(email) {
+  let response
+  try {
+    response = await fetch(`${API_BASE_URL}/auth/resend-verify-email`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    })
+  } catch {
+    throw new Error('Không kết nối được backend. Hãy kiểm tra Spring Boot đã chạy ở cổng 8080.')
+  }
+  const data = await response.json().catch(() => ({}))
+  if (!response.ok) throw new Error(data.message || 'Gửi lại mã thất bại')
+  return data
+}
+
 export async function forgotPassword(email) {
   let response
   try {

@@ -3,6 +3,7 @@ package com.homestayManagement.homestayManagement.controller;
 import com.homestayManagement.homestayManagement.dto.request.ForgotPasswordRequest;
 import com.homestayManagement.homestayManagement.dto.request.GoogleLoginRequest;
 import com.homestayManagement.homestayManagement.dto.request.LoginRequest;
+import com.homestayManagement.homestayManagement.dto.request.RegisterRequest;
 import com.homestayManagement.homestayManagement.dto.request.ResetPasswordRequest;
 import com.homestayManagement.homestayManagement.dto.request.VerifyOtpRequest;
 import com.homestayManagement.homestayManagement.dto.response.AuthResponse;
@@ -11,6 +12,7 @@ import com.homestayManagement.homestayManagement.service.PasswordResetService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -33,6 +35,23 @@ public class AuthController {
     @PostMapping("/login")
     public AuthResponse login(@Valid @RequestBody LoginRequest request) {
         return authService.login(request);
+    }
+
+    @PostMapping("/register")
+    public ResponseEntity<Map<String, String>> register(@Valid @RequestBody RegisterRequest request) {
+        authService.register(request);
+        return ResponseEntity.ok(Map.of("message", "Mã xác minh đã được gửi đến email của bạn"));
+    }
+
+    @PostMapping("/verify-email")
+    public AuthResponse verifyEmail(@Valid @RequestBody VerifyOtpRequest request) {
+        return authService.verifyEmail(request);
+    }
+
+    @PostMapping("/resend-verify-email")
+    public ResponseEntity<Map<String, String>> resendVerifyEmail(@Valid @RequestBody ForgotPasswordRequest request) {
+        authService.resendVerifyEmail(request.email());
+        return ResponseEntity.ok(Map.of("message", "Mã xác minh đã được gửi lại"));
     }
 
     @PostMapping("/google")
@@ -62,5 +81,14 @@ public class AuthController {
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String, String>> handleIllegalArgumentException(IllegalArgumentException exception) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", exception.getMessage()));
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<Map<String, String>> handleValidationException(MethodArgumentNotValidException exception) {
+        String message = exception.getBindingResult().getFieldErrors().stream()
+                .findFirst()
+                .map(error -> error.getDefaultMessage())
+                .orElse("Dữ liệu không hợp lệ");
+        return ResponseEntity.badRequest().body(Map.of("message", message));
     }
 }
