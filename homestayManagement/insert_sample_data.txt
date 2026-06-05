@@ -1,0 +1,135 @@
+-- Sample data for current tables: roles, users, user_details
+-- Database: MySQL
+-- Login password for all sample accounts: 123456
+
+SET @sample_password = '$2y$10$EvH9B1Gbc3TeokB1KdBCk.2YER5zQS7tRJjrGuCo3pk/JN0v2Lwim';
+
+-- Roles
+INSERT INTO roles (name, description) VALUES
+('ROLE_ADMINISTRATOR', 'Administrator'),
+('ROLE_MANAGER', 'Manager'),
+('ROLE_CUSTOMER', 'Customer'),
+('ROLE_RECEPTIONIST', 'Receptionist'),
+('ROLE_HOUSEKEEPING', 'Housekeeping'),
+('ROLE_MARKETING_STAFF', 'Marketing Staff')
+ON DUPLICATE KEY UPDATE description = VALUES(description);
+
+-- Users
+INSERT INTO users (email, password, is_verified, is_active, role_id, created_at, updated_at) VALUES
+(
+    'administrator@example.com',
+    @sample_password,
+    true,
+    true,
+    (SELECT id FROM roles WHERE name = 'ROLE_ADMINISTRATOR'),
+    NOW(),
+    NOW()
+),
+(
+    'manager@example.com',
+    @sample_password,
+    true,
+    true,
+    (SELECT id FROM roles WHERE name = 'ROLE_MANAGER'),
+    NOW(),
+    NOW()
+),
+(
+    'customer@example.com',
+    @sample_password,
+    true,
+    true,
+    (SELECT id FROM roles WHERE name = 'ROLE_CUSTOMER'),
+    NOW(),
+    NOW()
+),
+(
+    'receptionist@example.com',
+    @sample_password,
+    true,
+    true,
+    (SELECT id FROM roles WHERE name = 'ROLE_RECEPTIONIST'),
+    NOW(),
+    NOW()
+),
+(
+    'housekeeping@example.com',
+    @sample_password,
+    true,
+    true,
+    (SELECT id FROM roles WHERE name = 'ROLE_HOUSEKEEPING'),
+    NOW(),
+    NOW()
+),
+(
+    'marketing@example.com',
+    @sample_password,
+    true,
+    true,
+    (SELECT id FROM roles WHERE name = 'ROLE_MARKETING_STAFF'),
+    NOW(),
+    NOW()
+)
+ON DUPLICATE KEY UPDATE
+    password = VALUES(password),
+    is_verified = VALUES(is_verified),
+    is_active = VALUES(is_active),
+    role_id = VALUES(role_id),
+    updated_at = NOW();
+
+-- User details
+INSERT INTO user_details (user_id, full_name, phone, date_of_birth, address, avatar_url) VALUES
+(
+    (SELECT id FROM users WHERE email = 'administrator@example.com'),
+    'Administrator User',
+    '0900000001',
+    '1990-01-01',
+    'Homestay Head Office',
+    NULL
+),
+(
+    (SELECT id FROM users WHERE email = 'manager@example.com'),
+    'Manager User',
+    '0900000002',
+    '1991-02-02',
+    'Homestay Branch Office',
+    NULL
+),
+(
+    (SELECT id FROM users WHERE email = 'customer@example.com'),
+    'Customer User',
+    '0900000003',
+    '1992-03-03',
+    'Customer Address',
+    NULL
+),
+(
+    (SELECT id FROM users WHERE email = 'receptionist@example.com'),
+    'Receptionist User',
+    '0900000004',
+    '1993-04-04',
+    'Reception Desk',
+    NULL
+),
+(
+    (SELECT id FROM users WHERE email = 'housekeeping@example.com'),
+    'Housekeeping User',
+    '0900000005',
+    '1994-05-05',
+    'Housekeeping Department',
+    NULL
+),
+(
+    (SELECT id FROM users WHERE email = 'marketing@example.com'),
+    'Marketing Staff User',
+    '0900000006',
+    '1995-06-06',
+    'Marketing Department',
+    NULL
+)
+ON DUPLICATE KEY UPDATE
+    full_name = VALUES(full_name),
+    phone = VALUES(phone),
+    date_of_birth = VALUES(date_of_birth),
+    address = VALUES(address),
+    avatar_url = VALUES(avatar_url);

@@ -1,5 +1,6 @@
 package com.homestayManagement.homestayManagement.controller;
 
+import com.homestayManagement.homestayManagement.dto.request.GoogleLoginRequest;
 import com.homestayManagement.homestayManagement.dto.request.LoginRequest;
 import com.homestayManagement.homestayManagement.dto.response.AuthResponse;
 import com.homestayManagement.homestayManagement.service.AuthService;
@@ -26,6 +27,11 @@ public class AuthController {
     @PostMapping("/login")
     public AuthResponse login(@Valid @RequestBody LoginRequest request) {
         return authService.login(request);
+    }
+
+    @PostMapping("/google")
+    public AuthResponse loginWithGoogle(@Valid @RequestBody GoogleLoginRequest request) {
+        return authService.loginWithGoogle(request);
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

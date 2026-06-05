@@ -1,36 +1,73 @@
 package com.homestayManagement.homestayManagement.service.impl;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.homestayManagement.homestayManagement.dto.request.GoogleLoginRequest;
 import com.homestayManagement.homestayManagement.dto.request.LoginRequest;
 import com.homestayManagement.homestayManagement.dto.response.AuthResponse;
 import com.homestayManagement.homestayManagement.dto.response.UserResponse;
+import com.homestayManagement.homestayManagement.entity.Role;
 import com.homestayManagement.homestayManagement.entity.User;
 import com.homestayManagement.homestayManagement.entity.UserDetail;
+import com.homestayManagement.homestayManagement.repository.RoleRepository;
 import com.homestayManagement.homestayManagement.repository.UserDetailRepository;
 import com.homestayManagement.homestayManagement.repository.UserRepository;
 import com.homestayManagement.homestayManagement.security.JwtService;
 import com.homestayManagement.homestayManagement.service.AuthService;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.io.IOException;
+import java.net.URI;
+import java.net.URLEncoder;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.util.UUID;
 
 @Service
 public class AuthServiceImpl implements AuthService {
+    private static final String GOOGLE_CUSTOMER_ROLE = "ROLE_CUSTOMER";
+    private static final String GOOGLE_TOKEN_INFO_URL = "https://oauth2.googleapis.com/tokeninfo?id_token=";
+    private static final String GOOGLE_ACCESS_TOKEN_INFO_URL = "https://oauth2.googleapis.com/tokeninfo?access_token=";
+    private static final String GOOGLE_USER_INFO_URL = "https://www.googleapis.com/oauth2/v3/userinfo";
+    private static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
+
     private final AuthenticationManager authenticationManager;
+    private final RoleRepository roleRepository;
     private final UserRepository userRepository;
     private final UserDetailRepository userDetailRepository;
     private final JwtService jwtService;
+    private final PasswordEncoder passwordEncoder;
+    private final ObjectMapper objectMapper;
+    private final String googleClientId;
 
     public AuthServiceImpl(
             AuthenticationManager authenticationManager,
+            RoleRepository roleRepository,
             UserRepository userRepository,
             UserDetailRepository userDetailRepository,
-            JwtService jwtService
+            JwtService jwtService,
+            PasswordEncoder passwordEncoder,
+            ObjectMapper objectMapper,
+            @Value("${app.google.client-id:}") String googleClientId
     ) {
         this.authenticationManager = authenticationManager;
+        this.roleRepository = roleRepository;
         this.userRepository = userRepository;
         this.userDetailRepository = userDetailRepository;
         this.jwtService = jwtService;
+        this.passwordEncoder = passwordEncoder;
+        this.objectMapper = objectMapper;
+        this.googleClientId = googleClientId;
     }
 
     @Override
@@ -54,6 +91,154 @@ public class AuthServiceImpl implements AuthService {
         return new AuthResponse("Bearer", token, toUserResponse(user));
     }
 
+    @Override
+    @Transactional
+    public AuthResponse loginWithGoogle(GoogleLoginRequest request) {
+        GoogleTokenInfo googleUser = getGoogleUser(request);
+
+        if (!Boolean.TRUE.equals(googleUser.emailVerified())) {
+            throw new IllegalArgumentException("Email Google chua duoc xac thuc");
+        }
+
+        User user = userRepository.findByEmail(googleUser.email())
+                .orElseGet(() -> createGoogleCustomer(googleUser));
+
+        if (!user.isActive()) {
+            throw new IllegalArgumentException("Tai khoan da bi khoa");
+        }
+
+        syncGoogleProfile(user, googleUser);
+
+        String token = jwtService.generateToken(user);
+        return new AuthResponse("Bearer", token, toUserResponse(user));
+    }
+
+    private GoogleTokenInfo getGoogleUser(GoogleLoginRequest request) {
+        if (request.accessToken() != null && !request.accessToken().isBlank()) {
+            return verifyGoogleAccessToken(request.accessToken());
+        }
+
+        if (request.credential() != null && !request.credential().isBlank()) {
+            return verifyGoogleCredential(request.credential());
+        }
+
+        throw new IllegalArgumentException("Google token khong duoc de trong");
+    }
+
+    private GoogleTokenInfo verifyGoogleCredential(String credential) {
+        if (googleClientId == null || googleClientId.isBlank() || googleClientId.contains("YOUR_GOOGLE_CLIENT_ID")) {
+            throw new IllegalArgumentException("Chua cau hinh Google Client ID");
+        }
+
+        try {
+            String encodedCredential = URLEncoder.encode(credential, StandardCharsets.UTF_8);
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(GOOGLE_TOKEN_INFO_URL + encodedCredential))
+                    .GET()
+                    .build();
+            HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() != 200) {
+                throw new IllegalArgumentException("Dang nhap Google khong hop le");
+            }
+
+            GoogleTokenInfo tokenInfo = objectMapper.readValue(response.body(), GoogleTokenInfo.class);
+            if (!googleClientId.equals(tokenInfo.aud())) {
+                throw new IllegalArgumentException("Google Client ID khong khop");
+            }
+
+            return tokenInfo;
+        } catch (JsonProcessingException exception) {
+            throw new IllegalArgumentException("Khong doc duoc thong tin Google tra ve");
+        } catch (IOException exception) {
+            throw new IllegalArgumentException("Backend khong ket noi duoc Google de xac thuc token");
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new IllegalArgumentException("Qua trinh xac thuc Google bi gian doan");
+        }
+    }
+
+    private GoogleTokenInfo verifyGoogleAccessToken(String accessToken) {
+        if (googleClientId == null || googleClientId.isBlank() || googleClientId.contains("YOUR_GOOGLE_CLIENT_ID")) {
+            throw new IllegalArgumentException("Chua cau hinh Google Client ID");
+        }
+
+        try {
+            String encodedAccessToken = URLEncoder.encode(accessToken, StandardCharsets.UTF_8);
+            HttpRequest tokenInfoRequest = HttpRequest.newBuilder()
+                    .uri(URI.create(GOOGLE_ACCESS_TOKEN_INFO_URL + encodedAccessToken))
+                    .GET()
+                    .build();
+            HttpResponse<String> tokenInfoResponse = HTTP_CLIENT.send(tokenInfoRequest, HttpResponse.BodyHandlers.ofString());
+
+            if (tokenInfoResponse.statusCode() != 200) {
+                throw new IllegalArgumentException("Dang nhap Google khong hop le");
+            }
+
+            GoogleAccessTokenInfo tokenInfo = objectMapper.readValue(tokenInfoResponse.body(), GoogleAccessTokenInfo.class);
+            if (!googleClientId.equals(tokenInfo.clientId())) {
+                throw new IllegalArgumentException("Google Client ID khong khop");
+            }
+
+            HttpRequest userInfoRequest = HttpRequest.newBuilder()
+                    .uri(URI.create(GOOGLE_USER_INFO_URL))
+                    .header("Authorization", "Bearer " + accessToken)
+                    .GET()
+                    .build();
+            HttpResponse<String> userInfoResponse = HTTP_CLIENT.send(userInfoRequest, HttpResponse.BodyHandlers.ofString());
+
+            if (userInfoResponse.statusCode() != 200) {
+                throw new IllegalArgumentException("Khong the lay thong tin tai khoan Google");
+            }
+
+            return objectMapper.readValue(userInfoResponse.body(), GoogleTokenInfo.class);
+        } catch (JsonProcessingException exception) {
+            throw new IllegalArgumentException("Khong doc duoc thong tin Google tra ve");
+        } catch (IOException exception) {
+            throw new IllegalArgumentException("Backend khong ket noi duoc Google de xac thuc token");
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new IllegalArgumentException("Qua trinh xac thuc Google bi gian doan");
+        }
+    }
+
+    private User createGoogleCustomer(GoogleTokenInfo googleUser) {
+        Role customerRole = roleRepository.findByName(GOOGLE_CUSTOMER_ROLE)
+                .orElseGet(() -> {
+                    Role role = new Role();
+                    role.setName(GOOGLE_CUSTOMER_ROLE);
+                    role.setDescription("Customer");
+                    return roleRepository.save(role);
+                });
+
+        User user = User.builder()
+                .email(googleUser.email())
+                .password(passwordEncoder.encode(UUID.randomUUID().toString()))
+                .isVerified(true)
+                .isActive(true)
+                .role(customerRole)
+                .build();
+
+        return userRepository.save(user);
+    }
+
+    private void syncGoogleProfile(User user, GoogleTokenInfo googleUser) {
+        UserDetail userDetail = userDetailRepository.findById(user.getId())
+                .orElseGet(() -> UserDetail.builder().user(user).build());
+
+        if (userDetail.getFullName() == null || userDetail.getFullName().isBlank()) {
+            userDetail.setFullName(googleUser.name() != null && !googleUser.name().isBlank()
+                    ? googleUser.name()
+                    : googleUser.email());
+        }
+
+        if (googleUser.picture() != null && !googleUser.picture().isBlank()) {
+            userDetail.setAvatarUrl(googleUser.picture());
+        }
+
+        userDetailRepository.save(userDetail);
+    }
+
     private UserResponse toUserResponse(User user) {
         UserDetail userDetail = userDetailRepository.findById(user.getId()).orElse(null);
 
@@ -67,5 +252,40 @@ public class AuthServiceImpl implements AuthService {
                 userDetail != null ? userDetail.getAvatarUrl() : null,
                 user.getRole().getName()
         );
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    private record GoogleTokenInfo(
+            String aud,
+            String email,
+            String name,
+            String picture,
+            String sub,
+            @JsonProperty("email_verified")
+            Boolean emailVerified
+    ) {
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    private record GoogleAccessTokenInfo(
+            String aud,
+            String audience,
+            @JsonProperty("issued_to")
+            String issuedTo,
+            String scope,
+            @JsonProperty("expires_in")
+            Integer expiresIn
+    ) {
+        private String clientId() {
+            if (aud != null && !aud.isBlank()) {
+                return aud;
+            }
+
+            if (audience != null && !audience.isBlank()) {
+                return audience;
+            }
+
+            return issuedTo;
+        }
     }
 }

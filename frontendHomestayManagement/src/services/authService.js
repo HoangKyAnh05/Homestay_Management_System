@@ -29,6 +29,33 @@ export async function login(email, password) {
   return data
 }
 
+export async function loginWithGoogle(accessToken) {
+  let response
+
+  try {
+    response = await fetch(`${API_BASE_URL}/auth/google`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ accessToken }),
+    })
+  } catch {
+    throw new Error('Khong ket noi duoc backend. Hay kiem tra Spring Boot da chay o cong 8080.')
+  }
+
+  const data = await response.json().catch(() => ({}))
+
+  if (!response.ok) {
+    throw new Error(data.message || 'Dang nhap Google that bai')
+  }
+
+  localStorage.setItem(TOKEN_KEY, data.accessToken)
+  localStorage.setItem(USER_KEY, JSON.stringify(data.user))
+
+  return data
+}
+
 async function authorizedRequest(path, options = {}) {
   const token = getStoredToken()
 

@@ -312,6 +312,25 @@
   background: #ffffff;
 }
 
+.google-button-host {
+  width: 100%;
+  min-height: 54px;
+  display: grid;
+  place-items: center;
+}
+
+.google-render-target,
+.google-render-target > div,
+.google-render-target iframe {
+  width: 100% !important;
+}
+
+.google-button-placeholder {
+  width: 100%;
+  opacity: 0.72;
+  cursor: wait;
+}
+
 .google-button:hover {
   background: #f7f8f5;
 }

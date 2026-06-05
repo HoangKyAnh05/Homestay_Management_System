@@ -1,12 +1,90 @@
-import { useState } from 'react'
-import { login } from '../../services/authService'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { login, loginWithGoogle } from '../../services/authService'
+
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID
+const hasGoogleClientId = GOOGLE_CLIENT_ID && !GOOGLE_CLIENT_ID.includes('YOUR_GOOGLE_CLIENT_ID')
 
 function LoginForm() {
+  const googleTokenClientRef = useRef(null)
   const [showPassword, setShowPassword] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false)
+  const [isGoogleReady, setIsGoogleReady] = useState(false)
+
+  const handleGoogleAccessToken = useCallback(async (response) => {
+    if (response.error) {
+      setIsGoogleLoading(false)
+      setErrorMessage('Dang nhap Google that bai')
+      return
+    }
+
+    try {
+      await loginWithGoogle(response.access_token)
+      window.location.assign('/home')
+    } catch (error) {
+      setErrorMessage(error.message)
+    } finally {
+      setIsGoogleLoading(false)
+    }
+  }, [])
+
+  const initializeGoogleClient = useCallback(async () => {
+    if (googleTokenClientRef.current) {
+      return googleTokenClientRef.current
+    }
+
+    await loadGoogleIdentityScript()
+
+    if (!window.google?.accounts?.oauth2) {
+      throw new Error('Khong the tai Google Login')
+    }
+
+    googleTokenClientRef.current = window.google.accounts.oauth2.initTokenClient({
+      client_id: GOOGLE_CLIENT_ID,
+      scope: 'openid email profile',
+      prompt: 'select_account',
+      callback: handleGoogleAccessToken,
+    })
+
+    setIsGoogleReady(true)
+    return googleTokenClientRef.current
+  }, [handleGoogleAccessToken])
+
+  useEffect(() => {
+    if (!hasGoogleClientId) {
+      return
+    }
+
+    let isMounted = true
+
+    loadGoogleIdentityScript()
+      .then(() => {
+        if (!isMounted || !window.google?.accounts?.oauth2) {
+          return
+        }
+
+        googleTokenClientRef.current = window.google.accounts.oauth2.initTokenClient({
+          client_id: GOOGLE_CLIENT_ID,
+          scope: 'openid email profile',
+          prompt: 'select_account',
+          callback: handleGoogleAccessToken,
+        })
+
+        setIsGoogleReady(true)
+      })
+      .catch(() => {
+        if (isMounted) {
+          setErrorMessage('Khong the tai Google Login')
+        }
+      })
+
+    return () => {
+      isMounted = false
+    }
+  }, [handleGoogleAccessToken])
 
   const handleSubmit = async (event) => {
     event.preventDefault()
@@ -20,6 +98,32 @@ function LoginForm() {
       setErrorMessage(error.message)
     } finally {
       setIsSubmitting(false)
+    }
+  }
+
+  const handleMissingGoogleClientId = () => {
+    setErrorMessage('Chua cau hinh Google Client ID trong file .env cua frontend')
+  }
+
+  const handleGoogleLogin = async () => {
+    setErrorMessage('')
+
+    if (!hasGoogleClientId) {
+      handleMissingGoogleClientId()
+      return
+    }
+
+    setIsGoogleLoading(true)
+
+    try {
+      const googleTokenClient = isGoogleReady
+        ? googleTokenClientRef.current
+        : await initializeGoogleClient()
+
+      googleTokenClient.requestAccessToken()
+    } catch (error) {
+      setIsGoogleLoading(false)
+      setErrorMessage(error.message)
     }
   }
 
@@ -101,9 +205,9 @@ function LoginForm() {
           <span>Hoặc đăng nhập bằng</span>
         </div>
 
-        <button className="google-button" type="button">
+        <button className="google-button" type="button" onClick={handleGoogleLogin} disabled={isGoogleLoading}>
           <span aria-hidden="true">G</span>
-          Google
+          {isGoogleLoading ? 'Dang dang nhap Google...' : 'Login with Google'}
         </button>
       </form>
 
@@ -112,6 +216,24 @@ function LoginForm() {
       </p>
     </div>
   )
+}
+
+function loadGoogleIdentityScript() {
+  const existingScript = document.querySelector('script[src="https://accounts.google.com/gsi/client"]')
+
+  if (existingScript) {
+    return Promise.resolve()
+  }
+
+  return new Promise((resolve, reject) => {
+    const script = document.createElement('script')
+    script.src = 'https://accounts.google.com/gsi/client'
+    script.async = true
+    script.defer = true
+    script.onload = resolve
+    script.onerror = reject
+    document.head.appendChild(script)
+  })
 }
 
 export default LoginForm

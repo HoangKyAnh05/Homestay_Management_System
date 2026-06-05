@@ -8,6 +8,8 @@ import {
 } from '../../services/authService'
 import './ProfilePage.css'
 
+const MAX_AVATAR_SIZE = 10 * 1024 * 1024
+
 const emptyProfile = {
   fullName: '',
   email: '',
@@ -108,6 +110,13 @@ function ProfilePage() {
     const file = event.target.files?.[0]
 
     if (!file) {
+      return
+    }
+
+    if (file.size > MAX_AVATAR_SIZE) {
+      setMessage('')
+      setErrorMessage('Anh dai dien khong duoc vuot qua 10MB')
+      event.target.value = ''
       return
     }
 
