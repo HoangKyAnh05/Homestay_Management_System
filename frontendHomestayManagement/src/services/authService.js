@@ -29,6 +29,68 @@ export async function login(email, password) {
   return data
 }
 
+async function authorizedRequest(path, options = {}) {
+  const token = getStoredToken()
+
+  if (!token) {
+    throw new Error('Bạn cần đăng nhập để thực hiện chức năng này')
+  }
+
+  let response
+
+  try {
+    const isFormData = options.body instanceof FormData
+
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      ...options,
+      headers: {
+        ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
+        Authorization: `Bearer ${token}`,
+        ...options.headers,
+      },
+    })
+  } catch {
+    throw new Error('Không kết nối được backend. Hãy kiểm tra Spring Boot đã chạy ở cổng 8080.')
+  }
+
+  const data = await response.json().catch(() => ({}))
+
+  if (!response.ok) {
+    throw new Error(data.message || 'Không thể xử lý yêu cầu')
+  }
+
+  return data
+}
+
+export async function getCurrentProfile() {
+  return authorizedRequest('/users/me')
+}
+
+export async function updateCurrentProfile(profile) {
+  const data = await authorizedRequest('/users/me', {
+    method: 'PUT',
+    body: JSON.stringify(profile),
+  })
+
+  localStorage.setItem(USER_KEY, JSON.stringify(data))
+
+  return data
+}
+
+export async function updateCurrentAvatar(file) {
+  const formData = new FormData()
+  formData.append('avatar', file)
+
+  const data = await authorizedRequest('/users/me/avatar', {
+    method: 'PUT',
+    body: formData,
+  })
+
+  localStorage.setItem(USER_KEY, JSON.stringify(data))
+
+  return data
+}
+
 export function getStoredUser() {
   const userJson = localStorage.getItem(USER_KEY)
 

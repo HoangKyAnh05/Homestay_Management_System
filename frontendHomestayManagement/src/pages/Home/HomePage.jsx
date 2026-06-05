@@ -48,6 +48,7 @@ function HomePage() {
 
             {isUserMenuOpen && (
               <div className="home-user-dropdown">
+                <a href="/profile">Thông tin cá nhân</a>
                 <button type="button" onClick={handleLogout}>
                   Đăng xuất
                 </button>

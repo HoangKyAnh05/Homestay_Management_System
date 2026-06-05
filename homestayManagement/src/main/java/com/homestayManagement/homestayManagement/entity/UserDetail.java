@@ -35,10 +35,4 @@ public class UserDetail {
 
     @Column(name = "avatar_url", length = 255)
     private String avatarUrl; // Link lưu ảnh avatar (đưa lên Cloudinary theo thiết kế của bạn)
-
-    @Column(name = "cccd_number", length = 12)
-    private String cccdNumber; // Số CCCD để check-in/xác minh danh tính
-
-    @Column(name = "cccd_image_url", length = 255)
-    private String cccdImageUrl; // Link ảnh CCCD lưu trên Cloudinary
 }

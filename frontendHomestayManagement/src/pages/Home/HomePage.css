@@ -165,19 +165,35 @@
   transform: rotate(45deg);
 }
 
+.home-user-dropdown a,
 .home-user-dropdown button {
   position: relative;
   z-index: 1;
   width: 100%;
   min-height: 40px;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
   border: 0;
   border-radius: 8px;
-  color: #9f1d20;
   background: transparent;
   font-size: 14px;
   font-weight: 800;
   text-align: left;
+  text-decoration: none;
   cursor: pointer;
+}
+
+.home-user-dropdown a {
+  color: #1f4328;
+}
+
+.home-user-dropdown button {
+  color: #9f1d20;
+}
+
+.home-user-dropdown a:hover {
+  background: #f1f7f2;
 }
 
 .home-user-dropdown button:hover {

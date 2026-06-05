@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import HomePage from './pages/Home/HomePage'
 import LoginPage from './pages/Login/LoginPage'
+import ProfilePage from './pages/Profile/ProfilePage'
 import RegisterPage from './pages/Register/RegisterPage'
 
 function normalizePath() {
@@ -28,6 +29,10 @@ function App() {
 
   if (currentPath === '/register') {
     return <RegisterPage />
+  }
+
+  if (currentPath === '/profile') {
+    return <ProfilePage />
   }
 
   return <HomePage />
