@@ -2,6 +2,7 @@ package com.homestayManagement.homestayManagement.dto.request;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 public record RegisterRequest(
@@ -13,7 +14,7 @@ public record RegisterRequest(
         @NotBlank(message = "Email không được để trống")
         String email,
 
-        @Size(max = 15, message = "Số điện thoại tối đa 15 ký tự")
+        @Pattern(regexp = "^\\d{10}$", message = "Số điện thoại phải đúng 10 chữ số")
         String phone,
 
         @NotBlank(message = "Mật khẩu không được để trống")

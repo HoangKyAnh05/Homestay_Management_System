@@ -133,3 +133,70 @@ ON DUPLICATE KEY UPDATE
     date_of_birth = VALUES(date_of_birth),
     address = VALUES(address),
     avatar_url = VALUES(avatar_url);
+
+-- ============================================================
+-- PHÂN HỆ 1: QUẢN LÝ PHÒNG
+-- ============================================================
+
+-- Room Types (5 loại phòng tương ứng 5 folder ảnh)
+INSERT INTO room_types (name, base_price, max_adults, max_children, description) VALUES
+('Phòng Studio',      500000.00, 2, 1, 'Phòng tiêu chuẩn nhỏ gọn, thích hợp cho 1-2 người, đầy đủ tiện nghi cơ bản.'),
+('Phòng Đôi Deluxe',  800000.00, 2, 2, 'Phòng đôi cao cấp, view đẹp, nội thất sang trọng, phù hợp cho cặp đôi hoặc gia đình nhỏ.'),
+('Phòng Gia Đình',   1200000.00, 4, 2, 'Phòng rộng rãi cho gia đình, 2 phòng ngủ riêng biệt, phòng khách và bếp nhỏ.'),
+('Phòng VIP Suite',  2000000.00, 2, 1, 'Phòng suite cao cấp nhất, ban công riêng, bồn tắm, dịch vụ đặc biệt.'),
+('Phòng Kết Nối',    1500000.00, 4, 3, 'Hai phòng kết nối nhau, lý tưởng cho nhóm bạn hoặc gia đình lớn.')
+ON DUPLICATE KEY UPDATE
+    base_price  = VALUES(base_price),
+    max_adults  = VALUES(max_adults),
+    max_children = VALUES(max_children),
+    description = VALUES(description);
+
+-- Rooms (5 phòng vật lý, mỗi phòng 1 loại)
+INSERT INTO rooms (room_number, room_type_id, status) VALUES
+('101', (SELECT id FROM room_types WHERE name = 'Phòng Studio'),      'AVAILABLE'),
+('102', (SELECT id FROM room_types WHERE name = 'Phòng Đôi Deluxe'),  'AVAILABLE'),
+('201', (SELECT id FROM room_types WHERE name = 'Phòng Gia Đình'),    'AVAILABLE'),
+('202', (SELECT id FROM room_types WHERE name = 'Phòng VIP Suite'),   'AVAILABLE'),
+('301', (SELECT id FROM room_types WHERE name = 'Phòng Kết Nối'),     'AVAILABLE')
+ON DUPLICATE KEY UPDATE
+    room_type_id = VALUES(room_type_id),
+    status       = VALUES(status);
+
+-- Room Images (ảnh theo loại phòng, đường dẫn từ folder public frontend)
+-- home_1: image.png, image_2.jpg
+INSERT INTO room_images (room_type_id, image_url, is_primary) VALUES
+((SELECT id FROM room_types WHERE name = 'Phòng Studio'), '/home_1/image.png',    true),
+((SELECT id FROM room_types WHERE name = 'Phòng Studio'), '/home_1/image_2.jpg',  false),
+
+-- home_2: image_1.jpg, image_2.jpg
+((SELECT id FROM room_types WHERE name = 'Phòng Đôi Deluxe'), '/home_2/image_1.jpg', true),
+((SELECT id FROM room_types WHERE name = 'Phòng Đôi Deluxe'), '/home_2/image_2.jpg', false),
+
+-- home_3: image_3.jpg
+((SELECT id FROM room_types WHERE name = 'Phòng Gia Đình'), '/home_3/image_3.jpg', true),
+
+-- home_4: image_1.jpg, image_2.jpg
+((SELECT id FROM room_types WHERE name = 'Phòng VIP Suite'), '/home_4/image_1.jpg', true),
+((SELECT id FROM room_types WHERE name = 'Phòng VIP Suite'), '/home_4/image_2.jpg', false),
+
+-- home_5: image_1.jpg, image_2.jpg, image_3.jpg
+((SELECT id FROM room_types WHERE name = 'Phòng Kết Nối'), '/home_5/image_1.jpg', true),
+((SELECT id FROM room_types WHERE name = 'Phòng Kết Nối'), '/home_5/image_2.jpg', false),
+((SELECT id FROM room_types WHERE name = 'Phòng Kết Nối'), '/home_5/image_3.jpg', false);
+
+-- ============================================================
+-- PHÂN HỆ 2: DỊCH VỤ
+-- ============================================================
+
+INSERT INTO services (name, price, unit, is_active) VALUES
+('Thuê xe máy',      150000.00, 'Ngày',  true),
+('Giặt ủi',           30000.00, 'Kg',    true),
+('Nước suối',          5000.00, 'Chai',  true),
+('Dọn phòng thêm',    50000.00, 'Lượt',  true),
+('Đồ ăn sáng',        60000.00, 'Người', true),
+('Thuê xe đạp',        50000.00, 'Ngày',  true),
+('Đặt tour tham quan',250000.00, 'Người', true)
+ON DUPLICATE KEY UPDATE
+    price     = VALUES(price),
+    unit      = VALUES(unit),
+    is_active = VALUES(is_active);
