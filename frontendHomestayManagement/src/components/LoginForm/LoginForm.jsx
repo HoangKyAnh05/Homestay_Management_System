@@ -127,7 +127,9 @@ function LoginForm() {
         await navigator.credentials.store(credential)
       }
 
-      window.location.assign('/home')
+      // Admin → trang quản lí, user thường → home
+      const user = JSON.parse(localStorage.getItem('homeStayUser') || sessionStorage.getItem('homeStayUser') || 'null')
+      window.location.assign(user?.role === 'ROLE_ADMINISTRATOR' ? '/admin' : '/home')
     } catch (error) {
       setErrorMessage(error.message)
     } finally {

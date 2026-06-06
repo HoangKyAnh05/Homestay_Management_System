@@ -289,6 +289,9 @@ function HomePage() {
             </button>
             {isUserMenuOpen && (
               <div className="home-user-dropdown">
+                {currentUser.role === 'ROLE_ADMINISTRATOR' && (
+                  <a href="/admin">Quản lí Home Stays</a>
+                )}
                 <a href="/profile">Thông tin cá nhân</a>
                 <button type="button" onClick={handleLogout}>Đăng xuất</button>
               </div>
