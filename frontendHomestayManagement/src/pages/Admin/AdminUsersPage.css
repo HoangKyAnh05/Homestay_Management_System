@@ -378,3 +378,72 @@
   opacity: 0.4;
   cursor: not-allowed;
 }
+
+/* ── Edit avatar header ── */
+.aum-edit-avatar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  background: #f9fafb;
+  border-radius: 10px;
+  border: 1px solid #f3f4f6;
+}
+
+.aum-edit-avatar-img {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.aum-avatar--lg {
+  width: 52px;
+  height: 52px;
+  font-size: 18px;
+}
+
+.aum-edit-name {
+  margin: 0 0 2px;
+  color: #111827;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.aum-edit-email {
+  margin: 0;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+/* ── Readonly input ── */
+.aum-input--readonly {
+  background: #f9fafb !important;
+  color: #9ca3af !important;
+  cursor: not-allowed;
+}
+
+/* ── Avatar with image ── */
+.aum-avatar--img {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+/* ── Inactive row ── */
+.aum-row--inactive td {
+  opacity: 0.6;
+}
+
+/* ── Activate button ── */
+.aum-icon-btn--activate {
+  background: #f0fdf4;
+  color: #16a34a;
+}
+
+.aum-icon-btn--activate:hover {
+  background: #dcfce7;
+}

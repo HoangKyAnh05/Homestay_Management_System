@@ -113,6 +113,16 @@ public class AdminUserServiceImpl implements AdminUserService {
         userRepository.deleteById(id);
     }
 
+    @Override
+    @Transactional
+    public AdminUserResponse toggleActive(Long id, boolean isActive) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy user"));
+        user.setActive(isActive);
+        userRepository.save(user);
+        return toResponse(user);
+    }
+
     private AdminUserResponse toResponse(User user) {
         UserDetail detail = userDetailRepository.findById(user.getId()).orElse(null);
         return new AdminUserResponse(

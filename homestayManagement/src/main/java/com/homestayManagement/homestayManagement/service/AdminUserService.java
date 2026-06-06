@@ -12,4 +12,5 @@ public interface AdminUserService {
     AdminUserResponse createUser(AdminCreateUserRequest request);
     AdminUserResponse updateUser(Long id, AdminUpdateUserRequest request);
     void deleteUser(Long id);
+    AdminUserResponse toggleActive(Long id, boolean isActive);
 }

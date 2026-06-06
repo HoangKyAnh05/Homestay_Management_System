@@ -2,6 +2,7 @@ package com.homestayManagement.homestayManagement.controller;
 
 import com.homestayManagement.homestayManagement.dto.request.AdminCreateUserRequest;
 import com.homestayManagement.homestayManagement.dto.request.AdminUpdateUserRequest;
+import com.homestayManagement.homestayManagement.dto.request.ToggleActiveRequest;
 import com.homestayManagement.homestayManagement.dto.response.AdminUserResponse;
 import com.homestayManagement.homestayManagement.entity.Role;
 import com.homestayManagement.homestayManagement.repository.RoleRepository;
@@ -59,6 +60,14 @@ public class AdminUserController {
     public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
         adminUserService.deleteUser(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/{id}/toggle-active")
+    public AdminUserResponse toggleActive(
+            @PathVariable Long id,
+            @RequestBody ToggleActiveRequest request
+    ) {
+        return adminUserService.toggleActive(id, request.isActive());
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
