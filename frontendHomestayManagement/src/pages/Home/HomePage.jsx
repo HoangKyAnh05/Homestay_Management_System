@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import HomeSearch from '../../components/HomeSearch/HomeSearch'
 import { getStoredUser, logout } from '../../services/authService'
+import { resolveImageUrl } from '../../utils/imageUrl'
 import './HomePage.css'
 
 const API_BASE_URL = 'http://localhost:8080/api'
@@ -30,7 +31,7 @@ function RoomCard({ room }) {
     <article className="room-card">
       <div className="room-card-img">
         {room.primaryImageUrl ? (
-          <img src={room.primaryImageUrl} alt={room.name} loading="lazy" />
+          <img src={resolveImageUrl(room.primaryImageUrl)} alt={room.name} loading="lazy" />
         ) : (
           <div className="room-card-img-placeholder" />
         )}
@@ -181,7 +182,7 @@ function GallerySection({ rooms }) {
         <div className="gallery-grid">
           {images.map((url, i) => (
             <div key={i} className="gallery-item">
-              <img src={url} alt={`Ảnh homestay ${i + 1}`} loading="lazy" />
+              <img src={resolveImageUrl(url)} alt={`Ảnh homestay ${i + 1}`} loading="lazy" />
             </div>
           ))}
         </div>

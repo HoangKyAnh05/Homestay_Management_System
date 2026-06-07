@@ -17,13 +17,13 @@ public class RoomImage {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "room_type_id", nullable = false)
-    private RoomType roomType; // Dùng ảnh theo loại phòng, tất cả phòng cùng type dùng chung bộ ảnh
+    @JoinColumn(name = "room_id", nullable = false)
+    private Room room;
 
     @Column(name = "image_url", nullable = false, length = 255)
     private String imageUrl;
 
     @Builder.Default
     @Column(name = "is_primary", nullable = false)
-    private boolean primary = false; // Ảnh đại diện dùng làm thumbnail
+    private boolean primary = false;
 }

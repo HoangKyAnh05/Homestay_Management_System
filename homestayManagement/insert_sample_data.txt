@@ -138,51 +138,62 @@ ON DUPLICATE KEY UPDATE
 -- PHÂN HỆ 1: QUẢN LÝ PHÒNG
 -- ============================================================
 
--- Room Types (5 loại phòng tương ứng 5 folder ảnh)
-INSERT INTO room_types (name, base_price, max_adults, max_children, description) VALUES
-('Phòng Studio',      500000.00, 2, 1, 'Phòng tiêu chuẩn nhỏ gọn, thích hợp cho 1-2 người, đầy đủ tiện nghi cơ bản.'),
-('Phòng Đôi Deluxe',  800000.00, 2, 2, 'Phòng đôi cao cấp, view đẹp, nội thất sang trọng, phù hợp cho cặp đôi hoặc gia đình nhỏ.'),
-('Phòng Gia Đình',   1200000.00, 4, 2, 'Phòng rộng rãi cho gia đình, 2 phòng ngủ riêng biệt, phòng khách và bếp nhỏ.'),
-('Phòng VIP Suite',  2000000.00, 2, 1, 'Phòng suite cao cấp nhất, ban công riêng, bồn tắm, dịch vụ đặc biệt.'),
-('Phòng Kết Nối',    1500000.00, 4, 3, 'Hai phòng kết nối nhau, lý tưởng cho nhóm bạn hoặc gia đình lớn.')
-ON DUPLICATE KEY UPDATE
-    base_price  = VALUES(base_price),
-    max_adults  = VALUES(max_adults),
-    max_children = VALUES(max_children),
-    description = VALUES(description);
+-- Migration: đổi room_images từ room_type_id → room_id (chạy 1 lần nếu DB đang dùng schema cũ)
+DROP TABLE IF EXISTS room_images;
+CREATE TABLE room_images (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    room_id BIGINT NOT NULL,
+    image_url VARCHAR(255) NOT NULL,
+    is_primary BOOLEAN DEFAULT FALSE,
+    FOREIGN KEY (room_id) REFERENCES rooms(id)
+);
 
--- Rooms (5 phòng vật lý, mỗi phòng 1 loại)
-INSERT INTO rooms (room_number, room_type_id, status) VALUES
-('101', (SELECT id FROM room_types WHERE name = 'Phòng Studio'),      'AVAILABLE'),
-('102', (SELECT id FROM room_types WHERE name = 'Phòng Đôi Deluxe'),  'AVAILABLE'),
-('201', (SELECT id FROM room_types WHERE name = 'Phòng Gia Đình'),    'AVAILABLE'),
-('202', (SELECT id FROM room_types WHERE name = 'Phòng VIP Suite'),   'AVAILABLE'),
-('301', (SELECT id FROM room_types WHERE name = 'Phòng Kết Nối'),     'AVAILABLE')
+-- 1. Insert bảng Loại Phòng (Giữ nguyên vai trò quản lý Giá và Sức chứa)
+INSERT INTO room_types (name, base_price, max_adults, max_children, description) VALUES
+('Phòng Studio',      500000.00, 2, 1, 'Phòng tiêu chuẩn nhỏ gọn.'),
+('Phòng Đôi Deluxe',  800000.00, 2, 2, 'Phòng đôi cao cấp, view đẹp.'),
+('Phòng Gia Đình',   1200000.00, 4, 2, 'Phòng rộng rãi cho gia đình.'),
+('Phòng VIP Suite',  2000000.00, 2, 1, 'Phòng suite cao cấp nhất.'),
+('Phòng Kết Nối',    1500000.00, 4, 3, 'Hai phòng kết nối nhau.')
 ON DUPLICATE KEY UPDATE
+    base_price   = VALUES(base_price),
+    max_adults   = VALUES(max_adults),
+    max_children = VALUES(max_children),
+    description  = VALUES(description);
+
+-- 2. Insert bảng Phòng vật lý (Tạo đúng 5 phòng như giao diện React)
+INSERT INTO rooms (id, room_number, room_type_id, status) VALUES
+(1, '101', (SELECT id FROM room_types WHERE name = 'Phòng Studio'),      'AVAILABLE'),
+(2, '102', (SELECT id FROM room_types WHERE name = 'Phòng Đôi Deluxe'),  'AVAILABLE'),
+(3, '201', (SELECT id FROM room_types WHERE name = 'Phòng Gia Đình'),    'AVAILABLE'),
+(4, '202', (SELECT id FROM room_types WHERE name = 'Phòng VIP Suite'),   'AVAILABLE'),
+(5, '301', (SELECT id FROM room_types WHERE name = 'Phòng Kết Nối'),     'AVAILABLE')
+ON DUPLICATE KEY UPDATE
+    room_number  = VALUES(room_number),
     room_type_id = VALUES(room_type_id),
     status       = VALUES(status);
 
--- Room Images (ảnh theo loại phòng, đường dẫn từ folder public frontend)
--- home_1: image.png, image_2.jpg
-INSERT INTO room_images (room_type_id, image_url, is_primary) VALUES
-((SELECT id FROM room_types WHERE name = 'Phòng Studio'), '/home_1/image.png',    true),
-((SELECT id FROM room_types WHERE name = 'Phòng Studio'), '/home_1/image_2.jpg',  false),
+-- 3. Insert bảng Ảnh phòng (Gắn trực tiếp vào room_id)
+INSERT INTO room_images (room_id, image_url, is_primary) VALUES
+-- Phòng 101 (#101 - Studio): Có 2 ảnh
+(1, '/home_1/image.png',    true),
+(1, '/home_1/image_2.jpg',  false),
 
--- home_2: image_1.jpg, image_2.jpg
-((SELECT id FROM room_types WHERE name = 'Phòng Đôi Deluxe'), '/home_2/image_1.jpg', true),
-((SELECT id FROM room_types WHERE name = 'Phòng Đôi Deluxe'), '/home_2/image_2.jpg', false),
+-- Phòng 102 (#102 - Deluxe): Có 2 ảnh
+(2, '/home_2/image_1.jpg', true),
+(2, '/home_2/image_2.jpg', false),
 
--- home_3: image_3.jpg
-((SELECT id FROM room_types WHERE name = 'Phòng Gia Đình'), '/home_3/image_3.jpg', true),
+-- Phòng 201 (#201 - Gia Đình): Chỉ có 1 ảnh duy nhất
+(3, '/home_3/image_3.jpg', true),
 
--- home_4: image_1.jpg, image_2.jpg
-((SELECT id FROM room_types WHERE name = 'Phòng VIP Suite'), '/home_4/image_1.jpg', true),
-((SELECT id FROM room_types WHERE name = 'Phòng VIP Suite'), '/home_4/image_2.jpg', false),
+-- Phòng 202 (#202 - VIP Suite): Có 2 ảnh
+(4, '/home_4/image_1.jpg', true),
+(4, '/home_4/image_2.jpg', false),
 
--- home_5: image_1.jpg, image_2.jpg, image_3.jpg
-((SELECT id FROM room_types WHERE name = 'Phòng Kết Nối'), '/home_5/image_1.jpg', true),
-((SELECT id FROM room_types WHERE name = 'Phòng Kết Nối'), '/home_5/image_2.jpg', false),
-((SELECT id FROM room_types WHERE name = 'Phòng Kết Nối'), '/home_5/image_3.jpg', false);
+-- Phòng 301 (#301 - Kết Nối): Có 3 ảnh hoàn toàn khác biệt
+(5, '/home_5/image_1.jpg', true),
+(5, '/home_5/image_2.jpg', false),
+(5, '/home_5/image_3.jpg', false);
 
 -- ============================================================
 -- PHÂN HỆ 2: DỊCH VỤ
