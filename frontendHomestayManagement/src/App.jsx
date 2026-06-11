@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import AdminRoomsPage from './pages/Admin/AdminRoomsPage'
 import AdminLoginPage from './pages/Admin/AdminLoginPage'
+import AdminInvoicesPage from './pages/Admin/AdminInvoicesPage'
 import AdminPlaceholderPage from './pages/Admin/AdminPlaceholderPage'
 import AdminRulesPenaltiesPage from './pages/Admin/AdminRulesPenaltiesPage'
 import AdminServiceCategoriesPage from './pages/Admin/AdminServiceCategoriesPage'
@@ -56,7 +57,7 @@ function App() {
     if (currentPath === '/admin/services/categories') return <AdminServiceCategoriesPage />
     if (currentPath === '/admin/services/surcharges') return <AdminSurchargesPage />
     if (currentPath === '/admin/rules-penalties') return <AdminRulesPenaltiesPage />
-    if (currentPath === '/admin/invoices') return <AdminPlaceholderPage activePage="invoices" title="Quản lý Hóa đơn" />
+    if (currentPath === '/admin/invoices') return <AdminInvoicesPage />
     if (currentPath === '/admin/marketing/ai-agent') return <AdminPlaceholderPage activePage="ai-post-agent" title="AI Agent Đăng bài" />
     if (currentPath === '/admin/marketing/post-logs') return <AdminPlaceholderPage activePage="post-logs" title="Nhật ký Bài đăng" />
     if (currentPath === '/admin/marketing/vouchers') return <AdminPlaceholderPage activePage="vouchers" title="Mã giảm giá (Vouchers)" />
