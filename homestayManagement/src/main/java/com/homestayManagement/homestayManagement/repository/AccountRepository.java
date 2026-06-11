@@ -1,12 +1,12 @@
 package com.homestayManagement.homestayManagement.repository;
 
-import com.homestayManagement.homestayManagement.entity.User;
+import com.homestayManagement.homestayManagement.entity.Account;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;
 
-public interface UserRepository extends JpaRepository<User, Long> {
-    Optional<User> findByEmail(String email);
+public interface AccountRepository extends JpaRepository<Account, Long> {
+    Optional<Account> findByEmail(String email);
 
     boolean existsByEmail(String email);
 }

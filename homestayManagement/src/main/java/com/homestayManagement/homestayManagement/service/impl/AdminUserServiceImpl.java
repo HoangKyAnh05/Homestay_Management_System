@@ -3,12 +3,14 @@ package com.homestayManagement.homestayManagement.service.impl;
 import com.homestayManagement.homestayManagement.dto.request.AdminCreateUserRequest;
 import com.homestayManagement.homestayManagement.dto.request.AdminUpdateUserRequest;
 import com.homestayManagement.homestayManagement.dto.response.AdminUserResponse;
+import com.homestayManagement.homestayManagement.entity.Account;
+import com.homestayManagement.homestayManagement.entity.Customer;
+import com.homestayManagement.homestayManagement.entity.Employee;
 import com.homestayManagement.homestayManagement.entity.Role;
-import com.homestayManagement.homestayManagement.entity.User;
-import com.homestayManagement.homestayManagement.entity.UserDetail;
+import com.homestayManagement.homestayManagement.repository.AccountRepository;
+import com.homestayManagement.homestayManagement.repository.CustomerRepository;
+import com.homestayManagement.homestayManagement.repository.EmployeeRepository;
 import com.homestayManagement.homestayManagement.repository.RoleRepository;
-import com.homestayManagement.homestayManagement.repository.UserDetailRepository;
-import com.homestayManagement.homestayManagement.repository.UserRepository;
 import com.homestayManagement.homestayManagement.service.AdminUserService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -19,19 +21,22 @@ import java.util.List;
 @Service
 public class AdminUserServiceImpl implements AdminUserService {
 
-    private final UserRepository userRepository;
-    private final UserDetailRepository userDetailRepository;
+    private final AccountRepository accountRepository;
+    private final CustomerRepository customerRepository;
+    private final EmployeeRepository employeeRepository;
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
 
     public AdminUserServiceImpl(
-            UserRepository userRepository,
-            UserDetailRepository userDetailRepository,
+            AccountRepository accountRepository,
+            CustomerRepository customerRepository,
+            EmployeeRepository employeeRepository,
             RoleRepository roleRepository,
             PasswordEncoder passwordEncoder
     ) {
-        this.userRepository = userRepository;
-        this.userDetailRepository = userDetailRepository;
+        this.accountRepository = accountRepository;
+        this.customerRepository = customerRepository;
+        this.employeeRepository = employeeRepository;
         this.roleRepository = roleRepository;
         this.passwordEncoder = passwordEncoder;
     }
@@ -39,7 +44,7 @@ public class AdminUserServiceImpl implements AdminUserService {
     @Override
     @Transactional(readOnly = true)
     public List<AdminUserResponse> getAllUsers() {
-        return userRepository.findAll().stream()
+        return accountRepository.findAll().stream()
                 .map(this::toResponse)
                 .toList();
     }
@@ -47,99 +52,134 @@ public class AdminUserServiceImpl implements AdminUserService {
     @Override
     @Transactional(readOnly = true)
     public AdminUserResponse getUserById(Long id) {
-        User user = userRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy user"));
-        return toResponse(user);
+        Account account = accountRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Khong tim thay tai khoan"));
+        return toResponse(account);
     }
 
     @Override
     @Transactional
     public AdminUserResponse createUser(AdminCreateUserRequest request) {
-        if (userRepository.existsByEmail(request.email())) {
-            throw new IllegalArgumentException("Email đã được sử dụng");
+        if (accountRepository.existsByEmail(request.email())) {
+            throw new IllegalArgumentException("Email da duoc su dung");
         }
 
         Role role = roleRepository.findById(request.roleId())
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy role"));
+                .orElseThrow(() -> new IllegalArgumentException("Khong tim thay role"));
 
-        User user = User.builder()
+        Account account = Account.builder()
                 .email(request.email())
                 .password(passwordEncoder.encode(request.password()))
-                .isVerified(true)
                 .isActive(request.isActive())
                 .role(role)
                 .build();
-        userRepository.save(user);
+        accountRepository.save(account);
 
-        UserDetail detail = UserDetail.builder()
-                .user(user)
-                .fullName(request.fullName().trim())
-                .phone(blankToNull(request.phone()))
-                .build();
-        userDetailRepository.save(detail);
+        if (isCustomer(role)) {
+            validatePhoneLength(request.phone(), 10);
+            Customer detail = Customer.builder()
+                    .account(account)
+                    .fullName(request.fullName().trim())
+                    .phone(blankToNull(request.phone()))
+                    .build();
+            customerRepository.save(detail);
+        } else {
+            validatePhoneLength(request.phone(), 15);
+            Employee employee = Employee.builder()
+                    .account(account)
+                    .fullName(request.fullName().trim())
+                    .phone(blankToNull(request.phone()))
+                    .status("WORKING")
+                    .build();
+            employeeRepository.save(employee);
+        }
 
-        return toResponse(user);
+        return toResponse(account);
     }
 
     @Override
     @Transactional
     public AdminUserResponse updateUser(Long id, AdminUpdateUserRequest request) {
-        User user = userRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy user"));
+        Account account = accountRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Khong tim thay tai khoan"));
 
         Role role = roleRepository.findById(request.roleId())
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy role"));
+                .orElseThrow(() -> new IllegalArgumentException("Khong tim thay role"));
 
-        user.setRole(role);
-        user.setActive(request.isActive());
-        userRepository.save(user);
+        account.setRole(role);
+        account.setActive(request.isActive());
+        accountRepository.save(account);
 
-        UserDetail detail = userDetailRepository.findById(id)
-                .orElseGet(() -> UserDetail.builder().user(user).build());
-        detail.setFullName(request.fullName().trim());
-        detail.setPhone(blankToNull(request.phone()));
-        userDetailRepository.save(detail);
+        if (isCustomer(role)) {
+            validatePhoneLength(request.phone(), 10);
+            employeeRepository.deleteByAccountId(id);
+            Customer detail = customerRepository.findByAccountId(id)
+                    .orElseGet(() -> Customer.builder().account(account).build());
+            detail.setFullName(request.fullName().trim());
+            detail.setPhone(blankToNull(request.phone()));
+            customerRepository.save(detail);
+        } else {
+            validatePhoneLength(request.phone(), 15);
+            customerRepository.deleteByAccountId(id);
+            Employee employee = employeeRepository.findByAccountId(id)
+                    .orElseGet(() -> Employee.builder().account(account).status("WORKING").build());
+            employee.setFullName(request.fullName().trim());
+            employee.setPhone(blankToNull(request.phone()));
+            employeeRepository.save(employee);
+        }
 
-        return toResponse(user);
+        return toResponse(account);
     }
 
     @Override
     @Transactional
     public void deleteUser(Long id) {
-        if (!userRepository.existsById(id)) {
-            throw new IllegalArgumentException("Không tìm thấy user");
+        if (!accountRepository.existsById(id)) {
+            throw new IllegalArgumentException("Khong tim thay tai khoan");
         }
-        userDetailRepository.deleteById(id);
-        userRepository.deleteById(id);
+        customerRepository.deleteByAccountId(id);
+        employeeRepository.deleteByAccountId(id);
+        accountRepository.deleteById(id);
     }
 
     @Override
     @Transactional
     public AdminUserResponse toggleActive(Long id, boolean isActive) {
-        User user = userRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy user"));
-        user.setActive(isActive);
-        userRepository.save(user);
-        return toResponse(user);
+        Account account = accountRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Khong tim thay tai khoan"));
+        account.setActive(isActive);
+        accountRepository.save(account);
+        return toResponse(account);
     }
 
-    private AdminUserResponse toResponse(User user) {
-        UserDetail detail = userDetailRepository.findById(user.getId()).orElse(null);
+    private AdminUserResponse toResponse(Account account) {
+        Customer detail = customerRepository.findByAccountId(account.getId()).orElse(null);
+        Employee employee = employeeRepository.findByAccountId(account.getId()).orElse(null);
         return new AdminUserResponse(
-                user.getId(),
-                user.getEmail(),
-                detail != null ? detail.getFullName() : null,
-                detail != null ? detail.getPhone() : null,
-                detail != null ? detail.getAvatarUrl() : null,
-                user.getRole().getName(),
-                user.getRole().getId(),
-                user.isActive(),
-                user.isVerified(),
-                user.getCreatedAt()
+                account.getId(),
+                account.getEmail(),
+                detail != null ? detail.getFullName() : employee != null ? employee.getFullName() : null,
+                detail != null ? detail.getPhone() : employee != null ? employee.getPhone() : null,
+                detail != null ? detail.getAvatarUrl() : employee != null ? employee.getAvatarUrl() : null,
+                account.getRole().getName(),
+                account.getRole().getId(),
+                account.isActive(),
+                true,
+                account.getCreatedAt()
         );
     }
 
     private String blankToNull(String value) {
         return (value == null || value.isBlank()) ? null : value.trim();
+    }
+
+    private boolean isCustomer(Role role) {
+        return "ROLE_CUSTOMER".equals(role.getName());
+    }
+
+    private void validatePhoneLength(String phone, int maxLength) {
+        if (phone != null && phone.length() > maxLength) {
+            throw new IllegalArgumentException("So dien thoai toi da " + maxLength + " ky tu");
+        }
     }
 }

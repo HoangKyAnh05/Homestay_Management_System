@@ -23,8 +23,7 @@ public class Room {
     @JoinColumn(name = "room_type_id", nullable = false)
     private RoomType roomType;
 
-    // AVAILABLE, OCCUPIED, CLEANING, MAINTENANCE
     @Builder.Default
-    @Column(nullable = false, length = 20)
+    @Transient
     private String status = "AVAILABLE";
 }

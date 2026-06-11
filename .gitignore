@@ -2,11 +2,13 @@
 
 .idea/
 *.iml
-
+.kiro
+.github
 # Maven
 
 target/
 
+# Gradle
 # Gradle
 
 .gradle/

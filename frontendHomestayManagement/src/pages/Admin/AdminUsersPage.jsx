@@ -11,18 +11,16 @@ function authHeaders() {
 }
 
 const ROLE_LABEL = {
-  ROLE_ADMINISTRATOR: 'Administrator',
-  ROLE_MANAGER: 'Manager',
+  ROLE_ADMIN: 'Admin',
   ROLE_RECEPTIONIST: 'Receptionist',
   ROLE_CUSTOMER: 'Customer',
   ROLE_HOUSEKEEPING: 'Housekeeping',
-  ROLE_MARKETING_STAFF: 'Marketing Staff',
+  ROLE_MARKETING: 'Marketing',
 }
 
 function roleBadgeClass(role) {
   const map = {
-    ROLE_ADMINISTRATOR: 'badge--admin',
-    ROLE_MANAGER: 'badge--manager',
+    ROLE_ADMIN: 'badge--admin',
     ROLE_RECEPTIONIST: 'badge--recep',
     ROLE_CUSTOMER: 'badge--customer',
   }

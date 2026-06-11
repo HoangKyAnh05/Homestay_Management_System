@@ -1,36 +1,38 @@
 package com.homestayManagement.homestayManagement.security;
 
-import com.homestayManagement.homestayManagement.entity.User;
-import com.homestayManagement.homestayManagement.repository.UserRepository;
+import com.homestayManagement.homestayManagement.entity.Account;
+import com.homestayManagement.homestayManagement.repository.AccountRepository;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
 @Service
 public class CustomUserDetailsService implements UserDetailsService {
-    private final UserRepository userRepository;
+    private final AccountRepository accountRepository;
 
-    public CustomUserDetailsService(UserRepository userRepository) {
-        this.userRepository = userRepository;
+    public CustomUserDetailsService(AccountRepository accountRepository) {
+        this.accountRepository = accountRepository;
     }
 
     @Override
+    @Transactional(readOnly = true)
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException("Không tìm thấy tài khoản"));
+        Account account = accountRepository.findByEmail(email)
+                .orElseThrow(() -> new UsernameNotFoundException("Khong tim thay tai khoan"));
 
         return new org.springframework.security.core.userdetails.User(
-                user.getEmail(),
-                user.getPassword(),
-                user.isActive(),
+                account.getEmail(),
+                account.getPassword(),
+                account.isActive(),
                 true,
                 true,
                 true,
-                List.of(new SimpleGrantedAuthority(user.getRole().getName()))
+                List.of(new SimpleGrantedAuthority(account.getRole().getName()))
         );
     }
 }

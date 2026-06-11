@@ -3,16 +3,36 @@ const TOKEN_KEY = 'homeStayAccessToken'
 const USER_KEY = 'homeStayUser'
 const REMEMBER_KEY = 'homeStayRememberEmail'
 
-// Trả về storage phù hợp: localStorage nếu remember, sessionStorage nếu không
 function getAuthStorage(remember) {
   return remember ? localStorage : sessionStorage
 }
 
-// Lấy storage đang lưu token (kiểm tra cả hai)
 function findAuthStorage() {
-  if (localStorage.getItem(TOKEN_KEY)) return localStorage
   if (sessionStorage.getItem(TOKEN_KEY)) return sessionStorage
+  if (localStorage.getItem(TOKEN_KEY)) return localStorage
   return null
+}
+
+function clearStoredAuth() {
+  localStorage.removeItem(TOKEN_KEY)
+  localStorage.removeItem(USER_KEY)
+  sessionStorage.removeItem(TOKEN_KEY)
+  sessionStorage.removeItem(USER_KEY)
+}
+
+function saveAuthSession(data, remember = true) {
+  clearStoredAuth()
+  const storage = getAuthStorage(remember)
+  storage.setItem(TOKEN_KEY, data.accessToken)
+  storage.setItem(USER_KEY, JSON.stringify(data.user))
+}
+
+async function parseJson(response) {
+  return response.json().catch(() => ({}))
+}
+
+function connectionError() {
+  return new Error('Không kết nối được backend. Hãy kiểm tra Spring Boot đã chạy ở cổng 8080.')
 }
 
 export async function login(email, password, remember = false) {
@@ -21,26 +41,18 @@ export async function login(email, password, remember = false) {
   try {
     response = await fetch(`${API_BASE_URL}/auth/login`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
     })
   } catch {
-    throw new Error('Không kết nối được backend. Hãy kiểm tra Spring Boot đã chạy ở cổng 8080.')
+    throw connectionError()
   }
 
-  const data = await response.json().catch(() => ({}))
+  const data = await parseJson(response)
+  if (!response.ok) throw new Error(data.message || 'Đăng nhập thất bại')
 
-  if (!response.ok) {
-    throw new Error(data.message || 'Đăng nhập thất bại')
-  }
+  saveAuthSession(data, remember)
 
-  const storage = getAuthStorage(remember)
-  storage.setItem(TOKEN_KEY, data.accessToken)
-  storage.setItem(USER_KEY, JSON.stringify(data.user))
-
-  // Lưu email để tự điền lần sau nếu remember
   if (remember) {
     localStorage.setItem(REMEMBER_KEY, email)
   } else {
@@ -56,25 +68,17 @@ export async function loginWithGoogle(accessToken) {
   try {
     response = await fetch(`${API_BASE_URL}/auth/google`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ accessToken }),
     })
   } catch {
-    throw new Error('Khong ket noi duoc backend. Hay kiem tra Spring Boot da chay o cong 8080.')
+    throw connectionError()
   }
 
-  const data = await response.json().catch(() => ({}))
+  const data = await parseJson(response)
+  if (!response.ok) throw new Error(data.message || 'Đăng nhập Google thất bại')
 
-  if (!response.ok) {
-    throw new Error(data.message || 'Dang nhap Google that bai')
-  }
-
-  // Google login luôn dùng localStorage (coi như remember)
-  localStorage.setItem(TOKEN_KEY, data.accessToken)
-  localStorage.setItem(USER_KEY, JSON.stringify(data.user))
-
+  saveAuthSession(data, true)
   return data
 }
 
@@ -84,6 +88,7 @@ export function getRememberedEmail() {
 
 export async function register(fullName, email, phone, password) {
   let response
+
   try {
     response = await fetch(`${API_BASE_URL}/auth/register`, {
       method: 'POST',
@@ -91,15 +96,17 @@ export async function register(fullName, email, phone, password) {
       body: JSON.stringify({ fullName, email, phone, password }),
     })
   } catch {
-    throw new Error('Không kết nối được backend. Hãy kiểm tra Spring Boot đã chạy ở cổng 8080.')
+    throw connectionError()
   }
-  const data = await response.json().catch(() => ({}))
+
+  const data = await parseJson(response)
   if (!response.ok) throw new Error(data.message || 'Đăng ký thất bại')
   return data
 }
 
 export async function verifyEmail(email, otp) {
   let response
+
   try {
     response = await fetch(`${API_BASE_URL}/auth/verify-email`, {
       method: 'POST',
@@ -107,19 +114,19 @@ export async function verifyEmail(email, otp) {
       body: JSON.stringify({ email, otp }),
     })
   } catch {
-    throw new Error('Không kết nối được backend. Hãy kiểm tra Spring Boot đã chạy ở cổng 8080.')
+    throw connectionError()
   }
-  const data = await response.json().catch(() => ({}))
+
+  const data = await parseJson(response)
   if (!response.ok) throw new Error(data.message || 'Xác minh thất bại')
 
-  // Đăng nhập luôn sau khi xác minh thành công
-  localStorage.setItem(TOKEN_KEY, data.accessToken)
-  localStorage.setItem(USER_KEY, JSON.stringify(data.user))
+  saveAuthSession(data, true)
   return data
 }
 
 export async function resendVerifyEmail(email) {
   let response
+
   try {
     response = await fetch(`${API_BASE_URL}/auth/resend-verify-email`, {
       method: 'POST',
@@ -127,15 +134,17 @@ export async function resendVerifyEmail(email) {
       body: JSON.stringify({ email }),
     })
   } catch {
-    throw new Error('Không kết nối được backend. Hãy kiểm tra Spring Boot đã chạy ở cổng 8080.')
+    throw connectionError()
   }
-  const data = await response.json().catch(() => ({}))
+
+  const data = await parseJson(response)
   if (!response.ok) throw new Error(data.message || 'Gửi lại mã thất bại')
   return data
 }
 
 export async function forgotPassword(email) {
   let response
+
   try {
     response = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
       method: 'POST',
@@ -143,15 +152,17 @@ export async function forgotPassword(email) {
       body: JSON.stringify({ email }),
     })
   } catch {
-    throw new Error('Không kết nối được backend. Hãy kiểm tra Spring Boot đã chạy ở cổng 8080.')
+    throw connectionError()
   }
-  const data = await response.json().catch(() => ({}))
+
+  const data = await parseJson(response)
   if (!response.ok) throw new Error(data.message || 'Gửi mã OTP thất bại')
   return data
 }
 
 export async function verifyOtp(email, otp) {
   let response
+
   try {
     response = await fetch(`${API_BASE_URL}/auth/verify-otp`, {
       method: 'POST',
@@ -159,15 +170,17 @@ export async function verifyOtp(email, otp) {
       body: JSON.stringify({ email, otp }),
     })
   } catch {
-    throw new Error('Không kết nối được backend. Hãy kiểm tra Spring Boot đã chạy ở cổng 8080.')
+    throw connectionError()
   }
-  const data = await response.json().catch(() => ({}))
+
+  const data = await parseJson(response)
   if (!response.ok) throw new Error(data.message || 'Mã OTP không hợp lệ')
   return data
 }
 
 export async function resetPassword(email, otp, newPassword) {
   let response
+
   try {
     response = await fetch(`${API_BASE_URL}/auth/reset-password`, {
       method: 'POST',
@@ -175,9 +188,10 @@ export async function resetPassword(email, otp, newPassword) {
       body: JSON.stringify({ email, otp, newPassword }),
     })
   } catch {
-    throw new Error('Không kết nối được backend. Hãy kiểm tra Spring Boot đã chạy ở cổng 8080.')
+    throw connectionError()
   }
-  const data = await response.json().catch(() => ({}))
+
+  const data = await parseJson(response)
   if (!response.ok) throw new Error(data.message || 'Đặt lại mật khẩu thất bại')
   return data
 }
@@ -203,12 +217,19 @@ async function authorizedRequest(path, options = {}) {
       },
     })
   } catch {
-    throw new Error('Không kết nối được backend. Hãy kiểm tra Spring Boot đã chạy ở cổng 8080.')
+    throw connectionError()
   }
 
-  const data = await response.json().catch(() => ({}))
+  const data = await parseJson(response)
 
   if (!response.ok) {
+    if (response.status === 401 || response.status === 403) {
+      clearStoredAuth()
+      if (window.location.pathname !== '/login') {
+        setTimeout(() => window.location.assign('/login'), 0)
+      }
+      throw new Error(data.message || 'Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại')
+    }
     throw new Error(data.message || 'Không thể xử lý yêu cầu')
   }
 
@@ -270,8 +291,5 @@ export function getStoredToken() {
 }
 
 export function logout() {
-  localStorage.removeItem(TOKEN_KEY)
-  localStorage.removeItem(USER_KEY)
-  sessionStorage.removeItem(TOKEN_KEY)
-  sessionStorage.removeItem(USER_KEY)
+  clearStoredAuth()
 }

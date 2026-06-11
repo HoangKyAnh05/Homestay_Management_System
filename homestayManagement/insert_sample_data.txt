@@ -1,213 +1,382 @@
--- Sample data for current tables: roles, users, user_details
+-- Sample data for schema described in database.md
 -- Database: MySQL
 -- Login password for all sample accounts: 123456
 
 SET @sample_password = '$2y$10$EvH9B1Gbc3TeokB1KdBCk.2YER5zQS7tRJjrGuCo3pk/JN0v2Lwim';
 
--- Roles
-INSERT INTO roles (name, description) VALUES
-('ROLE_ADMINISTRATOR', 'Administrator'),
-('ROLE_MANAGER', 'Manager'),
-('ROLE_CUSTOMER', 'Customer'),
-('ROLE_RECEPTIONIST', 'Receptionist'),
-('ROLE_HOUSEKEEPING', 'Housekeeping'),
-('ROLE_MARKETING_STAFF', 'Marketing Staff')
-ON DUPLICATE KEY UPDATE description = VALUES(description);
-
--- Users
-INSERT INTO users (email, password, is_verified, is_active, role_id, created_at, updated_at) VALUES
-(
-    'administrator@example.com',
-    @sample_password,
-    true,
-    true,
-    (SELECT id FROM roles WHERE name = 'ROLE_ADMINISTRATOR'),
-    NOW(),
-    NOW()
-),
-(
-    'manager@example.com',
-    @sample_password,
-    true,
-    true,
-    (SELECT id FROM roles WHERE name = 'ROLE_MANAGER'),
-    NOW(),
-    NOW()
-),
-(
-    'customer@example.com',
-    @sample_password,
-    true,
-    true,
-    (SELECT id FROM roles WHERE name = 'ROLE_CUSTOMER'),
-    NOW(),
-    NOW()
-),
-(
-    'receptionist@example.com',
-    @sample_password,
-    true,
-    true,
-    (SELECT id FROM roles WHERE name = 'ROLE_RECEPTIONIST'),
-    NOW(),
-    NOW()
-),
-(
-    'housekeeping@example.com',
-    @sample_password,
-    true,
-    true,
-    (SELECT id FROM roles WHERE name = 'ROLE_HOUSEKEEPING'),
-    NOW(),
-    NOW()
-),
-(
-    'marketing@example.com',
-    @sample_password,
-    true,
-    true,
-    (SELECT id FROM roles WHERE name = 'ROLE_MARKETING_STAFF'),
-    NOW(),
-    NOW()
-)
+-- ============================================================
+-- 1. roles
+-- ============================================================
+INSERT INTO roles (id, name, description) VALUES
+(1, 'ROLE_ADMIN', 'Quan tri he thong'),
+(2, 'ROLE_CUSTOMER', 'Khach hang dat phong'),
+(3, 'ROLE_RECEPTIONIST', 'Nhan vien le tan'),
+(4, 'ROLE_HOUSEKEEPING', 'Nhan vien buong phong'),
+(5, 'ROLE_MARKETING', 'Nhan vien marketing')
 ON DUPLICATE KEY UPDATE
+    name = VALUES(name),
+    description = VALUES(description);
+
+-- ============================================================
+-- 2. accounts
+-- ============================================================
+INSERT INTO accounts (id, email, password, role_id, is_active, created_at) VALUES
+(1, 'admin@example.com', @sample_password, 1, TRUE, '2026-01-01 08:00:00'),
+(2, 'receptionist@example.com', @sample_password, 3, TRUE, '2026-01-01 08:05:00'),
+(3, 'customer@example.com', @sample_password, 2, TRUE, '2026-01-01 08:10:00'),
+(4, 'housekeeping@example.com', @sample_password, 4, TRUE, '2026-01-01 08:15:00'),
+(5, 'marketing@example.com', @sample_password, 5, TRUE, '2026-01-01 08:20:00'),
+(6, 'linh.nguyen@example.com', @sample_password, 2, TRUE, '2026-01-02 09:00:00'),
+(7, 'minh.tran@example.com', @sample_password, 2, TRUE, '2026-01-03 09:00:00')
+ON DUPLICATE KEY UPDATE
+    email = VALUES(email),
     password = VALUES(password),
-    is_verified = VALUES(is_verified),
-    is_active = VALUES(is_active),
     role_id = VALUES(role_id),
-    updated_at = NOW();
+    is_active = VALUES(is_active),
+    created_at = VALUES(created_at);
 
--- User details
-INSERT INTO user_details (user_id, full_name, phone, date_of_birth, address, avatar_url) VALUES
-(
-    (SELECT id FROM users WHERE email = 'administrator@example.com'),
-    'Administrator User',
-    '0900000001',
-    '1990-01-01',
-    'Homestay Head Office',
-    NULL
-),
-(
-    (SELECT id FROM users WHERE email = 'manager@example.com'),
-    'Manager User',
-    '0900000002',
-    '1991-02-02',
-    'Homestay Branch Office',
-    NULL
-),
-(
-    (SELECT id FROM users WHERE email = 'customer@example.com'),
-    'Customer User',
-    '0900000003',
-    '1992-03-03',
-    'Customer Address',
-    NULL
-),
-(
-    (SELECT id FROM users WHERE email = 'receptionist@example.com'),
-    'Receptionist User',
-    '0900000004',
-    '1993-04-04',
-    'Reception Desk',
-    NULL
-),
-(
-    (SELECT id FROM users WHERE email = 'housekeeping@example.com'),
-    'Housekeeping User',
-    '0900000005',
-    '1994-05-05',
-    'Housekeeping Department',
-    NULL
-),
-(
-    (SELECT id FROM users WHERE email = 'marketing@example.com'),
-    'Marketing Staff User',
-    '0900000006',
-    '1995-06-06',
-    'Marketing Department',
-    NULL
-)
+-- ============================================================
+-- 3. customers
+-- ============================================================
+INSERT INTO customers (id, account_id, full_name, phone, address, avatar_url, date_of_birth) VALUES
+(3, 3, 'Nguyen Van A', '0900000003', 'Quan 1, TP Ho Chi Minh', NULL, '1995-03-15'),
+(6, 6, 'Nguyen Khanh Linh', '0900000006', 'Da Lat, Lam Dong', NULL, '1998-07-21'),
+(7, 7, 'Tran Duc Minh', '0900000007', 'Nha Trang, Khanh Hoa', NULL, '1992-11-09')
 ON DUPLICATE KEY UPDATE
+    account_id = VALUES(account_id),
     full_name = VALUES(full_name),
     phone = VALUES(phone),
-    date_of_birth = VALUES(date_of_birth),
     address = VALUES(address),
-    avatar_url = VALUES(avatar_url);
+    avatar_url = VALUES(avatar_url),
+    date_of_birth = VALUES(date_of_birth);
 
 -- ============================================================
--- PHÂN HỆ 1: QUẢN LÝ PHÒNG
+-- 4. employees
 -- ============================================================
-
--- Migration: đổi room_images từ room_type_id → room_id (chạy 1 lần nếu DB đang dùng schema cũ)
-DROP TABLE IF EXISTS room_images;
-CREATE TABLE room_images (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    room_id BIGINT NOT NULL,
-    image_url VARCHAR(255) NOT NULL,
-    is_primary BOOLEAN DEFAULT FALSE,
-    FOREIGN KEY (room_id) REFERENCES rooms(id)
-);
-
--- 1. Insert bảng Loại Phòng (Giữ nguyên vai trò quản lý Giá và Sức chứa)
-INSERT INTO room_types (name, base_price, max_adults, max_children, description) VALUES
-('Phòng Studio',      500000.00, 2, 1, 'Phòng tiêu chuẩn nhỏ gọn.'),
-('Phòng Đôi Deluxe',  800000.00, 2, 2, 'Phòng đôi cao cấp, view đẹp.'),
-('Phòng Gia Đình',   1200000.00, 4, 2, 'Phòng rộng rãi cho gia đình.'),
-('Phòng VIP Suite',  2000000.00, 2, 1, 'Phòng suite cao cấp nhất.'),
-('Phòng Kết Nối',    1500000.00, 4, 3, 'Hai phòng kết nối nhau.')
+INSERT INTO employees (id, account_id, full_name, phone, address, avatar_url, status, date_of_birth) VALUES
+(1, 1, 'Admin Homestay', '0910000001', 'Van phong homestay', NULL, 'WORKING', '1988-01-10'),
+(2, 2, 'Le Tan Mai', '0910000002', 'Quay le tan', NULL, 'WORKING', '1996-04-18'),
+(3, 4, 'Buong Phong Hoa', '0910000003', 'Bo phan buong phong', NULL, 'WORKING', '1994-09-23'),
+(4, 5, 'Marketing Nam', '0910000004', 'Bo phan marketing', NULL, 'WORKING', '1997-12-01')
 ON DUPLICATE KEY UPDATE
-    base_price   = VALUES(base_price),
-    max_adults   = VALUES(max_adults),
+    account_id = VALUES(account_id),
+    full_name = VALUES(full_name),
+    phone = VALUES(phone),
+    address = VALUES(address),
+    avatar_url = VALUES(avatar_url),
+    status = VALUES(status),
+    date_of_birth = VALUES(date_of_birth);
+
+-- ============================================================
+-- 5. room_types
+-- ============================================================
+INSERT INTO room_types (id, name, base_price, max_adults, max_children, description) VALUES
+(1, 'Studio', 500000.00, 2, 1, 'Phong tieu chuan nho gon cho cap doi.'),
+(2, 'Deluxe', 800000.00, 2, 2, 'Phong doi cao cap co ban cong va view dep.'),
+(3, 'Family', 1200000.00, 4, 2, 'Phong rong rai cho gia dinh.'),
+(4, 'VIP Suite', 2000000.00, 2, 1, 'Suite cao cap voi khong gian rieng tu.'),
+(5, 'Connecting Room', 1500000.00, 4, 3, 'Hai phong ket noi phu hop nhom ban.')
+ON DUPLICATE KEY UPDATE
+    name = VALUES(name),
+    base_price = VALUES(base_price),
+    max_adults = VALUES(max_adults),
     max_children = VALUES(max_children),
-    description  = VALUES(description);
-
--- 2. Insert bảng Phòng vật lý (Tạo đúng 5 phòng như giao diện React)
-INSERT INTO rooms (id, room_number, room_type_id, status) VALUES
-(1, '101', (SELECT id FROM room_types WHERE name = 'Phòng Studio'),      'AVAILABLE'),
-(2, '102', (SELECT id FROM room_types WHERE name = 'Phòng Đôi Deluxe'),  'AVAILABLE'),
-(3, '201', (SELECT id FROM room_types WHERE name = 'Phòng Gia Đình'),    'AVAILABLE'),
-(4, '202', (SELECT id FROM room_types WHERE name = 'Phòng VIP Suite'),   'AVAILABLE'),
-(5, '301', (SELECT id FROM room_types WHERE name = 'Phòng Kết Nối'),     'AVAILABLE')
-ON DUPLICATE KEY UPDATE
-    room_number  = VALUES(room_number),
-    room_type_id = VALUES(room_type_id),
-    status       = VALUES(status);
-
--- 3. Insert bảng Ảnh phòng (Gắn trực tiếp vào room_id)
-INSERT INTO room_images (room_id, image_url, is_primary) VALUES
--- Phòng 101 (#101 - Studio): Có 2 ảnh
-(1, '/home_1/image.png',    true),
-(1, '/home_1/image_2.jpg',  false),
-
--- Phòng 102 (#102 - Deluxe): Có 2 ảnh
-(2, '/home_2/image_1.jpg', true),
-(2, '/home_2/image_2.jpg', false),
-
--- Phòng 201 (#201 - Gia Đình): Chỉ có 1 ảnh duy nhất
-(3, '/home_3/image_3.jpg', true),
-
--- Phòng 202 (#202 - VIP Suite): Có 2 ảnh
-(4, '/home_4/image_1.jpg', true),
-(4, '/home_4/image_2.jpg', false),
-
--- Phòng 301 (#301 - Kết Nối): Có 3 ảnh hoàn toàn khác biệt
-(5, '/home_5/image_1.jpg', true),
-(5, '/home_5/image_2.jpg', false),
-(5, '/home_5/image_3.jpg', false);
+    description = VALUES(description);
 
 -- ============================================================
--- PHÂN HỆ 2: DỊCH VỤ
+-- 6. rooms
 -- ============================================================
-
-INSERT INTO services (name, price, unit, is_active) VALUES
-('Thuê xe máy',      150000.00, 'Ngày',  true),
-('Giặt ủi',           30000.00, 'Kg',    true),
-('Nước suối',          5000.00, 'Chai',  true),
-('Dọn phòng thêm',    50000.00, 'Lượt',  true),
-('Đồ ăn sáng',        60000.00, 'Người', true),
-('Thuê xe đạp',        50000.00, 'Ngày',  true),
-('Đặt tour tham quan',250000.00, 'Người', true)
+INSERT INTO rooms (id, room_number, room_type_id) VALUES
+(1, '101', 1),
+(2, '102', 1),
+(3, '103', 2),
+(4, '104', 2),
+(5, '105', 3),
+(6, '201', 1),
+(7, '202', 2),
+(8, '203', 3),
+(9, '204', 4),
+(10, '205', 5),
+(11, '301', 1),
+(12, '302', 2),
+(13, '303', 3),
+(14, '304', 4),
+(15, '305', 5)
 ON DUPLICATE KEY UPDATE
-    price     = VALUES(price),
-    unit      = VALUES(unit),
+    room_number = VALUES(room_number),
+    room_type_id = VALUES(room_type_id);
+
+-- ============================================================
+-- 7. room_images
+-- ============================================================
+INSERT INTO room_images (id, room_id, image_url, is_primary) VALUES
+(1, 1, '/home_1/image.png', TRUE),
+(2, 1, '/home_1/image_2.jpg', FALSE),
+(3, 2, '/home_1/image.png', TRUE),
+(4, 3, '/home_2/image_1.jpg', TRUE),
+(5, 4, '/home_2/image_2.jpg', TRUE),
+(6, 5, '/home_3/image_3.jpg', TRUE),
+(7, 6, '/home_1/image_2.jpg', TRUE),
+(8, 7, '/home_2/image_1.jpg', TRUE),
+(9, 8, '/home_3/image_3.jpg', TRUE),
+(10, 9, '/home_4/image_1.jpg', TRUE),
+(11, 10, '/home_5/image_1.jpg', TRUE),
+(12, 10, '/home_5/image_2.jpg', FALSE),
+(13, 11, '/home_1/image.png', TRUE),
+(14, 12, '/home_2/image_2.jpg', TRUE),
+(15, 13, '/home_3/image_3.jpg', TRUE),
+(16, 14, '/home_4/image_2.jpg', TRUE),
+(17, 15, '/home_5/image_3.jpg', TRUE)
+ON DUPLICATE KEY UPDATE
+    room_id = VALUES(room_id),
+    image_url = VALUES(image_url),
+    is_primary = VALUES(is_primary);
+
+-- ============================================================
+-- 8. room_schedules
+-- ============================================================
+INSERT INTO room_schedules (id, room_id, start_time, end_time, status, note) VALUES
+(1, 1, '2026-06-15 14:00:00', '2026-06-16 12:00:00', 'OCCUPIED', 'Booking mau cho phong 101'),
+(2, 2, '2026-06-15 09:00:00', '2026-06-15 11:00:00', 'CLEANING', 'Don phong sau khi khach tra'),
+(3, 9, '2026-06-20 08:00:00', '2026-06-20 17:00:00', 'MAINTENANCE', 'Bao tri dieu hoa'),
+(4, 10, '2026-06-18 14:00:00', '2026-06-19 12:00:00', 'OCCUPIED', 'Doan gia dinh')
+ON DUPLICATE KEY UPDATE
+    room_id = VALUES(room_id),
+    start_time = VALUES(start_time),
+    end_time = VALUES(end_time),
+    status = VALUES(status),
+    note = VALUES(note);
+
+-- ============================================================
+-- 9. bookings
+-- ============================================================
+INSERT INTO bookings (id, customer_id, booking_date, status) VALUES
+(1, 3, '2026-06-10 09:30:00', 'CONFIRMED'),
+(2, 6, '2026-06-11 10:00:00', 'PENDING'),
+(3, 7, '2026-06-12 14:45:00', 'COMPLETED')
+ON DUPLICATE KEY UPDATE
+    customer_id = VALUES(customer_id),
+    booking_date = VALUES(booking_date),
+    status = VALUES(status);
+
+-- ============================================================
+-- 10. booking_details
+-- ============================================================
+INSERT INTO booking_details (
+    id, booking_id, room_id, check_in_target, check_out_target,
+    number_of_adults, number_of_children, price_at_booking, rent_type, status
+) VALUES
+(1, 1, 1, '2026-06-15 14:00:00', '2026-06-16 12:00:00', 2, 0, 500000.00, 'BY_NIGHT', 'CONFIRMED'),
+(2, 2, 5, '2026-06-18 14:00:00', '2026-06-19 12:00:00', 2, 2, 1200000.00, 'BY_NIGHT', 'CONFIRMED'),
+(3, 3, 9, '2026-06-01 09:00:00', '2026-06-01 13:00:00', 2, 0, 700000.00, 'BY_HOUR', 'CONFIRMED')
+ON DUPLICATE KEY UPDATE
+    booking_id = VALUES(booking_id),
+    room_id = VALUES(room_id),
+    check_in_target = VALUES(check_in_target),
+    check_out_target = VALUES(check_out_target),
+    number_of_adults = VALUES(number_of_adults),
+    number_of_children = VALUES(number_of_children),
+    price_at_booking = VALUES(price_at_booking),
+    rent_type = VALUES(rent_type),
+    status = VALUES(status);
+
+-- ============================================================
+-- 11. check_in_records
+-- ============================================================
+INSERT INTO check_in_records (
+    id, booking_detail_id, customer_id, housekeeping_id, receptionist_id,
+    actual_check_in, actual_check_out, early_check_in_fee, late_check_out_fee
+) VALUES
+(1, 1, 3, 3, 2, '2026-06-15 13:30:00', NULL, 50000.00, 0.00),
+(2, 3, 7, 3, 2, '2026-06-01 09:05:00', '2026-06-01 13:30:00', 0.00, 100000.00)
+ON DUPLICATE KEY UPDATE
+    booking_detail_id = VALUES(booking_detail_id),
+    customer_id = VALUES(customer_id),
+    housekeeping_id = VALUES(housekeeping_id),
+    receptionist_id = VALUES(receptionist_id),
+    actual_check_in = VALUES(actual_check_in),
+    actual_check_out = VALUES(actual_check_out),
+    early_check_in_fee = VALUES(early_check_in_fee),
+    late_check_out_fee = VALUES(late_check_out_fee);
+
+-- ============================================================
+-- 12. facility_services
+-- ============================================================
+INSERT INTO facility_services (id, name, price, is_active) VALUES
+(1, 'Ve be boi', 80000.00, TRUE),
+(2, 'Ve phong gym', 60000.00, TRUE),
+(3, 'Su dung san BBQ', 200000.00, TRUE),
+(4, 'Bua sang buffet', 120000.00, TRUE)
+ON DUPLICATE KEY UPDATE
+    name = VALUES(name),
+    price = VALUES(price),
     is_active = VALUES(is_active);
+
+-- ============================================================
+-- 13. inventory_services
+-- ============================================================
+INSERT INTO inventory_services (id, name, price, quantity_in_stock) VALUES
+(1, 'Thue xe dap', 50000.00, 12),
+(2, 'Thue xe may', 150000.00, 6),
+(3, 'Giat ui theo kg', 30000.00, 100),
+(4, 'Thue bep nuong mini', 100000.00, 4)
+ON DUPLICATE KEY UPDATE
+    name = VALUES(name),
+    price = VALUES(price),
+    quantity_in_stock = VALUES(quantity_in_stock);
+
+-- ============================================================
+-- 14. room_mini_bar_items
+-- ============================================================
+INSERT INTO room_mini_bar_items (id, name, price, quantity_in_stock) VALUES
+(1, 'Nuoc suoi', 10000.00, 200),
+(2, 'Coca Cola', 15000.00, 120),
+(3, 'Mi ly', 25000.00, 80),
+(4, 'Snack khoai tay', 20000.00, 90)
+ON DUPLICATE KEY UPDATE
+    name = VALUES(name),
+    price = VALUES(price),
+    quantity_in_stock = VALUES(quantity_in_stock);
+
+-- ============================================================
+-- 15. service_usages
+-- ============================================================
+INSERT INTO service_usages (id, check_in_record_id, facility_service_id, inventory_service_id, quantity, price_at_use) VALUES
+(1, 1, 1, NULL, 2, 80000.00),
+(2, 1, NULL, 1, 2, 50000.00),
+(3, 2, 4, NULL, 2, 120000.00)
+ON DUPLICATE KEY UPDATE
+    check_in_record_id = VALUES(check_in_record_id),
+    facility_service_id = VALUES(facility_service_id),
+    inventory_service_id = VALUES(inventory_service_id),
+    quantity = VALUES(quantity),
+    price_at_use = VALUES(price_at_use);
+
+-- ============================================================
+-- 16. room_amenities_usage
+-- ============================================================
+INSERT INTO room_amenities_usage (id, check_in_record_id, item_id, quantity_used) VALUES
+(1, 1, 1, 2),
+(2, 1, 2, 1),
+(3, 2, 3, 1)
+ON DUPLICATE KEY UPDATE
+    check_in_record_id = VALUES(check_in_record_id),
+    item_id = VALUES(item_id),
+    quantity_used = VALUES(quantity_used);
+
+-- ============================================================
+-- 17. rules_penalties
+-- ============================================================
+INSERT INTO rules_penalties (id, title, penalty_amount) VALUES
+(1, 'Hut thuoc trong phong', 500000.00),
+(2, 'Lam mat chia khoa phong', 200000.00),
+(3, 'Lam ban chan ga kho xu ly', 300000.00),
+(4, 'Lam hong xe dap thue', 700000.00)
+ON DUPLICATE KEY UPDATE
+    title = VALUES(title),
+    penalty_amount = VALUES(penalty_amount);
+
+-- ============================================================
+-- 18. applied_penalties
+-- ============================================================
+INSERT INTO applied_penalties (id, check_record_id, rules_penalty_id, actual_fine, description) VALUES
+(1, 2, 2, 200000.00, 'Khach lam mat mot chia khoa phong 204')
+ON DUPLICATE KEY UPDATE
+    check_record_id = VALUES(check_record_id),
+    rules_penalty_id = VALUES(rules_penalty_id),
+    actual_fine = VALUES(actual_fine),
+    description = VALUES(description);
+
+-- ============================================================
+-- 19. invoices
+-- ============================================================
+INSERT INTO invoices (
+    id, booking_id, employee_id, room_charge, penalty_charge,
+    service_charge, total_amount, created_at
+) VALUES
+(1, 3, 2, 700000.00, 300000.00, 295000.00, 1295000.00, '2026-06-01 13:45:00')
+ON DUPLICATE KEY UPDATE
+    booking_id = VALUES(booking_id),
+    employee_id = VALUES(employee_id),
+    room_charge = VALUES(room_charge),
+    penalty_charge = VALUES(penalty_charge),
+    service_charge = VALUES(service_charge),
+    total_amount = VALUES(total_amount),
+    created_at = VALUES(created_at);
+
+-- ============================================================
+-- 20. payments
+-- ============================================================
+INSERT INTO payments (id, invoice_id, payment_method, transaction_no, amount, status, payment_time) VALUES
+(1, 1, 'CASH', NULL, 1295000.00, 'SUCCESS', '2026-06-01 13:50:00'),
+(2, 1, 'BANK_TRANSFER', 'BANK-DEMO-0001', 0.00, 'FAILED', '2026-06-01 13:55:00')
+ON DUPLICATE KEY UPDATE
+    invoice_id = VALUES(invoice_id),
+    payment_method = VALUES(payment_method),
+    transaction_no = VALUES(transaction_no),
+    amount = VALUES(amount),
+    status = VALUES(status),
+    payment_time = VALUES(payment_time);
+
+-- ============================================================
+-- 21. vouchers
+-- ============================================================
+INSERT INTO vouchers (
+    id, code, discount_type, min_order_value, max_discount_amount,
+    start_date, end_date, usage_limit, used_count, discount_value
+) VALUES
+(1, 'WELCOME10', 'PERCENT', 500000.00, 200000.00, '2026-01-01 00:00:00', '2026-12-31 23:59:59', 100, 5, 10.00),
+(2, 'FAMILY200', 'AMOUNT', 1500000.00, 200000.00, '2026-06-01 00:00:00', '2026-08-31 23:59:59', 50, 1, 200000.00)
+ON DUPLICATE KEY UPDATE
+    code = VALUES(code),
+    discount_type = VALUES(discount_type),
+    min_order_value = VALUES(min_order_value),
+    max_discount_amount = VALUES(max_discount_amount),
+    start_date = VALUES(start_date),
+    end_date = VALUES(end_date),
+    usage_limit = VALUES(usage_limit),
+    used_count = VALUES(used_count),
+    discount_value = VALUES(discount_value);
+
+-- ============================================================
+-- 22. customer_loyalty
+-- ============================================================
+INSERT INTO customer_loyalty (id, customer_id, current_points, total_earned_points) VALUES
+(1, 3, 120, 500),
+(2, 6, 40, 40),
+(3, 7, 0, 220)
+ON DUPLICATE KEY UPDATE
+    customer_id = VALUES(customer_id),
+    current_points = VALUES(current_points),
+    total_earned_points = VALUES(total_earned_points);
+
+-- ============================================================
+-- 23. ai_agent_configs
+-- ============================================================
+INSERT INTO ai_agent_configs (id, agent_name, system_prompt, posting_interval_hours, is_active) VALUES
+(1, 'Homestay Marketing Agent', 'Viet bai quang ba homestay ngan gon, than thien va co loi keu goi dat phong.', 24, TRUE)
+ON DUPLICATE KEY UPDATE
+    agent_name = VALUES(agent_name),
+    system_prompt = VALUES(system_prompt),
+    posting_interval_hours = VALUES(posting_interval_hours),
+    is_active = VALUES(is_active);
+
+-- ============================================================
+-- 24. marketing_posts
+-- ============================================================
+INSERT INTO marketing_posts (
+    id, platform, generated_content, media_url, scheduled_at,
+    posted_at, status, external_post_id, creator_id, agent_config_id
+) VALUES
+(1, 'FACEBOOK', 'Cuoi tuan nay ghe homestay nghi duong, tan huong phong dep va BBQ ngoai troi.', '/banner.png', '2026-06-14 08:00:00', NULL, 'SCHEDULED', NULL, 4, 1),
+(2, 'INSTAGRAM', 'Phong Studio am cung cho chuyen di ngan ngay.', '/home_1/image.png', '2026-06-10 08:00:00', '2026-06-10 08:05:00', 'POSTED', 'IG-DEMO-0001', 4, 1)
+ON DUPLICATE KEY UPDATE
+    platform = VALUES(platform),
+    generated_content = VALUES(generated_content),
+    media_url = VALUES(media_url),
+    scheduled_at = VALUES(scheduled_at),
+    posted_at = VALUES(posted_at),
+    status = VALUES(status),
+    external_post_id = VALUES(external_post_id),
+    creator_id = VALUES(creator_id),
+    agent_config_id = VALUES(agent_config_id);

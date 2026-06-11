@@ -9,13 +9,14 @@ import lombok.*;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class Role {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @Column(unique = true, nullable = false, length = 20)
-    private String name; // Ví dụ: "ROLE_ADMIN", "ROLE_CUSTOMER", "ROLE_RECEPTIONIST", v.v.
+    private String name;
 
     @Column(length = 200)
     private String description;

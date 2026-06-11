@@ -3,10 +3,10 @@ package com.homestayManagement.homestayManagement.service.impl;
 import com.homestayManagement.homestayManagement.dto.request.ForgotPasswordRequest;
 import com.homestayManagement.homestayManagement.dto.request.ResetPasswordRequest;
 import com.homestayManagement.homestayManagement.dto.request.VerifyOtpRequest;
-import com.homestayManagement.homestayManagement.entity.PasswordResetToken;
-import com.homestayManagement.homestayManagement.entity.User;
-import com.homestayManagement.homestayManagement.repository.PasswordResetTokenRepository;
-import com.homestayManagement.homestayManagement.repository.UserRepository;
+import com.homestayManagement.homestayManagement.entity.Account;
+import com.homestayManagement.homestayManagement.repository.AccountRepository;
+import com.homestayManagement.homestayManagement.repository.OtpTokenRepository;
+import com.homestayManagement.homestayManagement.repository.OtpTokenRepository.OtpToken;
 import com.homestayManagement.homestayManagement.service.PasswordResetService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
@@ -21,24 +21,23 @@ import java.time.LocalDateTime;
 @Service
 public class PasswordResetServiceImpl implements PasswordResetService {
 
-    private static final int OTP_LENGTH = 6;
     private static final int OTP_EXPIRY_MINUTES = 3;
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
-    private final UserRepository userRepository;
-    private final PasswordResetTokenRepository tokenRepository;
+    private final AccountRepository accountRepository;
+    private final OtpTokenRepository tokenRepository;
     private final JavaMailSender mailSender;
     private final PasswordEncoder passwordEncoder;
     private final String mailFrom;
 
     public PasswordResetServiceImpl(
-            UserRepository userRepository,
-            PasswordResetTokenRepository tokenRepository,
+            AccountRepository accountRepository,
+            OtpTokenRepository tokenRepository,
             JavaMailSender mailSender,
             PasswordEncoder passwordEncoder,
             @Value("${app.mail.from}") String mailFrom
     ) {
-        this.userRepository = userRepository;
+        this.accountRepository = accountRepository;
         this.tokenRepository = tokenRepository;
         this.mailSender = mailSender;
         this.passwordEncoder = passwordEncoder;
@@ -48,17 +47,15 @@ public class PasswordResetServiceImpl implements PasswordResetService {
     @Override
     @Transactional
     public void sendOtp(ForgotPasswordRequest request) {
-        // Không tiết lộ email có tồn tại hay không để bảo mật
-        if (!userRepository.existsByEmail(request.email())) {
+        if (!accountRepository.existsByEmail(request.email())) {
             return;
         }
 
-        // Xóa OTP cũ trước khi tạo mới
         tokenRepository.deleteAllByEmail(request.email());
 
         String otp = generateOtp();
 
-        PasswordResetToken token = PasswordResetToken.builder()
+        OtpToken token = OtpToken.builder()
                 .email(request.email())
                 .otp(otp)
                 .expiresAt(LocalDateTime.now().plusMinutes(OTP_EXPIRY_MINUTES))
@@ -70,34 +67,32 @@ public class PasswordResetServiceImpl implements PasswordResetService {
 
     @Override
     public void verifyOtp(VerifyOtpRequest request) {
-        PasswordResetToken token = getValidToken(request.email(), request.otp());
+        OtpToken token = getValidToken(request.email(), request.otp());
 
         if (token == null) {
-            throw new IllegalArgumentException("Mã OTP không đúng hoặc đã hết hạn");
+            throw new IllegalArgumentException("Ma OTP khong dung hoac da het han");
         }
     }
 
     @Override
     @Transactional
     public void resetPassword(ResetPasswordRequest request) {
-        PasswordResetToken token = getValidToken(request.email(), request.otp());
+        OtpToken token = getValidToken(request.email(), request.otp());
 
         if (token == null) {
-            throw new IllegalArgumentException("Mã OTP không đúng hoặc đã hết hạn");
+            throw new IllegalArgumentException("Ma OTP khong dung hoac da het han");
         }
 
-        User user = userRepository.findByEmail(request.email())
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy tài khoản"));
+        Account account = accountRepository.findByEmail(request.email())
+                .orElseThrow(() -> new IllegalArgumentException("Khong tim thay tai khoan"));
 
-        user.setPassword(passwordEncoder.encode(request.newPassword()));
-        userRepository.save(user);
+        account.setPassword(passwordEncoder.encode(request.newPassword()));
+        accountRepository.save(account);
 
-        // Xóa token sau khi dùng
         tokenRepository.deleteAllByEmail(request.email());
     }
 
-    // Lấy token hợp lệ: đúng OTP, chưa hết hạn, chưa dùng
-    private PasswordResetToken getValidToken(String email, String otp) {
+    private OtpToken getValidToken(String email, String otp) {
         return tokenRepository.findTopByEmailOrderByExpiresAtDesc(email)
                 .filter(t -> !t.isUsed())
                 .filter(t -> t.getExpiresAt().isAfter(LocalDateTime.now()))
@@ -106,7 +101,7 @@ public class PasswordResetServiceImpl implements PasswordResetService {
     }
 
     private String generateOtp() {
-        int code = SECURE_RANDOM.nextInt(900000) + 100000; // 100000 - 999999
+        int code = SECURE_RANDOM.nextInt(900000) + 100000;
         return String.valueOf(code);
     }
 
@@ -114,14 +109,14 @@ public class PasswordResetServiceImpl implements PasswordResetService {
         SimpleMailMessage message = new SimpleMailMessage();
         message.setFrom(mailFrom);
         message.setTo(toEmail);
-        message.setSubject("Mã xác nhận đặt lại mật khẩu - Home Stays");
+        message.setSubject("Ma xac nhan dat lai mat khau - Home Stays");
         message.setText(
-                "Xin chào,\n\n" +
-                "Bạn đã yêu cầu đặt lại mật khẩu cho tài khoản Home Stays.\n\n" +
-                "Mã OTP của bạn là: " + otp + "\n\n" +
-                "Mã có hiệu lực trong " + OTP_EXPIRY_MINUTES + " phút.\n" +
-                "Nếu bạn không yêu cầu điều này, hãy bỏ qua email này.\n\n" +
-                "Trân trọng,\nHome Stays"
+                "Xin chao,\n\n" +
+                "Ban da yeu cau dat lai mat khau cho tai khoan Home Stays.\n\n" +
+                "Ma OTP cua ban la: " + otp + "\n\n" +
+                "Ma co hieu luc trong " + OTP_EXPIRY_MINUTES + " phut.\n" +
+                "Neu ban khong yeu cau dieu nay, hay bo qua email nay.\n\n" +
+                "Tran trong,\nHome Stays"
         );
         mailSender.send(message);
     }

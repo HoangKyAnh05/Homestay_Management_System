@@ -2,10 +2,12 @@ package com.homestayManagement.homestayManagement.service.impl;
 
 import com.homestayManagement.homestayManagement.dto.request.UpdateProfileRequest;
 import com.homestayManagement.homestayManagement.dto.response.UserResponse;
-import com.homestayManagement.homestayManagement.entity.User;
-import com.homestayManagement.homestayManagement.entity.UserDetail;
-import com.homestayManagement.homestayManagement.repository.UserDetailRepository;
-import com.homestayManagement.homestayManagement.repository.UserRepository;
+import com.homestayManagement.homestayManagement.entity.Account;
+import com.homestayManagement.homestayManagement.entity.Customer;
+import com.homestayManagement.homestayManagement.entity.Employee;
+import com.homestayManagement.homestayManagement.repository.AccountRepository;
+import com.homestayManagement.homestayManagement.repository.CustomerRepository;
+import com.homestayManagement.homestayManagement.repository.EmployeeRepository;
 import com.homestayManagement.homestayManagement.service.UserService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,35 +25,52 @@ public class UserServiceImpl implements UserService {
     private static final Path UPLOAD_DIR = Paths.get("uploads");
     private static final Set<String> ALLOWED_IMAGE_TYPES = Set.of("image/jpeg", "image/png", "image/webp");
 
-    private final UserRepository userRepository;
-    private final UserDetailRepository userDetailRepository;
+    private final AccountRepository accountRepository;
+    private final CustomerRepository customerRepository;
+    private final EmployeeRepository employeeRepository;
 
-    public UserServiceImpl(UserRepository userRepository, UserDetailRepository userDetailRepository) {
-        this.userRepository = userRepository;
-        this.userDetailRepository = userDetailRepository;
+    public UserServiceImpl(
+            AccountRepository accountRepository,
+            CustomerRepository customerRepository,
+            EmployeeRepository employeeRepository
+    ) {
+        this.accountRepository = accountRepository;
+        this.customerRepository = customerRepository;
+        this.employeeRepository = employeeRepository;
     }
 
     @Override
     @Transactional(readOnly = true)
     public UserResponse getCurrentUserProfile(String email) {
-        User user = getUserByEmail(email);
-        return toUserResponse(user);
+        Account account = getAccountByEmail(email);
+        return toUserResponse(account);
     }
 
     @Override
     @Transactional
     public UserResponse updateCurrentUserProfile(String email, UpdateProfileRequest request) {
-        User user = getUserByEmail(email);
-        UserDetail userDetail = userDetailRepository.findById(user.getId())
-                .orElseGet(() -> UserDetail.builder().user(user).build());
+        Account account = getAccountByEmail(email);
+        if (isCustomer(account)) {
+            validatePhoneLength(request.phone(), 10);
+            Customer customer = customerRepository.findByAccountId(account.getId())
+                    .orElseGet(() -> Customer.builder().account(account).build());
+            customer.setFullName(request.fullName().trim());
+            customer.setPhone(blankToNull(request.phone()));
+            customer.setDateOfBirth(request.dateOfBirth());
+            customer.setAddress(blankToNull(request.address()));
+            customerRepository.save(customer);
+        } else {
+            validatePhoneLength(request.phone(), 15);
+            Employee employee = employeeRepository.findByAccountId(account.getId())
+                    .orElseGet(() -> Employee.builder().account(account).status("WORKING").build());
+            employee.setFullName(request.fullName().trim());
+            employee.setPhone(blankToNull(request.phone()));
+            employee.setDateOfBirth(request.dateOfBirth());
+            employee.setAddress(blankToNull(request.address()));
+            employeeRepository.save(employee);
+        }
 
-        userDetail.setFullName(request.fullName().trim());
-        userDetail.setPhone(blankToNull(request.phone()));
-        userDetail.setDateOfBirth(request.dateOfBirth());
-        userDetail.setAddress(blankToNull(request.address()));
-
-        userDetailRepository.save(userDetail);
-        return toUserResponse(user);
+        return toUserResponse(account);
     }
 
     @Override
@@ -65,42 +84,69 @@ public class UserServiceImpl implements UserService {
             throw new IllegalArgumentException("Anh dai dien chi ho tro JPG, PNG hoac WEBP");
         }
 
-        User user = getUserByEmail(email);
-        UserDetail userDetail = userDetailRepository.findById(user.getId())
-                .orElseGet(() -> UserDetail.builder().user(user).fullName(user.getEmail()).build());
+        Account account = getAccountByEmail(email);
 
         try {
             Files.createDirectories(UPLOAD_DIR);
-            String filename = "avatar-" + user.getId() + "-" + UUID.randomUUID() + getExtension(avatar.getOriginalFilename());
+            String filename = "avatar-" + account.getId() + "-" + UUID.randomUUID() + getExtension(avatar.getOriginalFilename());
             Path targetPath = UPLOAD_DIR.resolve(filename).normalize();
             avatar.transferTo(targetPath);
-            userDetail.setAvatarUrl("/uploads/" + filename);
-            userDetailRepository.save(userDetail);
+
+            if (isCustomer(account)) {
+                Customer customer = customerRepository.findByAccountId(account.getId())
+                        .orElseGet(() -> Customer.builder().account(account).fullName(account.getEmail()).build());
+                customer.setAvatarUrl("/uploads/" + filename);
+                customerRepository.save(customer);
+            } else {
+                Employee employee = employeeRepository.findByAccountId(account.getId())
+                        .orElseGet(() -> Employee.builder()
+                                .account(account)
+                                .fullName(account.getEmail())
+                                .status("WORKING")
+                                .build());
+                employee.setAvatarUrl("/uploads/" + filename);
+                employeeRepository.save(employee);
+            }
         } catch (IOException exception) {
             throw new IllegalArgumentException("Khong the luu anh dai dien");
         }
 
-        return toUserResponse(user);
+        return toUserResponse(account);
     }
 
-    private User getUserByEmail(String email) {
-        return userRepository.findByEmail(email)
+    private Account getAccountByEmail(String email) {
+        return accountRepository.findByEmail(email)
                 .orElseThrow(() -> new IllegalArgumentException("Khong tim thay nguoi dung"));
     }
 
-    private UserResponse toUserResponse(User user) {
-        UserDetail userDetail = userDetailRepository.findById(user.getId()).orElse(null);
+    private UserResponse toUserResponse(Account account) {
+        Customer customer = customerRepository.findByAccountId(account.getId()).orElse(null);
+        Employee employee = employeeRepository.findByAccountId(account.getId()).orElse(null);
 
         return new UserResponse(
-                user.getId(),
-                user.getEmail(),
-                userDetail != null ? userDetail.getFullName() : user.getEmail(),
-                userDetail != null ? userDetail.getPhone() : null,
-                userDetail != null ? userDetail.getDateOfBirth() : null,
-                userDetail != null ? userDetail.getAddress() : null,
-                userDetail != null ? userDetail.getAvatarUrl() : null,
-                user.getRole().getName()
+                account.getId(),
+                account.getEmail(),
+                profileName(account, customer, employee),
+                customer != null ? customer.getPhone() : employee != null ? employee.getPhone() : null,
+                customer != null ? customer.getDateOfBirth() : employee != null ? employee.getDateOfBirth() : null,
+                customer != null ? customer.getAddress() : employee != null ? employee.getAddress() : null,
+                customer != null ? customer.getAvatarUrl() : employee != null ? employee.getAvatarUrl() : null,
+                account.getRole().getName()
         );
+    }
+
+    private boolean isCustomer(Account account) {
+        return "ROLE_CUSTOMER".equals(account.getRole().getName());
+    }
+
+    private String profileName(Account account, Customer customer, Employee employee) {
+        if (customer != null && customer.getFullName() != null) {
+            return customer.getFullName();
+        }
+        if (employee != null && employee.getFullName() != null) {
+            return employee.getFullName();
+        }
+        return account.getEmail();
     }
 
     private String blankToNull(String value) {
@@ -109,6 +155,12 @@ public class UserServiceImpl implements UserService {
         }
 
         return value.trim();
+    }
+
+    private void validatePhoneLength(String phone, int maxLength) {
+        if (phone != null && phone.length() > maxLength) {
+            throw new IllegalArgumentException("So dien thoai toi da " + maxLength + " ky tu");
+        }
     }
 
     private String getExtension(String filename) {

@@ -290,7 +290,7 @@ function HomePage() {
             </button>
             {isUserMenuOpen && (
               <div className="home-user-dropdown">
-                {currentUser.role === 'ROLE_ADMINISTRATOR' && (
+                {currentUser.role === 'ROLE_ADMIN' && (
                   <a href="/admin">Quản lí Home Stays</a>
                 )}
                 <a href="/profile">Thông tin cá nhân</a>

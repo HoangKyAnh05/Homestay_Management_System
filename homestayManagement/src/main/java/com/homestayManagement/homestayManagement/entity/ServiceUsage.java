@@ -4,16 +4,15 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "used_services")
+@Table(name = "service_usages")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class UsedService {
+public class ServiceUsage {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -24,20 +23,16 @@ public class UsedService {
     private CheckInRecord checkInRecord;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "service_id", nullable = false)
-    private Service service;
+    @JoinColumn(name = "facility_service_id")
+    private FacilityService facilityService;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "inventory_service_id")
+    private InventoryService inventoryService;
 
     @Column(nullable = false)
     private Integer quantity;
 
     @Column(name = "price_at_use", nullable = false, precision = 10, scale = 2)
-    private BigDecimal priceAtUse; // Snapshot giá dịch vụ tại thời điểm gọi
-
-    @Column(name = "order_time", nullable = false)
-    private LocalDateTime orderTime;
-
-    @PrePersist
-    protected void onCreate() {
-        if (orderTime == null) orderTime = LocalDateTime.now();
-    }
+    private BigDecimal priceAtUse;
 }

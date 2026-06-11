@@ -34,7 +34,7 @@ function App() {
   // Admin routes
   if (currentPath.startsWith('/admin')) {
     const user = getStoredUser()
-    if (!user || user.role !== 'ROLE_ADMINISTRATOR') {
+    if (!user || user.role !== 'ROLE_ADMIN') {
       window.location.replace('/login')
       return null
     }

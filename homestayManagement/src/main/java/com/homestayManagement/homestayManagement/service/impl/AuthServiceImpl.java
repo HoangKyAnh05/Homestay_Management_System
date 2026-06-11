@@ -10,14 +10,16 @@ import com.homestayManagement.homestayManagement.dto.request.RegisterRequest;
 import com.homestayManagement.homestayManagement.dto.request.VerifyOtpRequest;
 import com.homestayManagement.homestayManagement.dto.response.AuthResponse;
 import com.homestayManagement.homestayManagement.dto.response.UserResponse;
+import com.homestayManagement.homestayManagement.entity.Account;
+import com.homestayManagement.homestayManagement.entity.Customer;
+import com.homestayManagement.homestayManagement.entity.Employee;
 import com.homestayManagement.homestayManagement.entity.Role;
-import com.homestayManagement.homestayManagement.entity.User;
-import com.homestayManagement.homestayManagement.entity.UserDetail;
+import com.homestayManagement.homestayManagement.repository.AccountRepository;
+import com.homestayManagement.homestayManagement.repository.CustomerRepository;
+import com.homestayManagement.homestayManagement.repository.EmployeeRepository;
+import com.homestayManagement.homestayManagement.repository.OtpTokenRepository;
+import com.homestayManagement.homestayManagement.repository.OtpTokenRepository.OtpToken;
 import com.homestayManagement.homestayManagement.repository.RoleRepository;
-import com.homestayManagement.homestayManagement.repository.UserDetailRepository;
-import com.homestayManagement.homestayManagement.repository.UserRepository;
-import com.homestayManagement.homestayManagement.repository.PasswordResetTokenRepository;
-import com.homestayManagement.homestayManagement.entity.PasswordResetToken;
 import com.homestayManagement.homestayManagement.security.JwtService;
 import com.homestayManagement.homestayManagement.service.AuthService;
 import org.springframework.beans.factory.annotation.Value;
@@ -37,6 +39,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Service
@@ -51,9 +54,10 @@ public class AuthServiceImpl implements AuthService {
 
     private final AuthenticationManager authenticationManager;
     private final RoleRepository roleRepository;
-    private final UserRepository userRepository;
-    private final UserDetailRepository userDetailRepository;
-    private final PasswordResetTokenRepository tokenRepository;
+    private final AccountRepository accountRepository;
+    private final CustomerRepository customerRepository;
+    private final EmployeeRepository employeeRepository;
+    private final OtpTokenRepository tokenRepository;
     private final JwtService jwtService;
     private final PasswordEncoder passwordEncoder;
     private final ObjectMapper objectMapper;
@@ -64,9 +68,10 @@ public class AuthServiceImpl implements AuthService {
     public AuthServiceImpl(
             AuthenticationManager authenticationManager,
             RoleRepository roleRepository,
-            UserRepository userRepository,
-            UserDetailRepository userDetailRepository,
-            PasswordResetTokenRepository tokenRepository,
+            AccountRepository accountRepository,
+            CustomerRepository customerRepository,
+            EmployeeRepository employeeRepository,
+            OtpTokenRepository tokenRepository,
             JwtService jwtService,
             PasswordEncoder passwordEncoder,
             ObjectMapper objectMapper,
@@ -76,8 +81,9 @@ public class AuthServiceImpl implements AuthService {
     ) {
         this.authenticationManager = authenticationManager;
         this.roleRepository = roleRepository;
-        this.userRepository = userRepository;
-        this.userDetailRepository = userDetailRepository;
+        this.accountRepository = accountRepository;
+        this.customerRepository = customerRepository;
+        this.employeeRepository = employeeRepository;
         this.tokenRepository = tokenRepository;
         this.jwtService = jwtService;
         this.passwordEncoder = passwordEncoder;
@@ -89,87 +95,77 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public AuthResponse login(LoginRequest request) {
+        Account account = accountRepository.findByEmail(request.email())
+                .orElseThrow(() -> new IllegalArgumentException("Email hoac mat khau khong dung"));
+
+        if (!account.isActive()) {
+            throw new IllegalArgumentException("Tai khoan chua duoc xac minh hoac da bi khoa");
+        }
+
         try {
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(request.email(), request.password())
             );
         } catch (AuthenticationException exception) {
-            throw new IllegalArgumentException("Email hoặc mật khẩu không đúng");
+            throw new IllegalArgumentException("Email hoac mat khau khong dung");
         }
 
-        User user = userRepository.findByEmail(request.email())
-                .orElseThrow(() -> new IllegalArgumentException("Email hoặc mật khẩu không đúng"));
-
-        if (!user.isActive()) {
-            throw new IllegalArgumentException("Tài khoản đã bị khóa");
-        }
-
-        String token = jwtService.generateToken(user);
-        return new AuthResponse("Bearer", token, toUserResponse(user));
+        String token = jwtService.generateToken(account);
+        return new AuthResponse("Bearer", token, toUserResponse(account));
     }
 
     @Override
     @Transactional
     public void register(RegisterRequest request) {
-        if (userRepository.existsByEmail(request.email())) {
-            throw new IllegalArgumentException("Email đã được sử dụng");
+        if (accountRepository.existsByEmail(request.email())) {
+            throw new IllegalArgumentException("Email da duoc su dung");
         }
 
         Role customerRole = roleRepository.findByName(CUSTOMER_ROLE)
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy role mặc định"));
+                .orElseThrow(() -> new IllegalArgumentException("Khong tim thay role mac dinh"));
 
-        // Tạo user với isVerified = false, chờ xác minh OTP
-        User user = User.builder()
+        Account account = Account.builder()
                 .email(request.email())
                 .password(passwordEncoder.encode(request.password()))
-                .isVerified(false)
-                .isActive(true)
+                .isActive(false)
                 .role(customerRole)
                 .build();
-        userRepository.save(user);
+        accountRepository.save(account);
 
-        // Lưu thông tin chi tiết
-        UserDetail userDetail = UserDetail.builder()
-                .user(user)
+        Customer customer = Customer.builder()
+                .account(account)
                 .fullName(request.fullName().trim())
                 .phone(request.phone() != null && !request.phone().isBlank() ? request.phone().trim() : null)
                 .build();
-        userDetailRepository.save(userDetail);
+        customerRepository.save(customer);
 
-        // Gửi OTP xác minh email
         sendEmailOtp(request.email());
     }
 
     @Override
     @Transactional
     public AuthResponse verifyEmail(VerifyOtpRequest request) {
-        // Tìm token hợp lệ
-        PasswordResetToken token = tokenRepository.findTopByEmailOrderByExpiresAtDesc(request.email())
+        tokenRepository.findTopByEmailOrderByExpiresAtDesc(request.email())
                 .filter(t -> !t.isUsed())
-                .filter(t -> t.getExpiresAt().isAfter(java.time.LocalDateTime.now()))
+                .filter(t -> t.getExpiresAt().isAfter(LocalDateTime.now()))
                 .filter(t -> t.getOtp().equals(request.otp()))
-                .orElseThrow(() -> new IllegalArgumentException("Mã OTP không đúng hoặc đã hết hạn"));
+                .orElseThrow(() -> new IllegalArgumentException("Ma OTP khong dung hoac da het han"));
 
-        // Đánh dấu user đã xác minh
-        User user = userRepository.findByEmail(request.email())
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy tài khoản"));
-        user.setVerified(true);
-        userRepository.save(user);
+        Account account = accountRepository.findByEmail(request.email())
+                .orElseThrow(() -> new IllegalArgumentException("Khong tim thay tai khoan"));
+        account.setActive(true);
+        accountRepository.save(account);
 
-        // Xóa token đã dùng
         tokenRepository.deleteAllByEmail(request.email());
 
-        String jwtToken = jwtService.generateToken(user);
-        return new AuthResponse("Bearer", jwtToken, toUserResponse(user));
+        String jwtToken = jwtService.generateToken(account);
+        return new AuthResponse("Bearer", jwtToken, toUserResponse(account));
     }
 
     @Override
     public void resendVerifyEmail(String email) {
-        // Chỉ gửi lại nếu tài khoản tồn tại và chưa xác minh
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy tài khoản"));
-        if (user.isVerified()) {
-            throw new IllegalArgumentException("Email đã được xác minh");
+        if (!accountRepository.existsByEmail(email)) {
+            throw new IllegalArgumentException("Khong tim thay tai khoan");
         }
         sendEmailOtp(email);
     }
@@ -180,23 +176,23 @@ public class AuthServiceImpl implements AuthService {
         int code = new java.security.SecureRandom().nextInt(900000) + 100000;
         String otp = String.valueOf(code);
 
-        PasswordResetToken token = PasswordResetToken.builder()
+        OtpToken token = OtpToken.builder()
                 .email(email)
                 .otp(otp)
-                .expiresAt(java.time.LocalDateTime.now().plusMinutes(OTP_EXPIRY_MINUTES))
+                .expiresAt(LocalDateTime.now().plusMinutes(OTP_EXPIRY_MINUTES))
                 .build();
         tokenRepository.save(token);
 
         SimpleMailMessage message = new SimpleMailMessage();
         message.setFrom(mailFrom);
         message.setTo(email);
-        message.setSubject("Xác minh tài khoản - Home Stays");
+        message.setSubject("Xac minh tai khoan - Home Stays");
         message.setText(
-                "Xin chào,\n\n" +
-                "Cảm ơn bạn đã đăng ký tài khoản Home Stays.\n\n" +
-                "Mã xác minh email của bạn là: " + otp + "\n\n" +
-                "Mã có hiệu lực trong " + OTP_EXPIRY_MINUTES + " phút.\n\n" +
-                "Trân trọng,\nHome Stays"
+                "Xin chao,\n\n" +
+                "Cam on ban da dang ky tai khoan Home Stays.\n\n" +
+                "Ma xac minh email cua ban la: " + otp + "\n\n" +
+                "Ma co hieu luc trong " + OTP_EXPIRY_MINUTES + " phut.\n\n" +
+                "Tran trong,\nHome Stays"
         );
         mailSender.send(message);
     }
@@ -210,17 +206,17 @@ public class AuthServiceImpl implements AuthService {
             throw new IllegalArgumentException("Email Google chua duoc xac thuc");
         }
 
-        User user = userRepository.findByEmail(googleUser.email())
+        Account account = accountRepository.findByEmail(googleUser.email())
                 .orElseGet(() -> createGoogleCustomer(googleUser));
 
-        if (!user.isActive()) {
+        if (!account.isActive()) {
             throw new IllegalArgumentException("Tai khoan da bi khoa");
         }
 
-        syncGoogleProfile(user, googleUser);
+        syncGoogleProfile(account, googleUser);
 
-        String token = jwtService.generateToken(user);
-        return new AuthResponse("Bearer", token, toUserResponse(user));
+        String token = jwtService.generateToken(account);
+        return new AuthResponse("Bearer", token, toUserResponse(account));
     }
 
     private GoogleTokenInfo getGoogleUser(GoogleLoginRequest request) {
@@ -312,7 +308,7 @@ public class AuthServiceImpl implements AuthService {
         }
     }
 
-    private User createGoogleCustomer(GoogleTokenInfo googleUser) {
+    private Account createGoogleCustomer(GoogleTokenInfo googleUser) {
         Role customerRole = roleRepository.findByName(GOOGLE_CUSTOMER_ROLE)
                 .orElseGet(() -> {
                     Role role = new Role();
@@ -321,47 +317,57 @@ public class AuthServiceImpl implements AuthService {
                     return roleRepository.save(role);
                 });
 
-        User user = User.builder()
+        Account account = Account.builder()
                 .email(googleUser.email())
                 .password(passwordEncoder.encode(UUID.randomUUID().toString()))
-                .isVerified(true)
                 .isActive(true)
                 .role(customerRole)
                 .build();
 
-        return userRepository.save(user);
+        return accountRepository.save(account);
     }
 
-    private void syncGoogleProfile(User user, GoogleTokenInfo googleUser) {
-        UserDetail userDetail = userDetailRepository.findById(user.getId())
-                .orElseGet(() -> UserDetail.builder().user(user).build());
+    private void syncGoogleProfile(Account account, GoogleTokenInfo googleUser) {
+        Customer customer = customerRepository.findByAccountId(account.getId())
+                .orElseGet(() -> Customer.builder().account(account).build());
 
-        if (userDetail.getFullName() == null || userDetail.getFullName().isBlank()) {
-            userDetail.setFullName(googleUser.name() != null && !googleUser.name().isBlank()
+        if (customer.getFullName() == null || customer.getFullName().isBlank()) {
+            customer.setFullName(googleUser.name() != null && !googleUser.name().isBlank()
                     ? googleUser.name()
                     : googleUser.email());
         }
 
         if (googleUser.picture() != null && !googleUser.picture().isBlank()) {
-            userDetail.setAvatarUrl(googleUser.picture());
+            customer.setAvatarUrl(googleUser.picture());
         }
 
-        userDetailRepository.save(userDetail);
+        customerRepository.save(customer);
     }
 
-    private UserResponse toUserResponse(User user) {
-        UserDetail userDetail = userDetailRepository.findById(user.getId()).orElse(null);
+    private UserResponse toUserResponse(Account account) {
+        Customer customer = customerRepository.findByAccountId(account.getId()).orElse(null);
+        Employee employee = employeeRepository.findByAccountId(account.getId()).orElse(null);
 
         return new UserResponse(
-                user.getId(),
-                user.getEmail(),
-                userDetail != null ? userDetail.getFullName() : user.getEmail(),
-                userDetail != null ? userDetail.getPhone() : null,
-                userDetail != null ? userDetail.getDateOfBirth() : null,
-                userDetail != null ? userDetail.getAddress() : null,
-                userDetail != null ? userDetail.getAvatarUrl() : null,
-                user.getRole().getName()
+                account.getId(),
+                account.getEmail(),
+                profileName(account, customer, employee),
+                customer != null ? customer.getPhone() : employee != null ? employee.getPhone() : null,
+                customer != null ? customer.getDateOfBirth() : employee != null ? employee.getDateOfBirth() : null,
+                customer != null ? customer.getAddress() : employee != null ? employee.getAddress() : null,
+                customer != null ? customer.getAvatarUrl() : employee != null ? employee.getAvatarUrl() : null,
+                account.getRole().getName()
         );
+    }
+
+    private String profileName(Account account, Customer customer, Employee employee) {
+        if (customer != null && customer.getFullName() != null) {
+            return customer.getFullName();
+        }
+        if (employee != null && employee.getFullName() != null) {
+            return employee.getFullName();
+        }
+        return account.getEmail();
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
