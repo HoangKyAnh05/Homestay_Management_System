@@ -95,6 +95,29 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public AuthResponse login(LoginRequest request) {
+        Account account = authenticate(request);
+
+        if (!isCustomer(account)) {
+            throw new IllegalArgumentException("Tai khoan nhan vien vui long dang nhap tai trang danh cho nhan vien");
+        }
+
+        String token = jwtService.generateToken(account);
+        return new AuthResponse("Bearer", token, toUserResponse(account));
+    }
+
+    @Override
+    public AuthResponse adminLogin(LoginRequest request) {
+        Account account = authenticate(request);
+
+        if (isCustomer(account)) {
+            throw new IllegalArgumentException("Tai khoan khach hang khong duoc dang nhap vao he thong nhan vien");
+        }
+
+        String token = jwtService.generateToken(account);
+        return new AuthResponse("Bearer", token, toUserResponse(account));
+    }
+
+    private Account authenticate(LoginRequest request) {
         Account account = accountRepository.findByEmail(request.email())
                 .orElseThrow(() -> new IllegalArgumentException("Email hoac mat khau khong dung"));
 
@@ -110,8 +133,7 @@ public class AuthServiceImpl implements AuthService {
             throw new IllegalArgumentException("Email hoac mat khau khong dung");
         }
 
-        String token = jwtService.generateToken(account);
-        return new AuthResponse("Bearer", token, toUserResponse(account));
+        return account;
     }
 
     @Override
@@ -368,6 +390,10 @@ public class AuthServiceImpl implements AuthService {
             return employee.getFullName();
         }
         return account.getEmail();
+    }
+
+    private boolean isCustomer(Account account) {
+        return CUSTOMER_ROLE.equals(account.getRole().getName());
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)

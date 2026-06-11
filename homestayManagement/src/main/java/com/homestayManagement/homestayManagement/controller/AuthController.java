@@ -37,6 +37,11 @@ public class AuthController {
         return authService.login(request);
     }
 
+    @PostMapping("/admin-login")
+    public AuthResponse adminLogin(@Valid @RequestBody LoginRequest request) {
+        return authService.adminLogin(request);
+    }
+
     @PostMapping("/register")
     public ResponseEntity<Map<String, String>> register(@Valid @RequestBody RegisterRequest request) {
         authService.register(request);

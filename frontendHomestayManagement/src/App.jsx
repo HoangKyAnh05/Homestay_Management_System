@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import AdminRoomsPage from './pages/Admin/AdminRoomsPage'
+import AdminLoginPage from './pages/Admin/AdminLoginPage'
 import AdminUsersPage from './pages/Admin/AdminUsersPage'
 import DashboardPage from './pages/Admin/DashboardPage'
 import ForgotPasswordPage from './pages/ForgotPassword/ForgotPasswordPage'
@@ -8,6 +9,8 @@ import LoginPage from './pages/Login/LoginPage'
 import ProfilePage from './pages/Profile/ProfilePage'
 import RegisterPage from './pages/Register/RegisterPage'
 import { getStoredUser } from './services/authService'
+
+const STAFF_ROLES = new Set(['ROLE_ADMIN', 'ROLE_RECEPTIONIST', 'ROLE_HOUSEKEEPING', 'ROLE_MARKETING'])
 
 function normalizePath() {
   if (window.location.pathname === '/') {
@@ -30,12 +33,13 @@ function App() {
   if (currentPath === '/register') return <RegisterPage />
   if (currentPath === '/forgot') return <ForgotPasswordPage />
   if (currentPath === '/profile') return <ProfilePage />
+  if (currentPath === '/admin/login') return <AdminLoginPage />
 
   // Admin routes
   if (currentPath.startsWith('/admin')) {
     const user = getStoredUser()
-    if (!user || user.role !== 'ROLE_ADMIN') {
-      window.location.replace('/login')
+    if (!user || !STAFF_ROLES.has(user.role)) {
+      window.location.replace('/admin/login')
       return null
     }
     if (currentPath === '/admin/users') return <AdminUsersPage />

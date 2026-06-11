@@ -62,6 +62,26 @@ export async function login(email, password, remember = false) {
   return data
 }
 
+export async function adminLogin(email, password, remember = false) {
+  let response
+
+  try {
+    response = await fetch(`${API_BASE_URL}/auth/admin-login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    })
+  } catch {
+    throw connectionError()
+  }
+
+  const data = await parseJson(response)
+  if (!response.ok) throw new Error(data.message || 'Đăng nhập nhân viên thất bại')
+
+  saveAuthSession(data, remember)
+  return data
+}
+
 export async function loginWithGoogle(accessToken) {
   let response
 

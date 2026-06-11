@@ -6,6 +6,11 @@
 .github
 # Maven
 
+AGENTS.md
+database.md
+DESIGN.md
+PROJECT_CONTEXT.md
+
 target/
 
 # Gradle

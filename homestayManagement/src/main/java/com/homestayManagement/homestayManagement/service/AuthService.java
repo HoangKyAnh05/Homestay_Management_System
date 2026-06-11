@@ -9,6 +9,8 @@ import com.homestayManagement.homestayManagement.dto.response.AuthResponse;
 public interface AuthService {
     AuthResponse login(LoginRequest request);
 
+    AuthResponse adminLogin(LoginRequest request);
+
     AuthResponse loginWithGoogle(GoogleLoginRequest request);
 
     void register(RegisterRequest request);
