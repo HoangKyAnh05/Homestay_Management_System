@@ -3,7 +3,7 @@ import { getStoredToken } from '../../services/authService'
 import AdminLayout from './AdminLayout'
 import './AdminServiceCategoriesPage.css'
 
-const API = 'http://localhost:8080/api/admin/services/mini-bar-items'
+const API = 'http://localhost:8080/api/admin/rules-penalties'
 
 function authHeaders() {
   return { 'Content-Type': 'application/json', Authorization: `Bearer ${getStoredToken()}` }
@@ -13,12 +13,11 @@ function formatPrice(value) {
   return new Intl.NumberFormat('vi-VN').format(Number(value || 0)) + 'đ'
 }
 
-function MiniBarModal({ item, onClose, onSave }) {
+function RulesPenaltyModal({ item, onClose, onSave }) {
   const isEdit = Boolean(item)
   const [form, setForm] = useState({
-    name: item?.name || '',
-    price: item?.price || '',
-    quantityInStock: item?.quantityInStock ?? 0,
+    title: item?.title || '',
+    penaltyAmount: item?.penaltyAmount || '',
   })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -34,13 +33,12 @@ function MiniBarModal({ item, onClose, onSave }) {
         method: isEdit ? 'PUT' : 'POST',
         headers: authHeaders(),
         body: JSON.stringify({
-          name: form.name,
-          price: Number(form.price),
-          quantityInStock: Number(form.quantityInStock),
+          title: form.title,
+          penaltyAmount: Number(form.penaltyAmount),
         }),
       })
       const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data.message || 'Không thể lưu mặt hàng')
+      if (!res.ok) throw new Error(data.message || 'Không thể lưu nội quy/phạt')
       onSave(data, isEdit)
     } catch (err) {
       setError(err.message)
@@ -53,24 +51,19 @@ function MiniBarModal({ item, onClose, onSave }) {
     <div className="asc-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="asc-modal">
         <div className="asc-modal-head">
-          <h3>{isEdit ? 'Chỉnh sửa' : 'Thêm'} mặt hàng mini-bar</h3>
+          <h3>{isEdit ? 'Chỉnh sửa' : 'Thêm'} nội quy & phạt</h3>
           <button type="button" className="asc-modal-close" onClick={onClose}>×</button>
         </div>
 
         <form className="asc-modal-body" onSubmit={handleSubmit}>
           <label className="asc-field">
-            <span>Tên mặt hàng</span>
-            <input value={form.name} onChange={e => set('name', e.target.value)} required maxLength={100} placeholder="Ví dụ: mì ly, bim bim, nước suối..." />
+            <span>Nội quy / hành vi vi phạm</span>
+            <input value={form.title} onChange={e => set('title', e.target.value)} required maxLength={255} placeholder="Ví dụ: Hút thuốc trong phòng" />
           </label>
 
           <label className="asc-field">
-            <span>Giá</span>
-            <input type="number" value={form.price} onChange={e => set('price', e.target.value)} required min="0" step="1000" placeholder="Nhập giá" />
-          </label>
-
-          <label className="asc-field">
-            <span>Số lượng tồn kho tổng</span>
-            <input type="number" value={form.quantityInStock} onChange={e => set('quantityInStock', e.target.value)} required min="0" step="1" />
+            <span>Mức phạt mặc định</span>
+            <input type="number" value={form.penaltyAmount} onChange={e => set('penaltyAmount', e.target.value)} required min="0" step="1000" placeholder="Nhập mức phạt" />
           </label>
 
           {error && <p className="asc-error">{error}</p>}
@@ -92,12 +85,12 @@ function DeleteModal({ item, loading, onClose, onConfirm }) {
     <div className="asc-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="asc-modal asc-modal--sm">
         <div className="asc-modal-head">
-          <h3>Xóa mặt hàng</h3>
+          <h3>Xóa nội quy</h3>
           <button type="button" className="asc-modal-close" onClick={onClose}>×</button>
         </div>
         <div className="asc-modal-body">
           <p className="asc-confirm">
-            Bạn có chắc muốn xóa <strong>{item.name}</strong> khỏi danh mục mini-bar?
+            Bạn có chắc muốn xóa nội quy <strong>{item.title}</strong>?
           </p>
           <div className="asc-modal-actions">
             <button type="button" className="asc-btn asc-btn--ghost" onClick={onClose}>Hủy</button>
@@ -111,7 +104,7 @@ function DeleteModal({ item, loading, onClose, onConfirm }) {
   )
 }
 
-function AdminSurchargesPage() {
+function AdminRulesPenaltiesPage() {
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -133,10 +126,10 @@ function AdminSurchargesPage() {
   const filteredItems = useMemo(() => {
     const keyword = search.trim().toLowerCase()
     if (!keyword) return items
-    return items.filter(item => item.name?.toLowerCase().includes(keyword))
+    return items.filter(item => item.title?.toLowerCase().includes(keyword))
   }, [items, search])
 
-  const totalStock = items.reduce((sum, item) => sum + Number(item.quantityInStock || 0), 0)
+  const totalPenaltyAmount = items.reduce((sum, item) => sum + Number(item.penaltyAmount || 0), 0)
 
   const openCreate = () => {
     setEditItem(null)
@@ -152,7 +145,7 @@ function AdminSurchargesPage() {
     setItems(prev => isEdit ? prev.map(item => item.id === saved.id ? saved : item) : [...prev, saved])
     setModalOpen(false)
     setEditItem(null)
-    showToast(isEdit ? 'Đã cập nhật mặt hàng' : 'Đã thêm mặt hàng')
+    showToast(isEdit ? 'Đã cập nhật nội quy/phạt' : 'Đã thêm nội quy/phạt')
   }
 
   const handleDelete = async () => {
@@ -164,11 +157,11 @@ function AdminSurchargesPage() {
       })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
-        throw new Error(data.message || 'Không thể xóa mặt hàng')
+        throw new Error(data.message || 'Không thể xóa nội quy/phạt')
       }
       setItems(prev => prev.filter(item => item.id !== deleteTarget.id))
       setDeleteTarget(null)
-      showToast('Đã xóa mặt hàng')
+      showToast('Đã xóa nội quy/phạt')
     } catch (err) {
       showToast(err.message)
     } finally {
@@ -177,44 +170,43 @@ function AdminSurchargesPage() {
   }
 
   return (
-    <AdminLayout activePage="surcharges">
+    <AdminLayout activePage="rules">
       <div className="asc-header">
         <div>
-          <h1>Phụ phí Mini-bar</h1>
-          <p>Quản lý thực phẩm đặt sẵn ở phòng và số lượng tồn kho tổng.</p>
+          <h1>Cấu hình Nội quy & Phạt</h1>
+          <p>Quản lý danh mục nội quy và mức phạt mặc định khi khách vi phạm.</p>
         </div>
         <button type="button" className="asc-btn asc-btn--primary" onClick={openCreate}>
-          + Thêm mặt hàng
+          + Thêm nội quy
         </button>
       </div>
 
       <div className="asc-tabs">
         <button type="button" className="asc-tab asc-tab--active">
-          Mặt hàng mini-bar
+          Nội quy & phạt
           <span>{items.length}</span>
         </button>
         {/*<button type="button" className="asc-tab" disabled>*/}
-        {/*  Tồn kho tổng*/}
-        {/*  <span>{totalStock}</span>*/}
+        {/*  Tổng mức phạt mẫu*/}
+        {/*  <span>{formatPrice(totalPenaltyAmount)}</span>*/}
         {/*</button>*/}
       </div>
 
       <div className="asc-toolbar">
-        <input className="asc-search" value={search} onChange={e => setSearch(e.target.value)} placeholder="Tìm theo tên mặt hàng..." />
+        <input className="asc-search" value={search} onChange={e => setSearch(e.target.value)} placeholder="Tìm theo nội quy hoặc hành vi vi phạm..." />
       </div>
 
       <div className="asc-table-wrap">
         {loading ? (
           <div className="asc-empty">Đang tải...</div>
         ) : filteredItems.length === 0 ? (
-          <div className="asc-empty">Không tìm thấy mặt hàng nào.</div>
+          <div className="asc-empty">Không tìm thấy nội quy nào.</div>
         ) : (
           <table className="asc-table">
             <thead>
               <tr>
-                <th>Tên mặt hàng</th>
-                <th>Giá bán/phụ phí</th>
-                <th>Tồn kho tổng</th>
+                <th>Nội quy / hành vi vi phạm</th>
+                <th>Mức phạt mặc định</th>
                 <th></th>
               </tr>
             </thead>
@@ -222,14 +214,11 @@ function AdminSurchargesPage() {
               {filteredItems.map(item => (
                 <tr key={item.id}>
                   <td>
-                    <strong>{item.name}</strong>
-                    <small>Thực phẩm mini-bar đặt sẵn trong phòng</small>
+                    <strong>{item.title}</strong>
+                    <small>Áp dụng khi ghi nhận phạt trong quá trình lưu trú</small>
                   </td>
-                  <td>{formatPrice(item.price)}</td>
                   <td>
-                    <span className={`asc-badge ${item.quantityInStock > 0 ? 'asc-badge--stock' : 'asc-badge--inactive'}`}>
-                      {item.quantityInStock} còn lại
-                    </span>
+                    <span className="asc-badge asc-badge--stock">{formatPrice(item.penaltyAmount)}</span>
                   </td>
                   <td>
                     <div className="asc-actions">
@@ -249,7 +238,7 @@ function AdminSurchargesPage() {
       </div>
 
       {modalOpen && (
-        <MiniBarModal item={editItem} onClose={() => { setModalOpen(false); setEditItem(null) }} onSave={applySaved} />
+        <RulesPenaltyModal item={editItem} onClose={() => { setModalOpen(false); setEditItem(null) }} onSave={applySaved} />
       )}
       {deleteTarget && (
         <DeleteModal item={deleteTarget} loading={deleting} onClose={() => setDeleteTarget(null)} onConfirm={handleDelete} />
@@ -259,4 +248,4 @@ function AdminSurchargesPage() {
   )
 }
 
-export default AdminSurchargesPage
+export default AdminRulesPenaltiesPage

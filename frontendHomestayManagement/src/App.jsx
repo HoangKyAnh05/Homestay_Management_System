@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import AdminRoomsPage from './pages/Admin/AdminRoomsPage'
 import AdminLoginPage from './pages/Admin/AdminLoginPage'
 import AdminPlaceholderPage from './pages/Admin/AdminPlaceholderPage'
+import AdminRulesPenaltiesPage from './pages/Admin/AdminRulesPenaltiesPage'
 import AdminServiceCategoriesPage from './pages/Admin/AdminServiceCategoriesPage'
 import AdminSurchargesPage from './pages/Admin/AdminSurchargesPage'
 import AdminUsersPage from './pages/Admin/AdminUsersPage'
@@ -54,7 +55,7 @@ function App() {
     if (currentPath === '/admin/check-in-logs') return <AdminPlaceholderPage activePage="check-in-logs" title="Nhật ký Lưu trú (Check-in)" />
     if (currentPath === '/admin/services/categories') return <AdminServiceCategoriesPage />
     if (currentPath === '/admin/services/surcharges') return <AdminSurchargesPage />
-    if (currentPath === '/admin/rules-penalties') return <AdminPlaceholderPage activePage="rules" title="Cấu hình Nội quy & Phạt" />
+    if (currentPath === '/admin/rules-penalties') return <AdminRulesPenaltiesPage />
     if (currentPath === '/admin/invoices') return <AdminPlaceholderPage activePage="invoices" title="Quản lý Hóa đơn" />
     if (currentPath === '/admin/marketing/ai-agent') return <AdminPlaceholderPage activePage="ai-post-agent" title="AI Agent Đăng bài" />
     if (currentPath === '/admin/marketing/post-logs') return <AdminPlaceholderPage activePage="post-logs" title="Nhật ký Bài đăng" />
