@@ -8,6 +8,12 @@ import com.homestayManagement.homestayManagement.entity.Room;
 import com.homestayManagement.homestayManagement.entity.RoomType;
 import com.homestayManagement.homestayManagement.repository.BookingDetailRepository;
 import com.homestayManagement.homestayManagement.repository.RoomRepository;
+import com.homestayManagement.homestayManagement.repository.AppliedPenaltyRepository;
+import com.homestayManagement.homestayManagement.repository.CheckInRecordRepository;
+import com.homestayManagement.homestayManagement.repository.InvoiceRepository;
+import com.homestayManagement.homestayManagement.repository.PaymentRepository;
+import com.homestayManagement.homestayManagement.repository.RoomAmenitiesUsageRepository;
+import com.homestayManagement.homestayManagement.repository.ServiceUsageRepository;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
@@ -26,7 +32,22 @@ class AdminBookingServiceImplTest {
 
     private final BookingDetailRepository bookingDetailRepository = mock(BookingDetailRepository.class);
     private final RoomRepository roomRepository = mock(RoomRepository.class);
-    private final AdminBookingServiceImpl service = new AdminBookingServiceImpl(bookingDetailRepository, roomRepository);
+    private final CheckInRecordRepository checkInRecordRepository = mock(CheckInRecordRepository.class);
+    private final ServiceUsageRepository serviceUsageRepository = mock(ServiceUsageRepository.class);
+    private final RoomAmenitiesUsageRepository roomAmenitiesUsageRepository = mock(RoomAmenitiesUsageRepository.class);
+    private final AppliedPenaltyRepository appliedPenaltyRepository = mock(AppliedPenaltyRepository.class);
+    private final InvoiceRepository invoiceRepository = mock(InvoiceRepository.class);
+    private final PaymentRepository paymentRepository = mock(PaymentRepository.class);
+    private final AdminBookingServiceImpl service = new AdminBookingServiceImpl(
+            bookingDetailRepository,
+            roomRepository,
+            checkInRecordRepository,
+            serviceUsageRepository,
+            roomAmenitiesUsageRepository,
+            appliedPenaltyRepository,
+            invoiceRepository,
+            paymentRepository
+    );
 
     @Test
     void getWeeklyScheduleNormalizesInputDateToMondayAndMapsBookings() {

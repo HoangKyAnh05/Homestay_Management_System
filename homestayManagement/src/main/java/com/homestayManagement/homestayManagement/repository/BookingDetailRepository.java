@@ -7,6 +7,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 public interface BookingDetailRepository extends JpaRepository<BookingDetail, Long> {
 
@@ -26,4 +27,16 @@ public interface BookingDetailRepository extends JpaRepository<BookingDetail, Lo
             @Param("startInclusive") LocalDateTime startInclusive,
             @Param("endExclusive") LocalDateTime endExclusive
     );
+
+    @Query("""
+            select bd
+            from BookingDetail bd
+            join fetch bd.booking b
+            join fetch b.customer c
+            left join fetch c.account
+            join fetch bd.room r
+            join fetch r.roomType
+            where bd.id = :id
+            """)
+    Optional<BookingDetail> findByIdForAdminDetail(@Param("id") Long id);
 }

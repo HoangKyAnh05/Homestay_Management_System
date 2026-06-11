@@ -21,4 +21,14 @@ public interface ServiceUsageRepository extends JpaRepository<ServiceUsage, Long
             order by s.id
             """)
     List<ServiceUsage> findByBookingIdForInvoice(@Param("bookingId") Long bookingId);
+
+    @Query("""
+            select s from ServiceUsage s
+            join fetch s.checkInRecord cr
+            left join fetch s.facilityService
+            left join fetch s.inventoryService
+            where cr.bookingDetail.id = :bookingDetailId
+            order by s.id
+            """)
+    List<ServiceUsage> findByBookingDetailIdForAdmin(@Param("bookingDetailId") Long bookingDetailId);
 }

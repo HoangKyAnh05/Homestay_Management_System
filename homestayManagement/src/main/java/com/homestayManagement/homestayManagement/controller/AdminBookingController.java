@@ -1,14 +1,11 @@
 package com.homestayManagement.homestayManagement.controller;
 
+import com.homestayManagement.homestayManagement.dto.response.AdminBookingDetailResponse;
 import com.homestayManagement.homestayManagement.dto.response.AdminBookingScheduleResponse;
 import com.homestayManagement.homestayManagement.service.AdminBookingService;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.Map;
@@ -30,6 +27,11 @@ public class AdminBookingController {
             LocalDate weekStart
     ) {
         return adminBookingService.getWeeklySchedule(weekStart);
+    }
+
+    @GetMapping("/details/{bookingDetailId}")
+    public AdminBookingDetailResponse getBookingDetail(@PathVariable Long bookingDetailId) {
+        return adminBookingService.getBookingDetail(bookingDetailId);
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

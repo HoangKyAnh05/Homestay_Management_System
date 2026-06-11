@@ -46,6 +46,17 @@ function formatTime(value) {
   return new Date(value).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
 }
 
+function formatDateTime(value) {
+  if (!value) return 'Chưa có'
+  return new Date(value).toLocaleString('vi-VN', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
 function formatMoney(value) {
   return new Intl.NumberFormat('vi-VN').format(Number(value || 0)) + 'đ'
 }
@@ -89,7 +100,20 @@ function roomMatchesSearch(room, bookings, keyword) {
   )
 }
 
-function BookingCard({ booking }) {
+function serviceTypeLabel(type) {
+  if (type === 'FACILITY') return 'Tiện ích'
+  if (type === 'INVENTORY') return 'Thuê đồ'
+  if (type === 'MINI_BAR') return 'Mini-bar'
+  return 'Dịch vụ'
+}
+
+function paymentStatusLabel(status) {
+  if (status === 'SUCCESS') return 'Thành công'
+  if (status === 'FAILED') return 'Thất bại'
+  return 'Đang chờ'
+}
+
+function BookingCard({ booking, onOpenDetail }) {
   const totalGuests = Number(booking.numberOfAdults || 0) + Number(booking.numberOfChildren || 0)
   return (
     <article className={bookingStatusClass(booking.detailStatus || booking.bookingStatus)}>
@@ -101,7 +125,164 @@ function BookingCard({ booking }) {
         <span>{formatTime(booking.checkInTarget)} - {formatTime(booking.checkOutTarget)}</span>
         <span>{totalGuests} khách · {booking.rentType}</span>
       </div>
+      <button type="button" className="abk-detail-link" onClick={() => onOpenDetail(booking.bookingDetailId)}>
+        Chi tiết
+      </button>
     </article>
+  )
+}
+
+function DetailField({ label, value }) {
+  return (
+    <div className="abk-detail-field">
+      <span>{label}</span>
+      <strong>{value || 'Chưa có'}</strong>
+    </div>
+  )
+}
+
+function BookingDetailModal({ detail, loading, error, onClose }) {
+  return (
+    <div className="abk-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="abk-modal">
+        <div className="abk-modal-head">
+          <div>
+            <h3>Chi tiết đơn đặt phòng</h3>
+            <p>{detail ? `Booking #${detail.bookingId} · Phòng ${detail.roomNumber}` : 'Đang tải thông tin...'}</p>
+          </div>
+          <button type="button" className="abk-modal-close" onClick={onClose}>×</button>
+        </div>
+
+        <div className="abk-modal-body">
+          {loading ? (
+            <div className="abk-empty">Đang tải chi tiết...</div>
+          ) : error ? (
+            <div className="abk-empty abk-empty--error">{error}</div>
+          ) : detail ? (
+            <>
+              <section className="abk-detail-section">
+                <h4>Thông tin khách hàng</h4>
+                <div className="abk-detail-grid">
+                  <DetailField label="Họ tên" value={detail.customer?.fullName} />
+                  <DetailField label="Số điện thoại" value={detail.customer?.phone} />
+                  <DetailField label="Email" value={detail.customer?.email} />
+                  <DetailField label="Địa chỉ" value={detail.customer?.address} />
+                  <DetailField label="Ngày sinh" value={detail.customer?.dateOfBirth ? new Date(detail.customer.dateOfBirth).toLocaleDateString('vi-VN') : ''} />
+                  <DetailField label="Mã khách hàng" value={detail.customer?.id ? `#${detail.customer.id}` : ''} />
+                </div>
+              </section>
+
+              <section className="abk-detail-section">
+                <h4>Thông tin đặt phòng</h4>
+                <div className="abk-detail-grid">
+                  <DetailField label="Phòng" value={`${detail.roomNumber} · ${detail.roomTypeName || 'Chưa phân loại'}`} />
+                  <DetailField label="Ngày đặt" value={formatDateTime(detail.bookingDate)} />
+                  <DetailField label="Nhận phòng dự kiến" value={formatDateTime(detail.checkInTarget)} />
+                  <DetailField label="Trả phòng dự kiến" value={formatDateTime(detail.checkOutTarget)} />
+                  <DetailField label="Người lớn" value={detail.numberOfAdults} />
+                  <DetailField label="Trẻ em" value={detail.numberOfChildren} />
+                  <DetailField label="Loại thuê" value={detail.rentType} />
+                  <DetailField label="Trạng thái booking" value={statusLabel(detail.bookingStatus)} />
+                  <DetailField label="Trạng thái phòng đặt" value={statusLabel(detail.detailStatus)} />
+                  <DetailField label="Giá lúc đặt" value={formatMoney(detail.priceAtBooking)} />
+                </div>
+              </section>
+
+              <section className="abk-detail-section">
+                <h4>Lưu trú thực tế</h4>
+                {detail.checkInRecords?.length ? (
+                  <div className="abk-line-list">
+                    {detail.checkInRecords.map(record => (
+                      <div className="abk-line-row" key={record.id}>
+                        <div>
+                          <strong>Ca lưu trú #{record.id}</strong>
+                          <span>Check-in {formatDateTime(record.actualCheckIn)} · Check-out {formatDateTime(record.actualCheckOut)}</span>
+                          <span>Lễ tân: {record.receptionistName || 'Chưa có'} · Buồng phòng: {record.housekeepingName || 'Chưa có'}</span>
+                        </div>
+                        <strong>{formatMoney(Number(record.earlyCheckInFee || 0) + Number(record.lateCheckOutFee || 0))}</strong>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="abk-empty abk-empty--sm">Chưa có dữ liệu check-in/check-out thực tế.</div>
+                )}
+              </section>
+
+              <section className="abk-detail-section">
+                <h4>Dịch vụ và mini-bar</h4>
+                {detail.serviceItems?.length ? (
+                  <div className="abk-line-list">
+                    {detail.serviceItems.map(item => (
+                      <div className="abk-line-row" key={`${item.type}-${item.id}`}>
+                        <div>
+                          <strong>{item.name}</strong>
+                          <span>{serviceTypeLabel(item.type)} · SL {item.quantity} × {formatMoney(item.unitPrice)}</span>
+                        </div>
+                        <strong>{formatMoney(item.totalPrice)}</strong>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="abk-empty abk-empty--sm">Chưa ghi nhận dịch vụ phát sinh cho đơn này.</div>
+                )}
+              </section>
+
+              <section className="abk-detail-section">
+                <h4>Phụ phí và khoản phạt</h4>
+                {detail.penaltyItems?.length ? (
+                  <div className="abk-line-list">
+                    {detail.penaltyItems.map(item => (
+                      <div className="abk-line-row" key={item.id}>
+                        <div>
+                          <strong>{item.title}</strong>
+                          <span>{item.description || 'Không có ghi chú'}</span>
+                        </div>
+                        <strong>{formatMoney(item.amount)}</strong>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="abk-empty abk-empty--sm">Không có khoản phạt cho đơn này.</div>
+                )}
+              </section>
+
+              <section className="abk-detail-section">
+                <h4>Hóa đơn và thanh toán</h4>
+                {detail.invoice ? (
+                  <>
+                    <div className="abk-detail-grid">
+                      <DetailField label="Mã hóa đơn" value={`#${detail.invoice.id}`} />
+                      <DetailField label="Tiền phòng" value={formatMoney(detail.invoice.roomCharge)} />
+                      <DetailField label="Dịch vụ" value={formatMoney(detail.invoice.serviceCharge)} />
+                      <DetailField label="Phạt" value={formatMoney(detail.invoice.penaltyCharge)} />
+                      <DetailField label="Tổng tiền" value={formatMoney(detail.invoice.totalAmount)} />
+                      <DetailField label="Người lập" value={detail.invoice.employeeName} />
+                    </div>
+                    {detail.payments?.length ? (
+                      <div className="abk-line-list abk-line-list--mt">
+                        {detail.payments.map(payment => (
+                          <div className="abk-line-row" key={payment.id}>
+                            <div>
+                              <strong>{payment.paymentMethod || 'Chưa rõ phương thức'}</strong>
+                              <span>{payment.transactionNo || 'Không có mã giao dịch'} · {formatDateTime(payment.paymentTime)}</span>
+                            </div>
+                            <strong>{formatMoney(payment.amount)} · {paymentStatusLabel(payment.status)}</strong>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="abk-empty abk-empty--sm">Hóa đơn chưa có giao dịch thanh toán.</div>
+                    )}
+                  </>
+                ) : (
+                  <div className="abk-empty abk-empty--sm">Chưa lập hóa đơn cho booking này.</div>
+                )}
+              </section>
+            </>
+          ) : null}
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -114,6 +295,10 @@ function AdminBookingsPage() {
   const [statusFilter, setStatusFilter] = useState('')
   const [pageSize, setPageSize] = useState(8)
   const [page, setPage] = useState(1)
+  const [detailModalOpen, setDetailModalOpen] = useState(false)
+  const [detailLoading, setDetailLoading] = useState(false)
+  const [detailError, setDetailError] = useState('')
+  const [selectedDetail, setSelectedDetail] = useState(null)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -178,6 +363,23 @@ function AdminBookingsPage() {
 
   const shiftWeek = amount => {
     setWeekStart(toDateKey(addDays(toDate(weekStart), amount * 7)))
+  }
+
+  const openDetail = (bookingDetailId) => {
+    setDetailModalOpen(true)
+    setSelectedDetail(null)
+    setDetailError('')
+    setDetailLoading(true)
+
+    fetch(`http://localhost:8080/api/admin/bookings/details/${bookingDetailId}`, { headers: authHeaders() })
+      .then(async res => {
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok) throw new Error(data.message || 'Không tải được chi tiết đơn đặt phòng')
+        return data
+      })
+      .then(data => setSelectedDetail(data))
+      .catch(err => setDetailError(err.message || 'Không tải được chi tiết đơn đặt phòng'))
+      .finally(() => setDetailLoading(false))
   }
 
   return (
@@ -266,7 +468,9 @@ function AdminBookingsPage() {
                     return (
                       <div className="abk-day-cell" key={`${room.id}-${toDateKey(day)}`}>
                         {dayBookings.length ? (
-                          dayBookings.map(booking => <BookingCard key={booking.bookingDetailId} booking={booking} />)
+                          dayBookings.map(booking => (
+                            <BookingCard key={booking.bookingDetailId} booking={booking} onOpenDetail={openDetail} />
+                          ))
                         ) : (
                           <span className="abk-free">Trống</span>
                         )}
@@ -290,6 +494,15 @@ function AdminBookingsPage() {
           <button type="button" disabled={safePage === totalPages} onClick={() => setPage(value => Math.min(totalPages, value + 1))}>Sau</button>
         </div>
       </div>
+
+      {detailModalOpen && (
+        <BookingDetailModal
+          detail={selectedDetail}
+          loading={detailLoading}
+          error={detailError}
+          onClose={() => setDetailModalOpen(false)}
+        />
+      )}
     </AdminLayout>
   )
 }

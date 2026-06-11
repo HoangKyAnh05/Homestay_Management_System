@@ -15,4 +15,13 @@ public interface CheckInRecordRepository extends JpaRepository<CheckInRecord, Lo
             order by cr.id
             """)
     List<CheckInRecord> findByBookingIdForInvoice(@Param("bookingId") Long bookingId);
+
+    @Query("""
+            select cr from CheckInRecord cr
+            left join fetch cr.receptionist
+            left join fetch cr.housekeeping
+            where cr.bookingDetail.id = :bookingDetailId
+            order by cr.id
+            """)
+    List<CheckInRecord> findByBookingDetailIdForAdmin(@Param("bookingDetailId") Long bookingDetailId);
 }

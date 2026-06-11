@@ -19,4 +19,13 @@ public interface AppliedPenaltyRepository extends JpaRepository<AppliedPenalty, 
             order by p.id
             """)
     List<AppliedPenalty> findByBookingIdForInvoice(@Param("bookingId") Long bookingId);
+
+    @Query("""
+            select p from AppliedPenalty p
+            join fetch p.checkRecord cr
+            join fetch p.rulesPenalty
+            where cr.bookingDetail.id = :bookingDetailId
+            order by p.id
+            """)
+    List<AppliedPenalty> findByBookingDetailIdForAdmin(@Param("bookingDetailId") Long bookingDetailId);
 }

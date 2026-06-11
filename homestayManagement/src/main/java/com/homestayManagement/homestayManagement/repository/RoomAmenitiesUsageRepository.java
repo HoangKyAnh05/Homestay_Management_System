@@ -19,4 +19,13 @@ public interface RoomAmenitiesUsageRepository extends JpaRepository<RoomAmenitie
             order by u.id
             """)
     List<RoomAmenitiesUsage> findByBookingIdForInvoice(@Param("bookingId") Long bookingId);
+
+    @Query("""
+            select u from RoomAmenitiesUsage u
+            join fetch u.checkInRecord cr
+            join fetch u.item
+            where cr.bookingDetail.id = :bookingDetailId
+            order by u.id
+            """)
+    List<RoomAmenitiesUsage> findByBookingDetailIdForAdmin(@Param("bookingDetailId") Long bookingDetailId);
 }
