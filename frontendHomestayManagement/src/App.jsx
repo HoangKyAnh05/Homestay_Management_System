@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import AdminRoomsPage from './pages/Admin/AdminRoomsPage'
 import AdminLoginPage from './pages/Admin/AdminLoginPage'
 import AdminPlaceholderPage from './pages/Admin/AdminPlaceholderPage'
+import AdminServiceCategoriesPage from './pages/Admin/AdminServiceCategoriesPage'
+import AdminSurchargesPage from './pages/Admin/AdminSurchargesPage'
 import AdminUsersPage from './pages/Admin/AdminUsersPage'
 import DashboardPage from './pages/Admin/DashboardPage'
 import ForgotPasswordPage from './pages/ForgotPassword/ForgotPasswordPage'
@@ -50,8 +52,8 @@ function App() {
     if (currentPath === '/admin/rooms') return <AdminRoomsPage />
     if (currentPath === '/admin/bookings') return <AdminPlaceholderPage activePage="booking-orders" title="Đơn Đặt Phòng" />
     if (currentPath === '/admin/check-in-logs') return <AdminPlaceholderPage activePage="check-in-logs" title="Nhật ký Lưu trú (Check-in)" />
-    if (currentPath === '/admin/services/categories') return <AdminPlaceholderPage activePage="service-categories" title="Danh mục Dịch vụ" />
-    if (currentPath === '/admin/services/surcharges') return <AdminPlaceholderPage activePage="surcharges" title="Phụ phí" />
+    if (currentPath === '/admin/services/categories') return <AdminServiceCategoriesPage />
+    if (currentPath === '/admin/services/surcharges') return <AdminSurchargesPage />
     if (currentPath === '/admin/rules-penalties') return <AdminPlaceholderPage activePage="rules" title="Cấu hình Nội quy & Phạt" />
     if (currentPath === '/admin/invoices') return <AdminPlaceholderPage activePage="invoices" title="Quản lý Hóa đơn" />
     if (currentPath === '/admin/marketing/ai-agent') return <AdminPlaceholderPage activePage="ai-post-agent" title="AI Agent Đăng bài" />
