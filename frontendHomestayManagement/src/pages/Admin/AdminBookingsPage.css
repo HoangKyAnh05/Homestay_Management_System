@@ -1,0 +1,382 @@
+.abk-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.abk-header h1 {
+  margin: 0 0 5px;
+  color: #111827;
+  font-size: 24px;
+  font-weight: 800;
+}
+
+.abk-header p {
+  margin: 0;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.abk-week-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.abk-icon-btn,
+.abk-today-btn,
+.abk-pagination button {
+  height: 38px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #111827;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.abk-icon-btn {
+  width: 38px;
+  display: inline-grid;
+  place-items: center;
+}
+
+.abk-icon-btn svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.abk-today-btn {
+  padding: 0 14px;
+  background: #ff385c;
+  border-color: #ff385c;
+  color: #ffffff;
+}
+
+.abk-stats {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.abk-stats div {
+  min-height: 82px;
+  padding: 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.abk-stats span {
+  display: block;
+  margin-bottom: 8px;
+  color: #6b7280;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.abk-stats strong {
+  color: #111827;
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.abk-toolbar {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.abk-search,
+.abk-date,
+.abk-select {
+  height: 40px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #111827;
+  font: inherit;
+  font-size: 14px;
+  outline: none;
+}
+
+.abk-search {
+  flex: 1;
+  min-width: 280px;
+  padding: 0 14px;
+}
+
+.abk-date,
+.abk-select {
+  padding: 0 12px;
+}
+
+.abk-search:focus,
+.abk-date:focus,
+.abk-select:focus {
+  border-color: #ff385c;
+  box-shadow: 0 0 0 3px rgba(255,56,92,0.12);
+}
+
+.abk-schedule {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #ffffff;
+  overflow: hidden;
+}
+
+.abk-grid-wrap {
+  overflow-x: auto;
+}
+
+.abk-grid {
+  display: grid;
+  grid-template-columns: 180px repeat(var(--abk-days), minmax(138px, 1fr));
+  min-width: 1180px;
+}
+
+.abk-room-head,
+.abk-day-head {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 56px;
+  padding: 10px 12px;
+  border-bottom: 1px solid #e5e7eb;
+  background: #f9fafb;
+}
+
+.abk-room-head {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  color: #6b7280;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.abk-day-head {
+  border-left: 1px solid #e5e7eb;
+}
+
+.abk-day-head span,
+.abk-day-head strong {
+  display: block;
+}
+
+.abk-day-head span {
+  color: #6b7280;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.abk-day-head strong {
+  margin-top: 2px;
+  color: #111827;
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.abk-day-head--today {
+  background: #fff1f2;
+}
+
+.abk-day-head--today strong {
+  color: #e00b41;
+}
+
+.abk-row {
+  display: contents;
+}
+
+.abk-room-cell {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  padding: 14px 12px;
+  border-right: 1px solid #e5e7eb;
+  border-bottom: 1px solid #edf0f4;
+  background: #ffffff;
+}
+
+.abk-room-cell strong {
+  display: block;
+  color: #111827;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.abk-room-cell span {
+  display: block;
+  margin-top: 4px;
+  color: #6b7280;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.abk-day-cell {
+  min-height: 126px;
+  padding: 10px;
+  border-left: 1px solid #edf0f4;
+  border-bottom: 1px solid #edf0f4;
+  background: #ffffff;
+}
+
+.abk-free {
+  display: inline-flex;
+  min-height: 24px;
+  align-items: center;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: #f3f4f6;
+  color: #9ca3af;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.abk-booking {
+  display: block;
+  padding: 10px;
+  border: 1px solid #fecdd3;
+  border-left: 4px solid #ff385c;
+  border-radius: 8px;
+  background: #fff1f2;
+  color: #111827;
+}
+
+.abk-booking + .abk-booking {
+  margin-top: 8px;
+}
+
+.abk-booking--active {
+  border-color: #bbf7d0;
+  border-left-color: #16a34a;
+  background: #f0fdf4;
+}
+
+.abk-booking--pending {
+  border-color: #fde68a;
+  border-left-color: #f59e0b;
+  background: #fffbeb;
+}
+
+.abk-booking--completed {
+  border-color: #bfdbfe;
+  border-left-color: #2563eb;
+  background: #eff6ff;
+}
+
+.abk-booking--cancelled {
+  border-color: #e5e7eb;
+  border-left-color: #6b7280;
+  background: #f9fafb;
+  color: #6b7280;
+}
+
+.abk-booking-main strong,
+.abk-booking-main span,
+.abk-booking-meta span {
+  display: block;
+}
+
+.abk-booking-main strong {
+  margin-bottom: 3px;
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1.25;
+}
+
+.abk-booking-main span,
+.abk-booking-meta span {
+  color: #6b7280;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.abk-booking-meta {
+  margin-top: 8px;
+  display: grid;
+  gap: 2px;
+}
+
+.abk-empty {
+  padding: 46px 20px;
+  color: #6b7280;
+  text-align: center;
+  font-size: 14px;
+}
+
+.abk-empty--error {
+  color: #b91c1c;
+}
+
+.abk-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 14px;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.abk-pagination {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.abk-pagination button {
+  padding: 0 12px;
+}
+
+.abk-pagination button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.abk-pagination strong {
+  color: #111827;
+  font-size: 13px;
+}
+
+@media (max-width: 1100px) {
+  .abk-stats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .abk-header,
+  .abk-footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .abk-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .abk-search {
+    min-width: 100%;
+  }
+}
+
+@media (max-width: 520px) {
+  .abk-stats {
+    grid-template-columns: 1fr;
+  }
+}
