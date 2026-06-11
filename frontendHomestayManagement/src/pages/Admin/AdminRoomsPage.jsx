@@ -562,7 +562,7 @@ function RoomsTab({ rooms, setRooms, setRoomTypes, roomTypes, showToast }) {
 // ─────────────────────────────────────────────────────────
 // Trang chính
 // ─────────────────────────────────────────────────────────
-function AdminRoomsPage() {
+function AdminRoomsPage({ activePage = 'rooms' }) {
   const [tab, setTab] = useState('types')
   const [roomTypes, setRoomTypes] = useState([])
   const [rooms, setRooms] = useState([])
@@ -591,7 +591,7 @@ function AdminRoomsPage() {
   }, [])
 
   return (
-    <AdminLayout activePage="rooms">
+    <AdminLayout activePage={activePage}>
       <div className="arm-header">
         <div>
           <h1>Quản lí Phòng</h1>

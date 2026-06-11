@@ -1,28 +1,80 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { getStoredUser, logout } from '../../services/authService'
 import './AdminLayout.css'
 
+const ICONS = {
+  dashboard: (
+    <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+  ),
+  users: (
+    <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+  ),
+  rooms: (
+    <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+  ),
+  bookings: (
+    <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/><path d="M9 16l2 2 4-4"/></svg>
+  ),
+  services: (
+    <svg viewBox="0 0 24 24"><path d="M20 7h-9"/><path d="M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/></svg>
+  ),
+  rules: (
+    <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 15h6"/><path d="M9 11h3"/></svg>
+  ),
+  invoices: (
+    <svg viewBox="0 0 24 24"><path d="M6 2h12v20l-3-2-3 2-3-2-3 2V2z"/><path d="M9 7h6"/><path d="M9 11h6"/><path d="M9 15h4"/></svg>
+  ),
+  marketing: (
+    <svg viewBox="0 0 24 24"><path d="M3 11v3a2 2 0 0 0 2 2h2l4 4v-4h4l6-4V7l-6-4H5a2 2 0 0 0-2 2v3"/><path d="M3 8h8"/></svg>
+  ),
+}
+
 const NAV_ITEMS = [
-  {
-    key: 'dashboard',
-    label: 'Dashboard',
-    icon: (
-      <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-    ),
-  },
+  { key: 'dashboard', label: 'Tổng quan', path: '/admin', icon: ICONS.dashboard },
   {
     key: 'users',
-    label: 'Quản lí User',
-    icon: (
-      <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-    ),
+    label: 'Quản lí người dùng',
+    icon: ICONS.users,
+    children: [
+      { key: 'employees', label: 'Nhân viên', path: '/admin/users/employees' },
+      { key: 'customers', label: 'Khách hàng', path: '/admin/users/customers' },
+    ],
   },
   {
     key: 'rooms',
-    label: 'Quản lí Phòng',
-    icon: (
-      <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-    ),
+    label: 'Quản lí phòng',
+    path: '/admin/rooms',
+    icon: ICONS.rooms,
+  },
+  {
+    key: 'bookings',
+    label: 'Quản lý Đặt & Trả phòng',
+    icon: ICONS.bookings,
+    children: [
+      { key: 'booking-orders', label: 'Đơn Đặt Phòng', path: '/admin/bookings' },
+      { key: 'check-in-logs', label: 'Nhật ký Lưu trú (Check-in)', path: '/admin/check-in-logs' },
+    ],
+  },
+  {
+    key: 'services',
+    label: 'Quản lý Dịch vụ',
+    icon: ICONS.services,
+    children: [
+      { key: 'service-categories', label: 'Danh mục Dịch vụ', path: '/admin/services/categories' },
+      { key: 'surcharges', label: 'Phụ phí', path: '/admin/services/surcharges' },
+    ],
+  },
+  { key: 'rules', label: 'Cấu hình Nội quy & Phạt', path: '/admin/rules-penalties', icon: ICONS.rules },
+  { key: 'invoices', label: 'Quản lý Hóa đơn', path: '/admin/invoices', icon: ICONS.invoices },
+  {
+    key: 'marketing',
+    label: 'Marketing & AI Agent',
+    icon: ICONS.marketing,
+    children: [
+      { key: 'ai-post-agent', label: 'AI Agent Đăng bài', path: '/admin/marketing/ai-agent' },
+      { key: 'post-logs', label: 'Nhật ký Bài đăng', path: '/admin/marketing/post-logs' },
+      { key: 'vouchers', label: 'Mã giảm giá (Vouchers)', path: '/admin/marketing/vouchers' },
+    ],
   },
 ]
 
@@ -31,48 +83,101 @@ export function navigate(path) {
   window.dispatchEvent(new PopStateEvent('popstate'))
 }
 
+function isGroupActive(item, activePage) {
+  return item.key === activePage || item.children?.some(child => child.key === activePage)
+}
+
+function getActiveGroupKey(activePage) {
+  return NAV_ITEMS.find(item => item.children && isGroupActive(item, activePage))?.key || null
+}
+
 function AdminLayout({ activePage, children }) {
   const user = getStoredUser()
   const [collapsed, setCollapsed] = useState(false)
+  const [openGroupKey, setOpenGroupKey] = useState(() => getActiveGroupKey(activePage))
+
+  useEffect(() => {
+    setOpenGroupKey(getActiveGroupKey(activePage))
+  }, [activePage])
 
   const handleLogout = () => {
     logout()
     window.location.assign('/admin/login')
   }
 
+  const toggleGroup = (key) => {
+    setOpenGroupKey(prev => prev === key ? null : key)
+  }
+
   return (
     <div className={`admin-shell${collapsed ? ' admin-shell--collapsed' : ''}`}>
-      {/* Sidebar */}
       <aside className="admin-sidebar">
-        {/* Logo */}
         <div className="admin-sidebar-logo">
           <span className="admin-sidebar-logo-icon">
             <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
           </span>
-          {!collapsed && (
-            <span className="admin-sidebar-logo-text">
-              Home Stays
-            </span>
-          )}
+          {!collapsed && <span className="admin-sidebar-logo-text">Home Stays</span>}
         </div>
 
-        {/* Nav */}
         <nav className="admin-nav">
-          {NAV_ITEMS.map((item) => (
-            <button
-              key={item.key}
-              type="button"
-              className={`admin-nav-item${activePage === item.key ? ' admin-nav-item--active' : ''}`}
-              onClick={() => navigate(`/admin/${item.key}`)}
-              title={collapsed ? item.label : undefined}
-            >
-              <span className="admin-nav-icon">{item.icon}</span>
-              {!collapsed && <span>{item.label}</span>}
-            </button>
-          ))}
+          {NAV_ITEMS.map((item) => {
+            const active = isGroupActive(item, activePage)
+
+            if (item.children) {
+              const open = openGroupKey === item.key
+              return (
+                <div key={item.key} className="admin-nav-group">
+                  <button
+                    type="button"
+                    className={`admin-nav-item admin-nav-group-trigger${open ? ' admin-nav-item--active' : ''}`}
+                    onClick={() => toggleGroup(item.key)}
+                    title={collapsed ? item.label : undefined}
+                    aria-expanded={open}
+                  >
+                    <span className="admin-nav-icon">{item.icon}</span>
+                    {!collapsed && (
+                      <>
+                        <span className="admin-nav-label">{item.label}</span>
+                        <span className={`admin-nav-chevron${open ? ' admin-nav-chevron--open' : ''}`}>
+                          <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+                        </span>
+                      </>
+                    )}
+                  </button>
+
+                  {!collapsed && open && (
+                    <div className="admin-nav-submenu">
+                      {item.children.map(child => (
+                        <button
+                          key={child.key}
+                          type="button"
+                          className={`admin-nav-subitem${activePage === child.key ? ' admin-nav-subitem--active' : ''}`}
+                          onClick={() => navigate(child.path)}
+                        >
+                          {child.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )
+            }
+
+            return (
+              <button
+                key={item.key}
+                type="button"
+                className={`admin-nav-item${activePage === item.key ? ' admin-nav-item--active' : ''}`}
+                onClick={() => navigate(item.path)}
+                title={collapsed ? item.label : undefined}
+              >
+                <span className="admin-nav-icon">{item.icon}</span>
+                {!collapsed && <span>{item.label}</span>}
+              </button>
+            )
+          })}
         </nav>
 
-        {/* Bottom: Home Stays link + logout */}
         <div className="admin-sidebar-bottom">
           <button
             type="button"
@@ -100,9 +205,7 @@ function AdminLayout({ activePage, children }) {
         </div>
       </aside>
 
-      {/* Main */}
       <div className="admin-main">
-        {/* Topbar */}
         <header className="admin-topbar">
           <button
             className="admin-topbar-toggle"
@@ -131,7 +234,6 @@ function AdminLayout({ activePage, children }) {
           </div>
         </header>
 
-        {/* Page content */}
         <main className="admin-content">
           {children}
         </main>

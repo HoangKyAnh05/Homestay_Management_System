@@ -18,6 +18,14 @@ const ROLE_LABEL = {
   ROLE_MARKETING: 'Marketing',
 }
 
+function isCustomerRole(role) {
+  return role === 'ROLE_CUSTOMER'
+}
+
+function getRoleNameById(roles, roleId) {
+  return roles.find(r => String(r.id) === String(roleId))?.name
+}
+
 function roleBadgeClass(role) {
   const map = {
     ROLE_ADMIN: 'badge--admin',
@@ -39,7 +47,7 @@ function getAvatarUrl(url) {
 }
 
 // ── Modal thêm mới ────────────────────────────────────────
-function CreateUserModal({ roles, onClose, onSave }) {
+function CreateUserModal({ roles, entityLabel, onClose, onSave }) {
   const [form, setForm] = useState({
     fullName: '', email: '', phone: '', password: '',
     roleId: roles[0]?.id || '', isActive: true,
@@ -47,6 +55,8 @@ function CreateUserModal({ roles, onClose, onSave }) {
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
   const set = (key, val) => setForm(f => ({ ...f, [key]: val }))
+  const selectedRole = getRoleNameById(roles, form.roleId)
+  const phoneMaxLength = isCustomerRole(selectedRole) ? 10 : 15
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -72,7 +82,7 @@ function CreateUserModal({ roles, onClose, onSave }) {
     <div className="aum-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="aum-modal">
         <div className="aum-modal-head">
-          <h3>Thêm User mới</h3>
+          <h3>Thêm {entityLabel} mới</h3>
           <button type="button" className="aum-modal-close" onClick={onClose}>✕</button>
         </div>
         <form className="aum-modal-body" onSubmit={handleSubmit}>
@@ -83,7 +93,7 @@ function CreateUserModal({ roles, onClose, onSave }) {
             <input type="email" value={form.email} onChange={e => set('email', e.target.value)} required placeholder="email@example.com" />
           </label>
           <label className="aum-field"><span>Số điện thoại</span>
-            <input value={form.phone} onChange={e => set('phone', e.target.value)} placeholder="10 chữ số (tuỳ chọn)" maxLength={10} />
+            <input value={form.phone} onChange={e => set('phone', e.target.value)} placeholder="Số điện thoại (tuỳ chọn)" maxLength={phoneMaxLength} />
           </label>
           <label className="aum-field"><span>Mật khẩu</span>
             <input type="password" value={form.password} onChange={e => set('password', e.target.value)} required minLength={6} placeholder="Tối thiểu 6 ký tự" />
@@ -97,7 +107,7 @@ function CreateUserModal({ roles, onClose, onSave }) {
           <div className="aum-modal-actions">
             <button type="button" className="aum-btn aum-btn--ghost" onClick={onClose}>Huỷ</button>
             <button type="submit" className="aum-btn aum-btn--primary" disabled={saving}>
-              {saving ? 'Đang lưu...' : 'Tạo user'}
+              {saving ? 'Đang lưu...' : `Tạo ${entityLabel}`}
             </button>
           </div>
         </form>
@@ -107,7 +117,7 @@ function CreateUserModal({ roles, onClose, onSave }) {
 }
 
 // ── Modal chỉnh sửa ───────────────────────────────────────
-function EditUserModal({ user, roles, onClose, onSave }) {
+function EditUserModal({ user, roles, entityLabel, onClose, onSave }) {
   const [form, setForm] = useState({
     fullName: user.fullName || '',
     phone: user.phone || '',
@@ -117,6 +127,8 @@ function EditUserModal({ user, roles, onClose, onSave }) {
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
   const set = (key, val) => setForm(f => ({ ...f, [key]: val }))
+  const selectedRole = getRoleNameById(roles, form.roleId)
+  const phoneMaxLength = isCustomerRole(selectedRole) ? 10 : 15
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -144,7 +156,7 @@ function EditUserModal({ user, roles, onClose, onSave }) {
     <div className="aum-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="aum-modal">
         <div className="aum-modal-head">
-          <h3>Chỉnh sửa User</h3>
+          <h3>Chỉnh sửa {entityLabel}</h3>
           <button type="button" className="aum-modal-close" onClick={onClose}>✕</button>
         </div>
         <form className="aum-modal-body" onSubmit={handleSubmit}>
@@ -167,7 +179,7 @@ function EditUserModal({ user, roles, onClose, onSave }) {
             <input type="email" value={user.email} readOnly className="aum-input--readonly" />
           </label>
           <label className="aum-field"><span>Số điện thoại</span>
-            <input value={form.phone} onChange={e => set('phone', e.target.value)} placeholder="10 chữ số (tuỳ chọn)" maxLength={10} />
+            <input value={form.phone} onChange={e => set('phone', e.target.value)} placeholder="Số điện thoại (tuỳ chọn)" maxLength={phoneMaxLength} />
           </label>
           <label className="aum-field"><span>Role</span>
             <select value={form.roleId} onChange={e => set('roleId', e.target.value)}>
@@ -241,7 +253,7 @@ function ActivateModal({ user, onClose, onConfirm, loading }) {
 // ── Trang chính ───────────────────────────────────────────
 const PAGE_SIZE = 6
 
-function AdminUsersPage() {
+function AdminUsersPage({ userType = 'employees' }) {
   const [users, setUsers] = useState([])
   const [roles, setRoles] = useState([])
   const [loading, setLoading] = useState(true)
@@ -254,6 +266,12 @@ function AdminUsersPage() {
   const [activateTarget, setActivateTarget] = useState(null)
   const [toggling, setToggling] = useState(false)
   const [toast, setToast] = useState('')
+  const isCustomerPage = userType === 'customers'
+  const entityLabel = isCustomerPage ? 'khách hàng' : 'nhân viên'
+  const pageTitle = isCustomerPage ? 'Quản lý khách hàng' : 'Quản lý nhân viên'
+  const activePage = isCustomerPage ? 'customers' : 'employees'
+  const roleBelongsToPage = (role) => isCustomerPage ? isCustomerRole(role) : !isCustomerRole(role)
+  const pageRoles = roles.filter(r => roleBelongsToPage(r.name))
 
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(''), 3000) }
 
@@ -267,14 +285,20 @@ function AdminUsersPage() {
     }).finally(() => setLoading(false))
   }, [])
 
+  useEffect(() => {
+    setFilterRole('')
+    setPage(1)
+  }, [userType])
+
   useEffect(() => { setPage(1) }, [search, filterRole])
 
   const filtered = users.filter(u => {
+    const matchPage = roleBelongsToPage(u.role)
     const matchSearch = !search ||
       u.email?.toLowerCase().includes(search.toLowerCase()) ||
       u.fullName?.toLowerCase().includes(search.toLowerCase())
     const matchRole = !filterRole || u.role === filterRole
-    return matchSearch && matchRole
+    return matchPage && matchSearch && matchRole
   })
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
@@ -302,14 +326,14 @@ function AdminUsersPage() {
   }
 
   return (
-    <AdminLayout activePage="users">
+    <AdminLayout activePage={activePage}>
       <div className="aum-header">
         <div>
-          <h1>Quản lí User</h1>
-          <p>{users.length} tài khoản trong hệ thống</p>
+          <h1>{pageTitle}</h1>
+          <p>{filtered.length} tài khoản {entityLabel} trong hệ thống</p>
         </div>
-        <button className="aum-btn aum-btn--primary" type="button" onClick={() => setCreateOpen(true)}>
-          + Thêm User
+        <button className="aum-btn aum-btn--primary" type="button" onClick={() => setCreateOpen(true)} disabled={pageRoles.length === 0}>
+          + Thêm {entityLabel}
         </button>
       </div>
 
@@ -318,7 +342,7 @@ function AdminUsersPage() {
           value={search} onChange={e => setSearch(e.target.value)} />
         <select className="aum-select" value={filterRole} onChange={e => setFilterRole(e.target.value)}>
           <option value="">Tất cả role</option>
-          {roles.map(r => <option key={r.id} value={r.name}>{ROLE_LABEL[r.name] || r.name}</option>)}
+          {pageRoles.map(r => <option key={r.id} value={r.name}>{ROLE_LABEL[r.name] || r.name}</option>)}
         </select>
       </div>
 
@@ -326,7 +350,7 @@ function AdminUsersPage() {
         {loading ? (
           <div className="aum-empty">Đang tải...</div>
         ) : filtered.length === 0 ? (
-          <div className="aum-empty">Không tìm thấy user nào.</div>
+          <div className="aum-empty">Không tìm thấy {entityLabel} nào.</div>
         ) : (
           <table className="aum-table">
             <thead>
@@ -413,12 +437,12 @@ function AdminUsersPage() {
 
       {/* Modals */}
       {createOpen && (
-        <CreateUserModal roles={roles} onClose={() => setCreateOpen(false)}
-          onSave={saved => { setUsers(prev => [...prev, saved]); setCreateOpen(false); showToast('Đã tạo user mới') }} />
+        <CreateUserModal roles={pageRoles} entityLabel={entityLabel} onClose={() => setCreateOpen(false)}
+          onSave={saved => { setUsers(prev => [...prev, saved]); setCreateOpen(false); showToast(`Đã tạo ${entityLabel} mới`) }} />
       )}
       {editTarget && (
-        <EditUserModal user={editTarget} roles={roles} onClose={() => setEditTarget(null)}
-          onSave={saved => { setUsers(prev => prev.map(u => u.id === saved.id ? saved : u)); setEditTarget(null); showToast('Đã cập nhật user') }} />
+        <EditUserModal user={editTarget} roles={pageRoles} entityLabel={entityLabel} onClose={() => setEditTarget(null)}
+          onSave={saved => { setUsers(prev => prev.map(u => u.id === saved.id ? saved : u)); setEditTarget(null); showToast(`Đã cập nhật ${entityLabel}`) }} />
       )}
       {deactivateTarget && (
         <DeactivateModal user={deactivateTarget} loading={toggling}
