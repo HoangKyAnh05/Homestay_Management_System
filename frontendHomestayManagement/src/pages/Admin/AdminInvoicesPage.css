@@ -280,6 +280,41 @@
   font-weight: 800;
 }
 
+.ain-detail-section {
+  margin-bottom: 22px;
+}
+
+.ain-line-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ain-line-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 14px;
+  align-items: center;
+  padding: 12px 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+.ain-line-row strong {
+  display: block;
+  color: #111827;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.ain-line-row span {
+  display: block;
+  margin-top: 3px;
+  color: #6b7280;
+  font-size: 12px;
+}
+
 .ain-payment-list {
   display: flex;
   flex-direction: column;
@@ -328,6 +363,7 @@
 @media (max-width: 640px) {
   .ain-stats,
   .ain-detail-grid,
+  .ain-line-row,
   .ain-payment-row {
     grid-template-columns: 1fr;
   }

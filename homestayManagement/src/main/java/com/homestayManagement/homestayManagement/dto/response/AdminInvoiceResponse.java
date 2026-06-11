@@ -23,6 +23,8 @@ public record AdminInvoiceResponse(
         String latestPaymentStatus,
         LocalDateTime latestPaymentTime,
         LocalDateTime createdAt,
-        List<AdminPaymentResponse> payments
+        List<AdminPaymentResponse> payments,
+        List<AdminInvoiceServiceItemResponse> serviceItems,
+        List<AdminInvoicePenaltyItemResponse> penaltyItems
 ) {
 }

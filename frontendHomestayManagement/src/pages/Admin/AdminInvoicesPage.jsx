@@ -51,6 +51,14 @@ function statusClass(status) {
   return 'ain-badge ain-badge--pending'
 }
 
+function serviceTypeLabel(type) {
+  if (type === 'FACILITY') return 'Tiện ích'
+  if (type === 'INVENTORY') return 'Thuê đồ'
+  if (type === 'MINI_BAR') return 'Mini-bar'
+  if (type === 'ADJUSTMENT') return 'Điều chỉnh'
+  return 'Dịch vụ'
+}
+
 function InvoiceDetailModal({ invoice, onClose }) {
   return (
     <div className="ain-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
@@ -71,6 +79,44 @@ function InvoiceDetailModal({ invoice, onClose }) {
             <div><span>Tổng hóa đơn</span><strong>{formatMoney(invoice.totalAmount)}</strong></div>
             <div><span>Đã thanh toán</span><strong>{formatMoney(invoice.paidAmount)}</strong></div>
             <div><span>Còn lại</span><strong>{formatMoney(invoice.remainingAmount)}</strong></div>
+          </div>
+
+          <div className="ain-detail-section">
+            <h4>Chi tiết dịch vụ đã sử dụng</h4>
+            {invoice.serviceItems?.length ? (
+              <div className="ain-line-list">
+                {invoice.serviceItems.map(item => (
+                  <div className="ain-line-row" key={`${item.type}-${item.id}`}>
+                    <div>
+                      <strong>{item.name}</strong>
+                      <span>{serviceTypeLabel(item.type)} · SL {item.quantity} × {formatMoney(item.unitPrice)}</span>
+                    </div>
+                    <strong>{formatMoney(item.totalPrice)}</strong>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="ain-empty ain-empty--sm">Hóa đơn này chưa ghi nhận dịch vụ phát sinh.</div>
+            )}
+          </div>
+
+          <div className="ain-detail-section">
+            <h4>Chi tiết phạt</h4>
+            {invoice.penaltyItems?.length ? (
+              <div className="ain-line-list">
+                {invoice.penaltyItems.map(item => (
+                  <div className="ain-line-row" key={item.id}>
+                    <div>
+                      <strong>{item.title}</strong>
+                      <span>{item.description || 'Không có ghi chú'}</span>
+                    </div>
+                    <strong>{formatMoney(item.amount)}</strong>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="ain-empty ain-empty--sm">Hóa đơn này không có khoản phạt.</div>
+            )}
           </div>
 
           <h4>Lịch sử thanh toán</h4>
