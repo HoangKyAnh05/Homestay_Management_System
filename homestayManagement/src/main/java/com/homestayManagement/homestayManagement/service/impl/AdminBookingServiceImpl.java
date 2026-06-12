@@ -1,5 +1,7 @@
 package com.homestayManagement.homestayManagement.service.impl;
 
+import com.homestayManagement.homestayManagement.dto.request.AdminUpdateBookingCustomerRequest;
+import com.homestayManagement.homestayManagement.dto.request.AdminUpdateBookingDetailRequest;
 import com.homestayManagement.homestayManagement.dto.request.AdminDirectBookingRequest;
 import com.homestayManagement.homestayManagement.dto.response.AdminBookingCheckInResponse;
 import com.homestayManagement.homestayManagement.dto.response.AdminBookingCustomerResponse;
@@ -340,6 +342,74 @@ public class AdminBookingServiceImpl implements AdminBookingService {
         }
 
         return getBookingDetail(firstDetail.getId());
+    }
+
+    @Override
+    @Transactional
+    public AdminBookingDetailResponse updateBookingCustomer(Long bookingDetailId, AdminUpdateBookingCustomerRequest request) {
+        BookingDetail detail = bookingDetailRepository.findByIdForAdminDetail(bookingDetailId)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đơn đặt phòng"));
+
+        // Chỉ cho phép sửa khi chưa check-in
+        boolean hasCheckIn = checkInRecordRepository.findByBookingDetailId(bookingDetailId).isPresent();
+        if (hasCheckIn) {
+            throw new IllegalArgumentException("Không thể chỉnh sửa thông tin khách sau khi đã check-in");
+        }
+
+        Customer customer = detail.getBooking().getCustomer();
+        customer.setFullName(request.fullName().trim());
+        customer.setPhone(request.phone().trim());
+        customer.setAddress(request.address() != null && !request.address().isBlank() ? request.address().trim() : null);
+        customer.setDateOfBirth(request.dateOfBirth());
+        customerRepository.save(customer);
+
+        return getBookingDetail(bookingDetailId);
+    }
+
+    @Override
+    @Transactional
+    public AdminBookingDetailResponse updateBookingDetail(Long bookingDetailId, AdminUpdateBookingDetailRequest request) {
+        BookingDetail detail = bookingDetailRepository.findByIdForAdminDetail(bookingDetailId)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đơn đặt phòng"));
+
+        // Chỉ cho phép sửa khi chưa check-in
+        boolean hasCheckIn = checkInRecordRepository.findByBookingDetailId(bookingDetailId).isPresent();
+        if (hasCheckIn) {
+            throw new IllegalArgumentException("Không thể chỉnh sửa thông tin đặt phòng sau khi đã check-in");
+        }
+
+        if (!request.checkOutTarget().isAfter(request.checkInTarget())) {
+            throw new IllegalArgumentException("Giờ trả phòng phải sau giờ nhận phòng");
+        }
+
+        RoomType roomType = detail.getRoom().getRoomType();
+        validateCapacity(roomType, request.numberOfAdults(), request.numberOfChildren());
+
+        // Tính lại giá nếu có pricePolicyId mới, hoặc giữ nguyên nếu không truyền
+        BigDecimal newPrice = detail.getPriceAtBooking();
+        String newRentType = detail.getRentType();
+        if (request.pricePolicyId() != null) {
+            com.homestayManagement.homestayManagement.entity.PricePolicy policy =
+                    pricePolicyRepository.findById(request.pricePolicyId())
+                            .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy gói thuê"));
+            String dayType = isDayWeekend(request.checkInTarget()) ? "WEEKEND" : "WEEKDAY";
+            newPrice = roomType == null ? BigDecimal.ZERO :
+                    roomPriceConfigRepository
+                            .findByRoomTypeIdAndPricePolicyIdAndDayType(roomType.getId(), policy.getId(), dayType)
+                            .map(com.homestayManagement.homestayManagement.entity.RoomPriceConfig::getPrice)
+                            .orElse(BigDecimal.ZERO);
+            newRentType = policy.getRentType();
+        }
+
+        detail.setCheckInTarget(request.checkInTarget());
+        detail.setCheckOutTarget(request.checkOutTarget());
+        detail.setNumberOfAdults(request.numberOfAdults());
+        detail.setNumberOfChildren(request.numberOfChildren());
+        detail.setPriceAtBooking(newPrice);
+        detail.setRentType(newRentType);
+        bookingDetailRepository.save(detail);
+
+        return getBookingDetail(bookingDetailId);
     }
 
     @Override

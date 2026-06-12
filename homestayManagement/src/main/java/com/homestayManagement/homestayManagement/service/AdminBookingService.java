@@ -7,6 +7,8 @@ import com.homestayManagement.homestayManagement.dto.request.AdminBookingAddMini
 import com.homestayManagement.homestayManagement.dto.request.AdminBookingAddPenaltyRequest;
 import com.homestayManagement.homestayManagement.dto.request.AdminBookingAddServiceRequest;
 import com.homestayManagement.homestayManagement.dto.request.AdminDirectBookingRequest;
+import com.homestayManagement.homestayManagement.dto.request.AdminUpdateBookingCustomerRequest;
+import com.homestayManagement.homestayManagement.dto.request.AdminUpdateBookingDetailRequest;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -17,6 +19,8 @@ public interface AdminBookingService {
     AdminBookingDetailResponse getBookingDetail(Long bookingDetailId);
     List<AdminDirectBookingRoomResponse> getDirectBookingRooms(LocalDateTime checkInTarget, LocalDateTime checkOutTarget);
     AdminBookingDetailResponse createDirectBooking(AdminDirectBookingRequest request);
+    AdminBookingDetailResponse updateBookingCustomer(Long bookingDetailId, AdminUpdateBookingCustomerRequest request);
+    AdminBookingDetailResponse updateBookingDetail(Long bookingDetailId, AdminUpdateBookingDetailRequest request);
     AdminBookingDetailResponse checkIn(Long bookingDetailId);
     AdminBookingDetailResponse checkOut(Long bookingDetailId);
     AdminBookingDetailResponse addService(Long bookingDetailId, AdminBookingAddServiceRequest request);

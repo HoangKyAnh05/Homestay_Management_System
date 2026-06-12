@@ -181,48 +181,140 @@ function AddRow({ title, children, onSubmit, disabled }) {
 }
 
 function BookingDetailModal({ detail, loading, error, actionLoading, actionError, onClose, onRefresh, onAction }) {
-  const [stayOpen, setStayOpen] = useState(false)
+  const PRICE_API_MODAL = 'http://localhost:8080/api/admin/price-config'
+
+  const [stayOpen, setStayOpen]       = useState(false)
+  const [editCustomer, setEditCustomer] = useState(false)
+  const [editBooking,  setEditBooking]  = useState(false)
+
+  // Form chỉnh sửa khách hàng
+  const [custForm, setCustForm] = useState({ fullName: '', phone: '', address: '', dateOfBirth: '' })
+  const [custSaving, setCustSaving]   = useState(false)
+  const [custError,  setCustError]    = useState('')
+
+  // Form chỉnh sửa thông tin đặt phòng
+  const [bookForm, setBookForm] = useState({
+    checkInTarget: '', checkOutTarget: '', numberOfAdults: 1, numberOfChildren: 0, pricePolicyId: '',
+  })
+  const [pricePolicies, setPricePolicies] = useState([])
+  const [bookSaving, setBookSaving] = useState(false)
+  const [bookError,  setBookError]  = useState('')
+
   const [serviceForm, setServiceForm] = useState({ type: 'FACILITY', serviceId: '', quantity: 1 })
   const [miniBarForm, setMiniBarForm] = useState({ itemId: '', quantity: 1 })
   const [penaltyForm, setPenaltyForm] = useState({ rulesPenaltyId: '', amount: '', description: '' })
 
+  // Reset khi detail thay đổi
   useEffect(() => {
     setStayOpen(false)
+    setEditCustomer(false)
+    setEditBooking(false)
+    setCustError('')
+    setBookError('')
     setServiceForm({ type: 'FACILITY', serviceId: '', quantity: 1 })
     setMiniBarForm({ itemId: '', quantity: 1 })
     setPenaltyForm({ rulesPenaltyId: '', amount: '', description: '' })
   }, [detail?.bookingDetailId])
 
-  const hasCheckIn = Boolean(detail?.checkInRecords?.length)
-  const hasCheckOut = detail?.checkInRecords?.some(record => record.actualCheckOut)
-  const canCheckIn = detail && !hasCheckIn && !['CANCELLED', 'COMPLETED'].includes(String(detail.bookingStatus).toUpperCase())
+  // Khi mở form sửa khách → pre-fill
+  useEffect(() => {
+    if (editCustomer && detail?.customer) {
+      setCustForm({
+        fullName:    detail.customer.fullName    || '',
+        phone:       detail.customer.phone       || '',
+        address:     detail.customer.address     || '',
+        dateOfBirth: detail.customer.dateOfBirth || '',
+      })
+      setCustError('')
+    }
+  }, [editCustomer, detail?.customer])
+
+  // Khi mở form sửa booking → pre-fill + load gói thuê
+  useEffect(() => {
+    if (editBooking && detail) {
+      setBookForm({
+        checkInTarget:    detail.checkInTarget  ? toDateTimeLocalValue(new Date(detail.checkInTarget))  : '',
+        checkOutTarget:   detail.checkOutTarget ? toDateTimeLocalValue(new Date(detail.checkOutTarget)) : '',
+        numberOfAdults:   detail.numberOfAdults   ?? 1,
+        numberOfChildren: detail.numberOfChildren ?? 0,
+        pricePolicyId: '',
+      })
+      setBookError('')
+      // Load gói thuê để người dùng có thể đổi (optional)
+      fetch(`${PRICE_API_MODAL}/policies`, { headers: authHeaders() })
+        .then(r => r.json())
+        .then(d => setPricePolicies(Array.isArray(d) ? d : []))
+        .catch(() => {})
+    }
+  }, [editBooking, detail])
+
+  const hasCheckIn  = Boolean(detail?.checkInRecords?.length)
+  const hasCheckOut = detail?.checkInRecords?.some(r => r.actualCheckOut)
+  const canEdit     = detail && !hasCheckIn && !['CANCELLED', 'COMPLETED'].includes(String(detail.bookingStatus).toUpperCase())
+  const canCheckIn  = canEdit
   const canCheckOut = detail && hasCheckIn && !hasCheckOut
-  const services = serviceForm.type === 'FACILITY' ? detail?.facilityServices || [] : detail?.inventoryServices || []
+  const services    = serviceForm.type === 'FACILITY' ? detail?.facilityServices || [] : detail?.inventoryServices || []
 
-  const submitService = (event) => {
-    event.preventDefault()
-    onAction('services', {
-      type: serviceForm.type,
-      serviceId: Number(serviceForm.serviceId),
-      quantity: Number(serviceForm.quantity),
+  // ── Lưu chỉnh sửa khách hàng ──
+  const saveCustomer = (e) => {
+    e.preventDefault()
+    setCustSaving(true); setCustError('')
+    fetch(`${API_BASE}/details/${detail.bookingDetailId}/customer`, {
+      method: 'PUT',
+      headers: authHeaders(),
+      body: JSON.stringify({
+        fullName:    custForm.fullName,
+        phone:       custForm.phone,
+        address:     custForm.address || null,
+        dateOfBirth: custForm.dateOfBirth || null,
+      }),
     })
+      .then(async r => {
+        const d = await r.json().catch(() => ({}))
+        if (!r.ok) throw new Error(d.message || 'Lỗi khi lưu')
+        onAction('__refresh__', null, d)   // truyền data mới lên parent
+        setEditCustomer(false)
+      })
+      .catch(err => setCustError(err.message))
+      .finally(() => setCustSaving(false))
   }
 
-  const submitMiniBar = (event) => {
-    event.preventDefault()
-    onAction('mini-bar', {
-      itemId: Number(miniBarForm.itemId),
-      quantity: Number(miniBarForm.quantity),
+  // ── Lưu chỉnh sửa thông tin đặt phòng ──
+  const saveBooking = (e) => {
+    e.preventDefault()
+    setBookSaving(true); setBookError('')
+    fetch(`${API_BASE}/details/${detail.bookingDetailId}/booking-info`, {
+      method: 'PUT',
+      headers: authHeaders(),
+      body: JSON.stringify({
+        checkInTarget:    bookForm.checkInTarget,
+        checkOutTarget:   bookForm.checkOutTarget,
+        numberOfAdults:   Number(bookForm.numberOfAdults),
+        numberOfChildren: Number(bookForm.numberOfChildren),
+        pricePolicyId:    bookForm.pricePolicyId ? Number(bookForm.pricePolicyId) : null,
+      }),
     })
+      .then(async r => {
+        const d = await r.json().catch(() => ({}))
+        if (!r.ok) throw new Error(d.message || 'Lỗi khi lưu')
+        onAction('__refresh__', null, d)
+        setEditBooking(false)
+      })
+      .catch(err => setBookError(err.message))
+      .finally(() => setBookSaving(false))
   }
 
-  const submitPenalty = (event) => {
-    event.preventDefault()
-    onAction('penalties', {
-      rulesPenaltyId: Number(penaltyForm.rulesPenaltyId),
-      amount: Number(penaltyForm.amount),
-      description: penaltyForm.description,
-    })
+  const submitService = (e) => {
+    e.preventDefault()
+    onAction('services', { type: serviceForm.type, serviceId: Number(serviceForm.serviceId), quantity: Number(serviceForm.quantity) })
+  }
+  const submitMiniBar = (e) => {
+    e.preventDefault()
+    onAction('mini-bar', { itemId: Number(miniBarForm.itemId), quantity: Number(miniBarForm.quantity) })
+  }
+  const submitPenalty = (e) => {
+    e.preventDefault()
+    onAction('penalties', { rulesPenaltyId: Number(penaltyForm.rulesPenaltyId), amount: Number(penaltyForm.amount), description: penaltyForm.description })
   }
 
   return (
@@ -243,6 +335,7 @@ function BookingDetailModal({ detail, loading, error, actionLoading, actionError
             <div className="abk-empty abk-empty--error">{error}</div>
           ) : detail ? (
             <>
+              {/* ── Thanh hành động trên cùng ── */}
               <div className="abk-modal-actions">
                 <span className={`abk-status-pill abk-status-pill--${String(detail.bookingStatus || '').toLowerCase()}`}>
                   {statusLabel(detail.bookingStatus)}
@@ -258,39 +351,154 @@ function BookingDetailModal({ detail, loading, error, actionLoading, actionError
                       Check out
                     </button>
                   )}
-                  <button type="button" className="abk-action-secondary" onClick={() => setStayOpen(value => !value)}>
+                  <button type="button" className="abk-action-secondary" onClick={() => setStayOpen(v => !v)}>
                     Lưu trú
                   </button>
                 </div>
               </div>
               {actionError && <div className="abk-inline-error">{actionError}</div>}
 
+              {/* ══════════════════════════════════════════
+                  THÔNG TIN KHÁCH HÀNG
+              ══════════════════════════════════════════ */}
               <section className="abk-detail-section">
-                <h4>Thông tin khách hàng</h4>
-                <div className="abk-detail-grid">
-                  <DetailField label="Họ tên" value={detail.customer?.fullName} />
-                  <DetailField label="Số điện thoại" value={detail.customer?.phone} />
-                  <DetailField label="Email" value={detail.customer?.email} />
-                  <DetailField label="Địa chỉ" value={detail.customer?.address} />
-                  <DetailField label="Ngày sinh" value={detail.customer?.dateOfBirth ? new Date(detail.customer.dateOfBirth).toLocaleDateString('vi-VN') : ''} />
-                  <DetailField label="Mã khách hàng" value={detail.customer?.id ? `#${detail.customer.id}` : ''} />
+                <div className="abk-section-head">
+                  <h4>Thông tin khách hàng</h4>
+                  {canEdit && !editCustomer && (
+                    <button type="button" className="abk-edit-btn" onClick={() => { setEditCustomer(true); setEditBooking(false) }}>
+                      ✏️ Chỉnh sửa
+                    </button>
+                  )}
+                  {editCustomer && (
+                    <button type="button" className="abk-edit-btn abk-edit-btn--cancel" onClick={() => setEditCustomer(false)}>
+                      Huỷ
+                    </button>
+                  )}
                 </div>
+
+                {!editCustomer ? (
+                  <div className="abk-detail-grid">
+                    <DetailField label="Họ tên"       value={detail.customer?.fullName} />
+                    <DetailField label="Điện thoại"   value={detail.customer?.phone} />
+                    <DetailField label="Email"         value={detail.customer?.email} />
+                    <DetailField label="Địa chỉ"      value={detail.customer?.address} />
+                    <DetailField label="Ngày sinh"     value={detail.customer?.dateOfBirth ? new Date(detail.customer.dateOfBirth).toLocaleDateString('vi-VN') : ''} />
+                    <DetailField label="Mã KH"         value={detail.customer?.id ? `#${detail.customer.id}` : ''} />
+                  </div>
+                ) : (
+                  <form className="abk-edit-form" onSubmit={saveCustomer}>
+                    <div className="abk-edit-grid">
+                      <label className="abk-edit-field">
+                        <span>Họ tên <em>*</em></span>
+                        <input required maxLength={100} value={custForm.fullName}
+                          onChange={e => setCustForm(f => ({ ...f, fullName: e.target.value }))} />
+                      </label>
+                      <label className="abk-edit-field">
+                        <span>Điện thoại <em>*</em></span>
+                        <input required maxLength={10} value={custForm.phone}
+                          onChange={e => setCustForm(f => ({ ...f, phone: e.target.value }))} />
+                      </label>
+                      <label className="abk-edit-field abk-edit-field--wide">
+                        <span>Địa chỉ</span>
+                        <input maxLength={255} value={custForm.address}
+                          onChange={e => setCustForm(f => ({ ...f, address: e.target.value }))} />
+                      </label>
+                      <label className="abk-edit-field">
+                        <span>Ngày sinh</span>
+                        <input type="date" value={custForm.dateOfBirth}
+                          onChange={e => setCustForm(f => ({ ...f, dateOfBirth: e.target.value }))} />
+                      </label>
+                    </div>
+                    {custError && <p className="abk-edit-error">{custError}</p>}
+                    <div className="abk-edit-actions">
+                      <button type="button" className="abk-action-secondary" onClick={() => setEditCustomer(false)}>Huỷ</button>
+                      <button type="submit" className="abk-action-primary" disabled={custSaving}>
+                        {custSaving ? 'Đang lưu...' : 'Lưu thay đổi'}
+                      </button>
+                    </div>
+                  </form>
+                )}
               </section>
 
+              {/* ══════════════════════════════════════════
+                  THÔNG TIN ĐẶT PHÒNG
+              ══════════════════════════════════════════ */}
               <section className="abk-detail-section">
-                <h4>Thông tin đặt phòng</h4>
-                <div className="abk-detail-grid">
-                  <DetailField label="Phòng" value={`${detail.roomNumber} · ${detail.roomTypeName || 'Chưa phân loại'}`} />
-                  <DetailField label="Ngày đặt" value={formatDateTime(detail.bookingDate)} />
-                  <DetailField label="Nhận phòng dự kiến" value={formatDateTime(detail.checkInTarget)} />
-                  <DetailField label="Trả phòng dự kiến" value={formatDateTime(detail.checkOutTarget)} />
-                  <DetailField label="Người lớn" value={detail.numberOfAdults} />
-                  <DetailField label="Trẻ em" value={detail.numberOfChildren} />
-                  <DetailField label="Loại thuê" value={detail.rentType} />
-                  <DetailField label="Trạng thái booking" value={statusLabel(detail.bookingStatus)} />
-                  <DetailField label="Giá lúc đặt" value={formatMoney(detail.priceAtBooking)} />
-                  <DetailField label="Đã thanh toán" value={formatMoney(detail.paidAmount)} />
+                <div className="abk-section-head">
+                  <h4>Thông tin đặt phòng</h4>
+                  {canEdit && !editBooking && (
+                    <button type="button" className="abk-edit-btn" onClick={() => { setEditBooking(true); setEditCustomer(false) }}>
+                      ✏️ Chỉnh sửa
+                    </button>
+                  )}
+                  {editBooking && (
+                    <button type="button" className="abk-edit-btn abk-edit-btn--cancel" onClick={() => setEditBooking(false)}>
+                      Huỷ
+                    </button>
+                  )}
                 </div>
+
+                {!editBooking ? (
+                  <div className="abk-detail-grid">
+                    <DetailField label="Phòng"            value={`${detail.roomNumber} · ${detail.roomTypeName || 'Chưa phân loại'}`} />
+                    <DetailField label="Ngày đặt"         value={formatDateTime(detail.bookingDate)} />
+                    <DetailField label="Nhận phòng"       value={formatDateTime(detail.checkInTarget)} />
+                    <DetailField label="Trả phòng"        value={formatDateTime(detail.checkOutTarget)} />
+                    <DetailField label="Người lớn"        value={detail.numberOfAdults} />
+                    <DetailField label="Trẻ em"           value={detail.numberOfChildren} />
+                    <DetailField label="Loại thuê"        value={detail.rentType} />
+                    <DetailField label="Trạng thái"       value={statusLabel(detail.bookingStatus)} />
+                    <DetailField label="Giá lúc đặt"      value={formatMoney(detail.priceAtBooking)} />
+                    <DetailField label="Đã thanh toán"    value={formatMoney(detail.paidAmount)} />
+                  </div>
+                ) : (
+                  <form className="abk-edit-form" onSubmit={saveBooking}>
+                    <div className="abk-edit-grid">
+                      <label className="abk-edit-field">
+                        <span>Nhận phòng dự kiến <em>*</em></span>
+                        <input required type="datetime-local" value={bookForm.checkInTarget}
+                          onChange={e => setBookForm(f => ({ ...f, checkInTarget: e.target.value }))} />
+                      </label>
+                      <label className="abk-edit-field">
+                        <span>Trả phòng dự kiến <em>*</em></span>
+                        <input required type="datetime-local" value={bookForm.checkOutTarget}
+                          onChange={e => setBookForm(f => ({ ...f, checkOutTarget: e.target.value }))} />
+                      </label>
+                      <label className="abk-edit-field">
+                        <span>Số người lớn <em>*</em></span>
+                        <input required type="number" min={1} value={bookForm.numberOfAdults}
+                          onChange={e => setBookForm(f => ({ ...f, numberOfAdults: e.target.value }))} />
+                      </label>
+                      <label className="abk-edit-field">
+                        <span>Số trẻ em <em>*</em></span>
+                        <input required type="number" min={0} value={bookForm.numberOfChildren}
+                          onChange={e => setBookForm(f => ({ ...f, numberOfChildren: e.target.value }))} />
+                      </label>
+                      <label className="abk-edit-field abk-edit-field--wide">
+                        <span>Đổi gói thuê <small>(để trống = giữ nguyên giá cũ)</small></span>
+                        <select value={bookForm.pricePolicyId}
+                          onChange={e => setBookForm(f => ({ ...f, pricePolicyId: e.target.value }))}>
+                          <option value="">— Giữ nguyên gói hiện tại ({detail.rentType}) —</option>
+                          {pricePolicies.map(p => (
+                            <option key={p.id} value={p.id}>
+                              {p.policyName}{p.limitHours ? ` · ${p.limitHours}h` : ''}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
+                    <div className="abk-edit-hint">
+                      ℹ️ Giá sẽ được tính lại theo gói thuê và ngày check-in mới nếu bạn đổi gói.
+                    </div>
+                    {bookError && <p className="abk-edit-error">{bookError}</p>}
+                    <div className="abk-edit-actions">
+                      <button type="button" className="abk-action-secondary" onClick={() => setEditBooking(false)}>Huỷ</button>
+                      <button type="submit" className="abk-action-primary" disabled={bookSaving}>
+                        {bookSaving ? 'Đang lưu...' : 'Lưu thay đổi'}
+                      </button>
+                    </div>
+                  </form>
+                )}
               </section>
 
               {stayOpen && (
@@ -921,7 +1129,13 @@ function AdminBookingsPage() {
     loadDetail(bookingDetailId)
   }
 
-  const runDetailAction = (action, body) => {
+  const runDetailAction = (action, body, directData) => {
+    // '__refresh__' là signal từ inline edit form — data đã có sẵn, chỉ cần set state
+    if (action === '__refresh__') {
+      if (directData) setSelectedDetail(directData)
+      loadSchedule()
+      return
+    }
     if (!selectedBookingDetailId) return
     setActionLoading(true)
     setActionError('')

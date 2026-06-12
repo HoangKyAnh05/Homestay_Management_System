@@ -4,6 +4,8 @@ import com.homestayManagement.homestayManagement.dto.request.AdminBookingAddMini
 import com.homestayManagement.homestayManagement.dto.request.AdminBookingAddPenaltyRequest;
 import com.homestayManagement.homestayManagement.dto.request.AdminBookingAddServiceRequest;
 import com.homestayManagement.homestayManagement.dto.request.AdminDirectBookingRequest;
+import com.homestayManagement.homestayManagement.dto.request.AdminUpdateBookingCustomerRequest;
+import com.homestayManagement.homestayManagement.dto.request.AdminUpdateBookingDetailRequest;
 import com.homestayManagement.homestayManagement.dto.response.AdminBookingDetailResponse;
 import com.homestayManagement.homestayManagement.dto.response.AdminBookingScheduleResponse;
 import com.homestayManagement.homestayManagement.dto.response.AdminDirectBookingRoomResponse;
@@ -58,6 +60,22 @@ public class AdminBookingController {
     @PostMapping("/direct")
     public AdminBookingDetailResponse createDirectBooking(@Valid @RequestBody AdminDirectBookingRequest request) {
         return adminBookingService.createDirectBooking(request);
+    }
+
+    @PutMapping("/details/{bookingDetailId}/customer")
+    public AdminBookingDetailResponse updateBookingCustomer(
+            @PathVariable Long bookingDetailId,
+            @Valid @RequestBody AdminUpdateBookingCustomerRequest request
+    ) {
+        return adminBookingService.updateBookingCustomer(bookingDetailId, request);
+    }
+
+    @PutMapping("/details/{bookingDetailId}/booking-info")
+    public AdminBookingDetailResponse updateBookingDetail(
+            @PathVariable Long bookingDetailId,
+            @Valid @RequestBody AdminUpdateBookingDetailRequest request
+    ) {
+        return adminBookingService.updateBookingDetail(bookingDetailId, request);
     }
 
     @PostMapping("/details/{bookingDetailId}/check-in")
