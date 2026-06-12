@@ -18,6 +18,7 @@ import com.homestayManagement.homestayManagement.repository.FacilityServiceRepos
 import com.homestayManagement.homestayManagement.repository.InventoryServiceRepository;
 import com.homestayManagement.homestayManagement.repository.RoomMiniBarItemRepository;
 import com.homestayManagement.homestayManagement.repository.RulesPenaltyRepository;
+import com.homestayManagement.homestayManagement.repository.EmployeeRepository;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
@@ -46,6 +47,7 @@ class AdminBookingServiceImplTest {
     private final InventoryServiceRepository inventoryServiceRepository = mock(InventoryServiceRepository.class);
     private final RoomMiniBarItemRepository roomMiniBarItemRepository = mock(RoomMiniBarItemRepository.class);
     private final RulesPenaltyRepository rulesPenaltyRepository = mock(RulesPenaltyRepository.class);
+    private final EmployeeRepository employeeRepository = mock(EmployeeRepository.class);
     private final AdminBookingServiceImpl service = new AdminBookingServiceImpl(
             bookingDetailRepository,
             roomRepository,
@@ -58,7 +60,8 @@ class AdminBookingServiceImplTest {
             facilityServiceRepository,
             inventoryServiceRepository,
             roomMiniBarItemRepository,
-            rulesPenaltyRepository
+            rulesPenaltyRepository,
+            employeeRepository
     );
 
     @Test

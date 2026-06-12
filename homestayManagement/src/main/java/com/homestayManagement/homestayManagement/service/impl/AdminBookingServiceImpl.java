@@ -22,6 +22,7 @@ import com.homestayManagement.homestayManagement.entity.Booking;
 import com.homestayManagement.homestayManagement.entity.BookingDetail;
 import com.homestayManagement.homestayManagement.entity.CheckInRecord;
 import com.homestayManagement.homestayManagement.entity.Customer;
+import com.homestayManagement.homestayManagement.entity.Employee;
 import com.homestayManagement.homestayManagement.entity.FacilityService;
 import com.homestayManagement.homestayManagement.entity.Invoice;
 import com.homestayManagement.homestayManagement.entity.InventoryService;
@@ -34,6 +35,7 @@ import com.homestayManagement.homestayManagement.entity.ServiceUsage;
 import com.homestayManagement.homestayManagement.repository.AppliedPenaltyRepository;
 import com.homestayManagement.homestayManagement.repository.BookingDetailRepository;
 import com.homestayManagement.homestayManagement.repository.CheckInRecordRepository;
+import com.homestayManagement.homestayManagement.repository.EmployeeRepository;
 import com.homestayManagement.homestayManagement.repository.FacilityServiceRepository;
 import com.homestayManagement.homestayManagement.repository.InvoiceRepository;
 import com.homestayManagement.homestayManagement.repository.InventoryServiceRepository;
@@ -46,6 +48,8 @@ import com.homestayManagement.homestayManagement.repository.ServiceUsageReposito
 import com.homestayManagement.homestayManagement.service.AdminBookingService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
@@ -71,6 +75,7 @@ public class AdminBookingServiceImpl implements AdminBookingService {
     private final InventoryServiceRepository inventoryServiceRepository;
     private final RoomMiniBarItemRepository roomMiniBarItemRepository;
     private final RulesPenaltyRepository rulesPenaltyRepository;
+    private final EmployeeRepository employeeRepository;
 
     public AdminBookingServiceImpl(
             BookingDetailRepository bookingDetailRepository,
@@ -84,7 +89,8 @@ public class AdminBookingServiceImpl implements AdminBookingService {
             FacilityServiceRepository facilityServiceRepository,
             InventoryServiceRepository inventoryServiceRepository,
             RoomMiniBarItemRepository roomMiniBarItemRepository,
-            RulesPenaltyRepository rulesPenaltyRepository
+            RulesPenaltyRepository rulesPenaltyRepository,
+            EmployeeRepository employeeRepository
     ) {
         this.bookingDetailRepository = bookingDetailRepository;
         this.roomRepository = roomRepository;
@@ -98,6 +104,7 @@ public class AdminBookingServiceImpl implements AdminBookingService {
         this.inventoryServiceRepository = inventoryServiceRepository;
         this.roomMiniBarItemRepository = roomMiniBarItemRepository;
         this.rulesPenaltyRepository = rulesPenaltyRepository;
+        this.employeeRepository = employeeRepository;
     }
 
     @Override
@@ -191,6 +198,7 @@ public class AdminBookingServiceImpl implements AdminBookingService {
                 CheckInRecord.builder()
                         .bookingDetail(detail)
                         .customer(detail.getBooking().getCustomer())
+                        .receptionist(getCurrentEmployee())
                         .actualCheckIn(LocalDateTime.now())
                         .earlyCheckInFee(BigDecimal.ZERO)
                         .lateCheckOutFee(BigDecimal.ZERO)
@@ -268,6 +276,43 @@ public class AdminBookingServiceImpl implements AdminBookingService {
                 .actualFine(request.amount())
                 .description(request.description())
                 .build());
+        return getBookingDetail(bookingDetailId);
+    }
+
+    @Override
+    @Transactional
+    public AdminBookingDetailResponse generateInvoice(Long bookingDetailId) {
+        BookingDetail detail = bookingDetailRepository.findByIdForAdminDetail(bookingDetailId)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đơn đặt phòng"));
+        Booking booking = detail.getBooking();
+        if ("CANCELLED".equalsIgnoreCase(booking.getStatus())) {
+            throw new IllegalArgumentException("Không thể tạo hóa đơn cho đơn đã hủy");
+        }
+        if (checkInRecordRepository.findByBookingIdForInvoice(booking.getId()).isEmpty()) {
+            throw new IllegalArgumentException("Vui lòng check-in trước khi tạo hóa đơn");
+        }
+
+        BigDecimal roomCharge = bookingDetailRepository.findByBookingId(booking.getId()).stream()
+                .filter(item -> !"CANCELLED".equalsIgnoreCase(item.getStatus()))
+                .map(BookingDetail::getPriceAtBooking)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal serviceCharge = calculateServiceCharge(booking.getId());
+        BigDecimal penaltyCharge = calculatePenaltyCharge(booking.getId());
+        BigDecimal totalAmount = roomCharge.add(serviceCharge).add(penaltyCharge);
+
+        Invoice invoice = invoiceRepository.findByBookingIdForAdmin(booking.getId())
+                .orElseGet(() -> Invoice.builder().booking(booking).createdAt(LocalDateTime.now()).build());
+        invoice.setEmployee(getCurrentEmployee());
+        invoice.setRoomCharge(roomCharge);
+        invoice.setServiceCharge(serviceCharge);
+        invoice.setPenaltyCharge(penaltyCharge);
+        invoice.setTotalAmount(totalAmount);
+        if (invoice.getCreatedAt() == null) {
+            invoice.setCreatedAt(LocalDateTime.now());
+        }
+        invoiceRepository.save(invoice);
+
         return getBookingDetail(bookingDetailId);
     }
 
@@ -408,6 +453,39 @@ public class AdminBookingServiceImpl implements AdminBookingService {
     private CheckInRecord requireCheckInRecord(Long bookingDetailId) {
         return checkInRecordRepository.findByBookingDetailId(bookingDetailId)
                 .orElseThrow(() -> new IllegalArgumentException("Vui lòng check-in trước khi ghi nhận phát sinh"));
+    }
+
+    private BigDecimal calculateServiceCharge(Long bookingId) {
+        BigDecimal serviceTotal = serviceUsageRepository.findByBookingIdForInvoice(bookingId).stream()
+                .map(usage -> usage.getPriceAtUse().multiply(BigDecimal.valueOf(usage.getQuantity())))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal miniBarTotal = roomAmenitiesUsageRepository.findByBookingIdForInvoice(bookingId).stream()
+                .map(usage -> usage.getItem().getPrice().multiply(BigDecimal.valueOf(usage.getQuantityUsed())))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        return serviceTotal.add(miniBarTotal);
+    }
+
+    private BigDecimal calculatePenaltyCharge(Long bookingId) {
+        BigDecimal timePenalty = checkInRecordRepository.findByBookingIdForInvoice(bookingId).stream()
+                .map(record -> safeAmount(record.getEarlyCheckInFee()).add(safeAmount(record.getLateCheckOutFee())))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal rulePenalty = appliedPenaltyRepository.findByBookingIdForInvoice(bookingId).stream()
+                .map(AppliedPenalty::getActualFine)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        return timePenalty.add(rulePenalty);
+    }
+
+    private BigDecimal safeAmount(BigDecimal value) {
+        return value != null ? value : BigDecimal.ZERO;
+    }
+
+    private Employee getCurrentEmployee() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || authentication.getName() == null) {
+            throw new IllegalArgumentException("Không xác định được nhân viên đang đăng nhập");
+        }
+        return employeeRepository.findByAccountEmail(authentication.getName())
+                .orElseThrow(() -> new IllegalArgumentException("Tài khoản hiện tại chưa có hồ sơ nhân viên"));
     }
 
     private FacilityServiceResponse toFacilityServiceResponse(FacilityService service) {

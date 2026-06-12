@@ -16,4 +16,5 @@ public interface AdminBookingService {
     AdminBookingDetailResponse addService(Long bookingDetailId, AdminBookingAddServiceRequest request);
     AdminBookingDetailResponse addMiniBar(Long bookingDetailId, AdminBookingAddMiniBarRequest request);
     AdminBookingDetailResponse addPenalty(Long bookingDetailId, AdminBookingAddPenaltyRequest request);
+    AdminBookingDetailResponse generateInvoice(Long bookingDetailId);
 }

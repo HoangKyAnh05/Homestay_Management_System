@@ -73,6 +73,11 @@ public class AdminBookingController {
         return adminBookingService.addPenalty(bookingDetailId, request);
     }
 
+    @PostMapping("/details/{bookingDetailId}/invoice")
+    public AdminBookingDetailResponse generateInvoice(@PathVariable Long bookingDetailId) {
+        return adminBookingService.generateInvoice(bookingDetailId);
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String, String>> handleIllegal(IllegalArgumentException e) {
         return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));

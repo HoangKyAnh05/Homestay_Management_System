@@ -39,4 +39,6 @@ public interface BookingDetailRepository extends JpaRepository<BookingDetail, Lo
             where bd.id = :id
             """)
     Optional<BookingDetail> findByIdForAdminDetail(@Param("id") Long id);
+
+    List<BookingDetail> findByBookingId(Long bookingId);
 }

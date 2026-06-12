@@ -91,6 +91,11 @@ function overlapsDay(booking, day) {
   return start < dayEnd && end > dayStart
 }
 
+function isCheckInDay(booking, day) {
+  if (!booking.checkInTarget) return false
+  return toDateKey(new Date(booking.checkInTarget)) === toDateKey(day)
+}
+
 function roomMatchesSearch(room, bookings, keyword) {
   if (!keyword) return true
   const roomText = `${room.roomNumber || ''} ${room.roomTypeName || ''}`.toLowerCase()
@@ -280,7 +285,7 @@ function BookingDetailModal({ detail, loading, error, actionLoading, actionError
                             <div>
                               <strong>Ca lưu trú #{record.id}</strong>
                               <span>Check-in {formatDateTime(record.actualCheckIn)} · Check-out {formatDateTime(record.actualCheckOut)}</span>
-                              <span>Lễ tân: {record.receptionistName || 'Chưa có'} · Buồng phòng: {record.housekeepingName || 'Chưa có'}</span>
+                              <span>Lễ tân: {record.receptionistName || 'Chưa có'} · Phòng {detail.roomNumber}</span>
                             </div>
                             <strong>{formatMoney(Number(record.earlyCheckInFee || 0) + Number(record.lateCheckOutFee || 0))}</strong>
                           </div>
@@ -366,7 +371,12 @@ function BookingDetailModal({ detail, loading, error, actionLoading, actionError
                   </div>
 
                   <div className="abk-stay-block">
-                    <h5>Hóa đơn và thanh toán</h5>
+                    <div className="abk-block-title-row">
+                      <h5>Hóa đơn và thanh toán</h5>
+                      <button type="button" disabled={actionLoading} onClick={() => onAction('invoice')}>
+                        Generate hóa đơn
+                      </button>
+                    </div>
                     {detail.invoice ? (
                       <>
                         <div className="abk-detail-grid">
@@ -619,7 +629,7 @@ function AdminBookingsPage() {
                   </div>
                   {weekDays.map(day => {
                     const dayBookings = visibleBookings
-                      .filter(booking => booking.roomId === room.id && overlapsDay(booking, day))
+                      .filter(booking => booking.roomId === room.id && isCheckInDay(booking, day))
                       .sort((a, b) => new Date(a.checkInTarget) - new Date(b.checkInTarget))
                     return (
                       <div className="abk-day-cell" key={`${room.id}-${toDateKey(day)}`}>

@@ -587,6 +587,36 @@
   font-size: 14px;
 }
 
+.abk-block-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.abk-block-title-row h5 {
+  margin-bottom: 0;
+}
+
+.abk-block-title-row button {
+  height: 34px;
+  border: 0;
+  border-radius: 8px;
+  padding: 0 12px;
+  background: #111827;
+  color: #ffffff;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.abk-block-title-row button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 .abk-add-row {
   display: flex;
   flex-wrap: wrap;
