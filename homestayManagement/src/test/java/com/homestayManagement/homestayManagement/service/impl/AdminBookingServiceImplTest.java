@@ -14,6 +14,10 @@ import com.homestayManagement.homestayManagement.repository.InvoiceRepository;
 import com.homestayManagement.homestayManagement.repository.PaymentRepository;
 import com.homestayManagement.homestayManagement.repository.RoomAmenitiesUsageRepository;
 import com.homestayManagement.homestayManagement.repository.ServiceUsageRepository;
+import com.homestayManagement.homestayManagement.repository.FacilityServiceRepository;
+import com.homestayManagement.homestayManagement.repository.InventoryServiceRepository;
+import com.homestayManagement.homestayManagement.repository.RoomMiniBarItemRepository;
+import com.homestayManagement.homestayManagement.repository.RulesPenaltyRepository;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
@@ -38,6 +42,10 @@ class AdminBookingServiceImplTest {
     private final AppliedPenaltyRepository appliedPenaltyRepository = mock(AppliedPenaltyRepository.class);
     private final InvoiceRepository invoiceRepository = mock(InvoiceRepository.class);
     private final PaymentRepository paymentRepository = mock(PaymentRepository.class);
+    private final FacilityServiceRepository facilityServiceRepository = mock(FacilityServiceRepository.class);
+    private final InventoryServiceRepository inventoryServiceRepository = mock(InventoryServiceRepository.class);
+    private final RoomMiniBarItemRepository roomMiniBarItemRepository = mock(RoomMiniBarItemRepository.class);
+    private final RulesPenaltyRepository rulesPenaltyRepository = mock(RulesPenaltyRepository.class);
     private final AdminBookingServiceImpl service = new AdminBookingServiceImpl(
             bookingDetailRepository,
             roomRepository,
@@ -46,7 +54,11 @@ class AdminBookingServiceImplTest {
             roomAmenitiesUsageRepository,
             appliedPenaltyRepository,
             invoiceRepository,
-            paymentRepository
+            paymentRepository,
+            facilityServiceRepository,
+            inventoryServiceRepository,
+            roomMiniBarItemRepository,
+            rulesPenaltyRepository
     );
 
     @Test

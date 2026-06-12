@@ -7,26 +7,41 @@ import com.homestayManagement.homestayManagement.dto.response.AdminBookingInvoic
 import com.homestayManagement.homestayManagement.dto.response.AdminBookingRoomResponse;
 import com.homestayManagement.homestayManagement.dto.response.AdminBookingScheduleItemResponse;
 import com.homestayManagement.homestayManagement.dto.response.AdminBookingScheduleResponse;
+import com.homestayManagement.homestayManagement.dto.request.AdminBookingAddMiniBarRequest;
+import com.homestayManagement.homestayManagement.dto.request.AdminBookingAddPenaltyRequest;
+import com.homestayManagement.homestayManagement.dto.request.AdminBookingAddServiceRequest;
+import com.homestayManagement.homestayManagement.dto.response.FacilityServiceResponse;
+import com.homestayManagement.homestayManagement.dto.response.InventoryServiceResponse;
 import com.homestayManagement.homestayManagement.dto.response.AdminInvoicePenaltyItemResponse;
 import com.homestayManagement.homestayManagement.dto.response.AdminInvoiceServiceItemResponse;
 import com.homestayManagement.homestayManagement.dto.response.AdminPaymentResponse;
+import com.homestayManagement.homestayManagement.dto.response.RoomMiniBarItemResponse;
+import com.homestayManagement.homestayManagement.dto.response.RulesPenaltyResponse;
 import com.homestayManagement.homestayManagement.entity.AppliedPenalty;
 import com.homestayManagement.homestayManagement.entity.Booking;
 import com.homestayManagement.homestayManagement.entity.BookingDetail;
 import com.homestayManagement.homestayManagement.entity.CheckInRecord;
 import com.homestayManagement.homestayManagement.entity.Customer;
+import com.homestayManagement.homestayManagement.entity.FacilityService;
 import com.homestayManagement.homestayManagement.entity.Invoice;
+import com.homestayManagement.homestayManagement.entity.InventoryService;
 import com.homestayManagement.homestayManagement.entity.Payment;
 import com.homestayManagement.homestayManagement.entity.Room;
 import com.homestayManagement.homestayManagement.entity.RoomAmenitiesUsage;
+import com.homestayManagement.homestayManagement.entity.RoomMiniBarItem;
+import com.homestayManagement.homestayManagement.entity.RulesPenalty;
 import com.homestayManagement.homestayManagement.entity.ServiceUsage;
 import com.homestayManagement.homestayManagement.repository.AppliedPenaltyRepository;
 import com.homestayManagement.homestayManagement.repository.BookingDetailRepository;
 import com.homestayManagement.homestayManagement.repository.CheckInRecordRepository;
+import com.homestayManagement.homestayManagement.repository.FacilityServiceRepository;
 import com.homestayManagement.homestayManagement.repository.InvoiceRepository;
+import com.homestayManagement.homestayManagement.repository.InventoryServiceRepository;
 import com.homestayManagement.homestayManagement.repository.PaymentRepository;
 import com.homestayManagement.homestayManagement.repository.RoomAmenitiesUsageRepository;
+import com.homestayManagement.homestayManagement.repository.RoomMiniBarItemRepository;
 import com.homestayManagement.homestayManagement.repository.RoomRepository;
+import com.homestayManagement.homestayManagement.repository.RulesPenaltyRepository;
 import com.homestayManagement.homestayManagement.repository.ServiceUsageRepository;
 import com.homestayManagement.homestayManagement.service.AdminBookingService;
 import org.springframework.stereotype.Service;
@@ -52,6 +67,10 @@ public class AdminBookingServiceImpl implements AdminBookingService {
     private final AppliedPenaltyRepository appliedPenaltyRepository;
     private final InvoiceRepository invoiceRepository;
     private final PaymentRepository paymentRepository;
+    private final FacilityServiceRepository facilityServiceRepository;
+    private final InventoryServiceRepository inventoryServiceRepository;
+    private final RoomMiniBarItemRepository roomMiniBarItemRepository;
+    private final RulesPenaltyRepository rulesPenaltyRepository;
 
     public AdminBookingServiceImpl(
             BookingDetailRepository bookingDetailRepository,
@@ -61,7 +80,11 @@ public class AdminBookingServiceImpl implements AdminBookingService {
             RoomAmenitiesUsageRepository roomAmenitiesUsageRepository,
             AppliedPenaltyRepository appliedPenaltyRepository,
             InvoiceRepository invoiceRepository,
-            PaymentRepository paymentRepository
+            PaymentRepository paymentRepository,
+            FacilityServiceRepository facilityServiceRepository,
+            InventoryServiceRepository inventoryServiceRepository,
+            RoomMiniBarItemRepository roomMiniBarItemRepository,
+            RulesPenaltyRepository rulesPenaltyRepository
     ) {
         this.bookingDetailRepository = bookingDetailRepository;
         this.roomRepository = roomRepository;
@@ -71,6 +94,10 @@ public class AdminBookingServiceImpl implements AdminBookingService {
         this.appliedPenaltyRepository = appliedPenaltyRepository;
         this.invoiceRepository = invoiceRepository;
         this.paymentRepository = paymentRepository;
+        this.facilityServiceRepository = facilityServiceRepository;
+        this.inventoryServiceRepository = inventoryServiceRepository;
+        this.roomMiniBarItemRepository = roomMiniBarItemRepository;
+        this.rulesPenaltyRepository = rulesPenaltyRepository;
     }
 
     @Override
@@ -143,8 +170,105 @@ public class AdminBookingServiceImpl implements AdminBookingService {
                 serviceItems,
                 penaltyItems,
                 invoice != null ? toInvoiceSummaryResponse(invoice) : null,
-                payments
+                payments,
+                facilityServiceRepository.findAll().stream().map(this::toFacilityServiceResponse).toList(),
+                inventoryServiceRepository.findAll().stream().map(this::toInventoryServiceResponse).toList(),
+                roomMiniBarItemRepository.findAll().stream().map(this::toMiniBarResponse).toList(),
+                rulesPenaltyRepository.findAll().stream().map(this::toRulesPenaltyResponse).toList()
         );
+    }
+
+    @Override
+    @Transactional
+    public AdminBookingDetailResponse checkIn(Long bookingDetailId) {
+        BookingDetail detail = bookingDetailRepository.findByIdForAdminDetail(bookingDetailId)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đơn đặt phòng"));
+        if ("CANCELLED".equalsIgnoreCase(detail.getStatus()) || "CANCELLED".equalsIgnoreCase(detail.getBooking().getStatus())) {
+            throw new IllegalArgumentException("Không thể check-in đơn đã hủy");
+        }
+
+        checkInRecordRepository.findByBookingDetailId(bookingDetailId).orElseGet(() -> checkInRecordRepository.save(
+                CheckInRecord.builder()
+                        .bookingDetail(detail)
+                        .customer(detail.getBooking().getCustomer())
+                        .actualCheckIn(LocalDateTime.now())
+                        .earlyCheckInFee(BigDecimal.ZERO)
+                        .lateCheckOutFee(BigDecimal.ZERO)
+                        .build()
+        ));
+        detail.setStatus("CHECKED_IN");
+        detail.getBooking().setStatus("CHECKED_IN");
+        bookingDetailRepository.save(detail);
+        return getBookingDetail(bookingDetailId);
+    }
+
+    @Override
+    @Transactional
+    public AdminBookingDetailResponse checkOut(Long bookingDetailId) {
+        BookingDetail detail = bookingDetailRepository.findByIdForAdminDetail(bookingDetailId)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đơn đặt phòng"));
+        CheckInRecord record = checkInRecordRepository.findByBookingDetailId(bookingDetailId)
+                .orElseThrow(() -> new IllegalArgumentException("Phòng này chưa check-in"));
+        if (record.getActualCheckOut() == null) {
+            record.setActualCheckOut(LocalDateTime.now());
+            checkInRecordRepository.save(record);
+        }
+        detail.setStatus("COMPLETED");
+        detail.getBooking().setStatus("COMPLETED");
+        bookingDetailRepository.save(detail);
+        return getBookingDetail(bookingDetailId);
+    }
+
+    @Override
+    @Transactional
+    public AdminBookingDetailResponse addService(Long bookingDetailId, AdminBookingAddServiceRequest request) {
+        CheckInRecord record = requireCheckInRecord(bookingDetailId);
+        String type = request.type().trim().toUpperCase();
+        ServiceUsage.ServiceUsageBuilder builder = ServiceUsage.builder()
+                .checkInRecord(record)
+                .quantity(request.quantity());
+        if ("FACILITY".equals(type)) {
+            FacilityService service = facilityServiceRepository.findById(request.serviceId())
+                    .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy dịch vụ tiện ích"));
+            builder.facilityService(service).priceAtUse(service.getPrice());
+        } else if ("INVENTORY".equals(type)) {
+            InventoryService service = inventoryServiceRepository.findById(request.serviceId())
+                    .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy dịch vụ kho"));
+            builder.inventoryService(service).priceAtUse(service.getPrice());
+        } else {
+            throw new IllegalArgumentException("Loại dịch vụ không hợp lệ");
+        }
+        serviceUsageRepository.save(builder.build());
+        return getBookingDetail(bookingDetailId);
+    }
+
+    @Override
+    @Transactional
+    public AdminBookingDetailResponse addMiniBar(Long bookingDetailId, AdminBookingAddMiniBarRequest request) {
+        CheckInRecord record = requireCheckInRecord(bookingDetailId);
+        RoomMiniBarItem item = roomMiniBarItemRepository.findById(request.itemId())
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy mini-bar"));
+        roomAmenitiesUsageRepository.save(RoomAmenitiesUsage.builder()
+                .checkInRecord(record)
+                .item(item)
+                .quantityUsed(request.quantity())
+                .build());
+        return getBookingDetail(bookingDetailId);
+    }
+
+    @Override
+    @Transactional
+    public AdminBookingDetailResponse addPenalty(Long bookingDetailId, AdminBookingAddPenaltyRequest request) {
+        CheckInRecord record = requireCheckInRecord(bookingDetailId);
+        RulesPenalty rulesPenalty = rulesPenaltyRepository.findById(request.rulesPenaltyId())
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy khoản phạt"));
+        appliedPenaltyRepository.save(AppliedPenalty.builder()
+                .checkRecord(record)
+                .rulesPenalty(rulesPenalty)
+                .actualFine(request.amount())
+                .description(request.description())
+                .build());
+        return getBookingDetail(bookingDetailId);
     }
 
     private LocalDate normalizeWeekStart(LocalDate weekStart) {
@@ -279,5 +403,26 @@ public class AdminBookingServiceImpl implements AdminBookingService {
                 payment.getStatus(),
                 payment.getPaymentTime()
         );
+    }
+
+    private CheckInRecord requireCheckInRecord(Long bookingDetailId) {
+        return checkInRecordRepository.findByBookingDetailId(bookingDetailId)
+                .orElseThrow(() -> new IllegalArgumentException("Vui lòng check-in trước khi ghi nhận phát sinh"));
+    }
+
+    private FacilityServiceResponse toFacilityServiceResponse(FacilityService service) {
+        return new FacilityServiceResponse(service.getId(), service.getName(), service.getPrice(), service.isActive());
+    }
+
+    private InventoryServiceResponse toInventoryServiceResponse(InventoryService service) {
+        return new InventoryServiceResponse(service.getId(), service.getName(), service.getPrice(), service.getQuantityInStock());
+    }
+
+    private RoomMiniBarItemResponse toMiniBarResponse(RoomMiniBarItem item) {
+        return new RoomMiniBarItemResponse(item.getId(), item.getName(), item.getPrice(), item.getQuantityInStock());
+    }
+
+    private RulesPenaltyResponse toRulesPenaltyResponse(RulesPenalty penalty) {
+        return new RulesPenaltyResponse(penalty.getId(), penalty.getTitle(), penalty.getPenaltyAmount());
     }
 }

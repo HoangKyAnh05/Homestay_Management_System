@@ -24,6 +24,10 @@ public record AdminBookingDetailResponse(
         List<AdminInvoiceServiceItemResponse> serviceItems,
         List<AdminInvoicePenaltyItemResponse> penaltyItems,
         AdminBookingInvoiceSummaryResponse invoice,
-        List<AdminPaymentResponse> payments
+        List<AdminPaymentResponse> payments,
+        List<FacilityServiceResponse> facilityServices,
+        List<InventoryServiceResponse> inventoryServices,
+        List<RoomMiniBarItemResponse> miniBarItems,
+        List<RulesPenaltyResponse> penaltyRules
 ) {
 }

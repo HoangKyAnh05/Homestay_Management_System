@@ -3,7 +3,8 @@ import { getStoredToken } from '../../services/authService'
 import AdminLayout from './AdminLayout'
 import './AdminBookingsPage.css'
 
-const API = 'http://localhost:8080/api/admin/bookings/schedule'
+const API_BASE = 'http://localhost:8080/api/admin/bookings'
+const SCHEDULE_API = `${API_BASE}/schedule`
 const PAGE_SIZE_OPTIONS = [6, 8, 12]
 
 function authHeaders() {
@@ -41,11 +42,6 @@ function formatShortDate(value) {
   return new Date(value).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })
 }
 
-function formatTime(value) {
-  if (!value) return ''
-  return new Date(value).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
-}
-
 function formatDateTime(value) {
   if (!value) return 'Chưa có'
   return new Date(value).toLocaleString('vi-VN', {
@@ -57,6 +53,11 @@ function formatDateTime(value) {
   })
 }
 
+function formatTime(value) {
+  if (!value) return ''
+  return new Date(value).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
+}
+
 function formatMoney(value) {
   return new Intl.NumberFormat('vi-VN').format(Number(value || 0)) + 'đ'
 }
@@ -65,7 +66,7 @@ function statusLabel(status) {
   const labels = {
     PENDING: 'Chờ xác nhận',
     CONFIRMED: 'Đã xác nhận',
-    CHECKED_IN: 'Đang lưu trú',
+    CHECKED_IN: 'Check in thành công',
     COMPLETED: 'Hoàn tất',
     CANCELLED: 'Đã hủy',
   }
@@ -141,7 +142,61 @@ function DetailField({ label, value }) {
   )
 }
 
-function BookingDetailModal({ detail, loading, error, onClose }) {
+function AddRow({ title, children, onSubmit, disabled }) {
+  return (
+    <form className="abk-add-row" onSubmit={onSubmit}>
+      <span>{title}</span>
+      {children}
+      <button type="submit" disabled={disabled} aria-label={title}>+</button>
+    </form>
+  )
+}
+
+function BookingDetailModal({ detail, loading, error, actionLoading, actionError, onClose, onRefresh, onAction }) {
+  const [stayOpen, setStayOpen] = useState(false)
+  const [serviceForm, setServiceForm] = useState({ type: 'FACILITY', serviceId: '', quantity: 1 })
+  const [miniBarForm, setMiniBarForm] = useState({ itemId: '', quantity: 1 })
+  const [penaltyForm, setPenaltyForm] = useState({ rulesPenaltyId: '', amount: '', description: '' })
+
+  useEffect(() => {
+    setStayOpen(false)
+    setServiceForm({ type: 'FACILITY', serviceId: '', quantity: 1 })
+    setMiniBarForm({ itemId: '', quantity: 1 })
+    setPenaltyForm({ rulesPenaltyId: '', amount: '', description: '' })
+  }, [detail?.bookingDetailId])
+
+  const hasCheckIn = Boolean(detail?.checkInRecords?.length)
+  const hasCheckOut = detail?.checkInRecords?.some(record => record.actualCheckOut)
+  const canCheckIn = detail && !hasCheckIn && !['CANCELLED', 'COMPLETED'].includes(String(detail.bookingStatus).toUpperCase())
+  const canCheckOut = detail && hasCheckIn && !hasCheckOut
+  const services = serviceForm.type === 'FACILITY' ? detail?.facilityServices || [] : detail?.inventoryServices || []
+
+  const submitService = (event) => {
+    event.preventDefault()
+    onAction('services', {
+      type: serviceForm.type,
+      serviceId: Number(serviceForm.serviceId),
+      quantity: Number(serviceForm.quantity),
+    })
+  }
+
+  const submitMiniBar = (event) => {
+    event.preventDefault()
+    onAction('mini-bar', {
+      itemId: Number(miniBarForm.itemId),
+      quantity: Number(miniBarForm.quantity),
+    })
+  }
+
+  const submitPenalty = (event) => {
+    event.preventDefault()
+    onAction('penalties', {
+      rulesPenaltyId: Number(penaltyForm.rulesPenaltyId),
+      amount: Number(penaltyForm.amount),
+      description: penaltyForm.description,
+    })
+  }
+
   return (
     <div className="abk-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="abk-modal">
@@ -160,6 +215,28 @@ function BookingDetailModal({ detail, loading, error, onClose }) {
             <div className="abk-empty abk-empty--error">{error}</div>
           ) : detail ? (
             <>
+              <div className="abk-modal-actions">
+                <span className={`abk-status-pill abk-status-pill--${String(detail.bookingStatus || '').toLowerCase()}`}>
+                  {statusLabel(detail.bookingStatus)}
+                </span>
+                <div>
+                  {canCheckIn && (
+                    <button type="button" className="abk-action-primary" disabled={actionLoading} onClick={() => onAction('check-in')}>
+                      Check in
+                    </button>
+                  )}
+                  {canCheckOut && (
+                    <button type="button" className="abk-action-primary" disabled={actionLoading} onClick={() => onAction('check-out')}>
+                      Check out
+                    </button>
+                  )}
+                  <button type="button" className="abk-action-secondary" onClick={() => setStayOpen(value => !value)}>
+                    Lưu trú
+                  </button>
+                </div>
+              </div>
+              {actionError && <div className="abk-inline-error">{actionError}</div>}
+
               <section className="abk-detail-section">
                 <h4>Thông tin khách hàng</h4>
                 <div className="abk-detail-grid">
@@ -183,101 +260,143 @@ function BookingDetailModal({ detail, loading, error, onClose }) {
                   <DetailField label="Trẻ em" value={detail.numberOfChildren} />
                   <DetailField label="Loại thuê" value={detail.rentType} />
                   <DetailField label="Trạng thái booking" value={statusLabel(detail.bookingStatus)} />
-                  <DetailField label="Trạng thái phòng đặt" value={statusLabel(detail.detailStatus)} />
                   <DetailField label="Giá lúc đặt" value={formatMoney(detail.priceAtBooking)} />
                 </div>
               </section>
 
-              <section className="abk-detail-section">
-                <h4>Lưu trú thực tế</h4>
-                {detail.checkInRecords?.length ? (
-                  <div className="abk-line-list">
-                    {detail.checkInRecords.map(record => (
-                      <div className="abk-line-row" key={record.id}>
-                        <div>
-                          <strong>Ca lưu trú #{record.id}</strong>
-                          <span>Check-in {formatDateTime(record.actualCheckIn)} · Check-out {formatDateTime(record.actualCheckOut)}</span>
-                          <span>Lễ tân: {record.receptionistName || 'Chưa có'} · Buồng phòng: {record.housekeepingName || 'Chưa có'}</span>
-                        </div>
-                        <strong>{formatMoney(Number(record.earlyCheckInFee || 0) + Number(record.lateCheckOutFee || 0))}</strong>
-                      </div>
-                    ))}
+              {stayOpen && (
+                <section className="abk-stay-panel">
+                  <div className="abk-stay-head">
+                    <h4>Lưu trú, dịch vụ, phụ phí, hóa đơn</h4>
+                    <button type="button" onClick={onRefresh}>Làm mới</button>
                   </div>
-                ) : (
-                  <div className="abk-empty abk-empty--sm">Chưa có dữ liệu check-in/check-out thực tế.</div>
-                )}
-              </section>
 
-              <section className="abk-detail-section">
-                <h4>Dịch vụ và mini-bar</h4>
-                {detail.serviceItems?.length ? (
-                  <div className="abk-line-list">
-                    {detail.serviceItems.map(item => (
-                      <div className="abk-line-row" key={`${item.type}-${item.id}`}>
-                        <div>
-                          <strong>{item.name}</strong>
-                          <span>{serviceTypeLabel(item.type)} · SL {item.quantity} × {formatMoney(item.unitPrice)}</span>
-                        </div>
-                        <strong>{formatMoney(item.totalPrice)}</strong>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="abk-empty abk-empty--sm">Chưa ghi nhận dịch vụ phát sinh cho đơn này.</div>
-                )}
-              </section>
-
-              <section className="abk-detail-section">
-                <h4>Phụ phí và khoản phạt</h4>
-                {detail.penaltyItems?.length ? (
-                  <div className="abk-line-list">
-                    {detail.penaltyItems.map(item => (
-                      <div className="abk-line-row" key={item.id}>
-                        <div>
-                          <strong>{item.title}</strong>
-                          <span>{item.description || 'Không có ghi chú'}</span>
-                        </div>
-                        <strong>{formatMoney(item.amount)}</strong>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="abk-empty abk-empty--sm">Không có khoản phạt cho đơn này.</div>
-                )}
-              </section>
-
-              <section className="abk-detail-section">
-                <h4>Hóa đơn và thanh toán</h4>
-                {detail.invoice ? (
-                  <>
-                    <div className="abk-detail-grid">
-                      <DetailField label="Mã hóa đơn" value={`#${detail.invoice.id}`} />
-                      <DetailField label="Tiền phòng" value={formatMoney(detail.invoice.roomCharge)} />
-                      <DetailField label="Dịch vụ" value={formatMoney(detail.invoice.serviceCharge)} />
-                      <DetailField label="Phạt" value={formatMoney(detail.invoice.penaltyCharge)} />
-                      <DetailField label="Tổng tiền" value={formatMoney(detail.invoice.totalAmount)} />
-                      <DetailField label="Người lập" value={detail.invoice.employeeName} />
-                    </div>
-                    {detail.payments?.length ? (
-                      <div className="abk-line-list abk-line-list--mt">
-                        {detail.payments.map(payment => (
-                          <div className="abk-line-row" key={payment.id}>
+                  <div className="abk-stay-block">
+                    <h5>Lưu trú thực tế</h5>
+                    {detail.checkInRecords?.length ? (
+                      <div className="abk-line-list">
+                        {detail.checkInRecords.map(record => (
+                          <div className="abk-line-row" key={record.id}>
                             <div>
-                              <strong>{payment.paymentMethod || 'Chưa rõ phương thức'}</strong>
-                              <span>{payment.transactionNo || 'Không có mã giao dịch'} · {formatDateTime(payment.paymentTime)}</span>
+                              <strong>Ca lưu trú #{record.id}</strong>
+                              <span>Check-in {formatDateTime(record.actualCheckIn)} · Check-out {formatDateTime(record.actualCheckOut)}</span>
+                              <span>Lễ tân: {record.receptionistName || 'Chưa có'} · Buồng phòng: {record.housekeepingName || 'Chưa có'}</span>
                             </div>
-                            <strong>{formatMoney(payment.amount)} · {paymentStatusLabel(payment.status)}</strong>
+                            <strong>{formatMoney(Number(record.earlyCheckInFee || 0) + Number(record.lateCheckOutFee || 0))}</strong>
                           </div>
                         ))}
                       </div>
                     ) : (
-                      <div className="abk-empty abk-empty--sm">Hóa đơn chưa có giao dịch thanh toán.</div>
+                      <div className="abk-empty abk-empty--sm">Chưa check-in.</div>
                     )}
-                  </>
-                ) : (
-                  <div className="abk-empty abk-empty--sm">Chưa lập hóa đơn cho booking này.</div>
-                )}
-              </section>
+                  </div>
+
+                  <div className="abk-stay-block">
+                    <h5>Dịch vụ</h5>
+                    <AddRow title="Thêm dịch vụ" onSubmit={submitService} disabled={actionLoading || !serviceForm.serviceId}>
+                      <select value={serviceForm.type} onChange={e => setServiceForm({ ...serviceForm, type: e.target.value, serviceId: '' })}>
+                        <option value="FACILITY">Tiện ích</option>
+                        <option value="INVENTORY">Thuê đồ</option>
+                      </select>
+                      <select value={serviceForm.serviceId} onChange={e => setServiceForm({ ...serviceForm, serviceId: e.target.value })}>
+                        <option value="">Chọn dịch vụ</option>
+                        {services.map(service => (
+                          <option key={service.id} value={service.id}>{service.name} · {formatMoney(service.price)}</option>
+                        ))}
+                      </select>
+                      <input type="number" min="1" value={serviceForm.quantity} onChange={e => setServiceForm({ ...serviceForm, quantity: e.target.value })} />
+                    </AddRow>
+                    {detail.serviceItems?.length ? (
+                      <div className="abk-line-list">
+                        {detail.serviceItems.map(item => (
+                          <div className="abk-line-row" key={`${item.type}-${item.id}`}>
+                            <div>
+                              <strong>{item.name}</strong>
+                              <span>{serviceTypeLabel(item.type)} · SL {item.quantity} × {formatMoney(item.unitPrice)}</span>
+                            </div>
+                            <strong>{formatMoney(item.totalPrice)}</strong>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="abk-empty abk-empty--sm">Chưa ghi nhận dịch vụ.</div>
+                    )}
+                  </div>
+
+                  <div className="abk-stay-block">
+                    <h5>Mini-bar</h5>
+                    <AddRow title="Thêm mini-bar" onSubmit={submitMiniBar} disabled={actionLoading || !miniBarForm.itemId}>
+                      <select value={miniBarForm.itemId} onChange={e => setMiniBarForm({ ...miniBarForm, itemId: e.target.value })}>
+                        <option value="">Chọn mini-bar</option>
+                        {detail.miniBarItems?.map(item => (
+                          <option key={item.id} value={item.id}>{item.name} · {formatMoney(item.price)}</option>
+                        ))}
+                      </select>
+                      <input type="number" min="1" value={miniBarForm.quantity} onChange={e => setMiniBarForm({ ...miniBarForm, quantity: e.target.value })} />
+                    </AddRow>
+                  </div>
+
+                  <div className="abk-stay-block">
+                    <h5>Phụ phí, khoản phạt</h5>
+                    <AddRow title="Thêm khoản phạt" onSubmit={submitPenalty} disabled={actionLoading || !penaltyForm.rulesPenaltyId || !penaltyForm.amount}>
+                      <select value={penaltyForm.rulesPenaltyId} onChange={e => setPenaltyForm({ ...penaltyForm, rulesPenaltyId: e.target.value })}>
+                        <option value="">Chọn khoản phạt</option>
+                        {detail.penaltyRules?.map(rule => (
+                          <option key={rule.id} value={rule.id}>{rule.title} · {formatMoney(rule.penaltyAmount)}</option>
+                        ))}
+                      </select>
+                      <input type="number" min="1" placeholder="Số tiền" value={penaltyForm.amount} onChange={e => setPenaltyForm({ ...penaltyForm, amount: e.target.value })} />
+                      <input placeholder="Ghi chú" value={penaltyForm.description} onChange={e => setPenaltyForm({ ...penaltyForm, description: e.target.value })} />
+                    </AddRow>
+                    {detail.penaltyItems?.length ? (
+                      <div className="abk-line-list">
+                        {detail.penaltyItems.map(item => (
+                          <div className="abk-line-row" key={item.id}>
+                            <div>
+                              <strong>{item.title}</strong>
+                              <span>{item.description || 'Không có ghi chú'}</span>
+                            </div>
+                            <strong>{formatMoney(item.amount)}</strong>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="abk-empty abk-empty--sm">Chưa có khoản phạt.</div>
+                    )}
+                  </div>
+
+                  <div className="abk-stay-block">
+                    <h5>Hóa đơn và thanh toán</h5>
+                    {detail.invoice ? (
+                      <>
+                        <div className="abk-detail-grid">
+                          <DetailField label="Mã hóa đơn" value={`#${detail.invoice.id}`} />
+                          <DetailField label="Tiền phòng" value={formatMoney(detail.invoice.roomCharge)} />
+                          <DetailField label="Dịch vụ" value={formatMoney(detail.invoice.serviceCharge)} />
+                          <DetailField label="Phạt" value={formatMoney(detail.invoice.penaltyCharge)} />
+                          <DetailField label="Tổng tiền" value={formatMoney(detail.invoice.totalAmount)} />
+                          <DetailField label="Người lập" value={detail.invoice.employeeName} />
+                        </div>
+                        {detail.payments?.length ? (
+                          <div className="abk-line-list abk-line-list--mt">
+                            {detail.payments.map(payment => (
+                              <div className="abk-line-row" key={payment.id}>
+                                <div>
+                                  <strong>{payment.paymentMethod || 'Chưa rõ phương thức'}</strong>
+                                  <span>{payment.transactionNo || 'Không có mã giao dịch'} · {formatDateTime(payment.paymentTime)}</span>
+                                </div>
+                                <strong>{formatMoney(payment.amount)} · {paymentStatusLabel(payment.status)}</strong>
+                              </div>
+                            ))}
+                          </div>
+                        ) : null}
+                      </>
+                    ) : (
+                      <div className="abk-empty abk-empty--sm">Chưa lập hóa đơn cho booking này.</div>
+                    )}
+                  </div>
+                </section>
+              )}
             </>
           ) : null}
         </div>
@@ -298,14 +417,17 @@ function AdminBookingsPage() {
   const [detailModalOpen, setDetailModalOpen] = useState(false)
   const [detailLoading, setDetailLoading] = useState(false)
   const [detailError, setDetailError] = useState('')
+  const [actionLoading, setActionLoading] = useState(false)
+  const [actionError, setActionError] = useState('')
   const [selectedDetail, setSelectedDetail] = useState(null)
+  const [selectedBookingDetailId, setSelectedBookingDetailId] = useState(null)
 
-  useEffect(() => {
+  const loadSchedule = () => {
     const controller = new AbortController()
     setLoading(true)
     setError('')
 
-    fetch(`${API}?weekStart=${weekStart}`, { headers: authHeaders(), signal: controller.signal })
+    fetch(`${SCHEDULE_API}?weekStart=${weekStart}`, { headers: authHeaders(), signal: controller.signal })
       .then(async res => {
         const data = await res.json().catch(() => ({}))
         if (!res.ok) throw new Error(data.message || 'Không tải được lịch đặt phòng')
@@ -325,12 +447,63 @@ function AdminBookingsPage() {
       })
       .finally(() => setLoading(false))
 
+    return controller
+  }
+
+  useEffect(() => {
+    const controller = loadSchedule()
     return () => controller.abort()
   }, [weekStart])
 
   useEffect(() => {
     setPage(1)
   }, [search, statusFilter, pageSize, weekStart])
+
+  const loadDetail = (bookingDetailId) => {
+    setSelectedBookingDetailId(bookingDetailId)
+    setDetailError('')
+    setActionError('')
+    setDetailLoading(true)
+
+    fetch(`${API_BASE}/details/${bookingDetailId}`, { headers: authHeaders() })
+      .then(async res => {
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok) throw new Error(data.message || 'Không tải được chi tiết đơn đặt phòng')
+        return data
+      })
+      .then(data => setSelectedDetail(data))
+      .catch(err => setDetailError(err.message || 'Không tải được chi tiết đơn đặt phòng'))
+      .finally(() => setDetailLoading(false))
+  }
+
+  const openDetail = (bookingDetailId) => {
+    setDetailModalOpen(true)
+    setSelectedDetail(null)
+    loadDetail(bookingDetailId)
+  }
+
+  const runDetailAction = (action, body) => {
+    if (!selectedBookingDetailId) return
+    setActionLoading(true)
+    setActionError('')
+
+    fetch(`${API_BASE}/details/${selectedBookingDetailId}/${action}`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: body ? JSON.stringify(body) : undefined,
+    })
+      .then(async res => {
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok) throw new Error(data.message || 'Không xử lý được yêu cầu')
+        return data
+      })
+      .then(data => {
+        setSelectedDetail(data)
+        loadSchedule()
+      })
+      .catch(err => setActionError(err.message || 'Không xử lý được yêu cầu'))
+      .finally(() => setActionLoading(false))
+  }
 
   const weekDays = useMemo(() => {
     const start = toDate(schedule.weekStart || weekStart)
@@ -363,23 +536,6 @@ function AdminBookingsPage() {
 
   const shiftWeek = amount => {
     setWeekStart(toDateKey(addDays(toDate(weekStart), amount * 7)))
-  }
-
-  const openDetail = (bookingDetailId) => {
-    setDetailModalOpen(true)
-    setSelectedDetail(null)
-    setDetailError('')
-    setDetailLoading(true)
-
-    fetch(`http://localhost:8080/api/admin/bookings/details/${bookingDetailId}`, { headers: authHeaders() })
-      .then(async res => {
-        const data = await res.json().catch(() => ({}))
-        if (!res.ok) throw new Error(data.message || 'Không tải được chi tiết đơn đặt phòng')
-        return data
-      })
-      .then(data => setSelectedDetail(data))
-      .catch(err => setDetailError(err.message || 'Không tải được chi tiết đơn đặt phòng'))
-      .finally(() => setDetailLoading(false))
   }
 
   return (
@@ -425,7 +581,7 @@ function AdminBookingsPage() {
           <option value="">Tất cả trạng thái</option>
           <option value="PENDING">Chờ xác nhận</option>
           <option value="CONFIRMED">Đã xác nhận</option>
-          <option value="CHECKED_IN">Đang lưu trú</option>
+          <option value="CHECKED_IN">Check in thành công</option>
           <option value="COMPLETED">Hoàn tất</option>
           <option value="CANCELLED">Đã hủy</option>
         </select>
@@ -500,7 +656,11 @@ function AdminBookingsPage() {
           detail={selectedDetail}
           loading={detailLoading}
           error={detailError}
+          actionLoading={actionLoading}
+          actionError={actionError}
           onClose={() => setDetailModalOpen(false)}
+          onRefresh={() => selectedBookingDetailId && loadDetail(selectedBookingDetailId)}
+          onAction={runDetailAction}
         />
       )}
     </AdminLayout>
