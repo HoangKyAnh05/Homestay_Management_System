@@ -109,7 +109,6 @@ function RoomsPage() {
   const [rooms, setRooms] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [keyword, setKeyword] = useState('')
   const [capacity, setCapacity] = useState('all')
   const [maxPrice, setMaxPrice] = useState(10000000)
 
@@ -132,19 +131,16 @@ function RoomsPage() {
   }, [rooms])
 
   const visibleRooms = useMemo(() => {
-    const normalizedKeyword = keyword.trim().toLowerCase()
     return rooms
       .filter((room) => {
         const price = Number(room.weekdayPrice || room.weekendPrice || 0)
         const matchesPrice = price <= maxPrice
-        const matchesKeyword = !normalizedKeyword
-          || `${room.roomNumber} ${room.roomTypeName} ${room.description}`.toLowerCase().includes(normalizedKeyword)
         const totalCapacity = Number(room.maxAdults || 0) + Number(room.maxChildren || 0)
         const matchesCapacity = capacity === 'all' || totalCapacity >= Number(capacity)
-        return matchesPrice && matchesKeyword && matchesCapacity
+        return matchesPrice && matchesCapacity
       })
       .sort((a, b) => Number(a.weekdayPrice || 0) - Number(b.weekdayPrice || 0))
-  }, [rooms, keyword, capacity, maxPrice])
+  }, [rooms, capacity, maxPrice])
 
   return (
     <div className="rooms-page">
@@ -153,25 +149,43 @@ function RoomsPage() {
       <main>
         <div className="rooms-shell">
           <aside className="rooms-sidebar" aria-label="Bộ lọc phòng">
-            <div className="rooms-sidebar-head">
-              <p>Không gian lưu trú</p>
-              <h1>Chọn phòng theo nhu cầu nghỉ, combo hoặc theo giờ</h1>
-            </div>
-
-            <div className="rooms-hero-panel">
-              <strong>{rooms.length}</strong>
-              <span>phòng trong hệ thống</span>
+            <div className="rooms-amenities-card" aria-label="Tiện ích nổi bật">
+              <h2>Tiện ích phòng</h2>
+              <div className="rooms-amenities-list">
+                <div>
+                  <span className="rooms-amenity-icon">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19h14M6 19v-6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v6M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+                  </span>
+                  <strong>Để xe tầng 1, thang máy</strong>
+                </div>
+                <div>
+                  <span className="rooms-amenity-icon">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="7" width="18" height="10" rx="2"/><path d="M7 17v2M17 17v2M8 11h8"/></svg>
+                  </span>
+                  <strong>Nệm dưới, gác xếp</strong>
+                </div>
+                <div>
+                  <span className="rooms-amenity-icon">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="6" width="16" height="12" rx="2"/><path d="m10 10 5 2-5 2z"/></svg>
+                  </span>
+                  <strong>Máy chiếu Netflix</strong>
+                </div>
+                <div>
+                  <span className="rooms-amenity-icon">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18H6zM9 7h6M9 11h6M9 15h6"/></svg>
+                  </span>
+                  <strong>Bếp đủ đồ, tủ lạnh</strong>
+                </div>
+                <div>
+                  <span className="rooms-amenity-icon">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="8" rx="2"/><path d="M7 17h10M8 13v3M16 13v3"/></svg>
+                  </span>
+                  <strong>Điều hòa, nóng lạnh</strong>
+                </div>
+              </div>
             </div>
 
             <div className="rooms-toolbar">
-              <label className="rooms-search-field">
-                <span>Tìm phòng</span>
-                <input
-                  value={keyword}
-                  onChange={(event) => setKeyword(event.target.value)}
-                  placeholder="Số phòng, loại phòng..."
-                />
-              </label>
               <label>
                 <span>Sức chứa</span>
                 <select value={capacity} onChange={(event) => setCapacity(event.target.value)}>

@@ -28,48 +28,6 @@
   gap: 18px;
 }
 
-.rooms-sidebar-head {
-  padding: 2px 2px 8px;
-}
-
-.rooms-sidebar-head p {
-  margin: 0 0 10px;
-  color: #6a6a6a;
-  font-size: 15px;
-  font-weight: 650;
-}
-
-.rooms-sidebar-head h1 {
-  margin: 0;
-  color: #222222;
-  font-size: 30px;
-  line-height: 1.18;
-  letter-spacing: 0;
-}
-
-.rooms-hero-panel {
-  min-width: 0;
-  padding: 18px 20px;
-  border: 1px solid #e7d5db;
-  border-radius: 18px;
-  background: linear-gradient(135deg, #fff7f9, #ffffff);
-  box-shadow: rgba(0, 0, 0, 0.05) 0 8px 22px;
-}
-
-.rooms-hero-panel strong {
-  display: block;
-  color: #ff385c;
-  font-size: 32px;
-  line-height: 1;
-}
-
-.rooms-hero-panel span {
-  display: block;
-  margin-top: 8px;
-  color: #6a6a6a;
-  font-size: 14px;
-}
-
 .rooms-toolbar {
   padding: 18px;
   display: grid;
@@ -111,6 +69,86 @@
 
 .rooms-price-filter input {
   accent-color: #ff385c;
+}
+
+.rooms-amenities-card {
+  position: relative;
+  overflow: hidden;
+  padding: 20px 18px 18px;
+  color: #15573a;
+  background: linear-gradient(135deg, #f4f8f1, #ffffff);
+  border: 1px solid #dce8d6;
+  border-radius: 20px;
+  box-shadow: rgba(21, 87, 58, 0.07) 0 10px 28px;
+}
+
+.rooms-amenities-card::before,
+.rooms-amenities-card::after {
+  content: "";
+  position: absolute;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 3px solid rgba(21, 87, 58, 0.12);
+  pointer-events: none;
+}
+
+.rooms-amenities-card::before {
+  left: -15px;
+  top: -15px;
+}
+
+.rooms-amenities-card::after {
+  right: -20px;
+  bottom: 22px;
+}
+
+.rooms-amenities-card h2 {
+  position: relative;
+  margin: 0 0 14px;
+  color: #15573a;
+  font-size: 20px;
+  line-height: 1.2;
+}
+
+.rooms-amenities-list {
+  position: relative;
+  display: grid;
+  gap: 13px;
+}
+
+.rooms-amenities-list div {
+  display: grid;
+  grid-template-columns: 38px 1fr;
+  align-items: center;
+  gap: 10px;
+}
+
+.rooms-amenity-icon {
+  width: 38px;
+  height: 38px;
+  display: inline-grid;
+  place-items: center;
+  color: #15573a;
+  background: #eaf4ec;
+  border: 1px solid #cfe1d4;
+  border-radius: 12px;
+}
+
+.rooms-amenity-icon svg {
+  width: 31px;
+  height: 31px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.rooms-amenities-list strong {
+  color: #1f4328;
+  font-size: 17px;
+  line-height: 1.25;
 }
 
 .rooms-results-panel {
@@ -310,7 +348,7 @@
   }
 
   .rooms-toolbar {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .public-rooms-grid {
@@ -321,10 +359,6 @@
 @media (max-width: 620px) {
   .rooms-page main {
     width: min(100% - 28px, 1180px);
-  }
-
-  .rooms-sidebar-head h1 {
-    font-size: 28px;
   }
 
   .rooms-toolbar {
