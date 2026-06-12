@@ -7,6 +7,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
+import java.time.LocalDateTime;
 
 public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
     @Query("""
@@ -27,4 +28,19 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
             where b.id = :bookingId
             """)
     Optional<Invoice> findByBookingIdForAdmin(@Param("bookingId") Long bookingId);
+
+    @Query("""
+            select distinct i from Invoice i
+            join fetch i.booking b
+            join fetch b.customer c
+            left join fetch c.account
+            join fetch i.employee e
+            where i.createdAt >= :startInclusive
+              and i.createdAt < :endExclusive
+            order by i.createdAt asc, i.id asc
+            """)
+    List<Invoice> findByCreatedAtRangeForDashboard(
+            @Param("startInclusive") LocalDateTime startInclusive,
+            @Param("endExclusive") LocalDateTime endExclusive
+    );
 }

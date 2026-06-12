@@ -58,4 +58,21 @@ public interface BookingDetailRepository extends JpaRepository<BookingDetail, Lo
             @Param("startInclusive") LocalDateTime startInclusive,
             @Param("endExclusive") LocalDateTime endExclusive
     );
+
+    @Query("""
+            select bd
+            from BookingDetail bd
+            join fetch bd.booking b
+            join fetch b.customer c
+            left join fetch c.account
+            join fetch bd.room r
+            join fetch r.roomType
+            where bd.checkInTarget < :endExclusive
+              and bd.checkOutTarget > :startInclusive
+            order by bd.checkInTarget asc, bd.id asc
+            """)
+    List<BookingDetail> findDashboardDetails(
+            @Param("startInclusive") LocalDateTime startInclusive,
+            @Param("endExclusive") LocalDateTime endExclusive
+    );
 }
