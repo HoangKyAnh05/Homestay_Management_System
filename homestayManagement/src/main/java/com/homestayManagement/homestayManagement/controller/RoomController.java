@@ -1,70 +1,54 @@
 package com.homestayManagement.homestayManagement.controller;
 
 import com.homestayManagement.homestayManagement.dto.response.RoomTypeResponse;
-import com.homestayManagement.homestayManagement.entity.Room;
-import com.homestayManagement.homestayManagement.entity.RoomImage;
-import com.homestayManagement.homestayManagement.entity.RoomType;
-import com.homestayManagement.homestayManagement.repository.RoomImageRepository;
-import com.homestayManagement.homestayManagement.repository.RoomRepository;
-import com.homestayManagement.homestayManagement.repository.RoomTypeRepository;
+import com.homestayManagement.homestayManagement.dto.response.RoomSearchResponse;
+import com.homestayManagement.homestayManagement.service.RoomService;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 
-import java.util.ArrayList;
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/rooms")
 public class RoomController {
 
-    private final RoomTypeRepository roomTypeRepository;
-    private final RoomRepository roomRepository;
-    private final RoomImageRepository roomImageRepository;
+    private final RoomService roomService;
 
-    public RoomController(
-            RoomTypeRepository roomTypeRepository,
-            RoomRepository roomRepository,
-            RoomImageRepository roomImageRepository
-    ) {
-        this.roomTypeRepository = roomTypeRepository;
-        this.roomRepository = roomRepository;
-        this.roomImageRepository = roomImageRepository;
+    public RoomController(RoomService roomService) {
+        this.roomService = roomService;
     }
 
     @GetMapping("/types")
     public List<RoomTypeResponse> getAllRoomTypes() {
-        return roomTypeRepository.findAll().stream()
-                .map(this::toResponse)
-                .toList();
+        return roomService.getAllRoomTypes();
     }
 
-    private RoomTypeResponse toResponse(RoomType roomType) {
-        List<Room> rooms = roomRepository.findByRoomTypeId(roomType.getId());
-        List<String> allUrls = new ArrayList<>();
-        String primaryUrl = null;
+    @GetMapping("/search")
+    public List<RoomSearchResponse> searchAvailableRooms(
+            @RequestParam
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            LocalDate checkInDate,
+            @RequestParam
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            LocalDate checkOutDate,
+            @RequestParam(defaultValue = "1") Integer rooms,
+            @RequestParam(defaultValue = "1") Integer adults,
+            @RequestParam(defaultValue = "0") Integer children,
+            @RequestParam(required = false) BigDecimal maxPrice
+    ) {
+        return roomService.searchAvailableRooms(checkInDate, checkOutDate, rooms, adults, children, maxPrice);
+    }
 
-        for (Room room : rooms) {
-            List<RoomImage> images = roomImageRepository.findByRoomId(room.getId());
-            for (RoomImage img : images) {
-                allUrls.add(img.getImageUrl());
-                if (primaryUrl == null && img.isPrimary()) {
-                    primaryUrl = img.getImageUrl();
-                }
-            }
-        }
-        if (primaryUrl == null && !allUrls.isEmpty()) {
-            primaryUrl = allUrls.get(0);
-        }
-
-        return new RoomTypeResponse(
-                roomType.getId(),
-                roomType.getName(),
-                roomType.getMaxAdults(),
-                roomType.getMaxChildren(),
-                roomType.getDescription(),
-                primaryUrl,
-                allUrls
-        );
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Map<String, String>> handleIllegal(IllegalArgumentException e) {
+        return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
     }
 }

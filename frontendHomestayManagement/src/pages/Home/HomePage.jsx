@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+﻿import { useEffect, useMemo, useState } from 'react'
 import HomeSearch from '../../components/HomeSearch/HomeSearch'
 import { getStoredUser, logout } from '../../services/authService'
 import { resolveImageUrl } from '../../utils/imageUrl'
@@ -7,7 +7,24 @@ import './HomePage.css'
 const API_BASE_URL = 'http://localhost:8080/api'
 
 function formatPrice(price) {
-  return new Intl.NumberFormat('vi-VN').format(price) + 'đ'
+  return new Intl.NumberFormat('vi-VN').format(Number(price || 0)) + 'đ'
+}
+
+function roomPrice(room) {
+  return Number(room.price ?? room.basePrice ?? 0)
+}
+
+function rentTypeLabel(rentType) {
+  const labels = {
+    OVERNIGHT: 'đêm',
+    NIGHTLY: 'đêm',
+    BY_NIGHT: 'đêm',
+    DAILY: 'ngày',
+    BY_DAY: 'ngày',
+    HOURLY: 'giờ',
+    COMBO: 'lượt',
+  }
+  return labels[String(rentType || '').toUpperCase()] || 'đêm'
 }
 
 function useRoomTypes() {
@@ -27,11 +44,30 @@ function useRoomTypes() {
 
 // Section: Các phòng nổi bật
 function RoomCard({ room }) {
+  const [priceMode, setPriceMode] = useState('weekday')
+  const title = room.name || room.roomTypeName || `Phòng ${room.roomNumber}`
+  const description = room.description || 'Không gian nghỉ dưỡng tiện nghi, phù hợp cho kỳ lưu trú của bạn.'
+  const hasRotatingPrice = Number(room.weekdayPrice || 0) > 0 && Number(room.weekendPrice || 0) > 0
+  const price = hasRotatingPrice
+    ? Number(priceMode === 'weekday' ? room.weekdayPrice : room.weekendPrice)
+    : roomPrice(room)
+  const priceNote = hasRotatingPrice
+    ? (priceMode === 'weekday' ? 'ngày thường' : 'cuối tuần')
+    : null
+
+  useEffect(() => {
+    if (!hasRotatingPrice) return undefined
+    const intervalId = window.setInterval(() => {
+      setPriceMode(current => current === 'weekday' ? 'weekend' : 'weekday')
+    }, 3000)
+    return () => window.clearInterval(intervalId)
+  }, [hasRotatingPrice])
+
   return (
     <article className="room-card">
       <div className="room-card-img">
         {room.primaryImageUrl ? (
-          <img src={resolveImageUrl(room.primaryImageUrl)} alt={room.name} loading="lazy" />
+          <img src={resolveImageUrl(room.primaryImageUrl)} alt={title} loading="lazy" />
         ) : (
           <div className="room-card-img-placeholder" />
         )}
@@ -41,16 +77,95 @@ function RoomCard({ room }) {
         </span>
       </div>
       <div className="room-card-body">
-        <h3>{room.name}</h3>
-        <p>{room.description}</p>
+        <h3>{title}</h3>
+        <p>{description}</p>
+        {room.roomNumber && (
+          <div className="room-card-meta">
+            <span>Phòng {room.roomNumber}</span>
+            <span>{room.maxAdults || 0} người lớn · {room.maxChildren || 0} trẻ em</span>
+          </div>
+        )}
         <div className="room-card-footer">
           <span className="room-card-price">
-            {formatPrice(room.basePrice)}<small>/đêm</small>
+            <span className="room-card-price-ticker" aria-live="polite">
+              <span className="room-card-price-slide" key={`${priceMode}-${price}`}>
+                <strong>{formatPrice(price)}</strong>
+                <small>/{rentTypeLabel(room.rentType)}{priceNote ? ` - ${priceNote}` : ''}</small>
+              </span>
+            </span>
           </span>
           <button className="room-card-btn" type="button">Đặt ngay</button>
         </div>
       </div>
     </article>
+  )
+}
+
+function SearchResultsSection({ criteria, rooms, loading, error, maxPrice, onMaxPriceChange }) {
+  const highestPrice = useMemo(() => {
+    const max = Math.max(...rooms.map(room => roomPrice(room)), 0)
+    return Math.max(max, 100000)
+  }, [rooms])
+
+  const visibleRooms = useMemo(() => {
+    return rooms
+      .filter(room => roomPrice(room) <= maxPrice)
+      .sort((a, b) => roomPrice(a) - roomPrice(b))
+  }, [rooms, maxPrice])
+
+  if (!criteria && !loading && !error) return null
+
+  return (
+    <section className="home-section search-results-section" id="search-results">
+      <div className="home-section-inner">
+        <div className="home-section-head">
+          <div>
+            <h2>Phòng trống phù hợp</h2>
+            <p>
+              {criteria
+                ? `Từ ${criteria.checkInDate} đến ${criteria.checkOutDate} · ${criteria.adults} người lớn · ${criteria.rooms} phòng`
+                : 'Kết quả tìm kiếm phòng trống.'}
+            </p>
+          </div>
+          <span className="search-result-count">{visibleRooms.length} phòng</span>
+        </div>
+
+        <div className="search-results-layout">
+          <aside className="search-filter-panel">
+            <div className="search-filter-head">
+              <strong>Lọc theo giá</strong>
+              <span>{formatPrice(maxPrice)}</span>
+            </div>
+            <input
+              type="range"
+              min="0"
+              max={highestPrice}
+              step="50000"
+              value={Math.min(maxPrice, highestPrice)}
+              onChange={event => onMaxPriceChange(Number(event.target.value))}
+            />
+            <div className="search-filter-range">
+              <span>0đ</span>
+              <span>{formatPrice(highestPrice)}</span>
+            </div>
+          </aside>
+
+          <div className="search-results-content">
+            {loading ? (
+              <div className="rooms-loading">Đang tìm phòng trống...</div>
+            ) : error ? (
+              <div className="rooms-loading rooms-loading--error">{error}</div>
+            ) : visibleRooms.length ? (
+              <div className="rooms-grid search-results-grid">
+                {visibleRooms.map(room => <RoomCard key={room.roomId || room.id} room={room} />)}
+              </div>
+            ) : (
+              <div className="rooms-loading">Không có phòng trống phù hợp với bộ lọc hiện tại.</div>
+            )}
+          </div>
+        </div>
+      </div>
+    </section>
   )
 }
 
@@ -61,7 +176,7 @@ function RoomsSection({ rooms, loading }) {
       <div className="home-section-inner">
         <div className="home-section-head">
           <div>
-            <h2 id="rooms-title">Phòng Nổi Bật</h2>
+            <h2 id="rooms-title">Phòng nổi bật</h2>
             <p>Không gian nghỉ dưỡng được chọn lọc dành cho bạn.</p>
           </div>
           <a href="#rooms" className="home-view-all">Xem tất cả phòng →</a>
@@ -86,28 +201,28 @@ function FeaturesSection() {
       icon: (
         <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
       ),
-      title: 'Thiên Nhiên',
+      title: 'Thiên nhiên',
       desc: 'Đắm mình trong không gian xanh mát, yên bình giữa lòng thiên nhiên.',
     },
     {
       icon: (
         <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
       ),
-      title: 'Hỗ Trợ 24/7',
+      title: 'Hỗ trợ 24/7',
       desc: 'Đội ngũ nhân viên tận tâm luôn sẵn sàng phục vụ mọi nhu cầu của bạn.',
     },
     {
       icon: (
         <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
       ),
-      title: 'Đặt Phòng Nhanh',
+      title: 'Đặt phòng nhanh',
       desc: 'Xác nhận đặt phòng ngay lập tức, không chờ đợi.',
     },
     {
       icon: (
         <svg viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
       ),
-      title: 'Thanh Toán An Toàn',
+      title: 'Thanh toán an toàn',
       desc: 'Giao dịch bảo mật qua VNPay, MoMo và nhiều phương thức khác.',
     },
   ]
@@ -152,11 +267,17 @@ function ReviewsSection() {
   return (
     <section className="home-section home-reviews" aria-labelledby="reviews-title">
       <div className="home-section-inner">
-        <h2 id="reviews-title">Khách Hàng Nói Gì</h2>
+        <h2 id="reviews-title">Khách hàng nói gì</h2>
         <div className="reviews-grid">
           {reviews.map((r) => (
             <div key={r.name} className="review-card">
-              <div className="review-stars" aria-label="5 sao">★★★★★</div>
+              <div className="review-stars" aria-label="5 sao">
+                {Array.from({ length: 5 }).map((_, index) => (
+                  <svg key={index} viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                  </svg>
+                ))}
+              </div>
               <p>{r.text}</p>
               <div className="review-author">
                 <span className="review-avatar">{r.initials}</span>
@@ -255,6 +376,11 @@ function HomeFooter() {
 function HomePage() {
   const currentUser = getStoredUser()
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
+  const [searchCriteria, setSearchCriteria] = useState(null)
+  const [searchResults, setSearchResults] = useState([])
+  const [searchLoading, setSearchLoading] = useState(false)
+  const [searchError, setSearchError] = useState('')
+  const [maxPrice, setMaxPrice] = useState(10000000)
   const { rooms, loading } = useRoomTypes()
 
   const handleLogout = () => {
@@ -262,16 +388,46 @@ function HomePage() {
     window.location.assign('/home')
   }
 
+  const handleSearch = async (criteria) => {
+    setSearchCriteria(criteria)
+    setSearchLoading(true)
+    setSearchError('')
+    try {
+      const params = new URLSearchParams({
+        checkInDate: criteria.checkInDate,
+        checkOutDate: criteria.checkOutDate,
+        rooms: String(criteria.rooms),
+        adults: String(criteria.adults),
+        children: String(criteria.children),
+      })
+      const response = await fetch(`${API_BASE_URL}/rooms/search?${params}`)
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(data.message || 'Không thể tìm phòng trống')
+      const results = Array.isArray(data) ? data : []
+      setSearchResults(results)
+      const highest = Math.max(...results.map(room => roomPrice(room)), 0)
+      setMaxPrice(Math.max(highest, 100000))
+      setTimeout(() => {
+        document.getElementById('search-results')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }, 80)
+    } catch (err) {
+      setSearchResults([])
+      setSearchError(err.message)
+    } finally {
+      setSearchLoading(false)
+    }
+  }
+
   return (
     <div className="home-page">
       <header className="home-header">
         <a className="home-logo" href="/home">Home Stays</a>
         <nav className="home-nav" aria-label="Điều hướng chính">
-          <a href="/home">Trang Chủ</a>
+          <a href="/home">Trang chủ</a>
           <a href="#rooms">Phòng</a>
-          <a href="#amenities">Tiện Nghi</a>
-          <a href="#contact">Liên Hệ</a>
-          <a href="#about">Giới Thiệu</a>
+          <a href="#amenities">Tiện nghi</a>
+          <a href="#contact">Liên hệ</a>
+          <a href="#about">Giới thiệu</a>
         </nav>
 
         {currentUser ? (
@@ -300,7 +456,7 @@ function HomePage() {
           </div>
         ) : (
           <div className="home-actions">
-            <a href="/login">Đăng Nhập</a>
+            <a href="/login">Đăng nhập</a>
             <a href="/register">Đăng ký</a>
           </div>
         )}
@@ -315,7 +471,16 @@ function HomePage() {
         </div>
       </section>
 
-      <HomeSearch />
+      <HomeSearch onSearch={handleSearch} isSearching={searchLoading} />
+
+      <SearchResultsSection
+        criteria={searchCriteria}
+        rooms={searchResults}
+        loading={searchLoading}
+        error={searchError}
+        maxPrice={maxPrice}
+        onMaxPriceChange={setMaxPrice}
+      />
 
       <RoomsSection rooms={rooms} loading={loading} />
       <FeaturesSection />
@@ -327,3 +492,4 @@ function HomePage() {
 }
 
 export default HomePage
+

@@ -1,21 +1,18 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
-const weekdays = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su']
+const weekdays = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN']
 
-const months = [
-  {
-    title: 'June 2026',
-    monthIndex: 5,
-    leading: 0,
-    days: 30,
-  },
-  {
-    title: 'July 2026',
-    monthIndex: 6,
-    leading: 2,
-    days: 31,
-  },
-]
+function buildMonth(baseDate, offset) {
+  const firstDay = new Date(baseDate.getFullYear(), baseDate.getMonth() + offset, 1)
+  const lastDay = new Date(firstDay.getFullYear(), firstDay.getMonth() + 1, 0)
+  return {
+    title: new Intl.DateTimeFormat('vi-VN', { month: 'long', year: 'numeric' }).format(firstDay),
+    year: firstDay.getFullYear(),
+    monthIndex: firstDay.getMonth(),
+    leading: (firstDay.getDay() + 6) % 7,
+    days: lastDay.getDate(),
+  }
+}
 
 function CalendarIcon() {
   return (
@@ -41,7 +38,8 @@ function GuestsIcon() {
 }
 
 function formatMainDate(date) {
-  return new Intl.DateTimeFormat('en-GB', {
+  if (!date) return 'Chọn ngày'
+  return new Intl.DateTimeFormat('vi-VN', {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
@@ -49,14 +47,19 @@ function formatMainDate(date) {
 }
 
 function formatWeekday(date) {
-  return new Intl.DateTimeFormat('en-US', { weekday: 'long' }).format(date)
+  if (!date) return 'Ngày lưu trú'
+  return new Intl.DateTimeFormat('vi-VN', { weekday: 'long' }).format(date)
+}
+
+function toDateKey(date) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
 }
 
 function isSameDate(firstDate, secondDate) {
-  if (!firstDate || !secondDate) {
-    return false
-  }
-
+  if (!firstDate || !secondDate) return false
   return (
     firstDate.getFullYear() === secondDate.getFullYear() &&
     firstDate.getMonth() === secondDate.getMonth() &&
@@ -65,10 +68,7 @@ function isSameDate(firstDate, secondDate) {
 }
 
 function isBetweenDates(date, startDate, endDate) {
-  if (!startDate || !endDate) {
-    return false
-  }
-
+  if (!startDate || !endDate) return false
   return date > startDate && date < endDate
 }
 
@@ -108,11 +108,9 @@ function MonthCalendar({ month, checkInDate, checkOutDate, onSelectDate }) {
       </div>
       <div className="calendar-days">
         {cells.map((cell) => {
-          if (!cell.day) {
-            return <span key={cell.key} className="calendar-empty" />
-          }
+          if (!cell.day) return <span key={cell.key} className="calendar-empty" />
 
-          const date = new Date(2026, month.monthIndex, cell.day)
+          const date = new Date(month.year, month.monthIndex, cell.day)
           const isStart = isSameDate(date, checkInDate)
           const isEnd = isSameDate(date, checkOutDate)
           const isInRange = isBetweenDates(date, checkInDate, checkOutDate)
@@ -126,9 +124,7 @@ function MonthCalendar({ month, checkInDate, checkOutDate, onSelectDate }) {
                 isStart ? 'is-selected is-start' : '',
                 isEnd ? 'is-selected is-end' : '',
                 isInRange ? 'is-in-range' : '',
-              ]
-                .filter(Boolean)
-                .join(' ')}
+              ].filter(Boolean).join(' ')}
               onClick={() => onSelectDate(date)}
             >
               {cell.day}
@@ -140,31 +136,18 @@ function MonthCalendar({ month, checkInDate, checkOutDate, onSelectDate }) {
   )
 }
 
-function CalendarDropdown({ checkInDate, checkOutDate, onSelectDate }) {
+function CalendarDropdown({ months, checkInDate, checkOutDate, onSelectDate }) {
   return (
     <div className="calendar-dropdown">
       <div className="calendar-tabs">
-        <button className="is-active" type="button">
-          Calendar
-        </button>
-        <button type="button">I&apos;m flexible</button>
+        <button className="is-active" type="button">Chọn ngày</button>
+        <button type="button">Linh hoạt</button>
       </div>
 
       <div className="calendar-body">
-        <button className="calendar-nav calendar-prev" type="button" aria-label="Tháng trước">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="m15 18-6-6 6-6" />
-          </svg>
-        </button>
-        <button className="calendar-nav calendar-next" type="button" aria-label="Tháng sau">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="m9 18 6-6-6-6" />
-          </svg>
-        </button>
-
         {months.map((month) => (
           <MonthCalendar
-            key={month.title}
+            key={`${month.year}-${month.monthIndex}`}
             month={month}
             checkInDate={checkInDate}
             checkOutDate={checkOutDate}
@@ -176,7 +159,8 @@ function CalendarDropdown({ checkInDate, checkOutDate, onSelectDate }) {
   )
 }
 
-function HomeSearch() {
+function HomeSearch({ onSearch, isSearching = false }) {
+  const searchRef = useRef(null)
   const [isCalendarOpen, setIsCalendarOpen] = useState(false)
   const [activeDateField, setActiveDateField] = useState('checkin')
   const [checkInDate, setCheckInDate] = useState(new Date(2026, 5, 14))
@@ -185,6 +169,22 @@ function HomeSearch() {
   const [rooms, setRooms] = useState(1)
   const [adults, setAdults] = useState(2)
   const [children, setChildren] = useState(0)
+
+  const visibleMonths = useMemo(() => {
+    const baseDate = checkInDate || new Date()
+    return [buildMonth(baseDate, 0), buildMonth(baseDate, 1)]
+  }, [checkInDate])
+
+  useEffect(() => {
+    const handlePointerDown = (event) => {
+      if (!searchRef.current || searchRef.current.contains(event.target)) return
+      setIsCalendarOpen(false)
+      setIsGuestOpen(false)
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown)
+    return () => document.removeEventListener('pointerdown', handlePointerDown)
+  }, [])
 
   const guestSummary = `${adults} người lớn`
   const roomSummary = `${rooms} phòng${children > 0 ? `, ${children} trẻ em` : ''}`
@@ -211,7 +211,6 @@ function HomeSearch() {
     }
 
     setCheckInDate(date)
-
     if (checkOutDate && date < checkOutDate) {
       setActiveDateField('checkout')
       return
@@ -221,8 +220,27 @@ function HomeSearch() {
     setActiveDateField('checkout')
   }
 
+  const handleSubmit = () => {
+    if (!checkInDate || !checkOutDate || checkOutDate <= checkInDate) {
+      setActiveDateField(!checkInDate ? 'checkin' : 'checkout')
+      setIsCalendarOpen(true)
+      setIsGuestOpen(false)
+      return
+    }
+
+    setIsCalendarOpen(false)
+    setIsGuestOpen(false)
+    onSearch?.({
+      checkInDate: toDateKey(checkInDate),
+      checkOutDate: toDateKey(checkOutDate),
+      rooms,
+      adults,
+      children,
+    })
+  }
+
   return (
-    <section className="home-search-card" aria-label="Tìm phòng">
+    <section className="home-search-card" aria-label="Tìm phòng" ref={searchRef}>
       <div className="home-search-grid">
         <div className="date-range-wrap">
           <button
@@ -246,13 +264,14 @@ function HomeSearch() {
           >
             <CalendarIcon />
             <span>
-              <b>{checkOutDate ? formatMainDate(checkOutDate) : 'Chọn ngày'}</b>
+              <b>{formatMainDate(checkOutDate)}</b>
               <small>{checkOutDate ? formatWeekday(checkOutDate) : 'Ngày trả phòng'}</small>
             </span>
           </button>
 
           {isCalendarOpen && (
             <CalendarDropdown
+              months={visibleMonths}
               checkInDate={checkInDate}
               checkOutDate={checkOutDate}
               onSelectDate={handleSelectDate}
@@ -309,8 +328,8 @@ function HomeSearch() {
           )}
         </div>
 
-        <button className="search-submit" type="button">
-          Tìm kiếm
+        <button className="search-submit" type="button" onClick={handleSubmit} disabled={isSearching}>
+          {isSearching ? 'Đang tìm...' : 'Tìm kiếm'}
         </button>
       </div>
     </section>
