@@ -40,7 +40,10 @@ function formatNumber(value) {
 
 function formatShortDate(value) {
   if (!value) return ''
-  return new Date(value).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })
+  const date = new Date(value)
+  const day = String(date.getDate()).padStart(2, '0')
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  return `${day}-${month}`
 }
 
 function statusLabel(status) {
@@ -132,9 +135,12 @@ function OccupancyChart({ data }) {
   )
 }
 
-function DonutChart({ title, subtitle, items, type = 'money' }) {
+const REVENUE_PALETTE = ['#0ea5e9', '#f59e0b', '#8b5cf6', '#64748b']
+const STATUS_PALETTE = ['#22c55e', '#0ea5e9', '#ef4444', '#f59e0b', '#8b5cf6', '#64748b']
+
+function DonutChart({ title, subtitle, items, type = 'money', palette = REVENUE_PALETTE }) {
   const total = totalValue(items)
-  const colors = ['#ff385c', '#22c55e', '#38bdf8', '#f59e0b', '#8b5cf6', '#64748b']
+  const colors = palette
   let cursor = 0
   const gradient = items.length && total > 0
     ? items.map((item, index) => {
@@ -263,12 +269,23 @@ function DashboardPage() {
         <>
           <div className="dash-grid dash-grid--top">
             <RevenueChart data={summary.revenueTrend || []} />
-            <DonutChart title="Cơ cấu doanh thu" subtitle="Tỉ trọng tiền phòng, dịch vụ và phạt/phụ thu." items={summary.revenueBreakdown || []} />
+            <DonutChart
+              title="Cơ cấu doanh thu"
+              subtitle="Tỉ trọng tiền phòng, dịch vụ và phạt/phụ thu."
+              items={summary.revenueBreakdown || []}
+              palette={REVENUE_PALETTE}
+            />
           </div>
 
           <div className="dash-grid">
             <OccupancyChart data={summary.occupancyTrend || []} />
-            <DonutChart title="Trạng thái lưu trú" subtitle="Số booking detail theo trạng thái." items={summary.bookingStatusBreakdown || []} type="status" />
+            <DonutChart
+              title="Trạng thái lưu trú"
+              subtitle="Số booking detail theo trạng thái."
+              items={summary.bookingStatusBreakdown || []}
+              type="status"
+              palette={STATUS_PALETTE}
+            />
           </div>
 
           <div className="dash-grid">

@@ -104,8 +104,8 @@
 }
 
 .dash-kpi--revenue {
-  border-color: #fecdd3;
-  background: #fff7f8;
+  border-color: #bae6fd;
+  background: #f0f9ff;
 }
 
 .dash-kpi--booking {
@@ -185,9 +185,9 @@
 
 .dash-revenue-chart svg {
   position: absolute;
-  inset: 0 0 46px;
+  inset: 0 0 58px;
   width: 100%;
-  height: calc(100% - 46px);
+  height: calc(100% - 58px);
   overflow: visible;
   pointer-events: none;
 }
@@ -222,17 +222,18 @@
   display: block;
   min-height: 4px;
   border-radius: 7px 7px 2px 2px;
-  background: linear-gradient(180deg, #ff385c, #fb7185);
+  background: linear-gradient(180deg, #0ea5e9, #67e8f9);
 }
 
 .dash-bar-day small {
-  height: 34px;
-  color: #6b7280;
-  font-size: 10px;
+  height: 48px;
+  color: #475569;
+  font-size: 11px;
   font-weight: 800;
   text-align: center;
-  writing-mode: vertical-rl;
-  transform: rotate(180deg);
+  white-space: nowrap;
+  transform: rotate(-42deg);
+  transform-origin: top center;
 }
 
 .dash-occupancy {
@@ -357,8 +358,8 @@
   display: inline-grid;
   place-items: center;
   border-radius: 8px;
-  background: #fff7f8;
-  color: #be123c;
+  background: #f0f9ff;
+  color: #0369a1;
   font-size: 12px;
   font-weight: 900;
 }
@@ -383,7 +384,7 @@
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: #ff385c;
+  background: #0ea5e9;
 }
 
 .dash-rank-row em {
