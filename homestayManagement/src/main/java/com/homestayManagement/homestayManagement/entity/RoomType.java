@@ -30,6 +30,10 @@ public class RoomType {
     @Column(name = "max_children", nullable = false)
     private Integer maxChildren;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "deposit_policy_id")
+    private DepositPolicy depositPolicy;
+
     @Column(columnDefinition = "TEXT")
     private String description;
 }

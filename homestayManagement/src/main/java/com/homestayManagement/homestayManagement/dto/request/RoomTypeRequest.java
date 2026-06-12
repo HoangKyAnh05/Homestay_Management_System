@@ -23,6 +23,8 @@ public record RoomTypeRequest(
         @NotNull @Min(value = 0)
         Integer maxChildren,
 
+        Long depositPolicyId,
+
         String description
 ) {
 }

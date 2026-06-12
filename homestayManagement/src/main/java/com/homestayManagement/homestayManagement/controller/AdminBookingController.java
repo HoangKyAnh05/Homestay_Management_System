@@ -3,8 +3,10 @@ package com.homestayManagement.homestayManagement.controller;
 import com.homestayManagement.homestayManagement.dto.request.AdminBookingAddMiniBarRequest;
 import com.homestayManagement.homestayManagement.dto.request.AdminBookingAddPenaltyRequest;
 import com.homestayManagement.homestayManagement.dto.request.AdminBookingAddServiceRequest;
+import com.homestayManagement.homestayManagement.dto.request.AdminDirectBookingRequest;
 import com.homestayManagement.homestayManagement.dto.response.AdminBookingDetailResponse;
 import com.homestayManagement.homestayManagement.dto.response.AdminBookingScheduleResponse;
+import com.homestayManagement.homestayManagement.dto.response.AdminDirectBookingRoomResponse;
 import com.homestayManagement.homestayManagement.service.AdminBookingService;
 import jakarta.validation.Valid;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -13,6 +15,8 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -37,6 +41,23 @@ public class AdminBookingController {
     @GetMapping("/details/{bookingDetailId}")
     public AdminBookingDetailResponse getBookingDetail(@PathVariable Long bookingDetailId) {
         return adminBookingService.getBookingDetail(bookingDetailId);
+    }
+
+    @GetMapping("/direct/rooms")
+    public List<AdminDirectBookingRoomResponse> getDirectBookingRooms(
+            @RequestParam
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+            LocalDateTime checkInTarget,
+            @RequestParam
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+            LocalDateTime checkOutTarget
+    ) {
+        return adminBookingService.getDirectBookingRooms(checkInTarget, checkOutTarget);
+    }
+
+    @PostMapping("/direct")
+    public AdminBookingDetailResponse createDirectBooking(@Valid @RequestBody AdminDirectBookingRequest request) {
+        return adminBookingService.createDirectBooking(request);
     }
 
     @PostMapping("/details/{bookingDetailId}/check-in")

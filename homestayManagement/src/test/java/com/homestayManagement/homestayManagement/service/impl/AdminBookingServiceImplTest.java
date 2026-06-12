@@ -7,9 +7,12 @@ import com.homestayManagement.homestayManagement.entity.Customer;
 import com.homestayManagement.homestayManagement.entity.Room;
 import com.homestayManagement.homestayManagement.entity.RoomType;
 import com.homestayManagement.homestayManagement.repository.BookingDetailRepository;
+import com.homestayManagement.homestayManagement.repository.BookingRepository;
 import com.homestayManagement.homestayManagement.repository.RoomRepository;
 import com.homestayManagement.homestayManagement.repository.AppliedPenaltyRepository;
+import com.homestayManagement.homestayManagement.repository.AccountRepository;
 import com.homestayManagement.homestayManagement.repository.CheckInRecordRepository;
+import com.homestayManagement.homestayManagement.repository.CustomerRepository;
 import com.homestayManagement.homestayManagement.repository.InvoiceRepository;
 import com.homestayManagement.homestayManagement.repository.PaymentRepository;
 import com.homestayManagement.homestayManagement.repository.RoomAmenitiesUsageRepository;
@@ -19,7 +22,9 @@ import com.homestayManagement.homestayManagement.repository.InventoryServiceRepo
 import com.homestayManagement.homestayManagement.repository.RoomMiniBarItemRepository;
 import com.homestayManagement.homestayManagement.repository.RulesPenaltyRepository;
 import com.homestayManagement.homestayManagement.repository.EmployeeRepository;
+import com.homestayManagement.homestayManagement.repository.RoleRepository;
 import org.junit.jupiter.api.Test;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.math.BigDecimal;
 import java.time.DayOfWeek;
@@ -36,7 +41,11 @@ import static org.mockito.Mockito.when;
 class AdminBookingServiceImplTest {
 
     private final BookingDetailRepository bookingDetailRepository = mock(BookingDetailRepository.class);
+    private final BookingRepository bookingRepository = mock(BookingRepository.class);
     private final RoomRepository roomRepository = mock(RoomRepository.class);
+    private final AccountRepository accountRepository = mock(AccountRepository.class);
+    private final CustomerRepository customerRepository = mock(CustomerRepository.class);
+    private final RoleRepository roleRepository = mock(RoleRepository.class);
     private final CheckInRecordRepository checkInRecordRepository = mock(CheckInRecordRepository.class);
     private final ServiceUsageRepository serviceUsageRepository = mock(ServiceUsageRepository.class);
     private final RoomAmenitiesUsageRepository roomAmenitiesUsageRepository = mock(RoomAmenitiesUsageRepository.class);
@@ -48,9 +57,14 @@ class AdminBookingServiceImplTest {
     private final RoomMiniBarItemRepository roomMiniBarItemRepository = mock(RoomMiniBarItemRepository.class);
     private final RulesPenaltyRepository rulesPenaltyRepository = mock(RulesPenaltyRepository.class);
     private final EmployeeRepository employeeRepository = mock(EmployeeRepository.class);
+    private final PasswordEncoder passwordEncoder = mock(PasswordEncoder.class);
     private final AdminBookingServiceImpl service = new AdminBookingServiceImpl(
             bookingDetailRepository,
+            bookingRepository,
             roomRepository,
+            accountRepository,
+            customerRepository,
+            roleRepository,
             checkInRecordRepository,
             serviceUsageRepository,
             roomAmenitiesUsageRepository,
@@ -61,7 +75,8 @@ class AdminBookingServiceImplTest {
             inventoryServiceRepository,
             roomMiniBarItemRepository,
             rulesPenaltyRepository,
-            employeeRepository
+            employeeRepository,
+            passwordEncoder
     );
 
     @Test

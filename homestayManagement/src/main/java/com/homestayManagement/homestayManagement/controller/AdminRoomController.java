@@ -1,9 +1,11 @@
 package com.homestayManagement.homestayManagement.controller;
 
+import com.homestayManagement.homestayManagement.dto.request.DepositPolicyRequest;
 import com.homestayManagement.homestayManagement.dto.request.RoomRequest;
 import com.homestayManagement.homestayManagement.dto.request.RoomTypeRequest;
 import com.homestayManagement.homestayManagement.dto.response.AdminRoomResponse;
 import com.homestayManagement.homestayManagement.dto.response.AdminRoomTypeResponse;
+import com.homestayManagement.homestayManagement.dto.response.DepositPolicyResponse;
 import com.homestayManagement.homestayManagement.service.AdminRoomService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -27,6 +29,27 @@ public class AdminRoomController {
     }
 
     // ── RoomType CRUD ─────────────────────────────────────
+
+    @GetMapping("/deposit-policies")
+    public List<DepositPolicyResponse> getAllDepositPolicies() {
+        return adminRoomService.getAllDepositPolicies();
+    }
+
+    @PostMapping("/deposit-policies")
+    public ResponseEntity<DepositPolicyResponse> createDepositPolicy(@Valid @RequestBody DepositPolicyRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(adminRoomService.createDepositPolicy(request));
+    }
+
+    @PutMapping("/deposit-policies/{id}")
+    public DepositPolicyResponse updateDepositPolicy(@PathVariable Long id, @Valid @RequestBody DepositPolicyRequest request) {
+        return adminRoomService.updateDepositPolicy(id, request);
+    }
+
+    @DeleteMapping("/deposit-policies/{id}")
+    public ResponseEntity<Void> deleteDepositPolicy(@PathVariable Long id) {
+        adminRoomService.deleteDepositPolicy(id);
+        return ResponseEntity.noContent().build();
+    }
 
     @GetMapping("/types")
     public List<AdminRoomTypeResponse> getAllRoomTypes() {

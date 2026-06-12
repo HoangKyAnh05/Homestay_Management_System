@@ -24,6 +24,7 @@ public record AdminBookingDetailResponse(
         List<AdminInvoiceServiceItemResponse> serviceItems,
         List<AdminInvoicePenaltyItemResponse> penaltyItems,
         AdminBookingInvoiceSummaryResponse invoice,
+        java.math.BigDecimal paidAmount,
         List<AdminPaymentResponse> payments,
         List<FacilityServiceResponse> facilityServices,
         List<InventoryServiceResponse> inventoryServices,

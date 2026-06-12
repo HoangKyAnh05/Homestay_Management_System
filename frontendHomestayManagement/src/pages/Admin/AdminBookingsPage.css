@@ -27,6 +27,7 @@
 
 .abk-icon-btn,
 .abk-today-btn,
+.abk-create-btn,
 .abk-pagination button {
   height: 38px;
   border: 1px solid #d1d5db;
@@ -59,6 +60,13 @@
   padding: 0 14px;
   background: #ff385c;
   border-color: #ff385c;
+  color: #ffffff;
+}
+
+.abk-create-btn {
+  padding: 0 16px;
+  border-color: #111827;
+  background: #111827;
   color: #ffffff;
 }
 
@@ -366,6 +374,10 @@
   box-shadow: 0 24px 70px rgba(0,0,0,0.24);
 }
 
+.abk-direct-modal {
+  width: min(1180px, 100%);
+}
+
 .abk-modal-head {
   display: flex;
   align-items: center;
@@ -665,6 +677,195 @@
   opacity: 0.45;
 }
 
+.abk-direct-layout {
+  display: grid;
+  grid-template-columns: minmax(360px, 0.9fr) minmax(420px, 1.1fr);
+  gap: 18px;
+}
+
+.abk-direct-form,
+.abk-room-picker {
+  min-width: 0;
+}
+
+.abk-direct-form h4,
+.abk-room-picker h4 {
+  margin: 0 0 12px;
+  color: #111827;
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.abk-direct-form h4:not(:first-child) {
+  margin-top: 20px;
+}
+
+.abk-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.abk-form-grid label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.abk-form-grid span {
+  color: #6b7280;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.abk-form-grid input,
+.abk-form-grid select {
+  height: 40px;
+  min-width: 0;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #111827;
+  font: inherit;
+  font-size: 14px;
+  outline: none;
+  padding: 0 11px;
+}
+
+.abk-form-grid input:focus,
+.abk-form-grid select:focus {
+  border-color: #ff385c;
+  box-shadow: 0 0 0 3px rgba(255,56,92,0.12);
+}
+
+.abk-form-wide {
+  grid-column: 1 / -1;
+}
+
+.abk-room-picker-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.abk-room-picker-head h4 {
+  margin-bottom: 0;
+}
+
+.abk-room-picker-head span {
+  color: #6b7280;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.abk-room-options {
+  display: grid;
+  gap: 10px;
+  max-height: 520px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.abk-room-option {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr minmax(160px, 0.7fr);
+  gap: 12px;
+  align-items: stretch;
+  border: 1px solid #bbf7d0;
+  border-left: 4px solid #16a34a;
+  border-radius: 8px;
+  background: #f0fdf4;
+  color: #111827;
+  cursor: pointer;
+  padding: 12px;
+  text-align: left;
+}
+
+.abk-room-option--selected {
+  border-color: #111827;
+  box-shadow: 0 0 0 3px rgba(17,24,39,0.12);
+}
+
+.abk-room-option--busy {
+  border-color: #fecdd3;
+  border-left-color: #ff385c;
+  background: #fff1f2;
+  cursor: not-allowed;
+}
+
+.abk-room-option:disabled {
+  opacity: 1;
+}
+
+.abk-room-option-main strong,
+.abk-room-option-main span,
+.abk-room-option-side em,
+.abk-busy-slots span {
+  display: block;
+}
+
+.abk-room-option-main strong {
+  margin-bottom: 4px;
+  color: #111827;
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.abk-room-option-main span {
+  margin-top: 3px;
+  color: #4b5563;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.abk-room-option-side {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+}
+
+.abk-room-option-side em {
+  justify-self: start;
+  min-height: 24px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: #dcfce7;
+  color: #166534;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.abk-room-option--busy .abk-room-option-side em {
+  background: #ffe4e6;
+  color: #be123c;
+}
+
+.abk-busy-slots {
+  display: grid;
+  gap: 5px;
+}
+
+.abk-busy-slots span {
+  color: #6b7280;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.abk-direct-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid #e5e7eb;
+}
+
 .abk-line-list {
   display: flex;
   flex-direction: column;
@@ -766,10 +967,31 @@
   .abk-modal-actions > div {
     align-items: stretch;
   }
+
+  .abk-direct-layout,
+  .abk-room-option {
+    grid-template-columns: 1fr;
+  }
+
+  .abk-room-options {
+    max-height: none;
+  }
+
+  .abk-direct-actions {
+    flex-direction: column-reverse;
+  }
+
+  .abk-direct-actions button {
+    width: 100%;
+  }
 }
 
 @media (max-width: 520px) {
   .abk-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .abk-form-grid {
     grid-template-columns: 1fr;
   }
 }

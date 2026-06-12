@@ -1,5 +1,6 @@
 package com.homestayManagement.homestayManagement.service.impl;
 
+import com.homestayManagement.homestayManagement.dto.request.AdminDirectBookingRequest;
 import com.homestayManagement.homestayManagement.dto.response.AdminBookingCheckInResponse;
 import com.homestayManagement.homestayManagement.dto.response.AdminBookingCustomerResponse;
 import com.homestayManagement.homestayManagement.dto.response.AdminBookingDetailResponse;
@@ -7,6 +8,8 @@ import com.homestayManagement.homestayManagement.dto.response.AdminBookingInvoic
 import com.homestayManagement.homestayManagement.dto.response.AdminBookingRoomResponse;
 import com.homestayManagement.homestayManagement.dto.response.AdminBookingScheduleItemResponse;
 import com.homestayManagement.homestayManagement.dto.response.AdminBookingScheduleResponse;
+import com.homestayManagement.homestayManagement.dto.response.AdminDirectBookingBusySlotResponse;
+import com.homestayManagement.homestayManagement.dto.response.AdminDirectBookingRoomResponse;
 import com.homestayManagement.homestayManagement.dto.request.AdminBookingAddMiniBarRequest;
 import com.homestayManagement.homestayManagement.dto.request.AdminBookingAddPenaltyRequest;
 import com.homestayManagement.homestayManagement.dto.request.AdminBookingAddServiceRequest;
@@ -17,29 +20,37 @@ import com.homestayManagement.homestayManagement.dto.response.AdminInvoiceServic
 import com.homestayManagement.homestayManagement.dto.response.AdminPaymentResponse;
 import com.homestayManagement.homestayManagement.dto.response.RoomMiniBarItemResponse;
 import com.homestayManagement.homestayManagement.dto.response.RulesPenaltyResponse;
+import com.homestayManagement.homestayManagement.entity.Account;
 import com.homestayManagement.homestayManagement.entity.AppliedPenalty;
 import com.homestayManagement.homestayManagement.entity.Booking;
 import com.homestayManagement.homestayManagement.entity.BookingDetail;
 import com.homestayManagement.homestayManagement.entity.CheckInRecord;
 import com.homestayManagement.homestayManagement.entity.Customer;
+import com.homestayManagement.homestayManagement.entity.DepositPolicy;
 import com.homestayManagement.homestayManagement.entity.Employee;
 import com.homestayManagement.homestayManagement.entity.FacilityService;
 import com.homestayManagement.homestayManagement.entity.Invoice;
 import com.homestayManagement.homestayManagement.entity.InventoryService;
 import com.homestayManagement.homestayManagement.entity.Payment;
+import com.homestayManagement.homestayManagement.entity.Role;
 import com.homestayManagement.homestayManagement.entity.Room;
 import com.homestayManagement.homestayManagement.entity.RoomAmenitiesUsage;
 import com.homestayManagement.homestayManagement.entity.RoomMiniBarItem;
+import com.homestayManagement.homestayManagement.entity.RoomType;
 import com.homestayManagement.homestayManagement.entity.RulesPenalty;
 import com.homestayManagement.homestayManagement.entity.ServiceUsage;
+import com.homestayManagement.homestayManagement.repository.AccountRepository;
 import com.homestayManagement.homestayManagement.repository.AppliedPenaltyRepository;
 import com.homestayManagement.homestayManagement.repository.BookingDetailRepository;
+import com.homestayManagement.homestayManagement.repository.BookingRepository;
 import com.homestayManagement.homestayManagement.repository.CheckInRecordRepository;
+import com.homestayManagement.homestayManagement.repository.CustomerRepository;
 import com.homestayManagement.homestayManagement.repository.EmployeeRepository;
 import com.homestayManagement.homestayManagement.repository.FacilityServiceRepository;
 import com.homestayManagement.homestayManagement.repository.InvoiceRepository;
 import com.homestayManagement.homestayManagement.repository.InventoryServiceRepository;
 import com.homestayManagement.homestayManagement.repository.PaymentRepository;
+import com.homestayManagement.homestayManagement.repository.RoleRepository;
 import com.homestayManagement.homestayManagement.repository.RoomAmenitiesUsageRepository;
 import com.homestayManagement.homestayManagement.repository.RoomMiniBarItemRepository;
 import com.homestayManagement.homestayManagement.repository.RoomRepository;
@@ -50,6 +61,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
@@ -59,12 +71,18 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 public class AdminBookingServiceImpl implements AdminBookingService {
 
     private final BookingDetailRepository bookingDetailRepository;
+    private final BookingRepository bookingRepository;
     private final RoomRepository roomRepository;
+    private final AccountRepository accountRepository;
+    private final CustomerRepository customerRepository;
+    private final RoleRepository roleRepository;
     private final CheckInRecordRepository checkInRecordRepository;
     private final ServiceUsageRepository serviceUsageRepository;
     private final RoomAmenitiesUsageRepository roomAmenitiesUsageRepository;
@@ -76,10 +94,15 @@ public class AdminBookingServiceImpl implements AdminBookingService {
     private final RoomMiniBarItemRepository roomMiniBarItemRepository;
     private final RulesPenaltyRepository rulesPenaltyRepository;
     private final EmployeeRepository employeeRepository;
+    private final PasswordEncoder passwordEncoder;
 
     public AdminBookingServiceImpl(
             BookingDetailRepository bookingDetailRepository,
+            BookingRepository bookingRepository,
             RoomRepository roomRepository,
+            AccountRepository accountRepository,
+            CustomerRepository customerRepository,
+            RoleRepository roleRepository,
             CheckInRecordRepository checkInRecordRepository,
             ServiceUsageRepository serviceUsageRepository,
             RoomAmenitiesUsageRepository roomAmenitiesUsageRepository,
@@ -90,10 +113,15 @@ public class AdminBookingServiceImpl implements AdminBookingService {
             InventoryServiceRepository inventoryServiceRepository,
             RoomMiniBarItemRepository roomMiniBarItemRepository,
             RulesPenaltyRepository rulesPenaltyRepository,
-            EmployeeRepository employeeRepository
+            EmployeeRepository employeeRepository,
+            PasswordEncoder passwordEncoder
     ) {
         this.bookingDetailRepository = bookingDetailRepository;
+        this.bookingRepository = bookingRepository;
         this.roomRepository = roomRepository;
+        this.accountRepository = accountRepository;
+        this.customerRepository = customerRepository;
+        this.roleRepository = roleRepository;
         this.checkInRecordRepository = checkInRecordRepository;
         this.serviceUsageRepository = serviceUsageRepository;
         this.roomAmenitiesUsageRepository = roomAmenitiesUsageRepository;
@@ -105,6 +133,7 @@ public class AdminBookingServiceImpl implements AdminBookingService {
         this.roomMiniBarItemRepository = roomMiniBarItemRepository;
         this.rulesPenaltyRepository = rulesPenaltyRepository;
         this.employeeRepository = employeeRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Override
@@ -156,6 +185,10 @@ public class AdminBookingServiceImpl implements AdminBookingService {
                 : paymentRepository.findByInvoiceIdOrderByPaymentTimeDescIdDesc(invoice.getId()).stream()
                         .map(this::toPaymentResponse)
                         .toList();
+        BigDecimal paidAmount = payments.stream()
+                .filter(payment -> "SUCCESS".equalsIgnoreCase(payment.status()))
+                .map(AdminPaymentResponse::amount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         return new AdminBookingDetailResponse(
                 booking.getId(),
@@ -177,12 +210,74 @@ public class AdminBookingServiceImpl implements AdminBookingService {
                 serviceItems,
                 penaltyItems,
                 invoice != null ? toInvoiceSummaryResponse(invoice) : null,
+                paidAmount,
                 payments,
                 facilityServiceRepository.findAll().stream().map(this::toFacilityServiceResponse).toList(),
                 inventoryServiceRepository.findAll().stream().map(this::toInventoryServiceResponse).toList(),
                 roomMiniBarItemRepository.findAll().stream().map(this::toMiniBarResponse).toList(),
                 rulesPenaltyRepository.findAll().stream().map(this::toRulesPenaltyResponse).toList()
         );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<AdminDirectBookingRoomResponse> getDirectBookingRooms(LocalDateTime checkInTarget, LocalDateTime checkOutTarget) {
+        validateBookingRange(checkInTarget, checkOutTarget);
+
+        Map<Long, List<BookingDetail>> busySlotsByRoom = bookingDetailRepository
+                .findOverlappingSchedule(checkInTarget, checkOutTarget)
+                .stream()
+                .filter(this::isActiveBookingDetail)
+                .collect(Collectors.groupingBy(detail -> detail.getRoom().getId()));
+
+        return roomRepository.findAll().stream()
+                .sorted(Comparator.comparing(Room::getRoomNumber, Comparator.nullsLast(String::compareToIgnoreCase)))
+                .map(room -> toDirectBookingRoomResponse(room, busySlotsByRoom.getOrDefault(room.getId(), List.of())))
+                .sorted(Comparator.comparing(AdminDirectBookingRoomResponse::available).reversed()
+                        .thenComparing(AdminDirectBookingRoomResponse::roomNumber, Comparator.nullsLast(String::compareToIgnoreCase)))
+                .toList();
+    }
+
+    @Override
+    @Transactional
+    public AdminBookingDetailResponse createDirectBooking(AdminDirectBookingRequest request) {
+        validateBookingRange(request.checkInTarget(), request.checkOutTarget());
+
+        Room room = roomRepository.findById(request.roomId())
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy phòng"));
+        RoomType roomType = room.getRoomType();
+        validateCapacity(roomType, request.numberOfAdults(), request.numberOfChildren());
+
+        boolean roomBusy = bookingDetailRepository.findOverlappingSchedule(request.checkInTarget(), request.checkOutTarget())
+                .stream()
+                .anyMatch(detail -> detail.getRoom().getId().equals(room.getId()) && isActiveBookingDetail(detail));
+        if (roomBusy) {
+            throw new IllegalArgumentException("Phòng đã có booking trong khung giờ này");
+        }
+
+        Customer customer = findOrCreateWalkInCustomer(request);
+        DepositPolicy depositPolicy = roomType != null ? roomType.getDepositPolicy() : null;
+
+        Booking booking = bookingRepository.save(Booking.builder()
+                .customer(customer)
+                .depositPolicy(depositPolicy)
+                .bookingDate(LocalDateTime.now())
+                .status("CONFIRMED")
+                .build());
+
+        BookingDetail detail = bookingDetailRepository.save(BookingDetail.builder()
+                .booking(booking)
+                .room(room)
+                .checkInTarget(request.checkInTarget())
+                .checkOutTarget(request.checkOutTarget())
+                .numberOfAdults(request.numberOfAdults())
+                .numberOfChildren(request.numberOfChildren())
+                .priceAtBooking(roomType != null ? roomType.getBasePrice() : BigDecimal.ZERO)
+                .rentType(normalizeRentType(request.rentType()))
+                .status("CONFIRMED")
+                .build());
+
+        return getBookingDetail(detail.getId());
     }
 
     @Override
@@ -314,6 +409,119 @@ public class AdminBookingServiceImpl implements AdminBookingService {
         invoiceRepository.save(invoice);
 
         return getBookingDetail(bookingDetailId);
+    }
+
+    private void validateBookingRange(LocalDateTime checkInTarget, LocalDateTime checkOutTarget) {
+        if (checkInTarget == null || checkOutTarget == null) {
+            throw new IllegalArgumentException("Vui lòng chọn đủ giờ nhận phòng và trả phòng");
+        }
+        if (!checkOutTarget.isAfter(checkInTarget)) {
+            throw new IllegalArgumentException("Giờ trả phòng phải sau giờ nhận phòng");
+        }
+    }
+
+    private void validateCapacity(RoomType roomType, Integer adults, Integer children) {
+        if (roomType == null) {
+            return;
+        }
+        if (adults != null && roomType.getMaxAdults() != null && adults > roomType.getMaxAdults()) {
+            throw new IllegalArgumentException("Số người lớn vượt quá sức chứa loại phòng");
+        }
+        if (children != null && roomType.getMaxChildren() != null && children > roomType.getMaxChildren()) {
+            throw new IllegalArgumentException("Số trẻ em vượt quá sức chứa loại phòng");
+        }
+    }
+
+    private Customer findOrCreateWalkInCustomer(AdminDirectBookingRequest request) {
+        String email = normalizeEmail(request.email());
+        return accountRepository.findByEmail(email)
+                .map(account -> {
+                    if (account.getRole() == null || !"ROLE_CUSTOMER".equals(account.getRole().getName())) {
+                        throw new IllegalArgumentException("Email này đang thuộc tài khoản nhân viên, vui lòng dùng email khách hàng khác");
+                    }
+                    account.setActive(true);
+                    Customer customer = customerRepository.findByAccountId(account.getId())
+                            .orElseThrow(() -> new IllegalArgumentException("Tài khoản khách hàng chưa có hồ sơ khách"));
+                    updateCustomer(customer, request);
+                    accountRepository.save(account);
+                    return customerRepository.save(customer);
+                })
+                .orElseGet(() -> {
+                    Role customerRole = roleRepository.findByName("ROLE_CUSTOMER")
+                            .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy role khách hàng"));
+                    Account account = accountRepository.save(Account.builder()
+                            .email(email)
+                            .password(passwordEncoder.encode("123456"))
+                            .role(customerRole)
+                            .isActive(true)
+                            .build());
+                    Customer customer = Customer.builder()
+                            .account(account)
+                            .build();
+                    updateCustomer(customer, request);
+                    return customerRepository.save(customer);
+                });
+    }
+
+    private void updateCustomer(Customer customer, AdminDirectBookingRequest request) {
+        customer.setFullName(request.fullName().trim());
+        customer.setPhone(request.phone().trim());
+        customer.setAddress(request.address() != null && !request.address().isBlank() ? request.address().trim() : null);
+        customer.setDateOfBirth(request.dateOfBirth());
+    }
+
+    private String normalizeEmail(String email) {
+        return email == null ? null : email.trim().toLowerCase();
+    }
+
+    private String normalizeRentType(String rentType) {
+        return rentType == null ? "BY_NIGHT" : rentType.trim().toUpperCase();
+    }
+
+    private boolean isActiveBookingDetail(BookingDetail detail) {
+        if (detail == null || detail.getBooking() == null) {
+            return false;
+        }
+        String detailStatus = detail.getStatus();
+        String bookingStatus = detail.getBooking().getStatus();
+        return !isClosedStatus(detailStatus) && !isClosedStatus(bookingStatus);
+    }
+
+    private boolean isClosedStatus(String status) {
+        return "CANCELLED".equalsIgnoreCase(status) || "COMPLETED".equalsIgnoreCase(status);
+    }
+
+    private AdminDirectBookingRoomResponse toDirectBookingRoomResponse(Room room, List<BookingDetail> busySlots) {
+        RoomType roomType = room.getRoomType();
+        DepositPolicy policy = roomType != null ? roomType.getDepositPolicy() : null;
+        return new AdminDirectBookingRoomResponse(
+                room.getId(),
+                room.getRoomNumber(),
+                roomType != null ? roomType.getName() : null,
+                roomType != null ? roomType.getBasePrice() : BigDecimal.ZERO,
+                roomType != null ? roomType.getMaxAdults() : null,
+                roomType != null ? roomType.getMaxChildren() : null,
+                policy != null ? policy.getId() : null,
+                policy != null ? policy.getPolicyName() : null,
+                busySlots.isEmpty(),
+                busySlots.stream()
+                        .sorted(Comparator.comparing(BookingDetail::getCheckInTarget))
+                        .map(this::toDirectBookingBusySlotResponse)
+                        .toList()
+        );
+    }
+
+    private AdminDirectBookingBusySlotResponse toDirectBookingBusySlotResponse(BookingDetail detail) {
+        Customer customer = detail.getBooking().getCustomer();
+        return new AdminDirectBookingBusySlotResponse(
+                detail.getBooking().getId(),
+                detail.getId(),
+                customer != null ? customer.getFullName() : null,
+                customer != null ? customer.getPhone() : null,
+                detail.getCheckInTarget(),
+                detail.getCheckOutTarget(),
+                detail.getStatus()
+        );
     }
 
     private LocalDate normalizeWeekStart(LocalDate weekStart) {

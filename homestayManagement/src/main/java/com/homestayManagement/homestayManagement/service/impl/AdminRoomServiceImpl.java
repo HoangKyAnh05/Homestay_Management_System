@@ -1,13 +1,17 @@
 package com.homestayManagement.homestayManagement.service.impl;
 
+import com.homestayManagement.homestayManagement.dto.request.DepositPolicyRequest;
 import com.homestayManagement.homestayManagement.dto.request.RoomRequest;
 import com.homestayManagement.homestayManagement.dto.request.RoomTypeRequest;
 import com.homestayManagement.homestayManagement.dto.response.AdminRoomResponse;
 import com.homestayManagement.homestayManagement.dto.response.AdminRoomTypeResponse;
+import com.homestayManagement.homestayManagement.dto.response.DepositPolicyResponse;
 import com.homestayManagement.homestayManagement.dto.response.RoomImageResponse;
+import com.homestayManagement.homestayManagement.entity.DepositPolicy;
 import com.homestayManagement.homestayManagement.entity.Room;
 import com.homestayManagement.homestayManagement.entity.RoomImage;
 import com.homestayManagement.homestayManagement.entity.RoomType;
+import com.homestayManagement.homestayManagement.repository.DepositPolicyRepository;
 import com.homestayManagement.homestayManagement.repository.RoomImageRepository;
 import com.homestayManagement.homestayManagement.repository.RoomRepository;
 import com.homestayManagement.homestayManagement.repository.RoomTypeRepository;
@@ -30,19 +34,67 @@ public class AdminRoomServiceImpl implements AdminRoomService {
     private static final Path UPLOAD_DIR = Paths.get("uploads");
     private static final Set<String> ALLOWED_TYPES = Set.of("image/jpeg", "image/png", "image/webp");
     private static final Set<String> ALLOWED_STATUSES = Set.of("AVAILABLE", "OCCUPIED", "CLEANING", "MAINTENANCE");
+    private static final Set<String> ALLOWED_DEPOSIT_TYPES = Set.of("PERCENTAGE", "FIXED_AMOUNT");
 
+    private final DepositPolicyRepository depositPolicyRepository;
     private final RoomTypeRepository roomTypeRepository;
     private final RoomRepository roomRepository;
     private final RoomImageRepository roomImageRepository;
 
     public AdminRoomServiceImpl(
+            DepositPolicyRepository depositPolicyRepository,
             RoomTypeRepository roomTypeRepository,
             RoomRepository roomRepository,
             RoomImageRepository roomImageRepository
     ) {
+        this.depositPolicyRepository = depositPolicyRepository;
         this.roomTypeRepository = roomTypeRepository;
         this.roomRepository = roomRepository;
         this.roomImageRepository = roomImageRepository;
+    }
+
+    // ── DepositPolicy ─────────────────────────────────────────
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<DepositPolicyResponse> getAllDepositPolicies() {
+        return depositPolicyRepository.findAll().stream().map(this::toDepositPolicyResponse).toList();
+    }
+
+    @Override
+    @Transactional
+    public DepositPolicyResponse createDepositPolicy(DepositPolicyRequest request) {
+        validateDepositType(request.calculationType());
+        DepositPolicy policy = DepositPolicy.builder()
+                .policyName(request.policyName())
+                .calculationType(request.calculationType())
+                .policyValue(request.policyValue())
+                .description(request.description())
+                .build();
+        return toDepositPolicyResponse(depositPolicyRepository.save(policy));
+    }
+
+    @Override
+    @Transactional
+    public DepositPolicyResponse updateDepositPolicy(Long id, DepositPolicyRequest request) {
+        validateDepositType(request.calculationType());
+        DepositPolicy policy = getDepositPolicyById(id);
+        policy.setPolicyName(request.policyName());
+        policy.setCalculationType(request.calculationType());
+        policy.setPolicyValue(request.policyValue());
+        policy.setDescription(request.description());
+        return toDepositPolicyResponse(depositPolicyRepository.save(policy));
+    }
+
+    @Override
+    @Transactional
+    public void deleteDepositPolicy(Long id) {
+        boolean inUse = roomTypeRepository.findAll().stream()
+                .anyMatch(roomType -> roomType.getDepositPolicy() != null && roomType.getDepositPolicy().getId().equals(id));
+        if (inUse) {
+            throw new IllegalArgumentException("Không thể xoá chính sách đang được loại phòng sử dụng");
+        }
+        depositPolicyRepository.deleteById(id);
     }
 
     // ── RoomType ──────────────────────────────────────────
@@ -61,6 +113,7 @@ public class AdminRoomServiceImpl implements AdminRoomService {
                 .basePrice(request.basePrice())
                 .maxAdults(request.maxAdults())
                 .maxChildren(request.maxChildren())
+                .depositPolicy(getOptionalDepositPolicy(request.depositPolicyId()))
                 .description(request.description())
                 .build();
         return toRoomTypeResponse(roomTypeRepository.save(roomType));
@@ -74,6 +127,7 @@ public class AdminRoomServiceImpl implements AdminRoomService {
         roomType.setBasePrice(request.basePrice());
         roomType.setMaxAdults(request.maxAdults());
         roomType.setMaxChildren(request.maxChildren());
+        roomType.setDepositPolicy(getOptionalDepositPolicy(request.depositPolicyId()));
         roomType.setDescription(request.description());
         return toRoomTypeResponse(roomTypeRepository.save(roomType));
     }
@@ -207,6 +261,15 @@ public class AdminRoomServiceImpl implements AdminRoomService {
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy loại phòng"));
     }
 
+    private DepositPolicy getDepositPolicyById(Long id) {
+        return depositPolicyRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy chính sách đặt cọc"));
+    }
+
+    private DepositPolicy getOptionalDepositPolicy(Long id) {
+        return id == null ? null : getDepositPolicyById(id);
+    }
+
     private Room getRoomById(Long id) {
         return roomRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy phòng"));
@@ -218,10 +281,30 @@ public class AdminRoomServiceImpl implements AdminRoomService {
         }
     }
 
+    private void validateDepositType(String calculationType) {
+        if (!ALLOWED_DEPOSIT_TYPES.contains(calculationType)) {
+            throw new IllegalArgumentException("Cách tính tiền cọc không hợp lệ");
+        }
+    }
+
     private AdminRoomTypeResponse toRoomTypeResponse(RoomType rt) {
         int roomCount = roomRepository.findByRoomTypeId(rt.getId()).size();
+        DepositPolicy policy = rt.getDepositPolicy();
         return new AdminRoomTypeResponse(rt.getId(), rt.getName(), rt.getBasePrice(),
-                rt.getMaxAdults(), rt.getMaxChildren(), rt.getDescription(), roomCount);
+                rt.getMaxAdults(), rt.getMaxChildren(),
+                policy != null ? policy.getId() : null,
+                policy != null ? policy.getPolicyName() : null,
+                rt.getDescription(), roomCount);
+    }
+
+    private DepositPolicyResponse toDepositPolicyResponse(DepositPolicy policy) {
+        return new DepositPolicyResponse(
+                policy.getId(),
+                policy.getPolicyName(),
+                policy.getCalculationType(),
+                policy.getPolicyValue(),
+                policy.getDescription()
+        );
     }
 
     private AdminRoomResponse toRoomResponse(Room room) {

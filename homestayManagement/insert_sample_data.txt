@@ -434,3 +434,88 @@ ON DUPLICATE KEY UPDATE
     external_post_id = VALUES(external_post_id),
     creator_id = VALUES(creator_id),
     agent_config_id = VALUES(agent_config_id);
+
+-- ============================================================
+-- 25. deposit_policies
+-- Bo sung sau: master data chinh sach dat coc va FK vao room_types/bookings.
+-- Khong sua cac lenh seed phia tren de giu lich su file.
+-- ============================================================
+CREATE TABLE IF NOT EXISTS deposit_policies (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    policy_name VARCHAR(50) NOT NULL,
+    calculation_type VARCHAR(20) NOT NULL,
+    policy_value DECIMAL(10,2) NOT NULL,
+    description VARCHAR(255)
+);
+
+DROP PROCEDURE IF EXISTS add_deposit_policy_columns;
+DELIMITER //
+CREATE PROCEDURE add_deposit_policy_columns()
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = 'room_types'
+          AND COLUMN_NAME = 'deposit_policy_id'
+    ) THEN
+        ALTER TABLE room_types ADD COLUMN deposit_policy_id BIGINT NULL;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = 'bookings'
+          AND COLUMN_NAME = 'deposit_policy_id'
+    ) THEN
+        ALTER TABLE bookings ADD COLUMN deposit_policy_id BIGINT NULL;
+    END IF;
+END//
+DELIMITER ;
+CALL add_deposit_policy_columns();
+DROP PROCEDURE IF EXISTS add_deposit_policy_columns;
+
+DROP PROCEDURE IF EXISTS add_deposit_policy_foreign_keys;
+DELIMITER //
+CREATE PROCEDURE add_deposit_policy_foreign_keys()
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS
+        WHERE CONSTRAINT_SCHEMA = DATABASE()
+          AND CONSTRAINT_NAME = 'fk_room_types_deposit_policy'
+    ) THEN
+        ALTER TABLE room_types
+            ADD CONSTRAINT fk_room_types_deposit_policy
+            FOREIGN KEY (deposit_policy_id) REFERENCES deposit_policies(id);
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS
+        WHERE CONSTRAINT_SCHEMA = DATABASE()
+          AND CONSTRAINT_NAME = 'fk_bookings_deposit_policy'
+    ) THEN
+        ALTER TABLE bookings
+            ADD CONSTRAINT fk_bookings_deposit_policy
+            FOREIGN KEY (deposit_policy_id) REFERENCES deposit_policies(id);
+    END IF;
+END//
+DELIMITER ;
+CALL add_deposit_policy_foreign_keys();
+DROP PROCEDURE IF EXISTS add_deposit_policy_foreign_keys;
+
+INSERT INTO deposit_policies (id, policy_name, calculation_type, policy_value, description) VALUES
+(1, 'Thanh toan toan phan', 'PERCENTAGE', 100.00, 'Khach thanh toan 100% gia tri don dat phong.'),
+(2, 'Dat coc 50%', 'PERCENTAGE', 50.00, 'Chinh sach dat coc mac dinh cho phong tieu chuan.'),
+(3, 'Mua du lich - Coc 75%', 'PERCENTAGE', 75.00, 'Ap dung cho phong cao cap hoac giai doan cao diem.'),
+(4, 'Coc co dinh giu cho', 'FIXED_AMOUNT', 200000.00, 'Khach coc so tien co dinh de giu phong.')
+ON DUPLICATE KEY UPDATE
+    policy_name = VALUES(policy_name),
+    calculation_type = VALUES(calculation_type),
+    policy_value = VALUES(policy_value),
+    description = VALUES(description);
+
+UPDATE room_types SET deposit_policy_id = 2 WHERE id IN (1, 2);
+UPDATE room_types SET deposit_policy_id = 3 WHERE id IN (3, 4, 5);
+
+UPDATE bookings SET deposit_policy_id = 2 WHERE id IN (1, 2, 4);
+UPDATE bookings SET deposit_policy_id = 3 WHERE id = 3;
+UPDATE bookings SET deposit_policy_id = 4 WHERE id = 5;

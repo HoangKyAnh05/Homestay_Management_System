@@ -22,6 +22,10 @@ public class Booking {
     @JoinColumn(name = "customer_id", nullable = false)
     private Customer customer;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "deposit_policy_id")
+    private DepositPolicy depositPolicy;
+
     @Column(name = "booking_date", nullable = false)
     private LocalDateTime bookingDate;
 

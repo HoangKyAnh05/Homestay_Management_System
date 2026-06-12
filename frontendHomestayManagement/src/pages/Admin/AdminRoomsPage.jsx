@@ -5,6 +5,7 @@ import AdminLayout from './AdminLayout'
 import './AdminRoomsPage.css'
 
 const API = 'http://localhost:8080/api/admin/rooms'
+const DEPOSIT_API = `${API}/deposit-policies`
 const PAGE_SIZE = 6
 
 function authHeaders(isFormData = false) {
@@ -34,6 +35,14 @@ function formatPrice(p) {
   return new Intl.NumberFormat('vi-VN').format(p) + 'đ'
 }
 
+function formatDepositPolicy(policy) {
+  if (!policy) return 'Chưa cấu hình'
+  const value = policy.calculationType === 'PERCENTAGE'
+    ? `${Number(policy.policyValue || 0)}%`
+    : formatPrice(policy.policyValue)
+  return `${policy.policyName} · ${value}`
+}
+
 function syncRoomCounts(roomTypes, rooms) {
   const counts = {}
   rooms.forEach(r => { counts[r.roomTypeId] = (counts[r.roomTypeId] || 0) + 1 })
@@ -47,13 +56,14 @@ function primaryImage(images) {
 // ─────────────────────────────────────────────────────────
 // Modal loại phòng (tạo / sửa)
 // ─────────────────────────────────────────────────────────
-function RoomTypeModal({ roomType, onClose, onSave }) {
+function RoomTypeModal({ roomType, depositPolicies, onClose, onSave }) {
   const isEdit = !!roomType
   const [form, setForm] = useState({
     name: roomType?.name || '',
     basePrice: roomType?.basePrice || '',
     maxAdults: roomType?.maxAdults || 2,
     maxChildren: roomType?.maxChildren || 0,
+    depositPolicyId: roomType?.depositPolicyId || '',
     description: roomType?.description || '',
   })
   const [error, setError] = useState('')
@@ -68,7 +78,13 @@ function RoomTypeModal({ roomType, onClose, onSave }) {
       const res = await fetch(isEdit ? `${API}/types/${roomType.id}` : `${API}/types`, {
         method: isEdit ? 'PUT' : 'POST',
         headers: authHeaders(),
-        body: JSON.stringify({ ...form, basePrice: Number(form.basePrice), maxAdults: Number(form.maxAdults), maxChildren: Number(form.maxChildren) }),
+        body: JSON.stringify({
+          ...form,
+          basePrice: Number(form.basePrice),
+          maxAdults: Number(form.maxAdults),
+          maxChildren: Number(form.maxChildren),
+          depositPolicyId: form.depositPolicyId ? Number(form.depositPolicyId) : null,
+        }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.message || 'Lỗi')
@@ -99,6 +115,14 @@ function RoomTypeModal({ roomType, onClose, onSave }) {
               <input type="number" value={form.maxChildren} onChange={e => set('maxChildren', e.target.value)} required min={0} />
             </label>
           </div>
+          <label className="arm-field"><span>Chính sách đặt cọc mặc định</span>
+            <select value={form.depositPolicyId} onChange={e => set('depositPolicyId', e.target.value)}>
+              <option value="">Chưa cấu hình</option>
+              {depositPolicies.map(policy => (
+                <option key={policy.id} value={policy.id}>{formatDepositPolicy(policy)}</option>
+              ))}
+            </select>
+          </label>
           <label className="arm-field"><span>Mô tả</span>
             <textarea value={form.description} onChange={e => set('description', e.target.value)} rows={3} placeholder="Mô tả loại phòng..." />
           </label>
@@ -312,7 +336,141 @@ function ConfirmDeleteModal({ title, desc, onClose, onConfirm, loading }) {
 // ─────────────────────────────────────────────────────────
 // Tab 1: Loại phòng
 // ─────────────────────────────────────────────────────────
-function RoomTypesTab({ roomTypes, setRoomTypes, showToast }) {
+function DepositPolicyModal({ policy, onClose, onSave }) {
+  const isEdit = !!policy
+  const [form, setForm] = useState({
+    policyName: policy?.policyName || '',
+    calculationType: policy?.calculationType || 'PERCENTAGE',
+    policyValue: policy?.policyValue || '',
+    description: policy?.description || '',
+  })
+  const [error, setError] = useState('')
+  const [saving, setSaving] = useState(false)
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setError('')
+    setSaving(true)
+    try {
+      const res = await fetch(isEdit ? `${DEPOSIT_API}/${policy.id}` : DEPOSIT_API, {
+        method: isEdit ? 'PUT' : 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({ ...form, policyValue: Number(form.policyValue) }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.message || 'Lỗi')
+      onSave(data, isEdit)
+    } catch (err) { setError(err.message) }
+    finally { setSaving(false) }
+  }
+
+  return (
+    <div className="arm-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="arm-modal">
+        <div className="arm-modal-head">
+          <h3>{isEdit ? 'Chỉnh sửa chính sách đặt cọc' : 'Thêm chính sách đặt cọc'}</h3>
+          <button type="button" className="arm-modal-close" onClick={onClose}>✕</button>
+        </div>
+        <form className="arm-modal-body" onSubmit={handleSubmit}>
+          <label className="arm-field"><span>Tên chính sách</span>
+            <input value={form.policyName} onChange={e => set('policyName', e.target.value)} required maxLength={50} placeholder="Đặt cọc 50%" />
+          </label>
+          <label className="arm-field"><span>Cách tính</span>
+            <select value={form.calculationType} onChange={e => set('calculationType', e.target.value)}>
+              <option value="PERCENTAGE">Theo phần trăm</option>
+              <option value="FIXED_AMOUNT">Số tiền cố định</option>
+            </select>
+          </label>
+          <label className="arm-field"><span>{form.calculationType === 'PERCENTAGE' ? 'Phần trăm cọc' : 'Số tiền cọc'}</span>
+            <input type="number" value={form.policyValue} onChange={e => set('policyValue', e.target.value)} required min={1} placeholder={form.calculationType === 'PERCENTAGE' ? '50' : '200000'} />
+          </label>
+          <label className="arm-field"><span>Mô tả</span>
+            <textarea value={form.description} onChange={e => set('description', e.target.value)} rows={3} maxLength={255} placeholder="Mô tả chính sách..." />
+          </label>
+          {error && <p className="arm-error">{error}</p>}
+          <div className="arm-modal-actions">
+            <button type="button" className="arm-btn arm-btn--ghost" onClick={onClose}>Huỷ</button>
+            <button type="submit" className="arm-btn arm-btn--primary" disabled={saving}>
+              {saving ? 'Đang lưu...' : isEdit ? 'Lưu thay đổi' : 'Tạo chính sách'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+function DepositPoliciesTab({ depositPolicies, setDepositPolicies, showToast }) {
+  const [modalPolicy, setModalPolicy] = useState(undefined)
+  const [deleteTarget, setDeleteTarget] = useState(null)
+  const [deleting, setDeleting] = useState(false)
+
+  const handleDelete = async () => {
+    setDeleting(true)
+    try {
+      const res = await fetch(`${DEPOSIT_API}/${deleteTarget.id}`, { method: 'DELETE', headers: authHeaders() })
+      if (!res.ok) { const d = await res.json(); throw new Error(d.message) }
+      setDepositPolicies(prev => prev.filter(policy => policy.id !== deleteTarget.id))
+      showToast('Đã xoá chính sách đặt cọc')
+      setDeleteTarget(null)
+    } catch (err) { showToast(err.message) }
+    finally { setDeleting(false) }
+  }
+
+  return (
+    <>
+      <div className="arm-toolbar">
+        <button className="arm-btn arm-btn--primary" type="button" onClick={() => setModalPolicy(null)}>+ Thêm chính sách đặt cọc</button>
+      </div>
+      <div className="arm-table-wrap">
+        {depositPolicies.length === 0 ? <div className="arm-empty">Chưa có chính sách đặt cọc nào.</div> : (
+          <table className="arm-table">
+            <thead><tr><th>Tên chính sách</th><th>Cách tính</th><th>Giá trị</th><th>Mô tả</th><th></th></tr></thead>
+            <tbody>
+              {depositPolicies.map(policy => (
+                <tr key={policy.id}>
+                  <td className="arm-fw">{policy.policyName}</td>
+                  <td>{policy.calculationType === 'PERCENTAGE' ? 'Theo phần trăm' : 'Số tiền cố định'}</td>
+                  <td>{policy.calculationType === 'PERCENTAGE' ? `${Number(policy.policyValue)}%` : formatPrice(policy.policyValue)}</td>
+                  <td>{policy.description || 'Chưa có'}</td>
+                  <td>
+                    <div className="arm-actions">
+                      <button type="button" className="arm-icon-btn arm-icon-btn--edit" title="Sửa" onClick={() => setModalPolicy(policy)}>
+                        <svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                      </button>
+                      <button type="button" className="arm-icon-btn arm-icon-btn--delete" title="Xoá" onClick={() => setDeleteTarget(policy)}>
+                        <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+      {modalPolicy !== undefined && (
+        <DepositPolicyModal policy={modalPolicy} onClose={() => setModalPolicy(undefined)}
+          onSave={(saved, isEdit) => {
+            setDepositPolicies(prev => isEdit ? prev.map(policy => policy.id === saved.id ? saved : policy) : [...prev, saved])
+            setModalPolicy(undefined)
+            showToast(isEdit ? 'Đã cập nhật chính sách đặt cọc' : 'Đã tạo chính sách đặt cọc')
+          }} />
+      )}
+      {deleteTarget && (
+        <ConfirmDeleteModal
+          title="Xoá chính sách đặt cọc"
+          desc={`Xoá chính sách "${deleteTarget.policyName}"?`}
+          onClose={() => setDeleteTarget(null)}
+          onConfirm={handleDelete}
+          loading={deleting} />
+      )}
+    </>
+  )
+}
+
+function RoomTypesTab({ roomTypes, setRoomTypes, depositPolicies, showToast }) {
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [modalType, setModalType] = useState(undefined)
@@ -353,6 +511,7 @@ function RoomTypesTab({ roomTypes, setRoomTypes, showToast }) {
               <th>Tên loại phòng</th>
               <th>Giá / đêm</th>
               <th>Sức chứa</th>
+              <th>Chính sách đặt cọc</th>
               <th>Số phòng</th>
               <th></th>
             </tr></thead>
@@ -362,6 +521,7 @@ function RoomTypesTab({ roomTypes, setRoomTypes, showToast }) {
                   <td className="arm-fw">{t.name}</td>
                   <td>{formatPrice(t.basePrice)}</td>
                   <td>{t.maxAdults} NL · {t.maxChildren} TE</td>
+                  <td>{t.depositPolicyName || 'Chưa cấu hình'}</td>
                   <td>{t.roomCount} phòng</td>
                   <td>
                     <div className="arm-actions">
@@ -394,7 +554,7 @@ function RoomTypesTab({ roomTypes, setRoomTypes, showToast }) {
       )}
 
       {modalType !== undefined && (
-        <RoomTypeModal roomType={modalType} onClose={() => setModalType(undefined)}
+        <RoomTypeModal roomType={modalType} depositPolicies={depositPolicies} onClose={() => setModalType(undefined)}
           onSave={(saved, isEdit) => {
             setRoomTypes(prev => isEdit ? prev.map(t => t.id===saved.id ? { ...saved, roomCount: t.roomCount } : t) : [...prev, saved])
             setModalType(undefined)
@@ -564,6 +724,7 @@ function RoomsTab({ rooms, setRooms, setRoomTypes, roomTypes, showToast }) {
 // ─────────────────────────────────────────────────────────
 function AdminRoomsPage({ activePage = 'rooms' }) {
   const [tab, setTab] = useState('types')
+  const [depositPolicies, setDepositPolicies] = useState([])
   const [roomTypes, setRoomTypes] = useState([])
   const [rooms, setRooms] = useState([])
   const [loading, setLoading] = useState(true)
@@ -573,16 +734,18 @@ function AdminRoomsPage({ activePage = 'rooms' }) {
 
   useEffect(() => {
     Promise.all([
+      fetch(DEPOSIT_API, { headers: authHeaders() }),
       fetch(`${API}/types`, { headers: authHeaders() }),
       fetch(API, { headers: authHeaders() }),
     ])
-      .then(async ([typesRes, roomsRes]) => {
-        if (!typesRes.ok || !roomsRes.ok) {
-          const err = await (typesRes.ok ? roomsRes : typesRes).json().catch(() => ({}))
+      .then(async ([policiesRes, typesRes, roomsRes]) => {
+        if (!policiesRes.ok || !typesRes.ok || !roomsRes.ok) {
+          const err = await (!policiesRes.ok ? policiesRes : typesRes.ok ? roomsRes : typesRes).json().catch(() => ({}))
           throw new Error(err.message || 'Không thể tải dữ liệu phòng')
         }
-        const [types, rms] = await Promise.all([typesRes.json(), roomsRes.json()])
+        const [policies, types, rms] = await Promise.all([policiesRes.json(), typesRes.json(), roomsRes.json()])
         const roomList = Array.isArray(rms) ? rms : []
+        setDepositPolicies(Array.isArray(policies) ? policies : [])
         setRooms(roomList)
         setRoomTypes(syncRoomCounts(Array.isArray(types) ? types : [], roomList))
       })
@@ -600,6 +763,9 @@ function AdminRoomsPage({ activePage = 'rooms' }) {
       </div>
 
       <div className="arm-tabs">
+        <button type="button" className={`arm-tab${tab==='deposit'?' arm-tab--active':''}`} onClick={() => setTab('deposit')}>
+          Chính sách đặt cọc
+        </button>
         <button type="button" className={`arm-tab${tab==='types'?' arm-tab--active':''}`} onClick={() => setTab('types')}>
           Loại phòng
         </button>
@@ -610,8 +776,10 @@ function AdminRoomsPage({ activePage = 'rooms' }) {
 
       {loading ? (
         <div className="arm-empty" style={{ padding: 48 }}>Đang tải...</div>
+      ) : tab === 'deposit' ? (
+        <DepositPoliciesTab depositPolicies={depositPolicies} setDepositPolicies={setDepositPolicies} showToast={showToast} />
       ) : tab === 'types' ? (
-        <RoomTypesTab roomTypes={roomTypes} setRoomTypes={setRoomTypes} showToast={showToast} />
+        <RoomTypesTab roomTypes={roomTypes} setRoomTypes={setRoomTypes} depositPolicies={depositPolicies} showToast={showToast} />
       ) : (
         <RoomsTab rooms={rooms} setRooms={setRooms} setRoomTypes={setRoomTypes} roomTypes={roomTypes} showToast={showToast} />
       )}
