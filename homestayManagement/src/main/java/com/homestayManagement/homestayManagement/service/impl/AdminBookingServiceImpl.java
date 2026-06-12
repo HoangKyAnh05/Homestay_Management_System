@@ -10,6 +10,8 @@ import com.homestayManagement.homestayManagement.dto.response.AdminBookingInvoic
 import com.homestayManagement.homestayManagement.dto.response.AdminBookingRoomResponse;
 import com.homestayManagement.homestayManagement.dto.response.AdminBookingScheduleItemResponse;
 import com.homestayManagement.homestayManagement.dto.response.AdminBookingScheduleResponse;
+import com.homestayManagement.homestayManagement.dto.response.AdminCheckInLogBookingResponse;
+import com.homestayManagement.homestayManagement.dto.response.AdminCheckInLogDetailResponse;
 import com.homestayManagement.homestayManagement.dto.response.AdminDirectBookingBusySlotResponse;
 import com.homestayManagement.homestayManagement.dto.response.AdminDirectBookingRoomResponse;
 import com.homestayManagement.homestayManagement.dto.request.AdminBookingAddMiniBarRequest;
@@ -78,6 +80,7 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -177,6 +180,40 @@ public class AdminBookingServiceImpl implements AdminBookingService {
                 rooms,
                 bookings
         );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<AdminCheckInLogBookingResponse> getCheckInLogs(LocalDate fromDate, LocalDate toDate) {
+        LocalDate startDate = fromDate != null ? fromDate : LocalDate.now().minusDays(30);
+        LocalDate endDate = toDate != null ? toDate : LocalDate.now().plusDays(30);
+        if (endDate.isBefore(startDate)) {
+            throw new IllegalArgumentException("Ngày kết thúc phải sau ngày bắt đầu");
+        }
+
+        List<BookingDetail> details = bookingDetailRepository.findCheckInLogs(
+                startDate.atStartOfDay(),
+                endDate.plusDays(1).atStartOfDay()
+        );
+        if (details.isEmpty()) {
+            return List.of();
+        }
+
+        Map<Long, CheckInRecord> recordsByDetailId = checkInRecordRepository
+                .findByBookingDetailIdsForAdmin(details.stream().map(BookingDetail::getId).toList())
+                .stream()
+                .collect(Collectors.toMap(record -> record.getBookingDetail().getId(), record -> record));
+
+        Map<Long, List<BookingDetail>> detailsByBooking = details.stream()
+                .collect(Collectors.groupingBy(
+                        detail -> detail.getBooking().getId(),
+                        LinkedHashMap::new,
+                        Collectors.toList()
+                ));
+
+        return detailsByBooking.values().stream()
+                .map(group -> toCheckInLogBookingResponse(group, recordsByDetailId))
+                .toList();
     }
 
     @Override
@@ -707,6 +744,57 @@ public class AdminBookingServiceImpl implements AdminBookingService {
                 detail.getRentType(),
                 booking.getStatus(),
                 detail.getStatus()
+        );
+    }
+
+    private AdminCheckInLogBookingResponse toCheckInLogBookingResponse(
+            List<BookingDetail> details,
+            Map<Long, CheckInRecord> recordsByDetailId
+    ) {
+        Booking booking = details.getFirst().getBooking();
+        Customer customer = booking.getCustomer();
+        List<AdminCheckInLogDetailResponse> detailResponses = details.stream()
+                .sorted(Comparator.comparing(BookingDetail::getCheckInTarget))
+                .map(detail -> toCheckInLogDetailResponse(detail, recordsByDetailId.get(detail.getId())))
+                .toList();
+        BigDecimal totalAmount = details.stream()
+                .map(BookingDetail::getPriceAtBooking)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        int checkedInDetails = (int) detailResponses.stream()
+                .filter(detail -> detail.checkInRecord() != null)
+                .count();
+        int completedDetails = (int) detailResponses.stream()
+                .filter(detail -> "COMPLETED".equalsIgnoreCase(detail.detailStatus()))
+                .count();
+
+        return new AdminCheckInLogBookingResponse(
+                booking.getId(),
+                booking.getBookingDate(),
+                booking.getStatus(),
+                toCustomerResponse(customer),
+                detailResponses.size(),
+                checkedInDetails,
+                completedDetails,
+                totalAmount,
+                detailResponses
+        );
+    }
+
+    private AdminCheckInLogDetailResponse toCheckInLogDetailResponse(BookingDetail detail, CheckInRecord record) {
+        Room room = detail.getRoom();
+        return new AdminCheckInLogDetailResponse(
+                detail.getId(),
+                room.getId(),
+                room.getRoomNumber(),
+                room.getRoomType() != null ? room.getRoomType().getName() : null,
+                detail.getCheckInTarget(),
+                detail.getCheckOutTarget(),
+                detail.getNumberOfAdults(),
+                detail.getNumberOfChildren(),
+                detail.getPriceAtBooking(),
+                detail.getRentType(),
+                detail.getStatus(),
+                record != null ? toCheckInResponse(record) : null
         );
     }
 

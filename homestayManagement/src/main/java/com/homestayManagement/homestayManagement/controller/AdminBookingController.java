@@ -8,6 +8,7 @@ import com.homestayManagement.homestayManagement.dto.request.AdminUpdateBookingC
 import com.homestayManagement.homestayManagement.dto.request.AdminUpdateBookingDetailRequest;
 import com.homestayManagement.homestayManagement.dto.response.AdminBookingDetailResponse;
 import com.homestayManagement.homestayManagement.dto.response.AdminBookingScheduleResponse;
+import com.homestayManagement.homestayManagement.dto.response.AdminCheckInLogBookingResponse;
 import com.homestayManagement.homestayManagement.dto.response.AdminDirectBookingRoomResponse;
 import com.homestayManagement.homestayManagement.service.AdminBookingService;
 import jakarta.validation.Valid;
@@ -38,6 +39,18 @@ public class AdminBookingController {
             LocalDate weekStart
     ) {
         return adminBookingService.getWeeklySchedule(weekStart);
+    }
+
+    @GetMapping("/check-in-logs")
+    public List<AdminCheckInLogBookingResponse> getCheckInLogs(
+            @RequestParam(value = "fromDate", required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            LocalDate fromDate,
+            @RequestParam(value = "toDate", required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            LocalDate toDate
+    ) {
+        return adminBookingService.getCheckInLogs(fromDate, toDate);
     }
 
     @GetMapping("/details/{bookingDetailId}")

@@ -7,6 +7,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Collection;
 
 public interface CheckInRecordRepository extends JpaRepository<CheckInRecord, Long> {
     @Query("""
@@ -27,4 +28,13 @@ public interface CheckInRecordRepository extends JpaRepository<CheckInRecord, Lo
     List<CheckInRecord> findByBookingDetailIdForAdmin(@Param("bookingDetailId") Long bookingDetailId);
 
     Optional<CheckInRecord> findByBookingDetailId(Long bookingDetailId);
+
+    @Query("""
+            select cr from CheckInRecord cr
+            join fetch cr.bookingDetail bd
+            left join fetch cr.receptionist
+            left join fetch cr.housekeeping
+            where bd.id in :bookingDetailIds
+            """)
+    List<CheckInRecord> findByBookingDetailIdsForAdmin(@Param("bookingDetailIds") Collection<Long> bookingDetailIds);
 }

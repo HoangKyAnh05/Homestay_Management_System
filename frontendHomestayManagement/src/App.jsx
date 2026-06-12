@@ -3,6 +3,7 @@ import AdminRoomsPage from './pages/Admin/AdminRoomsPage'
 import AdminLoginPage from './pages/Admin/AdminLoginPage'
 import AdminInvoicesPage from './pages/Admin/AdminInvoicesPage'
 import AdminBookingsPage from './pages/Admin/AdminBookingsPage'
+import AdminCheckInLogsPage from './pages/Admin/AdminCheckInLogsPage'
 import AdminPlaceholderPage from './pages/Admin/AdminPlaceholderPage'
 import AdminRulesPenaltiesPage from './pages/Admin/AdminRulesPenaltiesPage'
 import AdminServiceCategoriesPage from './pages/Admin/AdminServiceCategoriesPage'
@@ -54,6 +55,7 @@ function App() {
     if (currentPath === '/admin/users/customers') return <AdminUsersPage userType="customers" />
     if (currentPath === '/admin/rooms') return <AdminRoomsPage />
     if (currentPath === '/admin/bookings') return <AdminBookingsPage />
+    if (currentPath === '/admin/check-in-logs') return <AdminCheckInLogsPage />
     if (currentPath === '/admin/check-in-logs') return <AdminPlaceholderPage activePage="check-in-logs" title="Nhật ký Lưu trú (Check-in)" />
     if (currentPath === '/admin/services/categories') return <AdminServiceCategoriesPage />
     if (currentPath === '/admin/services/surcharges') return <AdminSurchargesPage />

@@ -41,4 +41,21 @@ public interface BookingDetailRepository extends JpaRepository<BookingDetail, Lo
     Optional<BookingDetail> findByIdForAdminDetail(@Param("id") Long id);
 
     List<BookingDetail> findByBookingId(Long bookingId);
+
+    @Query("""
+            select bd
+            from BookingDetail bd
+            join fetch bd.booking b
+            join fetch b.customer c
+            left join fetch c.account
+            join fetch bd.room r
+            join fetch r.roomType
+            where bd.checkInTarget < :endExclusive
+              and bd.checkOutTarget > :startInclusive
+            order by b.bookingDate desc, b.id desc, bd.checkInTarget asc
+            """)
+    List<BookingDetail> findCheckInLogs(
+            @Param("startInclusive") LocalDateTime startInclusive,
+            @Param("endExclusive") LocalDateTime endExclusive
+    );
 }
