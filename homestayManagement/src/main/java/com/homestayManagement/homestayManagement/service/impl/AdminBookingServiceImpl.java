@@ -33,10 +33,12 @@ import com.homestayManagement.homestayManagement.entity.FacilityService;
 import com.homestayManagement.homestayManagement.entity.Invoice;
 import com.homestayManagement.homestayManagement.entity.InventoryService;
 import com.homestayManagement.homestayManagement.entity.Payment;
+import com.homestayManagement.homestayManagement.entity.PricePolicy;
 import com.homestayManagement.homestayManagement.entity.Role;
 import com.homestayManagement.homestayManagement.entity.Room;
 import com.homestayManagement.homestayManagement.entity.RoomAmenitiesUsage;
 import com.homestayManagement.homestayManagement.entity.RoomMiniBarItem;
+import com.homestayManagement.homestayManagement.entity.RoomPriceConfig;
 import com.homestayManagement.homestayManagement.entity.RoomType;
 import com.homestayManagement.homestayManagement.entity.RulesPenalty;
 import com.homestayManagement.homestayManagement.entity.ServiceUsage;
@@ -55,6 +57,8 @@ import com.homestayManagement.homestayManagement.repository.RoleRepository;
 import com.homestayManagement.homestayManagement.repository.RoomAmenitiesUsageRepository;
 import com.homestayManagement.homestayManagement.repository.RoomMiniBarItemRepository;
 import com.homestayManagement.homestayManagement.repository.RoomRepository;
+import com.homestayManagement.homestayManagement.repository.PricePolicyRepository;
+import com.homestayManagement.homestayManagement.repository.RoomPriceConfigRepository;
 import com.homestayManagement.homestayManagement.repository.RulesPenaltyRepository;
 import com.homestayManagement.homestayManagement.repository.ServiceUsageRepository;
 import com.homestayManagement.homestayManagement.service.AdminBookingService;
@@ -98,6 +102,8 @@ public class AdminBookingServiceImpl implements AdminBookingService {
     private final RulesPenaltyRepository rulesPenaltyRepository;
     private final EmployeeRepository employeeRepository;
     private final PasswordEncoder passwordEncoder;
+    private final PricePolicyRepository pricePolicyRepository;
+    private final RoomPriceConfigRepository roomPriceConfigRepository;
 
     public AdminBookingServiceImpl(
             BookingDetailRepository bookingDetailRepository,
@@ -117,7 +123,9 @@ public class AdminBookingServiceImpl implements AdminBookingService {
             RoomMiniBarItemRepository roomMiniBarItemRepository,
             RulesPenaltyRepository rulesPenaltyRepository,
             EmployeeRepository employeeRepository,
-            PasswordEncoder passwordEncoder
+            PasswordEncoder passwordEncoder,
+            PricePolicyRepository pricePolicyRepository,
+            RoomPriceConfigRepository roomPriceConfigRepository
     ) {
         this.bookingDetailRepository = bookingDetailRepository;
         this.bookingRepository = bookingRepository;
@@ -137,6 +145,8 @@ public class AdminBookingServiceImpl implements AdminBookingService {
         this.rulesPenaltyRepository = rulesPenaltyRepository;
         this.employeeRepository = employeeRepository;
         this.passwordEncoder = passwordEncoder;
+        this.pricePolicyRepository = pricePolicyRepository;
+        this.roomPriceConfigRepository = roomPriceConfigRepository;
     }
 
     @Override
@@ -286,6 +296,11 @@ public class AdminBookingServiceImpl implements AdminBookingService {
         RoomType firstRoomType = firstRoom != null ? firstRoom.getRoomType() : null;
         DepositPolicy depositPolicy = firstRoomType != null ? firstRoomType.getDepositPolicy() : null;
 
+        // Tải price policy để lấy rentType thực và tính giá
+        com.homestayManagement.homestayManagement.entity.PricePolicy pricePolicy =
+                pricePolicyRepository.findById(request.pricePolicyId())
+                        .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy gói thuê"));
+
         Booking booking = bookingRepository.save(Booking.builder()
                 .customer(customer)
                 .depositPolicy(depositPolicy)
@@ -297,6 +312,17 @@ public class AdminBookingServiceImpl implements AdminBookingService {
         for (AdminDirectBookingRoomRequest selectedRoom : selectedRooms) {
             Room room = roomsById.get(selectedRoom.roomId());
             RoomType roomType = room.getRoomType();
+
+            // Xác định WEEKDAY hay WEEKEND theo ngày check-in
+            String dayType = isDayWeekend(request.checkInTarget()) ? "WEEKEND" : "WEEKDAY";
+
+            // Tra giá từ room_price_configs
+            BigDecimal price = roomType == null ? BigDecimal.ZERO :
+                    roomPriceConfigRepository
+                            .findByRoomTypeIdAndPricePolicyIdAndDayType(
+                                    roomType.getId(), pricePolicy.getId(), dayType)
+                            .map(com.homestayManagement.homestayManagement.entity.RoomPriceConfig::getPrice)
+                            .orElse(BigDecimal.ZERO);
             BookingDetail detail = bookingDetailRepository.save(BookingDetail.builder()
                     .booking(booking)
                     .room(room)
@@ -304,8 +330,8 @@ public class AdminBookingServiceImpl implements AdminBookingService {
                     .checkOutTarget(request.checkOutTarget())
                     .numberOfAdults(selectedRoom.numberOfAdults())
                     .numberOfChildren(selectedRoom.numberOfChildren())
-                    .priceAtBooking(BigDecimal.ZERO) // TODO: lấy giá từ room_price_configs dựa theo policy + day_type
-                    .rentType(normalizeRentType(request.rentType()))
+                    .priceAtBooking(price)
+                    .rentType(pricePolicy.getRentType())
                     .status("CONFIRMED")
                     .build());
             if (firstDetail == null) {
@@ -521,6 +547,12 @@ public class AdminBookingServiceImpl implements AdminBookingService {
         return rentType == null ? "BY_NIGHT" : rentType.trim().toUpperCase();
     }
 
+    private boolean isDayWeekend(LocalDateTime dateTime) {
+        if (dateTime == null) return false;
+        DayOfWeek dow = dateTime.getDayOfWeek();
+        return dow == DayOfWeek.SATURDAY || dow == DayOfWeek.SUNDAY;
+    }
+
     private boolean isActiveBookingDetail(BookingDetail detail) {
         if (detail == null || detail.getBooking() == null) {
             return false;
@@ -541,11 +573,13 @@ public class AdminBookingServiceImpl implements AdminBookingService {
                 room.getId(),
                 room.getRoomNumber(),
                 roomType != null ? roomType.getName() : null,
-                // basePrice đã bị loại bỏ — giá lấy từ room_price_configs
+                roomType != null ? roomType.getId() : null,
                 roomType != null ? roomType.getMaxAdults() : null,
                 roomType != null ? roomType.getMaxChildren() : null,
                 policy != null ? policy.getId() : null,
                 policy != null ? policy.getPolicyName() : null,
+                policy != null ? policy.getCalculationType() : null,
+                policy != null ? policy.getPolicyValue() : null,
                 busySlots.isEmpty(),
                 busySlots.stream()
                         .sorted(Comparator.comparing(BookingDetail::getCheckInTarget))

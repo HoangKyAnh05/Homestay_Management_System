@@ -41,6 +41,10 @@ public record AdminDirectBookingRequest(
 
         @NotBlank(message = "Vui lòng chọn loại thuê")
         @Size(max = 20, message = "Loại thuê không được vượt quá 20 ký tự")
-        String rentType
+        String rentType,
+
+        /** ID của gói giá (price_policies) admin chọn — dùng để tra giá từ room_price_configs */
+        @NotNull(message = "Vui lòng chọn gói thuê")
+        Long pricePolicyId
 ) {
 }

@@ -440,6 +440,8 @@ function BookingDetailModal({ detail, loading, error, actionLoading, actionError
 }
 
 function DirectBookingModal({ onClose, onCreated }) {
+  const PRICE_API = 'http://localhost:8080/api/admin/price-config'
+
   const initialCheckIn = defaultCheckInValue()
   const [form, setForm] = useState({
     fullName: '',
@@ -449,31 +451,71 @@ function DirectBookingModal({ onClose, onCreated }) {
     dateOfBirth: '',
     checkInTarget: initialCheckIn,
     checkOutTarget: defaultCheckOutValue(initialCheckIn),
-    rentType: 'BY_NIGHT',
+    pricePolicyId: '',   // ID gói thuê đã chọn
     selectedRooms: {},
   })
+
+  // Danh sách gói thuê từ price_policies
+  const [pricePolicies, setPricePolicies] = useState([])
+  // Tất cả cấu hình giá (room_price_configs) — dùng để hiển thị preview giá
+  const [priceConfigs, setPriceConfigs] = useState([])
   const [rooms, setRooms] = useState([])
   const [roomsLoading, setRoomsLoading] = useState(false)
   const [submitLoading, setSubmitLoading] = useState(false)
   const [error, setError] = useState('')
 
-  const selectedRoomEntries = Object.values(form.selectedRooms)
-  const selectedRoomIds = new Set(selectedRoomEntries.map(room => String(room.roomId)))
+  // Load gói thuê + toàn bộ config giá một lần khi mở modal
+  useEffect(() => {
+    Promise.all([
+      fetch(`${PRICE_API}/policies`, { headers: authHeaders() }),
+      fetch(`${PRICE_API}/configs`,  { headers: authHeaders() }),
+    ])
+      .then(async ([ppRes, pcRes]) => {
+        const [pp, pc] = await Promise.all([ppRes.json(), pcRes.json()])
+        const policies = Array.isArray(pp) ? pp : []
+        setPricePolicies(policies)
+        setPriceConfigs(Array.isArray(pc) ? pc : [])
+        // Tự động chọn gói đầu tiên
+        if (policies.length > 0) {
+          setForm(f => ({ ...f, pricePolicyId: String(policies[0].id) }))
+        }
+      })
+      .catch(() => {}) // non-critical
+  }, [])
 
+  const selectedRoomEntries = Object.values(form.selectedRooms)
+  const selectedRoomIds = new Set(selectedRoomEntries.map(r => String(r.roomId)))
+
+  // Tính ngày check-in là WEEKDAY hay WEEKEND
+  const isWeekend = useMemo(() => {
+    if (!form.checkInTarget) return false
+    const d = new Date(form.checkInTarget).getDay() // 0=CN, 6=T7
+    return d === 0 || d === 6
+  }, [form.checkInTarget])
+
+  // Tìm giá cho một loại phòng theo gói thuê và day_type đang chọn
+  const getPriceForRoomType = (roomTypeId) => {
+    if (!form.pricePolicyId || !roomTypeId) return null
+    const dayType = isWeekend ? 'WEEKEND' : 'WEEKDAY'
+    const cfg = priceConfigs.find(
+      c => c.roomTypeId === roomTypeId &&
+           c.pricePolicyId === Number(form.pricePolicyId) &&
+           c.dayType === dayType
+    )
+    return cfg ? cfg.price : null
+  }
+
+  const selectedPolicy = pricePolicies.find(p => p.id === Number(form.pricePolicyId))
+
+  // Load phòng mỗi khi checkIn/checkOut thay đổi
   useEffect(() => {
     if (!form.checkInTarget || !form.checkOutTarget) return
     const controller = new AbortController()
-
     const params = new URLSearchParams({
       checkInTarget: form.checkInTarget,
       checkOutTarget: form.checkOutTarget,
     })
-
-    Promise.resolve().then(() => {
-      setRoomsLoading(true)
-      setError('')
-    })
-
+    Promise.resolve().then(() => { setRoomsLoading(true); setError('') })
     fetch(`${API_BASE}/direct/rooms?${params.toString()}`, {
       headers: authHeaders(),
       signal: controller.signal,
@@ -486,10 +528,11 @@ function DirectBookingModal({ onClose, onCreated }) {
       .then(data => {
         const nextRooms = Array.isArray(data) ? data : []
         setRooms(nextRooms)
+        // Bỏ ra khỏi selectedRooms những phòng không còn available
         setForm(current => {
-          const availableIds = new Set(nextRooms.filter(room => room.available).map(room => String(room.roomId)))
+          const availableIds = new Set(nextRooms.filter(r => r.available).map(r => String(r.roomId)))
           const selectedRooms = Object.fromEntries(
-            Object.entries(current.selectedRooms).filter(([roomId]) => availableIds.has(String(roomId)))
+            Object.entries(current.selectedRooms).filter(([id]) => availableIds.has(id))
           )
           return { ...current, selectedRooms }
         })
@@ -498,20 +541,17 @@ function DirectBookingModal({ onClose, onCreated }) {
         if (err.name !== 'AbortError') setError(err.message || 'Không tải được danh sách phòng')
       })
       .finally(() => setRoomsLoading(false))
-
     return () => controller.abort()
   }, [form.checkInTarget, form.checkOutTarget])
 
-  const updateForm = (field, value) => {
-    setForm(current => ({ ...current, [field]: value }))
-  }
+  const updateForm = (field, value) => setForm(f => ({ ...f, [field]: value }))
 
   const updateCheckIn = (value) => {
-    setForm(current => ({
-      ...current,
+    setForm(f => ({
+      ...f,
       checkInTarget: value,
-      checkOutTarget: current.checkOutTarget && new Date(current.checkOutTarget) > new Date(value)
-        ? current.checkOutTarget
+      checkOutTarget: f.checkOutTarget && new Date(f.checkOutTarget) > new Date(value)
+        ? f.checkOutTarget
         : defaultCheckOutValue(value),
       selectedRooms: {},
     }))
@@ -519,59 +559,78 @@ function DirectBookingModal({ onClose, onCreated }) {
 
   const toggleRoom = (room) => {
     if (!room.available) return
-    setForm(current => {
-      const selectedRooms = { ...current.selectedRooms }
-      if (selectedRooms[room.roomId]) {
-        delete selectedRooms[room.roomId]
+    const key = String(room.roomId)
+    setForm(f => {
+      const selectedRooms = { ...f.selectedRooms }
+      if (selectedRooms[key]) {
+        delete selectedRooms[key]
       } else {
-        selectedRooms[room.roomId] = {
+        selectedRooms[key] = {
           roomId: room.roomId,
           roomNumber: room.roomNumber,
           roomTypeName: room.roomTypeName,
+          roomTypeId: room.roomTypeId,
           maxAdults: room.maxAdults,
           maxChildren: room.maxChildren,
+          depositPolicyName: room.depositPolicyName,
+          depositCalculationType: room.depositCalculationType,
+          depositPolicyValue: room.depositPolicyValue,
           numberOfAdults: 1,
           numberOfChildren: 0,
         }
       }
-      return { ...current, selectedRooms }
+      return { ...f, selectedRooms }
+    })
+  }
+
+  // Fix bug: xóa phòng khỏi selectedRooms bằng key
+  const removeRoom = (roomId) => {
+    setForm(f => {
+      const selectedRooms = { ...f.selectedRooms }
+      delete selectedRooms[String(roomId)]
+      return { ...f, selectedRooms }
     })
   }
 
   const updateSelectedRoom = (roomId, field, value) => {
-    setForm(current => ({
-      ...current,
+    setForm(f => ({
+      ...f,
       selectedRooms: {
-        ...current.selectedRooms,
-        [roomId]: {
-          ...current.selectedRooms[roomId],
-          [field]: value,
-        },
+        ...f.selectedRooms,
+        [String(roomId)]: { ...f.selectedRooms[String(roomId)], [field]: value },
       },
     }))
   }
 
-  const submit = (event) => {
-    event.preventDefault()
-    setSubmitLoading(true)
-    setError('')
+  const formatDeposit = (room) => {
+    if (!room.depositPolicyName) return 'Không cọc'
+    if (room.depositCalculationType === 'PERCENTAGE') {
+      return `Cọc ${Number(room.depositPolicyValue || 0)}% (${room.depositPolicyName})`
+    }
+    return `Cọc ${formatMoney(room.depositPolicyValue)} (${room.depositPolicyName})`
+  }
 
+  const submit = (e) => {
+    e.preventDefault()
+    if (!form.pricePolicyId) { setError('Vui lòng chọn gói thuê'); return }
+    setSubmitLoading(true); setError('')
     fetch(`${API_BASE}/direct`, {
       method: 'POST',
       headers: authHeaders(),
       body: JSON.stringify({
-        fullName: form.fullName,
-        phone: form.phone,
-        email: form.email,
-        address: form.address,
-        dateOfBirth: form.dateOfBirth || null,
-        checkInTarget: form.checkInTarget,
+        fullName:       form.fullName,
+        phone:          form.phone,
+        email:          form.email,
+        address:        form.address,
+        dateOfBirth:    form.dateOfBirth || null,
+        checkInTarget:  form.checkInTarget,
         checkOutTarget: form.checkOutTarget,
-        rentType: form.rentType,
-        rooms: selectedRoomEntries.map(room => ({
-          roomId: Number(room.roomId),
-          numberOfAdults: Number(room.numberOfAdults),
-          numberOfChildren: Number(room.numberOfChildren),
+        rentType:       selectedPolicy?.rentType || 'OVERNIGHT',
+        pricePolicyId:  Number(form.pricePolicyId),
+        rooms: selectedRoomEntries.map(r => ({
+          roomId:          Number(r.roomId),
+          numberOfAdults:  Number(r.numberOfAdults),
+          numberOfChildren:Number(r.numberOfChildren),
         })),
       }),
     })
@@ -599,118 +658,173 @@ function DirectBookingModal({ onClose, onCreated }) {
         <form className="abk-modal-body" onSubmit={submit}>
           {error && <div className="abk-inline-error">{error}</div>}
           <div className="abk-direct-layout">
+
+            {/* ── Cột trái: form ── */}
             <section className="abk-direct-form">
               <h4>Thông tin khách hàng</h4>
               <div className="abk-form-grid">
-                <label>
-                  <span>Họ tên</span>
+                <label><span>Họ tên</span>
                   <input required value={form.fullName} onChange={e => updateForm('fullName', e.target.value)} />
                 </label>
-                <label>
-                  <span>Số điện thoại</span>
+                <label><span>Số điện thoại</span>
                   <input required maxLength="10" value={form.phone} onChange={e => updateForm('phone', e.target.value)} />
                 </label>
-                <label>
-                  <span>Email</span>
+                <label><span>Email</span>
                   <input required type="email" value={form.email} onChange={e => updateForm('email', e.target.value)} />
                 </label>
-                <label>
-                  <span>Ngày sinh</span>
+                <label><span>Ngày sinh</span>
                   <input type="date" value={form.dateOfBirth} onChange={e => updateForm('dateOfBirth', e.target.value)} />
                 </label>
-                <label className="abk-form-wide">
-                  <span>Địa chỉ</span>
+                <label className="abk-form-wide"><span>Địa chỉ</span>
                   <input value={form.address} onChange={e => updateForm('address', e.target.value)} />
                 </label>
               </div>
 
               <h4>Thông tin đặt phòng</h4>
               <div className="abk-form-grid">
-                <label>
-                  <span>Nhận phòng dự kiến</span>
+                <label><span>Nhận phòng dự kiến</span>
                   <input required type="datetime-local" value={form.checkInTarget} onChange={e => updateCheckIn(e.target.value)} />
                 </label>
-                <label>
-                  <span>Trả phòng dự kiến</span>
+                <label><span>Trả phòng dự kiến</span>
                   <input required type="datetime-local" value={form.checkOutTarget} onChange={e => updateForm('checkOutTarget', e.target.value)} />
                 </label>
-                <label>
-                  <span>Loại thuê</span>
-                  <select value={form.rentType} onChange={e => updateForm('rentType', e.target.value)}>
-                    <option value="BY_NIGHT">Theo đêm</option>
-                    <option value="BY_HOUR">Theo giờ</option>
-                    <option value="BY_DAY">Theo ngày</option>
+                {/* Loại thuê — lấy từ price_policies DB */}
+                <label className="abk-form-wide"><span>Gói thuê</span>
+                  <select
+                    required
+                    value={form.pricePolicyId}
+                    onChange={e => updateForm('pricePolicyId', e.target.value)}
+                  >
+                    <option value="">— Chọn gói thuê —</option>
+                    {pricePolicies.map(p => (
+                      <option key={p.id} value={p.id}>
+                        {p.policyName}
+                        {p.limitHours ? ` · ${p.limitHours}h` : ''}
+                        {p.standardCheckIn ? ` · Check-in ${p.standardCheckIn}` : ''}
+                        {p.standardCheckOut ? ` → ${p.standardCheckOut}` : ''}
+                      </option>
+                    ))}
                   </select>
                 </label>
-                <label>
-                  <span>Phòng đã chọn</span>
-                  <input readOnly value={`${selectedRoomEntries.length} phòng`} />
-                </label>
               </div>
+
+              {/* Preview gói đang chọn */}
+              {selectedPolicy && (
+                <div className="abk-policy-preview">
+                  <span className="abk-policy-preview-badge">
+                    {selectedPolicy.rentType}
+                    {selectedPolicy.limitHours ? ` · ${selectedPolicy.limitHours} giờ` : ''}
+                  </span>
+                  {selectedPolicy.standardCheckIn && (
+                    <span>🕐 Nhận phòng chuẩn: {selectedPolicy.standardCheckIn}</span>
+                  )}
+                  {selectedPolicy.standardCheckOut && (
+                    <span>🕐 Trả phòng chuẩn: {selectedPolicy.standardCheckOut}</span>
+                  )}
+                  <span className={`abk-day-type${isWeekend ? ' abk-day-type--weekend' : ''}`}>
+                    {isWeekend ? '📅 Cuối tuần' : '📅 Ngày thường'}
+                  </span>
+                </div>
+              )}
+
+              {/* Phòng đã chọn */}
               <div className="abk-selected-rooms">
                 <div className="abk-selected-rooms-head">
                   <h4>Phòng trong booking này</h4>
                   <span>{selectedRoomEntries.length} phòng</span>
                 </div>
-                {selectedRoomEntries.length ? selectedRoomEntries.map(room => (
-                  <div className="abk-selected-room" key={room.roomId}>
-                    <div>
-                      <strong>Phòng {room.roomNumber}</strong>
-                      <span>{room.roomTypeName || 'Chưa phân loại'} · Tối đa {room.maxAdults || 0} NL, {room.maxChildren || 0} TE</span>
+                {selectedRoomEntries.length ? selectedRoomEntries.map(room => {
+                  const price = getPriceForRoomType(room.roomTypeId)
+                  return (
+                    <div className="abk-selected-room" key={room.roomId}>
+                      <div className="abk-selected-room-info">
+                        <strong>Phòng {room.roomNumber}</strong>
+                        <span>{room.roomTypeName || 'Chưa phân loại'} · Tối đa {room.maxAdults || 0} người lớn, {room.maxChildren || 0} trẻ em</span>
+                        <span className="abk-selected-room-deposit">{formatDeposit(room)}</span>
+                        {price != null && (
+                          <span className="abk-selected-room-price">
+                            {formatMoney(price)} / {isWeekend ? 'cuối tuần' : 'ngày thường'}
+                          </span>
+                        )}
+                        {price == null && form.pricePolicyId && (
+                          <span className="abk-selected-room-price abk-selected-room-price--none">Chưa có giá cho gói này</span>
+                        )}
+                      </div>
+                      <label>
+                        <span>Người lớn</span>
+                        <input type="number" min="1" max={room.maxAdults || undefined}
+                          value={room.numberOfAdults}
+                          onChange={e => updateSelectedRoom(room.roomId, 'numberOfAdults', e.target.value)} />
+                      </label>
+                      <label>
+                        <span>Trẻ em</span>
+                        <input type="number" min="0" max={room.maxChildren || undefined}
+                          value={room.numberOfChildren}
+                          onChange={e => updateSelectedRoom(room.roomId, 'numberOfChildren', e.target.value)} />
+                      </label>
+                      {/* Fix: dùng removeRoom thay vì toggleRoom để xóa chính xác bằng key */}
+                      <button type="button" className="abk-remove-room-btn" onClick={() => removeRoom(room.roomId)} aria-label="Bỏ chọn phòng">×</button>
                     </div>
-                    <label>
-                      <span>Người lớn</span>
-                      <input type="number" min="1" max={room.maxAdults || undefined} value={room.numberOfAdults} onChange={e => updateSelectedRoom(room.roomId, 'numberOfAdults', e.target.value)} />
-                    </label>
-                    <label>
-                      <span>Trẻ em</span>
-                      <input type="number" min="0" max={room.maxChildren || undefined} value={room.numberOfChildren} onChange={e => updateSelectedRoom(room.roomId, 'numberOfChildren', e.target.value)} />
-                    </label>
-                    <button type="button" onClick={() => toggleRoom(room)} aria-label="Bỏ chọn phòng">×</button>
-                  </div>
-                )) : (
+                  )
+                }) : (
                   <div className="abk-empty abk-empty--sm">Chưa chọn phòng nào.</div>
                 )}
               </div>
             </section>
 
+            {/* ── Cột phải: danh sách phòng ── */}
             <section className="abk-room-picker">
               <div className="abk-room-picker-head">
                 <h4>Chọn phòng</h4>
-                <span>{rooms.filter(room => room.available).length}/{rooms.length} phòng trống</span>
+                <span>{rooms.filter(r => r.available).length}/{rooms.length} phòng trống</span>
               </div>
               {roomsLoading ? (
                 <div className="abk-empty abk-empty--sm">Đang kiểm tra phòng...</div>
               ) : (
                 <div className="abk-room-options">
-                  {rooms.map(room => (
-                    <button
-                      type="button"
-                      key={room.roomId}
-                      disabled={!room.available}
-                      className={`abk-room-option${selectedRoomIds.has(String(room.roomId)) ? ' abk-room-option--selected' : ''}${!room.available ? ' abk-room-option--busy' : ''}`}
-                      onClick={() => toggleRoom(room)}
-                    >
-                      <div className="abk-room-option-main">
-                        <strong>Phòng {room.roomNumber}</strong>
-                        <span>{room.roomTypeName || 'Chưa phân loại'} · {formatMoney(room.basePrice)}</span>
-                        <span>Tối đa {room.maxAdults || 0} người lớn, {room.maxChildren || 0} trẻ em</span>
-                        {room.depositPolicyName && <span>Cọc: {room.depositPolicyName}</span>}
-                      </div>
-                      <div className="abk-room-option-side">
-                        <em>{room.available ? (selectedRoomIds.has(String(room.roomId)) ? 'Đã chọn' : 'Trống') : 'Đã book'}</em>
-                        {!room.available && room.busySlots?.length ? (
-                          <div className="abk-busy-slots">
-                            {room.busySlots.map(slot => (
-                              <span key={slot.bookingDetailId}>
-                                {formatTime(slot.checkInTarget)} - {formatTime(slot.checkOutTarget)} · {slot.customerName || 'Khách'}
-                              </span>
-                            ))}
-                          </div>
-                        ) : null}
-                      </div>
-                    </button>
-                  ))}
+                  {rooms.map(room => {
+                    const price = getPriceForRoomType(room.roomTypeId)
+                    const isSelected = selectedRoomIds.has(String(room.roomId))
+                    return (
+                      <button
+                        type="button"
+                        key={room.roomId}
+                        disabled={!room.available}
+                        className={`abk-room-option${isSelected ? ' abk-room-option--selected' : ''}${!room.available ? ' abk-room-option--busy' : ''}`}
+                        onClick={() => toggleRoom(room)}
+                      >
+                        <div className="abk-room-option-main">
+                          <strong>Phòng {room.roomNumber}</strong>
+                          <span>{room.roomTypeName || 'Chưa phân loại'}</span>
+                          <span>Tối đa {room.maxAdults || 0} NL · {room.maxChildren || 0} TE</span>
+                          {room.depositPolicyName && (
+                            <span className="abk-room-deposit-hint">
+                              {room.depositCalculationType === 'PERCENTAGE'
+                                ? `Cọc ${Number(room.depositPolicyValue || 0)}%`
+                                : `Cọc ${formatMoney(room.depositPolicyValue)}`}
+                            </span>
+                          )}
+                        </div>
+                        <div className="abk-room-option-side">
+                          {price != null ? (
+                            <strong className="abk-room-price">{formatMoney(price)}</strong>
+                          ) : form.pricePolicyId ? (
+                            <span className="abk-room-price-none">Chưa có giá</span>
+                          ) : null}
+                          <em>{room.available ? (isSelected ? '✓ Đã chọn' : 'Trống') : 'Đã book'}</em>
+                          {!room.available && room.busySlots?.length ? (
+                            <div className="abk-busy-slots">
+                              {room.busySlots.map(slot => (
+                                <span key={slot.bookingDetailId}>
+                                  {formatTime(slot.checkInTarget)} - {formatTime(slot.checkOutTarget)} · {slot.customerName || 'Khách'}
+                                </span>
+                              ))}
+                            </div>
+                          ) : null}
+                        </div>
+                      </button>
+                    )
+                  })}
                 </div>
               )}
             </section>
@@ -718,7 +832,8 @@ function DirectBookingModal({ onClose, onCreated }) {
 
           <div className="abk-direct-actions">
             <button type="button" className="abk-action-secondary" onClick={onClose}>Hủy</button>
-            <button type="submit" className="abk-action-primary" disabled={submitLoading || selectedRoomEntries.length === 0}>
+            <button type="submit" className="abk-action-primary"
+              disabled={submitLoading || selectedRoomEntries.length === 0 || !form.pricePolicyId}>
               {submitLoading ? 'Đang tạo...' : 'Tạo đơn đặt phòng'}
             </button>
           </div>

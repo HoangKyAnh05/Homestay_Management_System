@@ -1090,3 +1090,127 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ── Policy preview banner (trong DirectBookingModal) ── */
+.abk-policy-preview {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: -4px 0 12px;
+  padding: 10px 14px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 10px;
+  font-size: 12px;
+  color: #166534;
+  font-weight: 600;
+}
+
+.abk-policy-preview-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: #166534;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.abk-day-type {
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.abk-day-type--weekend {
+  background: #fdf4ff;
+  color: #7e22ce;
+}
+
+/* ── Selected room card cải tiến ── */
+.abk-selected-room-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.abk-selected-room-info strong {
+  font-size: 14px;
+  color: #111827;
+}
+
+.abk-selected-room-info span {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.abk-selected-room-deposit {
+  font-size: 12px !important;
+  color: #92400e !important;
+  font-weight: 600 !important;
+}
+
+.abk-selected-room-price {
+  font-size: 13px !important;
+  color: #16a34a !important;
+  font-weight: 700 !important;
+}
+
+.abk-selected-room-price--none {
+  color: #f59e0b !important;
+}
+
+/* Nút × xóa phòng trong selected list */
+.abk-remove-room-btn {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  display: inline-grid;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: #fff1f2;
+  color: #dc2626;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.12s;
+  align-self: center;
+}
+
+.abk-remove-room-btn:hover {
+  background: #fee2e2;
+}
+
+/* ── Room option card cải tiến ── */
+.abk-room-price {
+  display: block;
+  font-size: 15px;
+  font-weight: 800;
+  color: #16a34a;
+  margin-bottom: 4px;
+}
+
+.abk-room-price-none {
+  display: block;
+  font-size: 12px;
+  color: #f59e0b;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.abk-room-deposit-hint {
+  display: block;
+  font-size: 11px !important;
+  color: #92400e !important;
+  font-weight: 600 !important;
+  margin-top: 2px;
+}
