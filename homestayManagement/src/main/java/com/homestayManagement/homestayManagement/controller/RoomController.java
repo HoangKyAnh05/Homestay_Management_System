@@ -60,7 +60,6 @@ public class RoomController {
         return new RoomTypeResponse(
                 roomType.getId(),
                 roomType.getName(),
-                roomType.getBasePrice(),
                 roomType.getMaxAdults(),
                 roomType.getMaxChildren(),
                 roomType.getDescription(),

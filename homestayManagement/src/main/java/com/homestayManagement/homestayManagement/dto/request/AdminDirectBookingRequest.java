@@ -1,13 +1,15 @@
 package com.homestayManagement.homestayManagement.dto.request;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 public record AdminDirectBookingRequest(
         @NotBlank(message = "Vui lòng nhập họ tên khách hàng")
@@ -28,22 +30,14 @@ public record AdminDirectBookingRequest(
 
         LocalDate dateOfBirth,
 
-        @NotNull(message = "Vui lòng chọn phòng")
-        Long roomId,
+        @NotEmpty(message = "Vui lòng chọn ít nhất một phòng")
+        List<@Valid AdminDirectBookingRoomRequest> rooms,
 
         @NotNull(message = "Vui lòng chọn giờ nhận phòng")
         LocalDateTime checkInTarget,
 
         @NotNull(message = "Vui lòng chọn giờ trả phòng")
         LocalDateTime checkOutTarget,
-
-        @NotNull(message = "Vui lòng nhập số người lớn")
-        @Min(value = 1, message = "Số người lớn tối thiểu là 1")
-        Integer numberOfAdults,
-
-        @NotNull(message = "Vui lòng nhập số trẻ em")
-        @Min(value = 0, message = "Số trẻ em không hợp lệ")
-        Integer numberOfChildren,
 
         @NotBlank(message = "Vui lòng chọn loại thuê")
         @Size(max = 20, message = "Loại thuê không được vượt quá 20 ký tự")

@@ -449,17 +449,16 @@ function DirectBookingModal({ onClose, onCreated }) {
     dateOfBirth: '',
     checkInTarget: initialCheckIn,
     checkOutTarget: defaultCheckOutValue(initialCheckIn),
-    numberOfAdults: 1,
-    numberOfChildren: 0,
     rentType: 'BY_NIGHT',
-    roomId: '',
+    selectedRooms: {},
   })
   const [rooms, setRooms] = useState([])
   const [roomsLoading, setRoomsLoading] = useState(false)
   const [submitLoading, setSubmitLoading] = useState(false)
   const [error, setError] = useState('')
 
-  const selectedRoom = rooms.find(room => String(room.roomId) === String(form.roomId))
+  const selectedRoomEntries = Object.values(form.selectedRooms)
+  const selectedRoomIds = new Set(selectedRoomEntries.map(room => String(room.roomId)))
 
   useEffect(() => {
     if (!form.checkInTarget || !form.checkOutTarget) return
@@ -488,8 +487,11 @@ function DirectBookingModal({ onClose, onCreated }) {
         const nextRooms = Array.isArray(data) ? data : []
         setRooms(nextRooms)
         setForm(current => {
-          const stillAvailable = nextRooms.some(room => room.available && String(room.roomId) === String(current.roomId))
-          return stillAvailable ? current : { ...current, roomId: '' }
+          const availableIds = new Set(nextRooms.filter(room => room.available).map(room => String(room.roomId)))
+          const selectedRooms = Object.fromEntries(
+            Object.entries(current.selectedRooms).filter(([roomId]) => availableIds.has(String(roomId)))
+          )
+          return { ...current, selectedRooms }
         })
       })
       .catch(err => {
@@ -511,7 +513,41 @@ function DirectBookingModal({ onClose, onCreated }) {
       checkOutTarget: current.checkOutTarget && new Date(current.checkOutTarget) > new Date(value)
         ? current.checkOutTarget
         : defaultCheckOutValue(value),
-      roomId: '',
+      selectedRooms: {},
+    }))
+  }
+
+  const toggleRoom = (room) => {
+    if (!room.available) return
+    setForm(current => {
+      const selectedRooms = { ...current.selectedRooms }
+      if (selectedRooms[room.roomId]) {
+        delete selectedRooms[room.roomId]
+      } else {
+        selectedRooms[room.roomId] = {
+          roomId: room.roomId,
+          roomNumber: room.roomNumber,
+          roomTypeName: room.roomTypeName,
+          maxAdults: room.maxAdults,
+          maxChildren: room.maxChildren,
+          numberOfAdults: 1,
+          numberOfChildren: 0,
+        }
+      }
+      return { ...current, selectedRooms }
+    })
+  }
+
+  const updateSelectedRoom = (roomId, field, value) => {
+    setForm(current => ({
+      ...current,
+      selectedRooms: {
+        ...current.selectedRooms,
+        [roomId]: {
+          ...current.selectedRooms[roomId],
+          [field]: value,
+        },
+      },
     }))
   }
 
@@ -524,11 +560,19 @@ function DirectBookingModal({ onClose, onCreated }) {
       method: 'POST',
       headers: authHeaders(),
       body: JSON.stringify({
-        ...form,
-        roomId: Number(form.roomId),
-        numberOfAdults: Number(form.numberOfAdults),
-        numberOfChildren: Number(form.numberOfChildren),
+        fullName: form.fullName,
+        phone: form.phone,
+        email: form.email,
+        address: form.address,
         dateOfBirth: form.dateOfBirth || null,
+        checkInTarget: form.checkInTarget,
+        checkOutTarget: form.checkOutTarget,
+        rentType: form.rentType,
+        rooms: selectedRoomEntries.map(room => ({
+          roomId: Number(room.roomId),
+          numberOfAdults: Number(room.numberOfAdults),
+          numberOfChildren: Number(room.numberOfChildren),
+        })),
       }),
     })
       .then(async res => {
@@ -591,14 +635,6 @@ function DirectBookingModal({ onClose, onCreated }) {
                   <input required type="datetime-local" value={form.checkOutTarget} onChange={e => updateForm('checkOutTarget', e.target.value)} />
                 </label>
                 <label>
-                  <span>Người lớn</span>
-                  <input required type="number" min="1" value={form.numberOfAdults} onChange={e => updateForm('numberOfAdults', e.target.value)} />
-                </label>
-                <label>
-                  <span>Trẻ em</span>
-                  <input required type="number" min="0" value={form.numberOfChildren} onChange={e => updateForm('numberOfChildren', e.target.value)} />
-                </label>
-                <label>
                   <span>Loại thuê</span>
                   <select value={form.rentType} onChange={e => updateForm('rentType', e.target.value)}>
                     <option value="BY_NIGHT">Theo đêm</option>
@@ -608,8 +644,33 @@ function DirectBookingModal({ onClose, onCreated }) {
                 </label>
                 <label>
                   <span>Phòng đã chọn</span>
-                  <input readOnly value={selectedRoom ? `Phòng ${selectedRoom.roomNumber}` : 'Chưa chọn phòng'} />
+                  <input readOnly value={`${selectedRoomEntries.length} phòng`} />
                 </label>
+              </div>
+              <div className="abk-selected-rooms">
+                <div className="abk-selected-rooms-head">
+                  <h4>Phòng trong booking này</h4>
+                  <span>{selectedRoomEntries.length} phòng</span>
+                </div>
+                {selectedRoomEntries.length ? selectedRoomEntries.map(room => (
+                  <div className="abk-selected-room" key={room.roomId}>
+                    <div>
+                      <strong>Phòng {room.roomNumber}</strong>
+                      <span>{room.roomTypeName || 'Chưa phân loại'} · Tối đa {room.maxAdults || 0} NL, {room.maxChildren || 0} TE</span>
+                    </div>
+                    <label>
+                      <span>Người lớn</span>
+                      <input type="number" min="1" max={room.maxAdults || undefined} value={room.numberOfAdults} onChange={e => updateSelectedRoom(room.roomId, 'numberOfAdults', e.target.value)} />
+                    </label>
+                    <label>
+                      <span>Trẻ em</span>
+                      <input type="number" min="0" max={room.maxChildren || undefined} value={room.numberOfChildren} onChange={e => updateSelectedRoom(room.roomId, 'numberOfChildren', e.target.value)} />
+                    </label>
+                    <button type="button" onClick={() => toggleRoom(room)} aria-label="Bỏ chọn phòng">×</button>
+                  </div>
+                )) : (
+                  <div className="abk-empty abk-empty--sm">Chưa chọn phòng nào.</div>
+                )}
               </div>
             </section>
 
@@ -627,8 +688,8 @@ function DirectBookingModal({ onClose, onCreated }) {
                       type="button"
                       key={room.roomId}
                       disabled={!room.available}
-                      className={`abk-room-option${String(form.roomId) === String(room.roomId) ? ' abk-room-option--selected' : ''}${!room.available ? ' abk-room-option--busy' : ''}`}
-                      onClick={() => updateForm('roomId', room.roomId)}
+                      className={`abk-room-option${selectedRoomIds.has(String(room.roomId)) ? ' abk-room-option--selected' : ''}${!room.available ? ' abk-room-option--busy' : ''}`}
+                      onClick={() => toggleRoom(room)}
                     >
                       <div className="abk-room-option-main">
                         <strong>Phòng {room.roomNumber}</strong>
@@ -637,7 +698,7 @@ function DirectBookingModal({ onClose, onCreated }) {
                         {room.depositPolicyName && <span>Cọc: {room.depositPolicyName}</span>}
                       </div>
                       <div className="abk-room-option-side">
-                        <em>{room.available ? 'Trống' : 'Đã book'}</em>
+                        <em>{room.available ? (selectedRoomIds.has(String(room.roomId)) ? 'Đã chọn' : 'Trống') : 'Đã book'}</em>
                         {!room.available && room.busySlots?.length ? (
                           <div className="abk-busy-slots">
                             {room.busySlots.map(slot => (
@@ -657,7 +718,7 @@ function DirectBookingModal({ onClose, onCreated }) {
 
           <div className="abk-direct-actions">
             <button type="button" className="abk-action-secondary" onClick={onClose}>Hủy</button>
-            <button type="submit" className="abk-action-primary" disabled={submitLoading || !form.roomId}>
+            <button type="submit" className="abk-action-primary" disabled={submitLoading || selectedRoomEntries.length === 0}>
               {submitLoading ? 'Đang tạo...' : 'Tạo đơn đặt phòng'}
             </button>
           </div>

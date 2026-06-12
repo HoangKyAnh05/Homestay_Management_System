@@ -15,6 +15,7 @@ import com.homestayManagement.homestayManagement.dto.request.AdminBookingAddPena
 import com.homestayManagement.homestayManagement.dto.request.AdminBookingAddServiceRequest;
 import com.homestayManagement.homestayManagement.dto.response.FacilityServiceResponse;
 import com.homestayManagement.homestayManagement.dto.response.InventoryServiceResponse;
+import com.homestayManagement.homestayManagement.dto.request.AdminDirectBookingRoomRequest;
 import com.homestayManagement.homestayManagement.dto.response.AdminInvoicePenaltyItemResponse;
 import com.homestayManagement.homestayManagement.dto.response.AdminInvoiceServiceItemResponse;
 import com.homestayManagement.homestayManagement.dto.response.AdminPaymentResponse;
@@ -70,8 +71,10 @@ import java.time.temporal.TemporalAdjusters;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -243,20 +246,45 @@ public class AdminBookingServiceImpl implements AdminBookingService {
     public AdminBookingDetailResponse createDirectBooking(AdminDirectBookingRequest request) {
         validateBookingRange(request.checkInTarget(), request.checkOutTarget());
 
-        Room room = roomRepository.findById(request.roomId())
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy phòng"));
-        RoomType roomType = room.getRoomType();
-        validateCapacity(roomType, request.numberOfAdults(), request.numberOfChildren());
+        List<AdminDirectBookingRoomRequest> selectedRooms = requireSelectedRooms(request.rooms());
+        Set<Long> selectedRoomIds = selectedRooms.stream()
+                .map(AdminDirectBookingRoomRequest::roomId)
+                .collect(Collectors.toCollection(HashSet::new));
+        if (selectedRoomIds.size() != selectedRooms.size()) {
+            throw new IllegalArgumentException("Danh sách phòng bị trùng");
+        }
 
-        boolean roomBusy = bookingDetailRepository.findOverlappingSchedule(request.checkInTarget(), request.checkOutTarget())
+        Map<Long, Room> roomsById = roomRepository.findAllById(selectedRoomIds)
                 .stream()
-                .anyMatch(detail -> detail.getRoom().getId().equals(room.getId()) && isActiveBookingDetail(detail));
-        if (roomBusy) {
-            throw new IllegalArgumentException("Phòng đã có booking trong khung giờ này");
+                .collect(Collectors.toMap(Room::getId, room -> room));
+        if (roomsById.size() != selectedRoomIds.size()) {
+            throw new IllegalArgumentException("Không tìm thấy một hoặc nhiều phòng đã chọn");
+        }
+
+        for (AdminDirectBookingRoomRequest selectedRoom : selectedRooms) {
+            Room room = roomsById.get(selectedRoom.roomId());
+            validateCapacity(room.getRoomType(), selectedRoom.numberOfAdults(), selectedRoom.numberOfChildren());
+        }
+
+        Set<Long> busyRoomIds = bookingDetailRepository.findOverlappingSchedule(request.checkInTarget(), request.checkOutTarget())
+                .stream()
+                .filter(this::isActiveBookingDetail)
+                .map(detail -> detail.getRoom().getId())
+                .filter(selectedRoomIds::contains)
+                .collect(Collectors.toSet());
+        if (!busyRoomIds.isEmpty()) {
+            String busyRooms = busyRoomIds.stream()
+                    .map(roomsById::get)
+                    .map(Room::getRoomNumber)
+                    .sorted()
+                    .collect(Collectors.joining(", "));
+            throw new IllegalArgumentException("Phòng đã có booking trong khung giờ này: " + busyRooms);
         }
 
         Customer customer = findOrCreateWalkInCustomer(request);
-        DepositPolicy depositPolicy = roomType != null ? roomType.getDepositPolicy() : null;
+        Room firstRoom = roomsById.get(selectedRooms.getFirst().roomId());
+        RoomType firstRoomType = firstRoom != null ? firstRoom.getRoomType() : null;
+        DepositPolicy depositPolicy = firstRoomType != null ? firstRoomType.getDepositPolicy() : null;
 
         Booking booking = bookingRepository.save(Booking.builder()
                 .customer(customer)
@@ -265,19 +293,27 @@ public class AdminBookingServiceImpl implements AdminBookingService {
                 .status("CONFIRMED")
                 .build());
 
-        BookingDetail detail = bookingDetailRepository.save(BookingDetail.builder()
-                .booking(booking)
-                .room(room)
-                .checkInTarget(request.checkInTarget())
-                .checkOutTarget(request.checkOutTarget())
-                .numberOfAdults(request.numberOfAdults())
-                .numberOfChildren(request.numberOfChildren())
-                .priceAtBooking(roomType != null ? roomType.getBasePrice() : BigDecimal.ZERO)
-                .rentType(normalizeRentType(request.rentType()))
-                .status("CONFIRMED")
-                .build());
+        BookingDetail firstDetail = null;
+        for (AdminDirectBookingRoomRequest selectedRoom : selectedRooms) {
+            Room room = roomsById.get(selectedRoom.roomId());
+            RoomType roomType = room.getRoomType();
+            BookingDetail detail = bookingDetailRepository.save(BookingDetail.builder()
+                    .booking(booking)
+                    .room(room)
+                    .checkInTarget(request.checkInTarget())
+                    .checkOutTarget(request.checkOutTarget())
+                    .numberOfAdults(selectedRoom.numberOfAdults())
+                    .numberOfChildren(selectedRoom.numberOfChildren())
+                    .priceAtBooking(BigDecimal.ZERO) // TODO: lấy giá từ room_price_configs dựa theo policy + day_type
+                    .rentType(normalizeRentType(request.rentType()))
+                    .status("CONFIRMED")
+                    .build());
+            if (firstDetail == null) {
+                firstDetail = detail;
+            }
+        }
 
-        return getBookingDetail(detail.getId());
+        return getBookingDetail(firstDetail.getId());
     }
 
     @Override
@@ -420,6 +456,13 @@ public class AdminBookingServiceImpl implements AdminBookingService {
         }
     }
 
+    private List<AdminDirectBookingRoomRequest> requireSelectedRooms(List<AdminDirectBookingRoomRequest> rooms) {
+        if (rooms == null || rooms.isEmpty()) {
+            throw new IllegalArgumentException("Vui lòng chọn ít nhất một phòng");
+        }
+        return rooms;
+    }
+
     private void validateCapacity(RoomType roomType, Integer adults, Integer children) {
         if (roomType == null) {
             return;
@@ -498,7 +541,7 @@ public class AdminBookingServiceImpl implements AdminBookingService {
                 room.getId(),
                 room.getRoomNumber(),
                 roomType != null ? roomType.getName() : null,
-                roomType != null ? roomType.getBasePrice() : BigDecimal.ZERO,
+                // basePrice đã bị loại bỏ — giá lấy từ room_price_configs
                 roomType != null ? roomType.getMaxAdults() : null,
                 roomType != null ? roomType.getMaxChildren() : null,
                 policy != null ? policy.getId() : null,

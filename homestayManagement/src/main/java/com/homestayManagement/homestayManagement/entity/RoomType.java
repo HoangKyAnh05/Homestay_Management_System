@@ -3,8 +3,6 @@ package com.homestayManagement.homestayManagement.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.math.BigDecimal;
-
 @Entity
 @Table(name = "room_types")
 @Getter
@@ -21,8 +19,7 @@ public class RoomType {
     @Column(nullable = false, length = 100)
     private String name;
 
-    @Column(name = "base_price", nullable = false, precision = 10, scale = 2)
-    private BigDecimal basePrice;
+    // base_price đã được loại bỏ — giá được quản lý động trong bảng room_price_configs
 
     @Column(name = "max_adults", nullable = false)
     private Integer maxAdults;

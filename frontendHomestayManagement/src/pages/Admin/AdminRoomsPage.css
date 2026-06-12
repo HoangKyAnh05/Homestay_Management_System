@@ -538,3 +538,155 @@
   opacity: 0.4;
   cursor: not-allowed;
 }
+
+/* ── Price filter (toolbar trong tab Loại phòng) ── */
+.arm-price-filter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.arm-price-filter-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+  white-space: nowrap;
+}
+
+/* ── Hiển thị giá trong bảng Loại phòng ── */
+.arm-price-cell {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.arm-price-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.arm-price-badge--weekday {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.arm-price-badge--weekend {
+  background: #fdf4ff;
+  color: #7e22ce;
+}
+
+.arm-price-hint {
+  font-size: 12px;
+  color: #9ca3af;
+  font-style: italic;
+}
+
+.arm-price-hint--none {
+  color: #f59e0b;
+}
+
+.arm-price-col-sub {
+  display: none; /* ẩn sub-text trong header để gọn */
+}
+
+/* ── Sub-tabs (bên trong tab Cấu hình giá) ── */
+.arm-subtabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.arm-subtab {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 36px;
+  padding: 0 16px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #fff;
+  color: #6b7280;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.14s, color 0.14s, border-color 0.14s;
+}
+
+.arm-subtab:hover {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.arm-subtab--active {
+  background: #2d5a3d;
+  border-color: #2d5a3d;
+  color: #fff;
+}
+
+/* ── Banner thông tin ── */
+.arm-info-banner {
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 10px;
+  font-size: 13px;
+  color: #92400e;
+}
+
+/* ── Rent type badges ── */
+.arm-rent-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.arm-rent-badge--overnight { background: #dbeafe; color: #1e40af; }
+.arm-rent-badge--hourly    { background: #d1fae5; color: #065f46; }
+.arm-rent-badge--combo     { background: #fce7f3; color: #9d174d; }
+.arm-rent-badge--daily     { background: #fef3c7; color: #92400e; }
+
+/* ── Day type badges ── */
+.arm-day-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.arm-day-badge--weekend {
+  background: #fdf4ff;
+  color: #7e22ce;
+}
+
+/* ── Giá nổi bật trong bảng configs ── */
+.arm-price-strong {
+  font-weight: 700;
+  color: #16a34a;
+  font-size: 14px;
+}
+
+/* ── Hint trong modal config (giờ check-in/out của policy) ── */
+.arm-policy-hint {
+  display: flex;
+  gap: 16px;
+  padding: 10px 12px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+  font-size: 12px;
+  color: #166534;
+  font-weight: 600;
+}

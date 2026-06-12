@@ -110,7 +110,6 @@ public class AdminRoomServiceImpl implements AdminRoomService {
     public AdminRoomTypeResponse createRoomType(RoomTypeRequest request) {
         RoomType roomType = RoomType.builder()
                 .name(request.name())
-                .basePrice(request.basePrice())
                 .maxAdults(request.maxAdults())
                 .maxChildren(request.maxChildren())
                 .depositPolicy(getOptionalDepositPolicy(request.depositPolicyId()))
@@ -124,7 +123,6 @@ public class AdminRoomServiceImpl implements AdminRoomService {
     public AdminRoomTypeResponse updateRoomType(Long id, RoomTypeRequest request) {
         RoomType roomType = getRoomTypeById(id);
         roomType.setName(request.name());
-        roomType.setBasePrice(request.basePrice());
         roomType.setMaxAdults(request.maxAdults());
         roomType.setMaxChildren(request.maxChildren());
         roomType.setDepositPolicy(getOptionalDepositPolicy(request.depositPolicyId()));
@@ -290,7 +288,7 @@ public class AdminRoomServiceImpl implements AdminRoomService {
     private AdminRoomTypeResponse toRoomTypeResponse(RoomType rt) {
         int roomCount = roomRepository.findByRoomTypeId(rt.getId()).size();
         DepositPolicy policy = rt.getDepositPolicy();
-        return new AdminRoomTypeResponse(rt.getId(), rt.getName(), rt.getBasePrice(),
+        return new AdminRoomTypeResponse(rt.getId(), rt.getName(),
                 rt.getMaxAdults(), rt.getMaxChildren(),
                 policy != null ? policy.getId() : null,
                 policy != null ? policy.getPolicyName() : null,

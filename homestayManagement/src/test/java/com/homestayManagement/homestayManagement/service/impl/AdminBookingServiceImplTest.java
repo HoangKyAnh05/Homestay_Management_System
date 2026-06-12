@@ -81,7 +81,7 @@ class AdminBookingServiceImplTest {
 
     @Test
     void getWeeklyScheduleNormalizesInputDateToMondayAndMapsBookings() {
-        RoomType roomType = RoomType.builder().id(1L).name("Deluxe").basePrice(BigDecimal.valueOf(800000)).build();
+        RoomType roomType = RoomType.builder().id(1L).name("Deluxe").build();
         Room room = Room.builder().id(10L).roomNumber("101").roomType(roomType).build();
         Customer customer = Customer.builder().id(20L).fullName("Nguyen Van A").phone("0900000000").build();
         Booking booking = Booking.builder()
