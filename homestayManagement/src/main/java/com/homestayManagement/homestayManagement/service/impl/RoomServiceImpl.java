@@ -1,5 +1,9 @@
 package com.homestayManagement.homestayManagement.service.impl;
 
+import com.homestayManagement.homestayManagement.dto.response.RoomBusySlotResponse;
+import com.homestayManagement.homestayManagement.dto.response.RoomDetailPublicResponse;
+import com.homestayManagement.homestayManagement.dto.response.RoomPublicPriceResponse;
+import com.homestayManagement.homestayManagement.dto.response.RoomPublicResponse;
 import com.homestayManagement.homestayManagement.dto.response.RoomSearchResponse;
 import com.homestayManagement.homestayManagement.dto.response.RoomTypeResponse;
 import com.homestayManagement.homestayManagement.entity.BookingDetail;
@@ -23,7 +27,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -60,6 +63,62 @@ public class RoomServiceImpl implements RoomService {
         return roomTypeRepository.findAll().stream()
                 .map(this::toRoomTypeResponse)
                 .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<RoomPublicResponse> getAllPublicRooms() {
+        return roomRepository.findAllWithRoomType().stream()
+                .map(this::toPublicRoomResponse)
+                .sorted(Comparator.comparing(RoomPublicResponse::roomNumber, Comparator.nullsLast(String::compareToIgnoreCase)))
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public RoomDetailPublicResponse getPublicRoomDetail(Long roomId, LocalDate fromDate, LocalDate toDate) {
+        LocalDate startDate = fromDate != null ? fromDate : LocalDate.now();
+        LocalDate endDate = toDate != null ? toDate : startDate.plusDays(14);
+        if (endDate.isBefore(startDate)) {
+            throw new IllegalArgumentException("Ngày kết thúc phải sau hoặc bằng ngày bắt đầu");
+        }
+
+        Room room = roomRepository.findById(roomId)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy phòng"));
+        RoomType roomType = room.getRoomType();
+        List<String> imageUrls = buildRoomImageUrls(room.getId());
+        List<RoomPublicPriceResponse> prices = roomPriceConfigRepository.findByRoomTypeIdWithPolicy(roomType.getId()).stream()
+                .sorted(Comparator.comparing((RoomPriceConfig config) -> normalize(config.getPricePolicy().getRentType()))
+                        .thenComparing(config -> normalize(config.getDayType()))
+                        .thenComparing(RoomPriceConfig::getPrice))
+                .map(this::toRoomPriceResponse)
+                .toList();
+        List<RoomBusySlotResponse> busySlots = bookingDetailRepository.findPublicBusySlotsByRoom(
+                        room.getId(),
+                        startDate.atStartOfDay(),
+                        endDate.plusDays(1).atStartOfDay()
+                ).stream()
+                .map(detail -> new RoomBusySlotResponse(
+                        detail.getId(),
+                        detail.getCheckInTarget(),
+                        detail.getCheckOutTarget(),
+                        detail.getStatus()
+                ))
+                .toList();
+
+        return new RoomDetailPublicResponse(
+                room.getId(),
+                room.getRoomNumber(),
+                roomType.getId(),
+                roomType.getName(),
+                roomType.getMaxAdults(),
+                roomType.getMaxChildren(),
+                roomType.getDescription(),
+                imageUrls.isEmpty() ? null : imageUrls.get(0),
+                imageUrls,
+                prices,
+                busySlots
+        );
     }
 
     @Override
@@ -142,10 +201,7 @@ public class RoomServiceImpl implements RoomService {
             return Optional.empty();
         }
 
-        List<String> imageUrls = roomImageRepository.findByRoomId(room.getId()).stream()
-                .sorted(Comparator.comparing(RoomImage::isPrimary).reversed().thenComparing(RoomImage::getId))
-                .map(RoomImage::getImageUrl)
-                .toList();
+        List<String> imageUrls = buildRoomImageUrls(room.getId());
         String primaryImageUrl = imageUrls.isEmpty() ? null : imageUrls.get(0);
 
         return Optional.of(new RoomSearchResponse(
@@ -161,6 +217,43 @@ public class RoomServiceImpl implements RoomService {
                 primaryImageUrl,
                 imageUrls
         ));
+    }
+
+    private RoomPublicResponse toPublicRoomResponse(Room room) {
+        RoomType roomType = room.getRoomType();
+        List<String> imageUrls = buildRoomImageUrls(room.getId());
+
+        return new RoomPublicResponse(
+                room.getId(),
+                room.getRoomNumber(),
+                roomType.getId(),
+                roomType.getName(),
+                roomType.getMaxAdults(),
+                roomType.getMaxChildren(),
+                roomType.getDescription(),
+                findDisplayPrice(roomType.getId(), "WEEKDAY"),
+                findDisplayPrice(roomType.getId(), "WEEKEND"),
+                findDisplayRentType(roomType.getId()),
+                imageUrls.isEmpty() ? null : imageUrls.get(0),
+                imageUrls
+        );
+    }
+
+    private List<String> buildRoomImageUrls(Long roomId) {
+        return roomImageRepository.findByRoomId(roomId).stream()
+                .sorted(Comparator.comparing(RoomImage::isPrimary).reversed().thenComparing(RoomImage::getId))
+                .map(RoomImage::getImageUrl)
+                .toList();
+    }
+
+    private RoomPublicPriceResponse toRoomPriceResponse(RoomPriceConfig config) {
+        PricePolicy policy = config.getPricePolicy();
+        return new RoomPublicPriceResponse(
+                policy.getPolicyName(),
+                policy.getRentType(),
+                config.getDayType(),
+                config.getPrice()
+        );
     }
 
     private RoomTypeResponse toRoomTypeResponse(RoomType roomType) {

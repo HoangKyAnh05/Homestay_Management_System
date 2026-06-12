@@ -1,11 +1,14 @@
 package com.homestayManagement.homestayManagement.controller;
 
+import com.homestayManagement.homestayManagement.dto.response.RoomDetailPublicResponse;
+import com.homestayManagement.homestayManagement.dto.response.RoomPublicResponse;
 import com.homestayManagement.homestayManagement.dto.response.RoomTypeResponse;
 import com.homestayManagement.homestayManagement.dto.response.RoomSearchResponse;
 import com.homestayManagement.homestayManagement.service.RoomService;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -24,6 +27,11 @@ public class RoomController {
 
     public RoomController(RoomService roomService) {
         this.roomService = roomService;
+    }
+
+    @GetMapping
+    public List<RoomPublicResponse> getAllPublicRooms() {
+        return roomService.getAllPublicRooms();
     }
 
     @GetMapping("/types")
@@ -45,6 +53,19 @@ public class RoomController {
             @RequestParam(required = false) BigDecimal maxPrice
     ) {
         return roomService.searchAvailableRooms(checkInDate, checkOutDate, rooms, adults, children, maxPrice);
+    }
+
+    @GetMapping("/{roomId}")
+    public RoomDetailPublicResponse getPublicRoomDetail(
+            @PathVariable Long roomId,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            LocalDate fromDate,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            LocalDate toDate
+    ) {
+        return roomService.getPublicRoomDetail(roomId, fromDate, toDate);
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

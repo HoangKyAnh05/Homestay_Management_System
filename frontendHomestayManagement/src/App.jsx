@@ -15,6 +15,8 @@ import HomePage from './pages/Home/HomePage'
 import LoginPage from './pages/Login/LoginPage'
 import ProfilePage from './pages/Profile/ProfilePage'
 import RegisterPage from './pages/Register/RegisterPage'
+import RoomDetailPage from './pages/Rooms/RoomDetailPage'
+import RoomsPage from './pages/Rooms/RoomsPage'
 import { getStoredUser } from './services/authService'
 
 const STAFF_ROLES = new Set(['ROLE_ADMIN', 'ROLE_RECEPTIONIST', 'ROLE_HOUSEKEEPING', 'ROLE_MARKETING'])
@@ -36,10 +38,47 @@ function App() {
     return () => window.removeEventListener('popstate', handleRouteChange)
   }, [])
 
+  useEffect(() => {
+    const handleInternalLink = (event) => {
+      if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+        return
+      }
+
+      const target = event.target instanceof Element ? event.target : event.target.parentElement
+      const link = target?.closest('a[href]')
+      if (!link || link.target || link.hasAttribute('download')) return
+
+      const url = new URL(link.href, window.location.href)
+      if (url.origin !== window.location.origin) return
+
+      event.preventDefault()
+      const nextUrl = `${url.pathname}${url.search}${url.hash}`
+      if (!url.hash) {
+        window.scrollTo(0, 0)
+      }
+      window.history.pushState(null, '', nextUrl)
+      setCurrentPath(normalizePath())
+
+      if (url.hash) {
+        window.setTimeout(() => {
+          document.querySelector(url.hash)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        }, 0)
+      }
+    }
+
+    document.addEventListener('click', handleInternalLink)
+    return () => document.removeEventListener('click', handleInternalLink)
+  }, [])
+
   if (currentPath === '/login') return <LoginPage />
   if (currentPath === '/register') return <RegisterPage />
   if (currentPath === '/forgot') return <ForgotPasswordPage />
   if (currentPath === '/profile') return <ProfilePage />
+  if (currentPath === '/rooms') return <RoomsPage />
+  if (currentPath.startsWith('/rooms/')) {
+    const roomId = currentPath.split('/').filter(Boolean).at(-1)
+    return <RoomDetailPage roomId={roomId} />
+  }
   if (currentPath === '/admin/login') return <AdminLoginPage />
 
   if (currentPath.startsWith('/admin')) {

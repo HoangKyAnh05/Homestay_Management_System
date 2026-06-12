@@ -45,6 +45,13 @@
   color: #15573a;
 }
 
+.home-nav a.home-nav-active {
+  color: #15573a;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 7px;
+}
+
 .home-actions {
   display: flex;
   align-items: center;
@@ -737,6 +744,43 @@
   min-width: 280px;
 }
 
+.rooms-carousel {
+  overflow: hidden;
+  width: 100%;
+}
+
+.rooms-carousel-track {
+  display: flex;
+  gap: 24px;
+  will-change: transform;
+}
+
+.rooms-carousel--animated .rooms-carousel-track {
+  animation: roomsCarouselSlide calc(var(--room-count) * 2.6s) linear infinite;
+}
+
+.rooms-carousel--animated:hover .rooms-carousel-track {
+  animation-play-state: paused;
+}
+
+.rooms-carousel-item {
+  flex: 0 0 calc((100% - 48px) / 3);
+  min-width: 0;
+}
+
+.rooms-carousel-item .room-card {
+  height: 100%;
+}
+
+@keyframes roomsCarouselSlide {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
 .room-card {
   border-radius: 14px;
   overflow: hidden;
@@ -1273,6 +1317,10 @@
     grid-template-columns: repeat(2, 1fr);
   }
 
+  .rooms-carousel-item {
+    flex-basis: calc((100% - 24px) / 2);
+  }
+
   .search-results-layout {
     grid-template-columns: 1fr;
   }
@@ -1306,6 +1354,10 @@
   .rooms-grid,
   .search-results-grid {
     grid-template-columns: 1fr;
+  }
+
+  .rooms-carousel-item {
+    flex-basis: 100%;
   }
 
   .gallery-grid {

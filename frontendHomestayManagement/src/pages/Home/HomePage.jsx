@@ -94,7 +94,13 @@ function RoomCard({ room }) {
               </span>
             </span>
           </span>
-          <button className="room-card-btn" type="button">Đặt ngay</button>
+          <button
+            className="room-card-btn"
+            type="button"
+            onClick={() => window.location.assign(`/rooms/${room.roomId || room.id}`)}
+          >
+            Đặt ngay
+          </button>
         </div>
       </div>
     </article>
@@ -170,6 +176,7 @@ function SearchResultsSection({ criteria, rooms, loading, error, maxPrice, onMax
 }
 
 function RoomsSection({ rooms, loading }) {
+  const carouselRooms = rooms.length > 3 ? [...rooms, ...rooms] : rooms
 
   return (
     <section className="home-section home-rooms" id="rooms" aria-labelledby="rooms-title">
@@ -179,14 +186,22 @@ function RoomsSection({ rooms, loading }) {
             <h2 id="rooms-title">Phòng nổi bật</h2>
             <p>Không gian nghỉ dưỡng được chọn lọc dành cho bạn.</p>
           </div>
-          <a href="#rooms" className="home-view-all">Xem tất cả phòng →</a>
+          <a href="/rooms" className="home-view-all">Xem tất cả phòng →</a>
         </div>
 
         {loading ? (
           <div className="rooms-loading">Đang tải...</div>
+        ) : rooms.length === 0 ? (
+          <div className="rooms-loading">Chưa có phòng để hiển thị.</div>
         ) : (
-          <div className="rooms-grid">
-            {rooms.slice(0, 3).map((room) => <RoomCard key={room.id} room={room} />)}
+          <div className={`rooms-carousel${rooms.length > 3 ? ' rooms-carousel--animated' : ''}`}>
+            <div className="rooms-carousel-track" style={{ '--room-count': rooms.length }}>
+              {carouselRooms.map((room, index) => (
+                <div className="rooms-carousel-item" key={`${room.id}-${index}`}>
+                  <RoomCard room={room} />
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>
@@ -333,7 +348,7 @@ function HomeFooter() {
         <div className="footer-links">
           <h4>QUICK LINKS</h4>
           <ul>
-            <li><a href="#rooms">Phòng &amp; Suites</a></li>
+            <li><a href="/rooms">Phòng &amp; Suites</a></li>
             <li><a href="#about">Về chúng tôi</a></li>
             <li><a href="#amenities">Tiện nghi</a></li>
             <li><a href="#contact">Liên hệ</a></li>
@@ -423,8 +438,8 @@ function HomePage() {
       <header className="home-header">
         <a className="home-logo" href="/home">Home Stays</a>
         <nav className="home-nav" aria-label="Điều hướng chính">
-          <a href="/home">Trang chủ</a>
-          <a href="#rooms">Phòng</a>
+          <a href="/home" className="home-nav-active">Trang chủ</a>
+          <a href="/rooms">Phòng</a>
           <a href="#amenities">Tiện nghi</a>
           <a href="#contact">Liên hệ</a>
           <a href="#about">Giới thiệu</a>
