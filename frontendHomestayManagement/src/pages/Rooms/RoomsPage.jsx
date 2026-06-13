@@ -81,6 +81,26 @@ function findOverlappingSlot(slots, checkInTarget, checkOutTarget) {
   }) || null
 }
 
+function findNextBusySlot(slots, checkInTarget) {
+  if (!checkInTarget) return null
+  const checkIn = new Date(checkInTarget)
+  if (Number.isNaN(checkIn.getTime())) return null
+
+  return (slots || [])
+    .filter((slot) => new Date(slot.checkInTarget) > checkIn)
+    .sort((first, second) => new Date(first.checkInTarget) - new Date(second.checkInTarget))[0] || null
+}
+
+function formatNoticeTime(value) {
+  return new Intl.DateTimeFormat('vi-VN', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(value))
+}
+
 function findRoomPolicyPrice(room, policy, dayType) {
   if (!room || !policy) return null
   return (room.prices || []).find((price) =>
@@ -311,6 +331,7 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
   const [loadingMeta, setLoadingMeta] = useState(true)
   const [checkingSchedule, setCheckingSchedule] = useState(false)
   const [scheduleError, setScheduleError] = useState('')
+  const [scheduleNotice, setScheduleNotice] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [paymentSummary, setPaymentSummary] = useState(null)
@@ -342,54 +363,6 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
       .finally(() => setLoadingMeta(false))
   }, [])
 
-  useEffect(() => {
-    if (!selectedRooms.length || !form.checkInTarget || !form.checkOutTarget) {
-      setScheduleError('')
-      return undefined
-    }
-
-    const checkIn = new Date(form.checkInTarget)
-    const checkOut = new Date(form.checkOutTarget)
-    if (Number.isNaN(checkIn.getTime()) || Number.isNaN(checkOut.getTime()) || checkOut <= checkIn) {
-      setScheduleError('')
-      return undefined
-    }
-
-    const controller = new AbortController()
-    const timeoutId = window.setTimeout(() => {
-      setScheduleError('')
-      setCheckingSchedule(true)
-      const fromDate = dateTimeLocalToDateKey(form.checkInTarget)
-      const toDate = dateTimeLocalToDateKey(form.checkOutTarget) || fromDate
-
-      Promise.all(selectedRooms.map((room) =>
-        fetch(`${API_BASE_URL}/rooms/${room.roomId}?fromDate=${fromDate}&toDate=${toDate}`, { signal: controller.signal })
-          .then((response) => response.ok ? response.json() : null)
-          .then((data) => ({ room, busySlots: data?.busySlots || [] }))
-      ))
-        .then((items) => {
-          const conflict = items.find((item) => findOverlappingSlot(item.busySlots, form.checkInTarget, form.checkOutTarget))
-          if (conflict) {
-            setScheduleError(`Phòng ${conflict.room.roomNumber} đã được đặt trong khung giờ này. Vui lòng chọn giờ khác.`)
-          } else {
-            setScheduleError('')
-          }
-        })
-        .catch((err) => {
-          if (err.name !== 'AbortError') setScheduleError('')
-        })
-        .finally(() => {
-          if (!controller.signal.aborted) setCheckingSchedule(false)
-        })
-    }, 220)
-
-    return () => {
-      window.clearTimeout(timeoutId)
-      controller.abort()
-      setCheckingSchedule(false)
-    }
-  }, [form.checkInTarget, form.checkOutTarget, selectedRooms])
-
   const selectedDayType = bookingDayType(form.checkInTarget)
   const availablePolicies = useMemo(() => {
     return policies.filter((policy) =>
@@ -406,6 +379,86 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
   const serviceTotal = selectedServices.reduce((sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 0), 0)
 
   useEffect(() => {
+    if (!selectedRooms.length || !form.checkInTarget || !form.checkOutTarget) {
+      setScheduleError('')
+      setScheduleNotice('')
+      return undefined
+    }
+
+    const checkIn = new Date(form.checkInTarget)
+    const checkOut = new Date(form.checkOutTarget)
+    if (Number.isNaN(checkIn.getTime()) || Number.isNaN(checkOut.getTime()) || checkOut <= checkIn) {
+      setScheduleError('')
+      setScheduleNotice('')
+      return undefined
+    }
+
+    const controller = new AbortController()
+    const timeoutId = window.setTimeout(() => {
+      setScheduleError('')
+      setScheduleNotice('')
+      setCheckingSchedule(true)
+      const fromDate = dateTimeLocalToDateKey(form.checkInTarget)
+      const toDate = dateTimeLocalToDateKey(form.checkOutTarget) || fromDate
+
+      Promise.all(selectedRooms.map((room) =>
+        fetch(`${API_BASE_URL}/rooms/${room.roomId}?fromDate=${fromDate}&toDate=${toDate}`, { signal: controller.signal })
+          .then((response) => response.ok ? response.json() : null)
+          .then((data) => ({ room, busySlots: data?.busySlots || [] }))
+      ))
+        .then((items) => {
+          const conflict = items.find((item) => findOverlappingSlot(item.busySlots, form.checkInTarget, form.checkOutTarget))
+          if (conflict) {
+            setScheduleError(`Phòng ${conflict.room.roomNumber} đã được đặt trong khung giờ này. Vui lòng chọn giờ khác.`)
+            setScheduleNotice('')
+            return
+          }
+
+          setScheduleError('')
+          if (!isHourlyPolicy(selectedPolicy)) {
+            setScheduleNotice('')
+            return
+          }
+
+          const nextBusy = items
+            .map((item) => ({ ...item, slot: findNextBusySlot(item.busySlots, form.checkInTarget) }))
+            .filter((item) => item.slot)
+            .sort((first, second) => new Date(first.slot.checkInTarget) - new Date(second.slot.checkInTarget))[0]
+
+          if (!nextBusy) {
+            setScheduleNotice('')
+            return
+          }
+
+          const latestCheckout = new Date(nextBusy.slot.checkInTarget)
+          latestCheckout.setHours(latestCheckout.getHours() - 1)
+          const message = `Phòng ${nextBusy.room.roomNumber} đã được đặt từ ${formatNoticeTime(nextBusy.slot.checkInTarget)}. Quý khách vui lòng check out trước ${formatNoticeTime(latestCheckout)}.`
+          if (checkOut > latestCheckout) {
+            setScheduleError(message)
+            setScheduleNotice('')
+          } else {
+            setScheduleNotice(message)
+          }
+        })
+        .catch((err) => {
+          if (err.name !== 'AbortError') {
+            setScheduleError('')
+            setScheduleNotice('')
+          }
+        })
+        .finally(() => {
+          if (!controller.signal.aborted) setCheckingSchedule(false)
+        })
+    }, 220)
+
+    return () => {
+      window.clearTimeout(timeoutId)
+      controller.abort()
+      setCheckingSchedule(false)
+    }
+  }, [form.checkInTarget, form.checkOutTarget, selectedPolicy, selectedRooms])
+
+  useEffect(() => {
     if (!availablePolicies.length) return
     if (!availablePolicies.some((policy) => String(policy.id) === String(form.pricePolicyId))) {
       setForm((current) => normalizeBookingTime({ ...current, pricePolicyId: availablePolicies[0].id }, availablePolicies[0]))
@@ -416,12 +469,14 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
     const policy = availablePolicies.find((item) => String(item.id) === String(policyId))
     setError('')
     setScheduleError('')
+    setScheduleNotice('')
     setForm((current) => normalizeBookingTime({ ...current, pricePolicyId: policyId }, policy))
   }
 
   const updateCheckInTarget = (value) => {
     setError('')
     setScheduleError('')
+    setScheduleNotice('')
     setForm((current) => {
       const next = { ...current, checkInTarget: value }
       if (isAutoCheckoutPolicy(selectedPolicy)) {
@@ -437,6 +492,7 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
   const updateCheckOutTarget = (value) => {
     setError('')
     setScheduleError('')
+    setScheduleNotice('')
     setForm((current) => ({ ...current, checkOutTarget: value }))
   }
 
@@ -641,6 +697,7 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
         {timeError && <div className="public-booking-warning">{timeError}</div>}
         {checkingSchedule && <div className="public-booking-warning">Đang kiểm tra lịch phòng...</div>}
         {scheduleError && <div className="public-booking-warning">{scheduleError}</div>}
+        {scheduleNotice && <div className="public-booking-search-note">{scheduleNotice}</div>}
         {loadingMeta && <div className="public-booking-error">Đang tải thông tin đặt phòng...</div>}
 
         <div className="public-booking-summary">
