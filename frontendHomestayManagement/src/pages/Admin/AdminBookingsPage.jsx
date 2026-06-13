@@ -6,6 +6,7 @@ import './AdminBookingsPage.css'
 const API_BASE = 'http://localhost:8080/api/admin/bookings'
 const SCHEDULE_API = `${API_BASE}/schedule`
 const PAGE_SIZE_OPTIONS = [6, 8, 12]
+const ADMIN_SCHEDULE_STATUSES = new Set(['CONFIRMED', 'CHECKED_IN', 'COMPLETED'])
 
 function authHeaders() {
   return { 'Content-Type': 'application/json', Authorization: `Bearer ${getStoredToken()}` }
@@ -58,6 +59,22 @@ function formatTime(value) {
   return new Date(value).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
 }
 
+function normalizeStatus(status) {
+  return String(status || '').toUpperCase()
+}
+
+function isAdminScheduleBookingVisible(booking) {
+  return ADMIN_SCHEDULE_STATUSES.has(normalizeStatus(booking.bookingStatus))
+}
+
+function formatBookingCardTime(booking) {
+  if (!booking.checkInTarget || !booking.checkOutTarget) return ''
+  const checkOut = new Date(booking.checkOutTarget)
+  const weekdayLabels = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7']
+  const period = checkOut.getHours() >= 12 ? 'PM' : 'AM'
+  return `${formatTime(booking.checkInTarget)} - ${formatTime(booking.checkOutTarget)} ${period} ${weekdayLabels[checkOut.getDay()]}`
+}
+
 function toDateTimeLocalValue(date = new Date()) {
   const value = new Date(date)
   const year = value.getFullYear()
@@ -97,7 +114,7 @@ function statusLabel(status) {
 }
 
 function bookingStatusClass(status) {
-  const normalized = String(status || '').toUpperCase()
+  const normalized = normalizeStatus(status)
   if (normalized === 'CANCELLED') return 'abk-booking abk-booking--cancelled'
   if (normalized === 'COMPLETED') return 'abk-booking abk-booking--completed'
   if (normalized === 'PENDING') return 'abk-booking abk-booking--pending'
@@ -151,7 +168,7 @@ function BookingCard({ booking, onOpenDetail }) {
         <span>#{booking.bookingId} · {statusLabel(booking.detailStatus || booking.bookingStatus)}</span>
       </div>
       <div className="abk-booking-meta">
-        <span>{formatTime(booking.checkInTarget)} - {formatTime(booking.checkOutTarget)}</span>
+        <span>{formatBookingCardTime(booking)}</span>
         <span>{totalGuests} khách · {booking.rentType}</span>
       </div>
       <button type="button" className="abk-detail-link" onClick={() => onOpenDetail(booking.bookingDetailId)}>
@@ -1172,9 +1189,10 @@ function AdminBookingsPage() {
   }, [schedule.weekStart, weekStart])
 
   const visibleBookings = useMemo(() => {
-    if (!statusFilter) return schedule.bookings
-    return schedule.bookings.filter(booking =>
-      [booking.bookingStatus, booking.detailStatus].some(status => String(status || '').toUpperCase() === statusFilter)
+    const adminBookings = schedule.bookings.filter(isAdminScheduleBookingVisible)
+    if (!statusFilter) return adminBookings
+    return adminBookings.filter(booking =>
+      [booking.bookingStatus, booking.detailStatus].some(status => normalizeStatus(status) === statusFilter)
     )
   }, [schedule.bookings, statusFilter])
 
@@ -1188,12 +1206,13 @@ function AdminBookingsPage() {
   const pagedRooms = filteredRooms.slice((safePage - 1) * pageSize, safePage * pageSize)
 
   const todayKey = toDateKey(new Date())
-  const todayBookings = schedule.bookings.filter(booking => overlapsDay(booking, new Date()))
+  const adminScheduleBookings = schedule.bookings.filter(isAdminScheduleBookingVisible)
+  const todayBookings = adminScheduleBookings.filter(booking => overlapsDay(booking, new Date()))
   const activeRoomsToday = new Set(todayBookings.map(booking => booking.roomId)).size
-  const pendingCount = schedule.bookings.filter(booking =>
-    [booking.bookingStatus, booking.detailStatus].some(status => String(status || '').toUpperCase() === 'PENDING')
+  const pendingCount = adminScheduleBookings.filter(booking =>
+    [booking.bookingStatus, booking.detailStatus].some(status => normalizeStatus(status) === 'PENDING')
   ).length
-  const weekRevenue = schedule.bookings.reduce((sum, booking) => sum + Number(booking.priceAtBooking || 0), 0)
+  const weekRevenue = adminScheduleBookings.reduce((sum, booking) => sum + Number(booking.priceAtBooking || 0), 0)
 
   const shiftWeek = amount => {
     setWeekStart(toDateKey(addDays(toDate(weekStart), amount * 7)))
@@ -1223,7 +1242,7 @@ function AdminBookingsPage() {
       <div className="abk-stats">
         <div><span>Phòng trong hệ thống</span><strong>{schedule.rooms.length}</strong></div>
         <div><span>Phòng có khách hôm nay</span><strong>{activeRoomsToday}</strong></div>
-        <div><span>Đơn trong tuần</span><strong>{schedule.bookings.length}</strong></div>
+        <div><span>Đơn trong tuần</span><strong>{adminScheduleBookings.length}</strong></div>
         <div><span>Đang chờ</span><strong>{pendingCount}</strong></div>
         <div><span>Giá trị đặt phòng</span><strong>{formatMoney(weekRevenue)}</strong></div>
       </div>
@@ -1243,7 +1262,6 @@ function AdminBookingsPage() {
         />
         <select className="abk-select" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
           <option value="">Tất cả trạng thái</option>
-          <option value="PENDING">Chờ xác nhận</option>
           <option value="CONFIRMED">Đã xác nhận</option>
           <option value="CHECKED_IN">Check in thành công</option>
           <option value="COMPLETED">Hoàn tất</option>

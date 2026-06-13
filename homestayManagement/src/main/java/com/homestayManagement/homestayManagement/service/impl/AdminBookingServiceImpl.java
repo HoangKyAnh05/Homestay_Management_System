@@ -89,6 +89,8 @@ import java.util.stream.Collectors;
 @Service
 public class AdminBookingServiceImpl implements AdminBookingService {
 
+    private static final Set<String> ADMIN_SCHEDULE_BOOKING_STATUSES = Set.of("CONFIRMED", "CHECKED_IN", "COMPLETED");
+
     private final BookingDetailRepository bookingDetailRepository;
     private final BookingRepository bookingRepository;
     private final RoomRepository roomRepository;
@@ -170,6 +172,7 @@ public class AdminBookingServiceImpl implements AdminBookingService {
         List<AdminBookingScheduleItemResponse> bookings = bookingDetailRepository
                 .findOverlappingSchedule(startInclusive, endExclusive)
                 .stream()
+                .filter(detail -> ADMIN_SCHEDULE_BOOKING_STATUSES.contains(normalizeStatus(detail.getBooking().getStatus())))
                 .map(this::toScheduleItemResponse)
                 .toList();
 
@@ -671,6 +674,10 @@ public class AdminBookingServiceImpl implements AdminBookingService {
 
     private boolean isClosedStatus(String status) {
         return "CANCELLED".equalsIgnoreCase(status) || "COMPLETED".equalsIgnoreCase(status);
+    }
+
+    private String normalizeStatus(String status) {
+        return status == null ? "" : status.toUpperCase();
     }
 
     private AdminDirectBookingRoomResponse toDirectBookingRoomResponse(Room room, List<BookingDetail> busySlots) {
