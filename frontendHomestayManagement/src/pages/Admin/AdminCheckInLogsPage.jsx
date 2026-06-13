@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { getStoredToken } from '../../services/authService'
+import { formatDateTime as formatAppDateTime } from '../../utils/dateTimeFormat'
 import AdminLayout from './AdminLayout'
 import './AdminCheckInLogsPage.css'
 
@@ -30,6 +31,7 @@ function defaultToDate() {
 }
 
 function formatDateTime(value) {
+  return formatAppDateTime(value)
   if (!value) return 'Chưa có'
   return new Date(value).toLocaleString('vi-VN', {
     day: '2-digit',
@@ -166,10 +168,10 @@ function DetailCard({ detail, actionLoading, onAction }) {
             <span className={`acl-stage acl-stage--${stage}`}>{stageLabel(stage)}</span>
           </div>
           <div className="acl-detail-grid">
-            <div><span>Nhận phòng dự kiến</span><strong>{formatDateTime(detail.checkInTarget)}</strong></div>
-            <div><span>Trả phòng dự kiến</span><strong>{formatDateTime(detail.checkOutTarget)}</strong></div>
-            <div><span>Check-in thực tế</span><strong>{formatDateTime(detail.checkInRecord?.actualCheckIn)}</strong></div>
-            <div><span>Check-out thực tế</span><strong>{formatDateTime(detail.checkInRecord?.actualCheckOut)}</strong></div>
+            <div><span>Nhận phòng dự kiến</span><strong>{formatAppDateTime(detail.checkInTarget)}</strong></div>
+            <div><span>Trả phòng dự kiến</span><strong>{formatAppDateTime(detail.checkOutTarget)}</strong></div>
+            <div><span>Check-in thực tế</span><strong>{formatAppDateTime(detail.checkInRecord?.actualCheckIn)}</strong></div>
+            <div><span>Check-out thực tế</span><strong>{formatAppDateTime(detail.checkInRecord?.actualCheckOut)}</strong></div>
           </div>
         </div>
       </div>

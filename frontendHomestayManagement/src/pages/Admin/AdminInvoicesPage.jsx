@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { getStoredToken } from '../../services/authService'
+import { formatDateTime as formatAppDateTime } from '../../utils/dateTimeFormat'
 import AdminLayout from './AdminLayout'
 import './AdminInvoicesPage.css'
 
@@ -14,6 +15,7 @@ function formatMoney(value) {
 }
 
 function formatDate(value) {
+  return formatAppDateTime(value)
   if (!value) return 'Chưa có'
   return new Date(value).toLocaleString('vi-VN', {
     day: '2-digit',
@@ -130,7 +132,7 @@ function InvoiceDetailModal({ invoice, onClose }) {
                   </div>
                   <div>
                     <strong>{formatMoney(payment.amount)}</strong>
-                    <span>{formatDate(payment.paymentTime)}</span>
+                    <span>{formatAppDateTime(payment.paymentTime)}</span>
                   </div>
                   <span className={statusClass(payment.status)}>{statusLabel(payment.status)}</span>
                 </div>
@@ -246,10 +248,10 @@ function AdminInvoicesPage() {
                   </td>
                   <td>
                     <strong>{methodLabel(invoice.latestPaymentMethod)}</strong>
-                    <span>{formatDate(invoice.latestPaymentTime)}</span>
+                    <span>{formatAppDateTime(invoice.latestPaymentTime)}</span>
                   </td>
                   <td><span className={statusClass(invoice.latestPaymentStatus)}>{statusLabel(invoice.latestPaymentStatus)}</span></td>
-                  <td>{formatDate(invoice.createdAt)}</td>
+                  <td>{formatAppDateTime(invoice.createdAt)}</td>
                   <td>
                     <button type="button" className="ain-detail-btn" onClick={() => setDetailInvoice(invoice)}>
                       Chi tiết

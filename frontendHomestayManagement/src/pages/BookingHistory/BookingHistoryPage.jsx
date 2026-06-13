@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { getStoredToken, getStoredUser, logout } from '../../services/authService'
+import { formatDateTime as formatAppDateTime } from '../../utils/dateTimeFormat'
 import { resolveImageUrl } from '../../utils/imageUrl'
 import '../Home/HomePage.css'
 import './BookingHistoryPage.css'
@@ -11,6 +12,7 @@ function formatMoney(value) {
 }
 
 function formatDateTime(value) {
+  return formatAppDateTime(value, { weekday: 'long' })
   if (!value) return 'Chưa có'
   return new Intl.DateTimeFormat('vi-VN', {
     weekday: 'long',
@@ -213,7 +215,7 @@ function BookingHistoryPage() {
                     </span>
                   </div>
                   <h2>Phòng {booking.firstRoomNumber} · {booking.firstRoomTypeName}</h2>
-                  <p>{formatDateTime(booking.checkInTarget)}</p>
+                  <p>{formatAppDateTime(booking.checkInTarget, { weekday: 'long' })}</p>
                   <div className="history-card-bottom">
                     <span>{booking.roomCount} phòng · {formatMoney(booking.totalAmount)}</span>
                     {booking.requiresPayment && <PaymentButton compact />}
@@ -247,7 +249,7 @@ function BookingHistoryPage() {
                   )}
 
                   <div className="history-summary-grid">
-                    <div><span>Ngày đặt</span><strong>{formatDateTime(detail.bookingDate)}</strong></div>
+                    <div><span>Ngày đặt</span><strong>{formatAppDateTime(detail.bookingDate, { weekday: 'long' })}</strong></div>
                     <div><span>Tổng tiền phòng</span><strong>{formatMoney(detail.roomCharge)}</strong></div>
                     <div><span>Dịch vụ đi kèm</span><strong>{formatMoney(detail.serviceCharge)}</strong></div>
                     <div><span>Tổng thanh toán</span><strong>{formatMoney(detail.totalAmount)}</strong></div>
@@ -262,7 +264,7 @@ function BookingHistoryPage() {
                             <strong>Phòng {room.roomNumber}</strong>
                             <span>{room.roomTypeName} · {room.numberOfAdults} NL · {room.numberOfChildren} TE</span>
                           </div>
-                          <p>{formatDateTime(room.checkInTarget)} → {formatDateTime(room.checkOutTarget)}</p>
+                          <p>{formatAppDateTime(room.checkInTarget, { weekday: 'long' })} → {formatAppDateTime(room.checkOutTarget, { weekday: 'long' })}</p>
                           <b>{formatMoney(room.priceAtBooking)}</b>
                         </article>
                       ))}

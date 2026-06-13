@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { getStoredToken, getStoredUser, logout } from '../../services/authService'
 import { clearBookingCart, readBookingCart } from '../../utils/bookingCart'
+import { formatClockTime, formatVietnameseDate } from '../../utils/dateTimeFormat'
 import { resolveImageUrl } from '../../utils/imageUrl'
 import { MultiBookingModal } from './RoomsPage'
 import '../Home/HomePage.css'
@@ -32,7 +33,7 @@ function depositText(room) {
 }
 
 function formatDateTime(value, options) {
-  return new Intl.DateTimeFormat('vi-VN', options).format(new Date(value))
+  return formatVietnameseDate(value, options)
 }
 
 function formatBusyDate(value) {
@@ -42,11 +43,7 @@ function formatBusyDate(value) {
 }
 
 function formatBusyTime(value) {
-  return new Intl.DateTimeFormat('en-US', {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: true,
-  }).format(new Date(value))
+  return formatClockTime(value)
 }
 
 function formatBusyDateRange(slot) {

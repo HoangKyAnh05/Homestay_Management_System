@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { getStoredToken } from '../../services/authService'
+import { formatClockTime, formatDateTime as formatAppDateTime } from '../../utils/dateTimeFormat'
 import AdminLayout from './AdminLayout'
 import './AdminBookingsPage.css'
 
@@ -44,6 +45,7 @@ function formatShortDate(value) {
 }
 
 function formatDateTime(value) {
+  return formatAppDateTime(value)
   if (!value) return 'Chưa có'
   return new Date(value).toLocaleString('vi-VN', {
     day: '2-digit',
@@ -55,6 +57,7 @@ function formatDateTime(value) {
 }
 
 function formatTime(value) {
+  return formatClockTime(value)
   if (!value) return ''
   return new Date(value).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
 }
@@ -71,8 +74,7 @@ function formatBookingCardTime(booking) {
   if (!booking.checkInTarget || !booking.checkOutTarget) return ''
   const checkOut = new Date(booking.checkOutTarget)
   const weekdayLabels = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7']
-  const period = checkOut.getHours() >= 12 ? 'PM' : 'AM'
-  return `${formatTime(booking.checkInTarget)} - ${formatTime(booking.checkOutTarget)} ${period} ${weekdayLabels[checkOut.getDay()]}`
+  return `${formatClockTime(booking.checkInTarget)} - ${formatClockTime(booking.checkOutTarget)} ${weekdayLabels[checkOut.getDay()]}`
 }
 
 function toDateTimeLocalValue(date = new Date()) {
@@ -458,9 +460,9 @@ function BookingDetailModal({ detail, loading, error, actionLoading, actionError
                 {!editBooking ? (
                   <div className="abk-detail-grid">
                     <DetailField label="Phòng"            value={`${detail.roomNumber} · ${detail.roomTypeName || 'Chưa phân loại'}`} />
-                    <DetailField label="Ngày đặt"         value={formatDateTime(detail.bookingDate)} />
-                    <DetailField label="Nhận phòng"       value={formatDateTime(detail.checkInTarget)} />
-                    <DetailField label="Trả phòng"        value={formatDateTime(detail.checkOutTarget)} />
+                    <DetailField label="Ngày đặt"         value={formatAppDateTime(detail.bookingDate)} />
+                    <DetailField label="Nhận phòng"       value={formatAppDateTime(detail.checkInTarget)} />
+                    <DetailField label="Trả phòng"        value={formatAppDateTime(detail.checkOutTarget)} />
                     <DetailField label="Người lớn"        value={detail.numberOfAdults} />
                     <DetailField label="Trẻ em"           value={detail.numberOfChildren} />
                     <DetailField label="Loại thuê"        value={detail.rentType} />
@@ -533,7 +535,7 @@ function BookingDetailModal({ detail, loading, error, actionLoading, actionError
                           <div className="abk-line-row" key={record.id}>
                             <div>
                               <strong>Ca lưu trú #{record.id}</strong>
-                              <span>Check-in {formatDateTime(record.actualCheckIn)} · Check-out {formatDateTime(record.actualCheckOut)}</span>
+                              <span>Check-in {formatAppDateTime(record.actualCheckIn)} · Check-out {formatAppDateTime(record.actualCheckOut)}</span>
                               <span>Lễ tân: {record.receptionistName || 'Chưa có'} · Phòng {detail.roomNumber}</span>
                             </div>
                             <strong>{formatMoney(Number(record.earlyCheckInFee || 0) + Number(record.lateCheckOutFee || 0))}</strong>
@@ -642,7 +644,7 @@ function BookingDetailModal({ detail, loading, error, actionLoading, actionError
                               <div className="abk-line-row" key={payment.id}>
                                 <div>
                                   <strong>{payment.paymentMethod || 'Chưa rõ phương thức'}</strong>
-                                  <span>{payment.transactionNo || 'Không có mã giao dịch'} · {formatDateTime(payment.paymentTime)}</span>
+                                  <span>{payment.transactionNo || 'Không có mã giao dịch'} · {formatAppDateTime(payment.paymentTime)}</span>
                                 </div>
                                 <strong>{formatMoney(payment.amount)} · {paymentStatusLabel(payment.status)}</strong>
                               </div>
@@ -1041,7 +1043,7 @@ function DirectBookingModal({ onClose, onCreated }) {
                             <div className="abk-busy-slots">
                               {room.busySlots.map(slot => (
                                 <span key={slot.bookingDetailId}>
-                                  {formatTime(slot.checkInTarget)} - {formatTime(slot.checkOutTarget)} · {slot.customerName || 'Khách'}
+                                  {formatClockTime(slot.checkInTarget)} - {formatClockTime(slot.checkOutTarget)} · {slot.customerName || 'Khách'}
                                 </span>
                               ))}
                             </div>

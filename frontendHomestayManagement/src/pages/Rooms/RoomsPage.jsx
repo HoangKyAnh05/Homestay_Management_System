@@ -1,6 +1,7 @@
 ﻿import { useEffect, useMemo, useState } from 'react'
 import { getStoredToken, getStoredUser, logout } from '../../services/authService'
 import { clearBookingCart, readBookingCart, writeBookingCart } from '../../utils/bookingCart'
+import { formatDateTime as formatAppDateTime } from '../../utils/dateTimeFormat'
 import { resolveImageUrl } from '../../utils/imageUrl'
 import '../Home/HomePage.css'
 import './RoomsPage.css'
@@ -92,13 +93,7 @@ function findNextBusySlot(slots, checkInTarget) {
 }
 
 function formatNoticeTime(value) {
-  return new Intl.DateTimeFormat('vi-VN', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(new Date(value))
+  return formatAppDateTime(value)
 }
 
 function findRoomPolicyPrice(room, policy, dayType) {
