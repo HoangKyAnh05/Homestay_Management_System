@@ -7,6 +7,7 @@ import com.homestayManagement.homestayManagement.dto.response.RoomPublicResponse
 import com.homestayManagement.homestayManagement.dto.response.RoomSearchResponse;
 import com.homestayManagement.homestayManagement.dto.response.RoomTypeResponse;
 import com.homestayManagement.homestayManagement.entity.BookingDetail;
+import com.homestayManagement.homestayManagement.entity.DepositPolicy;
 import com.homestayManagement.homestayManagement.entity.PricePolicy;
 import com.homestayManagement.homestayManagement.entity.Room;
 import com.homestayManagement.homestayManagement.entity.RoomImage;
@@ -86,6 +87,7 @@ public class RoomServiceImpl implements RoomService {
         Room room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy phòng"));
         RoomType roomType = room.getRoomType();
+        DepositPolicy depositPolicy = roomType.getDepositPolicy();
         List<String> imageUrls = buildRoomImageUrls(room.getId());
         List<RoomPublicPriceResponse> prices = roomPriceConfigRepository.findByRoomTypeIdWithPolicy(roomType.getId()).stream()
                 .sorted(Comparator.comparing((RoomPriceConfig config) -> normalize(config.getPricePolicy().getRentType()))
@@ -114,6 +116,11 @@ public class RoomServiceImpl implements RoomService {
                 roomType.getMaxAdults(),
                 roomType.getMaxChildren(),
                 roomType.getDescription(),
+                depositPolicy != null ? depositPolicy.getId() : null,
+                depositPolicy != null ? depositPolicy.getPolicyName() : null,
+                depositPolicy != null ? depositPolicy.getCalculationType() : null,
+                depositPolicy != null ? depositPolicy.getPolicyValue() : null,
+                depositPolicy != null ? depositPolicy.getDescription() : null,
                 imageUrls.isEmpty() ? null : imageUrls.get(0),
                 imageUrls,
                 prices,
@@ -221,6 +228,7 @@ public class RoomServiceImpl implements RoomService {
 
     private RoomPublicResponse toPublicRoomResponse(Room room) {
         RoomType roomType = room.getRoomType();
+        DepositPolicy depositPolicy = roomType.getDepositPolicy();
         List<String> imageUrls = buildRoomImageUrls(room.getId());
 
         return new RoomPublicResponse(
@@ -234,6 +242,11 @@ public class RoomServiceImpl implements RoomService {
                 findDisplayPrice(roomType.getId(), "WEEKDAY"),
                 findDisplayPrice(roomType.getId(), "WEEKEND"),
                 findDisplayRentType(roomType.getId()),
+                depositPolicy != null ? depositPolicy.getId() : null,
+                depositPolicy != null ? depositPolicy.getPolicyName() : null,
+                depositPolicy != null ? depositPolicy.getCalculationType() : null,
+                depositPolicy != null ? depositPolicy.getPolicyValue() : null,
+                depositPolicy != null ? depositPolicy.getDescription() : null,
                 imageUrls.isEmpty() ? null : imageUrls.get(0),
                 imageUrls
         );

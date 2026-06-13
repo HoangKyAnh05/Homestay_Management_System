@@ -14,6 +14,11 @@ public record RoomPublicResponse(
         BigDecimal weekdayPrice,
         BigDecimal weekendPrice,
         String rentType,
+        Long depositPolicyId,
+        String depositPolicyName,
+        String depositCalculationType,
+        BigDecimal depositPolicyValue,
+        String depositDescription,
         String primaryImageUrl,
         List<String> imageUrls
 ) {

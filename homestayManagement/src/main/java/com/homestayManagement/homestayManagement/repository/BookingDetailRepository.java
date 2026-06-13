@@ -46,6 +46,38 @@ public interface BookingDetailRepository extends JpaRepository<BookingDetail, Lo
             select bd
             from BookingDetail bd
             join fetch bd.booking b
+            left join fetch b.depositPolicy
+            join fetch b.customer c
+            left join fetch c.account
+            join fetch bd.room r
+            join fetch r.roomType
+            where c.account.email = :email
+            order by b.bookingDate desc, b.id desc, bd.checkInTarget asc
+            """)
+    List<BookingDetail> findByCustomerEmailForHistory(@Param("email") String email);
+
+    @Query("""
+            select bd
+            from BookingDetail bd
+            join fetch bd.booking b
+            left join fetch b.depositPolicy
+            join fetch b.customer c
+            left join fetch c.account
+            join fetch bd.room r
+            join fetch r.roomType
+            where c.account.email = :email
+              and b.id = :bookingId
+            order by bd.checkInTarget asc
+            """)
+    List<BookingDetail> findByCustomerEmailAndBookingIdForHistory(
+            @Param("email") String email,
+            @Param("bookingId") Long bookingId
+    );
+
+    @Query("""
+            select bd
+            from BookingDetail bd
+            join fetch bd.booking b
             join fetch b.customer c
             left join fetch c.account
             join fetch bd.room r

@@ -10,6 +10,7 @@ import AdminServiceCategoriesPage from './pages/Admin/AdminServiceCategoriesPage
 import AdminSurchargesPage from './pages/Admin/AdminSurchargesPage'
 import AdminUsersPage from './pages/Admin/AdminUsersPage'
 import DashboardPage from './pages/Admin/DashboardPage'
+import BookingHistoryPage from './pages/BookingHistory/BookingHistoryPage'
 import ForgotPasswordPage from './pages/ForgotPassword/ForgotPasswordPage'
 import HomePage from './pages/Home/HomePage'
 import LoginPage from './pages/Login/LoginPage'
@@ -74,6 +75,7 @@ function App() {
   if (currentPath === '/register') return <RegisterPage />
   if (currentPath === '/forgot') return <ForgotPasswordPage />
   if (currentPath === '/profile') return <ProfilePage />
+  if (currentPath === '/booking-history') return <BookingHistoryPage />
   if (currentPath === '/rooms') return <RoomsPage />
   if (currentPath.startsWith('/rooms/')) {
     const roomId = currentPath.split('/').filter(Boolean).at(-1)

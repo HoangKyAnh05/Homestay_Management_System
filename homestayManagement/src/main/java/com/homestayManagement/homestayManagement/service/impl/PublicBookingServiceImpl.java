@@ -1,0 +1,390 @@
+package com.homestayManagement.homestayManagement.service.impl;
+
+import com.homestayManagement.homestayManagement.dto.request.PublicBookingServiceRequest;
+import com.homestayManagement.homestayManagement.dto.request.PublicCreateBookingRequest;
+import com.homestayManagement.homestayManagement.dto.response.*;
+import com.homestayManagement.homestayManagement.entity.*;
+import com.homestayManagement.homestayManagement.repository.*;
+import com.homestayManagement.homestayManagement.service.PublicBookingService;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.DayOfWeek;
+import java.time.LocalDateTime;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+@Service
+public class PublicBookingServiceImpl implements PublicBookingService {
+
+    private static final Set<String> ACTIVE_STATUSES = Set.of("PENDING", "CONFIRMED", "CHECKED_IN");
+
+    private final AccountRepository accountRepository;
+    private final CustomerRepository customerRepository;
+    private final RoomRepository roomRepository;
+    private final BookingRepository bookingRepository;
+    private final BookingDetailRepository bookingDetailRepository;
+    private final BookingServiceItemRepository bookingServiceItemRepository;
+    private final PricePolicyRepository pricePolicyRepository;
+    private final RoomPriceConfigRepository roomPriceConfigRepository;
+    private final FacilityServiceRepository facilityServiceRepository;
+    private final InventoryServiceRepository inventoryServiceRepository;
+
+    public PublicBookingServiceImpl(
+            AccountRepository accountRepository,
+            CustomerRepository customerRepository,
+            RoomRepository roomRepository,
+            BookingRepository bookingRepository,
+            BookingDetailRepository bookingDetailRepository,
+            BookingServiceItemRepository bookingServiceItemRepository,
+            PricePolicyRepository pricePolicyRepository,
+            RoomPriceConfigRepository roomPriceConfigRepository,
+            FacilityServiceRepository facilityServiceRepository,
+            InventoryServiceRepository inventoryServiceRepository
+    ) {
+        this.accountRepository = accountRepository;
+        this.customerRepository = customerRepository;
+        this.roomRepository = roomRepository;
+        this.bookingRepository = bookingRepository;
+        this.bookingDetailRepository = bookingDetailRepository;
+        this.bookingServiceItemRepository = bookingServiceItemRepository;
+        this.pricePolicyRepository = pricePolicyRepository;
+        this.roomPriceConfigRepository = roomPriceConfigRepository;
+        this.facilityServiceRepository = facilityServiceRepository;
+        this.inventoryServiceRepository = inventoryServiceRepository;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<PricePolicyResponse> getPricePolicies() {
+        return pricePolicyRepository.findAll().stream()
+                .sorted(Comparator.comparing(PricePolicy::getPolicyName, Comparator.nullsLast(String::compareToIgnoreCase)))
+                .map(policy -> new PricePolicyResponse(
+                        policy.getId(),
+                        policy.getPolicyName(),
+                        policy.getRentType(),
+                        policy.getStandardCheckIn(),
+                        policy.getStandardCheckOut(),
+                        policy.getLimitHours()
+                ))
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<PublicServiceOptionResponse> getServiceOptions() {
+        List<PublicServiceOptionResponse> facilities = facilityServiceRepository.findAll().stream()
+                .filter(FacilityService::isActive)
+                .map(service -> new PublicServiceOptionResponse(service.getId(), service.getName(), service.getPrice(), "FACILITY", null))
+                .toList();
+        List<PublicServiceOptionResponse> inventories = inventoryServiceRepository.findAll().stream()
+                .filter(service -> service.getQuantityInStock() == null || service.getQuantityInStock() > 0)
+                .map(service -> new PublicServiceOptionResponse(service.getId(), service.getName(), service.getPrice(), "INVENTORY", service.getQuantityInStock()))
+                .toList();
+        return java.util.stream.Stream.concat(facilities.stream(), inventories.stream())
+                .sorted(Comparator.comparing(PublicServiceOptionResponse::name, Comparator.nullsLast(String::compareToIgnoreCase)))
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<PublicBookingHistoryResponse> getMyBookings(String email) {
+        return bookingDetailRepository.findByCustomerEmailForHistory(email).stream()
+                .collect(Collectors.groupingBy(detail -> detail.getBooking().getId()))
+                .values()
+                .stream()
+                .map(this::toHistoryResponse)
+                .sorted(Comparator.comparing(PublicBookingHistoryResponse::bookingDate, Comparator.nullsLast(Comparator.reverseOrder())))
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PublicBookingHistoryDetailResponse getMyBookingDetail(String email, Long bookingId) {
+        List<BookingDetail> details = bookingDetailRepository.findByCustomerEmailAndBookingIdForHistory(email, bookingId);
+        if (details.isEmpty()) {
+            throw new IllegalArgumentException("Không tìm thấy đơn đặt phòng");
+        }
+        Booking booking = details.get(0).getBooking();
+        BigDecimal roomCharge = calculateRoomCharge(details);
+        List<Long> detailIds = details.stream().map(BookingDetail::getId).toList();
+        List<BookingServiceItem> serviceItems = bookingServiceItemRepository.findByBookingDetailIds(detailIds);
+        BigDecimal serviceCharge = calculateServiceCharge(serviceItems);
+        BigDecimal totalAmount = roomCharge.add(serviceCharge);
+        DepositPolicy depositPolicy = booking.getDepositPolicy();
+
+        return new PublicBookingHistoryDetailResponse(
+                booking.getId(),
+                booking.getBookingDate(),
+                booking.getStatus(),
+                roomCharge,
+                serviceCharge,
+                totalAmount,
+                requiresPayment(booking),
+                depositPolicy != null ? depositPolicy.getPolicyName() : null,
+                depositPolicy != null ? depositPolicy.getCalculationType() : null,
+                depositPolicy != null ? depositPolicy.getPolicyValue() : null,
+                calculateDepositAmount(depositPolicy, totalAmount),
+                details.stream().map(this::toHistoryRoomResponse).toList(),
+                serviceItems.stream().map(this::toHistoryServiceResponse).toList()
+        );
+    }
+
+    @Override
+    @Transactional
+    public PublicBookingResponse createBooking(String email, PublicCreateBookingRequest request) {
+        validateRange(request.checkInTarget(), request.checkOutTarget());
+
+        Account account = accountRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy tài khoản"));
+        if (account.getRole() == null || !"ROLE_CUSTOMER".equals(account.getRole().getName())) {
+            throw new IllegalArgumentException("Chỉ tài khoản khách hàng mới có thể đặt phòng");
+        }
+
+        Customer customer = customerRepository.findByAccountId(account.getId())
+                .orElseGet(() -> Customer.builder().account(account).fullName(request.fullName().trim()).build());
+        updateCustomer(customer, request);
+
+        Room room = roomRepository.findById(request.roomId())
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy phòng"));
+        validateCapacity(room.getRoomType(), request.numberOfAdults(), request.numberOfChildren());
+        ensureRoomAvailable(room, request.checkInTarget(), request.checkOutTarget());
+
+        PricePolicy pricePolicy = pricePolicyRepository.findById(request.pricePolicyId())
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy gói thuê"));
+        String dayType = isWeekend(request.checkInTarget()) ? "WEEKEND" : "WEEKDAY";
+        BigDecimal roomPrice = roomPriceConfigRepository
+                .findByRoomTypeIdAndPricePolicyIdAndDayType(room.getRoomType().getId(), pricePolicy.getId(), dayType)
+                .map(RoomPriceConfig::getPrice)
+                .orElseThrow(() -> new IllegalArgumentException("Chưa cấu hình giá cho phòng và gói thuê này"));
+        DepositPolicy depositPolicy = room.getRoomType().getDepositPolicy();
+        boolean requiresDeposit = depositPolicy != null;
+        String bookingStatus = requiresDeposit ? "PENDING" : "CONFIRMED";
+
+        Booking booking = bookingRepository.save(Booking.builder()
+                .customer(customer)
+                .depositPolicy(depositPolicy)
+                .bookingDate(LocalDateTime.now())
+                .status(bookingStatus)
+                .build());
+
+        BookingDetail detail = bookingDetailRepository.save(BookingDetail.builder()
+                .booking(booking)
+                .room(room)
+                .checkInTarget(request.checkInTarget())
+                .checkOutTarget(request.checkOutTarget())
+                .numberOfAdults(request.numberOfAdults())
+                .numberOfChildren(request.numberOfChildren())
+                .priceAtBooking(roomPrice)
+                .rentType(pricePolicy.getRentType())
+                .status(bookingStatus)
+                .build());
+
+        BigDecimal serviceCharge = saveServices(detail, request.services());
+        BigDecimal totalAmount = roomPrice.add(serviceCharge);
+        BigDecimal depositAmount = requiresDeposit ? calculateDepositAmount(depositPolicy, totalAmount) : BigDecimal.ZERO;
+
+        return new PublicBookingResponse(
+                booking.getId(),
+                detail.getId(),
+                room.getId(),
+                room.getRoomNumber(),
+                booking.getStatus(),
+                detail.getCheckInTarget(),
+                detail.getCheckOutTarget(),
+                roomPrice,
+                serviceCharge,
+                totalAmount,
+                requiresDeposit,
+                depositPolicy != null ? depositPolicy.getPolicyName() : null,
+                depositPolicy != null ? depositPolicy.getCalculationType() : null,
+                depositPolicy != null ? depositPolicy.getPolicyValue() : null,
+                depositAmount
+        );
+    }
+
+    private void validateRange(LocalDateTime checkInTarget, LocalDateTime checkOutTarget) {
+        if (checkInTarget == null || checkOutTarget == null) {
+            throw new IllegalArgumentException("Vui lòng chọn giờ nhận và trả phòng");
+        }
+        if (!checkOutTarget.isAfter(checkInTarget)) {
+            throw new IllegalArgumentException("Giờ trả phòng phải sau giờ nhận phòng");
+        }
+    }
+
+    private void updateCustomer(Customer customer, PublicCreateBookingRequest request) {
+        customer.setFullName(request.fullName().trim());
+        customer.setPhone(request.phone().trim());
+        customer.setAddress(request.address() != null && !request.address().isBlank() ? request.address().trim() : null);
+        customer.setDateOfBirth(request.dateOfBirth());
+        customerRepository.save(customer);
+    }
+
+    private void validateCapacity(RoomType roomType, Integer adults, Integer children) {
+        if (roomType == null) {
+            throw new IllegalArgumentException("Phòng chưa có loại phòng");
+        }
+        if (adults > roomType.getMaxAdults() || children > roomType.getMaxChildren()) {
+            throw new IllegalArgumentException("Số khách vượt quá sức chứa của phòng");
+        }
+    }
+
+    private void ensureRoomAvailable(Room room, LocalDateTime checkInTarget, LocalDateTime checkOutTarget) {
+        boolean busy = bookingDetailRepository.findOverlappingSchedule(checkInTarget, checkOutTarget).stream()
+                .filter(detail -> room.getId().equals(detail.getRoom().getId()))
+                .anyMatch(this::isActive);
+        if (busy) {
+            throw new IllegalArgumentException("Phòng đã có booking trong khung giờ này");
+        }
+    }
+
+    private boolean isActive(BookingDetail detail) {
+        return ACTIVE_STATUSES.contains(normalize(detail.getStatus()))
+                && ACTIVE_STATUSES.contains(normalize(detail.getBooking().getStatus()));
+    }
+
+    private PublicBookingHistoryResponse toHistoryResponse(List<BookingDetail> details) {
+        Booking booking = details.get(0).getBooking();
+        BookingDetail firstDetail = details.stream()
+                .min(Comparator.comparing(BookingDetail::getCheckInTarget))
+                .orElse(details.get(0));
+        BigDecimal roomCharge = calculateRoomCharge(details);
+        List<Long> detailIds = details.stream().map(BookingDetail::getId).toList();
+        BigDecimal serviceCharge = calculateServiceCharge(bookingServiceItemRepository.findByBookingDetailIds(detailIds));
+        BigDecimal totalAmount = roomCharge.add(serviceCharge);
+        DepositPolicy depositPolicy = booking.getDepositPolicy();
+
+        return new PublicBookingHistoryResponse(
+                booking.getId(),
+                booking.getBookingDate(),
+                booking.getStatus(),
+                firstDetail.getRoom().getRoomNumber(),
+                firstDetail.getRoom().getRoomType() != null ? firstDetail.getRoom().getRoomType().getName() : null,
+                firstDetail.getCheckInTarget(),
+                details.stream().map(BookingDetail::getCheckOutTarget).max(LocalDateTime::compareTo).orElse(firstDetail.getCheckOutTarget()),
+                details.size(),
+                roomCharge,
+                serviceCharge,
+                totalAmount,
+                requiresPayment(booking),
+                depositPolicy != null ? depositPolicy.getPolicyName() : null,
+                depositPolicy != null ? depositPolicy.getCalculationType() : null,
+                depositPolicy != null ? depositPolicy.getPolicyValue() : null,
+                calculateDepositAmount(depositPolicy, totalAmount)
+        );
+    }
+
+    private PublicBookingHistoryRoomResponse toHistoryRoomResponse(BookingDetail detail) {
+        Room room = detail.getRoom();
+        RoomType roomType = room.getRoomType();
+        return new PublicBookingHistoryRoomResponse(
+                detail.getId(),
+                room.getId(),
+                room.getRoomNumber(),
+                roomType != null ? roomType.getName() : null,
+                detail.getCheckInTarget(),
+                detail.getCheckOutTarget(),
+                detail.getNumberOfAdults(),
+                detail.getNumberOfChildren(),
+                detail.getPriceAtBooking(),
+                detail.getRentType(),
+                detail.getStatus()
+        );
+    }
+
+    private PublicBookingHistoryServiceResponse toHistoryServiceResponse(BookingServiceItem item) {
+        String name = item.getFacilityService() != null
+                ? item.getFacilityService().getName()
+                : item.getInventoryService().getName();
+        String type = item.getFacilityService() != null ? "FACILITY" : "INVENTORY";
+        BigDecimal total = item.getPriceAtBooking().multiply(BigDecimal.valueOf(item.getQuantity()));
+        return new PublicBookingHistoryServiceResponse(
+                item.getId(),
+                item.getBookingDetail().getId(),
+                name,
+                type,
+                item.getQuantity(),
+                item.getPriceAtBooking(),
+                total
+        );
+    }
+
+    private BigDecimal calculateRoomCharge(List<BookingDetail> details) {
+        return details.stream()
+                .map(BookingDetail::getPriceAtBooking)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    private BigDecimal calculateServiceCharge(List<BookingServiceItem> services) {
+        return services.stream()
+                .map(item -> item.getPriceAtBooking().multiply(BigDecimal.valueOf(item.getQuantity())))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    private boolean requiresPayment(Booking booking) {
+        return booking.getDepositPolicy() != null && "PENDING".equals(normalize(booking.getStatus()));
+    }
+
+    private BigDecimal saveServices(BookingDetail detail, List<PublicBookingServiceRequest> services) {
+        if (services == null || services.isEmpty()) {
+            return BigDecimal.ZERO;
+        }
+        BigDecimal total = BigDecimal.ZERO;
+        for (PublicBookingServiceRequest request : services) {
+            String type = normalize(request.type());
+            int quantity = request.quantity();
+            if ("FACILITY".equals(type)) {
+                FacilityService service = facilityServiceRepository.findById(request.serviceId())
+                        .filter(FacilityService::isActive)
+                        .orElseThrow(() -> new IllegalArgumentException("Dịch vụ không hợp lệ"));
+                bookingServiceItemRepository.save(BookingServiceItem.builder()
+                        .bookingDetail(detail)
+                        .facilityService(service)
+                        .quantity(quantity)
+                        .priceAtBooking(service.getPrice())
+                        .build());
+                total = total.add(service.getPrice().multiply(BigDecimal.valueOf(quantity)));
+            } else if ("INVENTORY".equals(type)) {
+                InventoryService service = inventoryServiceRepository.findById(request.serviceId())
+                        .orElseThrow(() -> new IllegalArgumentException("Dịch vụ thuê đồ không hợp lệ"));
+                if (service.getQuantityInStock() != null && quantity > service.getQuantityInStock()) {
+                    throw new IllegalArgumentException("Số lượng dịch vụ vượt tồn kho");
+                }
+                bookingServiceItemRepository.save(BookingServiceItem.builder()
+                        .bookingDetail(detail)
+                        .inventoryService(service)
+                        .quantity(quantity)
+                        .priceAtBooking(service.getPrice())
+                        .build());
+                total = total.add(service.getPrice().multiply(BigDecimal.valueOf(quantity)));
+            } else {
+                throw new IllegalArgumentException("Loại dịch vụ không hợp lệ");
+            }
+        }
+        return total;
+    }
+
+    private boolean isWeekend(LocalDateTime dateTime) {
+        DayOfWeek day = dateTime.getDayOfWeek();
+        return day == DayOfWeek.SATURDAY || day == DayOfWeek.SUNDAY;
+    }
+
+    private BigDecimal calculateDepositAmount(DepositPolicy policy, BigDecimal totalAmount) {
+        if (policy == null || policy.getPolicyValue() == null) {
+            return BigDecimal.ZERO;
+        }
+        if ("PERCENTAGE".equals(normalize(policy.getCalculationType()))) {
+            return totalAmount.multiply(policy.getPolicyValue())
+                    .divide(BigDecimal.valueOf(100), 0, RoundingMode.HALF_UP);
+        }
+        return policy.getPolicyValue();
+    }
+
+    private String normalize(String value) {
+        return value == null ? "" : value.trim().toUpperCase();
+    }
+}

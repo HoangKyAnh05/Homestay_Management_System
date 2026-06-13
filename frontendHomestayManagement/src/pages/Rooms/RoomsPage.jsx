@@ -23,6 +23,14 @@ function rentTypeLabel(rentType) {
   return labels[String(rentType || '').toUpperCase()] || 'đêm'
 }
 
+function depositLabel(room) {
+  if (!room.depositPolicyId) return 'Không cần thanh toán trước'
+  if (String(room.depositCalculationType || '').toUpperCase() === 'PERCENTAGE') {
+    return `Thanh toán trước ${Number(room.depositPolicyValue || 0)}%`
+  }
+  return `Thanh toán trước ${formatPrice(room.depositPolicyValue)}`
+}
+
 function PublicHeader() {
   const currentUser = getStoredUser()
   const [isOpen, setIsOpen] = useState(false)
@@ -54,6 +62,7 @@ function PublicHeader() {
           </button>
           {isOpen && (
             <div className="home-user-dropdown">
+              <a href="/booking-history">Lịch sử đặt phòng</a>
               <a href="/profile">Thông tin cá nhân</a>
               <button type="button" onClick={handleLogout}>Đăng xuất</button>
             </div>
@@ -99,6 +108,9 @@ function RoomCard({ room }) {
         </div>
         <div className="public-room-weekend">
           Cuối tuần: {formatPrice(room.weekendPrice)}
+        </div>
+        <div className={`public-room-deposit${room.depositPolicyId ? '' : ' public-room-deposit--free'}`}>
+          {depositLabel(room)}
         </div>
       </div>
     </a>

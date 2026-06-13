@@ -321,6 +321,24 @@
   margin-top: 5px;
 }
 
+.public-room-deposit {
+  width: fit-content;
+  margin-top: 10px;
+  padding: 7px 10px;
+  color: #9a3412;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.public-room-deposit--free {
+  color: #176943;
+  background: #ecfdf5;
+  border-color: #bcebd4;
+}
+
 .rooms-state {
   margin: 24px 0 64px;
   padding: 28px;

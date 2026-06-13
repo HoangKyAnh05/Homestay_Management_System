@@ -464,6 +464,7 @@ function HomePage() {
                 {currentUser.role === 'ROLE_ADMIN' && (
                   <a href="/admin">Quản lí Home Stays</a>
                 )}
+                <a href="/booking-history">Lịch sử đặt phòng</a>
                 <a href="/profile">Thông tin cá nhân</a>
                 <button type="button" onClick={handleLogout}>Đăng xuất</button>
               </div>
