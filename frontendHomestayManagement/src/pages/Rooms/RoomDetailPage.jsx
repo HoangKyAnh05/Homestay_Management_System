@@ -154,29 +154,30 @@ function RoomDetailPage({ roomId }) {
               <div className="room-detail-rating">★ 4.9</div>
             </section>
 
-            <section className="room-detail-gallery" aria-label="Ảnh phòng">
-              <div className="room-detail-main-photo">
-                {selectedImage ? (
-                  <img src={resolveImageUrl(selectedImage)} alt={`Phòng ${room.roomNumber}`} />
-                ) : (
-                  <div>Home Stays</div>
-                )}
-              </div>
-              <div className="room-detail-thumbs">
-                {imageUrls.slice(0, 5).map((url) => (
-                  <button
-                    key={url}
-                    type="button"
-                    className={selectedImage === url ? 'room-thumb-active' : ''}
-                    onClick={() => setSelectedImage(url)}
-                  >
-                    <img src={resolveImageUrl(url)} alt="Ảnh phòng" />
-                  </button>
-                ))}
-              </div>
-            </section>
-
             <section className="room-detail-layout">
+              <aside className="room-detail-media-panel" aria-label="Ảnh phòng">
+                <div className="room-detail-main-photo">
+                  {selectedImage ? (
+                    <img src={resolveImageUrl(selectedImage)} alt={`Phòng ${room.roomNumber}`} />
+                  ) : (
+                    <div>Home Stays</div>
+                  )}
+                </div>
+                <div className="room-detail-thumbs">
+                  {imageUrls.slice(0, 6).map((url) => (
+                    <button
+                      key={url}
+                      type="button"
+                      className={selectedImage === url ? 'room-thumb-active' : ''}
+                      onClick={() => setSelectedImage(url)}
+                    >
+                      <img src={resolveImageUrl(url)} alt="Ảnh phòng" />
+                    </button>
+                  ))}
+                </div>
+                <a className="room-detail-cta room-detail-cta--media" href="/home#search-results">Chọn lịch đặt phòng</a>
+              </aside>
+
               <div className="room-detail-content">
                 <section className="room-info-section">
                   <h2>Thông tin phòng</h2>
@@ -201,48 +202,53 @@ function RoomDetailPage({ roomId }) {
                     ))}
                   </div>
                 </section>
-              </div>
-
-              <aside className="room-booking-panel">
-                <h2>Lịch phòng đã đặt</h2>
-                <p>Chọn khoảng ngày để kiểm tra các khung giờ bận trước khi đặt theo combo hoặc theo giờ.</p>
-                <div className="room-date-fields">
-                  <label>
-                    <span>Từ ngày</span>
-                    <input type="date" value={fromDate} onChange={(event) => setFromDate(event.target.value)} />
-                  </label>
-                  <label>
-                    <span>Đến ngày</span>
-                    <input type="date" value={toDate} onChange={(event) => setToDate(event.target.value)} />
-                  </label>
-                </div>
-
-                <div className="room-busy-list">
-                  {Object.keys(groupedSlots).length ? (
-                    Object.entries(groupedSlots).map(([date, slots]) => (
-                      <div className="room-busy-day" key={date}>
-                        <h3>{date}</h3>
-                        {slots.map((slot) => (
-                          <div className="room-busy-slot" key={slot.bookingDetailId}>
-                            <span>
-                              {formatDateTime(slot.checkInTarget, { hour: '2-digit', minute: '2-digit' })}
-                              {' - '}
-                              {formatDateTime(slot.checkOutTarget, { hour: '2-digit', minute: '2-digit' })}
-                            </span>
-                            <strong>Đã đặt</strong>
-                          </div>
-                        ))}
-                      </div>
-                    ))
-                  ) : (
-                    <div className="room-free-state">
-                      Chưa có khung giờ đã đặt trong khoảng ngày này.
+                <section className="room-booking-panel">
+                  <div className="room-booking-head">
+                    <div>
+                      <h2>Lịch phòng đã đặt</h2>
+                      <p>Chọn khoảng ngày để kiểm tra các khung giờ bận trước khi đặt theo combo hoặc theo giờ.</p>
                     </div>
-                  )}
-                </div>
+                    <a className="room-detail-cta" href="/home#search-results">Chọn lịch đặt phòng</a>
+                  </div>
 
-                <a className="room-detail-cta" href="/home#search-results">Chọn lịch đặt phòng</a>
-              </aside>
+                  <div className="room-date-fields">
+                    <label>
+                      <span>Từ ngày</span>
+                      <input type="date" value={fromDate} onChange={(event) => setFromDate(event.target.value)} />
+                    </label>
+                    <label>
+                      <span>Đến ngày</span>
+                      <input type="date" value={toDate} onChange={(event) => setToDate(event.target.value)} />
+                    </label>
+                  </div>
+
+                  <div className="room-busy-list">
+                    {Object.keys(groupedSlots).length ? (
+                      Object.entries(groupedSlots).map(([date, slots]) => (
+                        <div className="room-busy-day" key={date}>
+                          <h3>{date}</h3>
+                          <div className="room-busy-slots">
+                            {slots.map((slot) => (
+                              <div className="room-busy-slot" key={slot.bookingDetailId}>
+                                <span>
+                                  {formatDateTime(slot.checkInTarget, { hour: '2-digit', minute: '2-digit' })}
+                                  {' - '}
+                                  {formatDateTime(slot.checkOutTarget, { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                                <strong>Đã đặt</strong>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="room-free-state">
+                        Chưa có khung giờ đã đặt trong khoảng ngày này.
+                      </div>
+                    )}
+                  </div>
+                </section>
+              </div>
             </section>
           </>
         ) : null}
