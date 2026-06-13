@@ -477,7 +477,6 @@ function RoomsPage() {
   const [rooms, setRooms] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [capacity, setCapacity] = useState('all')
   const [maxPrice, setMaxPrice] = useState(10000000)
   const [selectedRooms, setSelectedRooms] = useState([])
   const [bookingModalOpen, setBookingModalOpen] = useState(false)
@@ -521,12 +520,10 @@ function RoomsPage() {
       .filter((room) => {
         const price = roomPrice(room)
         const matchesPrice = price <= maxPrice
-        const totalCapacity = Number(room.maxAdults || 0) + Number(room.maxChildren || 0)
-        const matchesCapacity = capacity === 'all' || totalCapacity >= Number(capacity)
-        return matchesPrice && matchesCapacity
+        return matchesPrice
       })
       .sort((a, b) => roomPrice(a) - roomPrice(b))
-  }, [rooms, capacity, maxPrice])
+  }, [rooms, maxPrice])
 
   const requestedRooms = searchCriteria?.rooms || Math.max(1, selectedRooms.length || 1)
   const selectedRoomIds = useMemo(() => new Set(selectedRooms.map((room) => String(room.roomId))), [selectedRooms])
@@ -551,6 +548,13 @@ function RoomsPage() {
       <main>
         <div className="rooms-shell">
           <aside className="rooms-sidebar" aria-label="Bộ lọc phòng">
+            <BookingCart
+              selectedRooms={selectedRooms}
+              requestedRooms={requestedRooms}
+              onRemove={removeRoom}
+              onOpenBooking={() => setBookingModalOpen(true)}
+            />
+
             <div className="rooms-amenities-card" aria-label="Tiện ích nổi bật">
               <h2>Tiện ích phòng</h2>
               <div className="rooms-amenities-list">
@@ -588,15 +592,6 @@ function RoomsPage() {
             </div>
 
             <div className="rooms-toolbar">
-              <label>
-                <span>Sức chứa</span>
-                <select value={capacity} onChange={(event) => setCapacity(event.target.value)}>
-                  <option value="all">Tất cả</option>
-                  <option value="2">Từ 2 khách</option>
-                  <option value="4">Từ 4 khách</option>
-                  <option value="6">Từ 6 khách</option>
-                </select>
-              </label>
               <label className="rooms-price-filter">
                 <span>Giá tối đa: {formatPrice(maxPrice)}</span>
                 <input
@@ -609,13 +604,6 @@ function RoomsPage() {
                 />
               </label>
             </div>
-
-            <BookingCart
-              selectedRooms={selectedRooms}
-              requestedRooms={requestedRooms}
-              onRemove={removeRoom}
-              onOpenBooking={() => setBookingModalOpen(true)}
-            />
           </aside>
 
           <section className="rooms-results-panel">
