@@ -43,7 +43,21 @@ function useRoomTypes() {
 }
 
 // Section: Các phòng nổi bật
-function RoomCard({ room }) {
+function buildBookingUrl(room, criteria) {
+  const roomId = room.roomId || room.id
+  if (!criteria) return `/rooms/${roomId}`
+
+  const params = new URLSearchParams({
+    checkInDate: criteria.checkInDate,
+    checkOutDate: criteria.checkOutDate,
+    rooms: String(criteria.rooms),
+    adults: String(criteria.adults),
+    children: String(criteria.children),
+  })
+  return `/rooms/${roomId}?${params.toString()}`
+}
+
+function RoomCard({ room, criteria }) {
   const [priceMode, setPriceMode] = useState('weekday')
   const title = room.name || room.roomTypeName || `Phòng ${room.roomNumber}`
   const description = room.description || 'Không gian nghỉ dưỡng tiện nghi, phù hợp cho kỳ lưu trú của bạn.'
@@ -97,7 +111,7 @@ function RoomCard({ room }) {
           <button
             className="room-card-btn"
             type="button"
-            onClick={() => window.location.assign(`/rooms/${room.roomId || room.id}`)}
+            onClick={() => window.location.assign(buildBookingUrl(room, criteria))}
           >
             Đặt ngay
           </button>
@@ -163,7 +177,7 @@ function SearchResultsSection({ criteria, rooms, loading, error, maxPrice, onMax
               <div className="rooms-loading rooms-loading--error">{error}</div>
             ) : visibleRooms.length ? (
               <div className="rooms-grid search-results-grid">
-                {visibleRooms.map(room => <RoomCard key={room.roomId || room.id} room={room} />)}
+                {visibleRooms.map(room => <RoomCard key={room.roomId || room.id} room={room} criteria={criteria} />)}
               </div>
             ) : (
               <div className="rooms-loading">Không có phòng trống phù hợp với bộ lọc hiện tại.</div>

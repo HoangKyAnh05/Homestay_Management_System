@@ -97,6 +97,11 @@ function toDateTimeLocalValue(date = new Date()) {
   return `${year}-${month}-${day}T${hour}:${minute}`
 }
 
+function dateKeyToDateTimeLocal(dateKey, hour, minute = 0) {
+  if (!dateKey) return ''
+  return `${dateKey}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
+}
+
 function defaultCheckInValue() {
   const date = new Date()
   date.setHours(Math.max(13, date.getHours() + 1), 0, 0, 0)
@@ -192,7 +197,7 @@ function groupPrices(prices) {
   return Array.from(groups.values())
 }
 
-function BookingModal({ room, onClose, onCreated }) {
+function BookingModal({ room, initialBookingData, onClose, onCreated }) {
   const currentUser = getStoredUser()
   const [form, setForm] = useState({
     fullName: currentUser?.fullName || '',
@@ -200,11 +205,11 @@ function BookingModal({ room, onClose, onCreated }) {
     email: currentUser?.email || '',
     address: currentUser?.address || '',
     dateOfBirth: currentUser?.dateOfBirth || '',
-    checkInTarget: defaultCheckInValue(),
-    checkOutTarget: '',
+    checkInTarget: initialBookingData?.checkInTarget || defaultCheckInValue(),
+    checkOutTarget: initialBookingData?.checkOutTarget || '',
     pricePolicyId: '',
-    numberOfAdults: 1,
-    numberOfChildren: 0,
+    numberOfAdults: initialBookingData?.adults || 1,
+    numberOfChildren: initialBookingData?.children || 0,
   })
   const [policies, setPolicies] = useState([])
   const [serviceOptions, setServiceOptions] = useState([])
@@ -216,11 +221,12 @@ function BookingModal({ room, onClose, onCreated }) {
   const [paymentSummary, setPaymentSummary] = useState(null)
 
   useEffect(() => {
+    if (initialBookingData?.checkOutTarget) return
     setForm((current) => ({
       ...current,
       checkOutTarget: defaultCheckOutValue(current.checkInTarget),
     }))
-  }, [])
+  }, [initialBookingData?.checkOutTarget])
 
   useEffect(() => {
     const token = getStoredToken()
@@ -401,6 +407,11 @@ function BookingModal({ room, onClose, onCreated }) {
 
           <section>
             <h3>Thông tin đặt phòng</h3>
+            {initialBookingData?.checkInTarget && (
+              <p className="public-booking-search-note">
+                Đã lấy từ tìm kiếm: {initialBookingData.rooms} phòng · {initialBookingData.adults} người lớn · {initialBookingData.children} trẻ em
+              </p>
+            )}
             <div className="public-booking-grid">
               <label><span>Nhận phòng dự kiến</span><input type="datetime-local" required value={form.checkInTarget} onChange={(e) => setForm({ ...form, checkInTarget: e.target.value })} /></label>
               <label><span>Trả phòng dự kiến</span><input type="datetime-local" required value={form.checkOutTarget} onChange={(e) => setForm({ ...form, checkOutTarget: e.target.value })} /></label>
@@ -463,8 +474,18 @@ function BookingModal({ room, onClose, onCreated }) {
 
 function RoomDetailPage({ roomId }) {
   const today = useMemo(() => new Date(), [])
-  const [fromDate, setFromDate] = useState(formatDateInput(today))
-  const [toDate, setToDate] = useState(formatDateInput(addDays(today, 14)))
+  const initialSearchParams = useMemo(() => new URLSearchParams(window.location.search), [])
+  const initialCheckInDate = initialSearchParams.get('checkInDate')
+  const initialCheckOutDate = initialSearchParams.get('checkOutDate')
+  const initialBookingData = useMemo(() => ({
+    checkInTarget: initialCheckInDate ? dateKeyToDateTimeLocal(initialCheckInDate, 13) : '',
+    checkOutTarget: initialCheckOutDate ? dateKeyToDateTimeLocal(initialCheckOutDate, 12) : '',
+    adults: Number(initialSearchParams.get('adults') || 1),
+    children: Number(initialSearchParams.get('children') || 0),
+    rooms: Number(initialSearchParams.get('rooms') || 1),
+  }), [initialCheckInDate, initialCheckOutDate, initialSearchParams])
+  const [fromDate, setFromDate] = useState(initialCheckInDate || formatDateInput(today))
+  const [toDate, setToDate] = useState(initialCheckOutDate || formatDateInput(addDays(today, 14)))
   const [room, setRoom] = useState(null)
   const [selectedImage, setSelectedImage] = useState('')
   const [loading, setLoading] = useState(true)
@@ -634,6 +655,7 @@ function RoomDetailPage({ roomId }) {
             {bookingModalOpen && (
               <BookingModal
                 room={room}
+                initialBookingData={initialBookingData}
                 onClose={() => setBookingModalOpen(false)}
                 onCreated={(booking) => {
                   setCreatedBooking(booking)

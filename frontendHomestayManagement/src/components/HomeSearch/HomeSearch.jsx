@@ -169,6 +169,7 @@ function HomeSearch({ onSearch, isSearching = false }) {
   const [rooms, setRooms] = useState(1)
   const [adults, setAdults] = useState(2)
   const [children, setChildren] = useState(0)
+  const [dateError, setDateError] = useState('')
 
   const visibleMonths = useMemo(() => {
     const baseDate = checkInDate || new Date()
@@ -198,19 +199,21 @@ function HomeSearch({ onSearch, isSearching = false }) {
   const handleSelectDate = (date) => {
     if (activeDateField === 'checkout') {
       if (date <= checkInDate) {
-        setCheckInDate(date)
-        setCheckOutDate(null)
+        setCheckOutDate(date)
+        setDateError('Ngày trả phòng phải sau ngày nhận phòng. Vui lòng chọn lại ngày.')
         setActiveDateField('checkout')
         return
       }
 
       setCheckOutDate(date)
+      setDateError('')
       setIsCalendarOpen(false)
       setActiveDateField('checkin')
       return
     }
 
     setCheckInDate(date)
+    setDateError('')
     if (checkOutDate && date < checkOutDate) {
       setActiveDateField('checkout')
       return
@@ -222,6 +225,7 @@ function HomeSearch({ onSearch, isSearching = false }) {
 
   const handleSubmit = () => {
     if (!checkInDate || !checkOutDate || checkOutDate <= checkInDate) {
+      setDateError('Ngày trả phòng phải sau ngày nhận phòng. Vui lòng chọn lại ngày.')
       setActiveDateField(!checkInDate ? 'checkin' : 'checkout')
       setIsCalendarOpen(true)
       setIsGuestOpen(false)
@@ -332,6 +336,7 @@ function HomeSearch({ onSearch, isSearching = false }) {
           {isSearching ? 'Đang tìm...' : 'Tìm kiếm'}
         </button>
       </div>
+      {dateError && <p className="home-search-error">{dateError}</p>}
     </section>
   )
 }
