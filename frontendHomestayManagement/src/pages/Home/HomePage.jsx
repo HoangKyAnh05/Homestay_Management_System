@@ -27,6 +27,19 @@ function rentTypeLabel(rentType) {
   return labels[String(rentType || '').toUpperCase()] || 'đêm'
 }
 
+function UserAvatar({ user }) {
+  const avatarUrl = resolveImageUrl(user?.avatarUrl)
+  return (
+    <span className="home-user-avatar" aria-hidden="true">
+      {avatarUrl ? (
+        <img src={avatarUrl} alt="" />
+      ) : (
+        <svg viewBox="0 0 24 24"><path d="M20 21a8 8 0 0 0-16 0"/><circle cx="12" cy="8" r="5"/></svg>
+      )}
+    </span>
+  )
+}
+
 function useRoomTypes() {
   const [rooms, setRooms] = useState([])
   const [loading, setLoading] = useState(true)
@@ -467,9 +480,7 @@ function HomePage() {
               aria-expanded={isUserMenuOpen}
               onClick={() => setIsUserMenuOpen((c) => !c)}
             >
-              <span className="home-user-avatar" aria-hidden="true">
-                <svg viewBox="0 0 24 24"><path d="M20 21a8 8 0 0 0-16 0"/><circle cx="12" cy="8" r="5"/></svg>
-              </span>
+              <UserAvatar user={currentUser} />
               <span>{currentUser.fullName || currentUser.email}</span>
               <svg className="home-user-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
             </button>

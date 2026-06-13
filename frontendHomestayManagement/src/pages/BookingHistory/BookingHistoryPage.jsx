@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { getStoredToken, getStoredUser, logout } from '../../services/authService'
+import { resolveImageUrl } from '../../utils/imageUrl'
 import '../Home/HomePage.css'
 import './BookingHistoryPage.css'
 
@@ -36,6 +37,19 @@ function serviceTypeLabel(type) {
   return type === 'FACILITY' ? 'Dịch vụ' : 'Thuê đồ'
 }
 
+function UserAvatar({ user }) {
+  const avatarUrl = resolveImageUrl(user?.avatarUrl)
+  return (
+    <span className="home-user-avatar" aria-hidden="true">
+      {avatarUrl ? (
+        <img src={avatarUrl} alt="" />
+      ) : (
+        <svg viewBox="0 0 24 24"><path d="M20 21a8 8 0 0 0-16 0"/><circle cx="12" cy="8" r="5"/></svg>
+      )}
+    </span>
+  )
+}
+
 function PublicHeader() {
   const currentUser = getStoredUser()
   const [isOpen, setIsOpen] = useState(false)
@@ -59,9 +73,7 @@ function PublicHeader() {
       {currentUser ? (
         <div className="home-user-menu">
           <button type="button" className="home-user" aria-expanded={isOpen} onClick={() => setIsOpen((value) => !value)}>
-            <span className="home-user-avatar" aria-hidden="true">
-              <svg viewBox="0 0 24 24"><path d="M20 21a8 8 0 0 0-16 0"/><circle cx="12" cy="8" r="5"/></svg>
-            </span>
+            <UserAvatar user={currentUser} />
             <span>{currentUser.fullName || currentUser.email}</span>
             <svg className="home-user-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
           </button>
