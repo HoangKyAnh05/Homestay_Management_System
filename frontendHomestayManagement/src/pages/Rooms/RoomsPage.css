@@ -524,6 +524,13 @@
   color: #111827;
 }
 
+.multi-selected-rooms b small {
+  margin-left: 3px;
+  color: #6b7280;
+  font-size: 13px;
+  font-weight: 700;
+}
+
 .multi-selected-rooms label span {
   margin: 0 0 5px;
   color: #6b7280;

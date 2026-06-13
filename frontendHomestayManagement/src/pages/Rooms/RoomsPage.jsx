@@ -63,6 +63,24 @@ function bookingDayType(checkInTarget) {
   return [0, 6].includes(date.getDay()) ? 'WEEKEND' : 'WEEKDAY'
 }
 
+function dateTimeLocalToDateKey(value) {
+  if (!value) return ''
+  return value.slice(0, 10)
+}
+
+function findOverlappingSlot(slots, checkInTarget, checkOutTarget) {
+  if (!checkInTarget || !checkOutTarget) return null
+  const checkIn = new Date(checkInTarget)
+  const checkOut = new Date(checkOutTarget)
+  if (Number.isNaN(checkIn.getTime()) || Number.isNaN(checkOut.getTime())) return null
+
+  return (slots || []).find((slot) => {
+    const busyStart = new Date(slot.checkInTarget)
+    const busyEnd = new Date(slot.checkOutTarget)
+    return checkIn < busyEnd && checkOut > busyStart
+  }) || null
+}
+
 function findRoomPolicyPrice(room, policy, dayType) {
   if (!room || !policy) return null
   return (room.prices || []).find((price) =>
@@ -70,6 +88,75 @@ function findRoomPolicyPrice(room, policy, dayType) {
     && String(price.rentType).toUpperCase() === String(policy.rentType).toUpperCase()
     && String(price.dayType).toUpperCase() === String(dayType).toUpperCase()
   ) || null
+}
+
+function normalizeRentType(rentType) {
+  return String(rentType || '').trim().toUpperCase()
+}
+
+function isOvernightPolicy(policy) {
+  return ['OVERNIGHT', 'NIGHTLY', 'BY_NIGHT'].includes(normalizeRentType(policy?.rentType))
+}
+
+function isAutoCheckoutPolicy(policy) {
+  return ['HOURLY', 'BY_HOUR', 'COMBO'].includes(normalizeRentType(policy?.rentType))
+}
+
+function isHourlyPolicy(policy) {
+  return ['HOURLY', 'BY_HOUR'].includes(normalizeRentType(policy?.rentType))
+}
+
+function addHoursToDateTimeLocal(value, hours) {
+  if (!value || !hours) return value
+  const date = new Date(value)
+  date.setHours(date.getHours() + Number(hours))
+  return toDateTimeLocal(date)
+}
+
+function overnightCheckoutValue(checkInTarget) {
+  const date = new Date(checkInTarget)
+  date.setDate(date.getDate() + 1)
+  date.setHours(11, 0, 0, 0)
+  return toDateTimeLocal(date)
+}
+
+function normalizeBookingTime(form, policy) {
+  if (!policy || !form.checkInTarget) return form
+  if (isOvernightPolicy(policy)) {
+    const date = new Date(form.checkInTarget)
+    date.setHours(19, 0, 0, 0)
+    return {
+      ...form,
+      checkInTarget: toDateTimeLocal(date),
+      checkOutTarget: overnightCheckoutValue(date),
+    }
+  }
+  if (isAutoCheckoutPolicy(policy)) {
+    return {
+      ...form,
+      checkOutTarget: addHoursToDateTimeLocal(form.checkInTarget, policy.limitHours || 1),
+    }
+  }
+  return form
+}
+
+function validateBookingTime(form, policy) {
+  if (!form.checkInTarget || !form.checkOutTarget) return ''
+  const checkIn = new Date(form.checkInTarget)
+  const checkOut = new Date(form.checkOutTarget)
+  if (checkOut <= checkIn) return 'Giờ trả phòng phải sau giờ nhận phòng.'
+
+  if (isOvernightPolicy(policy)) {
+    const validCheckIn = checkIn.getHours() === 19 && checkIn.getMinutes() === 0
+    const expectedCheckOut = new Date(checkIn)
+    expectedCheckOut.setDate(expectedCheckOut.getDate() + 1)
+    expectedCheckOut.setHours(11, 0, 0, 0)
+    const validCheckOut = checkOut.getTime() === expectedCheckOut.getTime()
+    if (!validCheckIn || !validCheckOut) {
+      return 'Book qua đêm nhận phòng từ 19h tối đến 11h sáng hôm sau.'
+    }
+  }
+  return ''
 }
 
 function rentTypeLabel(rentType) {
@@ -222,6 +309,8 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
   const [selectedServices, setSelectedServices] = useState([])
   const [serviceForm, setServiceForm] = useState({ optionKey: '', quantity: 1 })
   const [loadingMeta, setLoadingMeta] = useState(true)
+  const [checkingSchedule, setCheckingSchedule] = useState(false)
+  const [scheduleError, setScheduleError] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [paymentSummary, setPaymentSummary] = useState(null)
@@ -253,7 +342,54 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
       .finally(() => setLoadingMeta(false))
   }, [])
 
-  const invalidDate = form.checkInTarget && form.checkOutTarget && new Date(form.checkOutTarget) <= new Date(form.checkInTarget)
+  useEffect(() => {
+    if (!selectedRooms.length || !form.checkInTarget || !form.checkOutTarget) {
+      setScheduleError('')
+      return undefined
+    }
+
+    const checkIn = new Date(form.checkInTarget)
+    const checkOut = new Date(form.checkOutTarget)
+    if (Number.isNaN(checkIn.getTime()) || Number.isNaN(checkOut.getTime()) || checkOut <= checkIn) {
+      setScheduleError('')
+      return undefined
+    }
+
+    const controller = new AbortController()
+    const timeoutId = window.setTimeout(() => {
+      setScheduleError('')
+      setCheckingSchedule(true)
+      const fromDate = dateTimeLocalToDateKey(form.checkInTarget)
+      const toDate = dateTimeLocalToDateKey(form.checkOutTarget) || fromDate
+
+      Promise.all(selectedRooms.map((room) =>
+        fetch(`${API_BASE_URL}/rooms/${room.roomId}?fromDate=${fromDate}&toDate=${toDate}`, { signal: controller.signal })
+          .then((response) => response.ok ? response.json() : null)
+          .then((data) => ({ room, busySlots: data?.busySlots || [] }))
+      ))
+        .then((items) => {
+          const conflict = items.find((item) => findOverlappingSlot(item.busySlots, form.checkInTarget, form.checkOutTarget))
+          if (conflict) {
+            setScheduleError(`Phòng ${conflict.room.roomNumber} đã được đặt trong khung giờ này. Vui lòng chọn giờ khác.`)
+          } else {
+            setScheduleError('')
+          }
+        })
+        .catch((err) => {
+          if (err.name !== 'AbortError') setScheduleError('')
+        })
+        .finally(() => {
+          if (!controller.signal.aborted) setCheckingSchedule(false)
+        })
+    }, 220)
+
+    return () => {
+      window.clearTimeout(timeoutId)
+      controller.abort()
+      setCheckingSchedule(false)
+    }
+  }, [form.checkInTarget, form.checkOutTarget, selectedRooms])
+
   const selectedDayType = bookingDayType(form.checkInTarget)
   const availablePolicies = useMemo(() => {
     return policies.filter((policy) =>
@@ -261,6 +397,7 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
     )
   }, [policies, selectedDayType, selectedRooms])
   const selectedPolicy = availablePolicies.find((policy) => String(policy.id) === String(form.pricePolicyId)) || availablePolicies[0]
+  const timeError = validateBookingTime(form, selectedPolicy)
   const roomPriceItems = selectedRooms.map((room) => ({
     room,
     price: Number(findRoomPolicyPrice(room, selectedPolicy, selectedDayType)?.price || 0),
@@ -271,9 +408,37 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
   useEffect(() => {
     if (!availablePolicies.length) return
     if (!availablePolicies.some((policy) => String(policy.id) === String(form.pricePolicyId))) {
-      setForm((current) => ({ ...current, pricePolicyId: availablePolicies[0].id }))
+      setForm((current) => normalizeBookingTime({ ...current, pricePolicyId: availablePolicies[0].id }, availablePolicies[0]))
     }
   }, [availablePolicies, form.pricePolicyId])
+
+  const updatePolicy = (policyId) => {
+    const policy = availablePolicies.find((item) => String(item.id) === String(policyId))
+    setError('')
+    setScheduleError('')
+    setForm((current) => normalizeBookingTime({ ...current, pricePolicyId: policyId }, policy))
+  }
+
+  const updateCheckInTarget = (value) => {
+    setError('')
+    setScheduleError('')
+    setForm((current) => {
+      const next = { ...current, checkInTarget: value }
+      if (isAutoCheckoutPolicy(selectedPolicy)) {
+        return normalizeBookingTime(next, selectedPolicy)
+      }
+      if (isOvernightPolicy(selectedPolicy)) {
+        return { ...next, checkOutTarget: overnightCheckoutValue(value) }
+      }
+      return next
+    })
+  }
+
+  const updateCheckOutTarget = (value) => {
+    setError('')
+    setScheduleError('')
+    setForm((current) => ({ ...current, checkOutTarget: value }))
+  }
 
   const updateRoomGuest = (roomId, field, value) => {
     setRoomGuests((current) => ({
@@ -303,12 +468,16 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
       window.location.assign('/login')
       return
     }
-    if (invalidDate) {
-      setError('Giờ trả phòng phải sau giờ nhận phòng. Vui lòng chọn lại.')
+    if (timeError) {
+      setError(timeError)
       return
     }
     if (!availablePolicies.length || !selectedPolicy) {
       setError('Chưa có gói thuê nào được cấu hình đủ giá cho tất cả phòng đã chọn.')
+      return
+    }
+    if (scheduleError) {
+      setError(scheduleError)
       return
     }
 
@@ -415,11 +584,18 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
             <h3>Thời gian và gói thuê</h3>
             {criteria && <p className="public-booking-search-note">Đã lấy từ tìm kiếm: {criteria.rooms} phòng · {criteria.adults} người lớn · {criteria.children} trẻ em</p>}
             <div className="public-booking-grid">
-              <label><span>Nhận phòng</span><input type="datetime-local" required value={form.checkInTarget} onChange={(e) => setForm({ ...form, checkInTarget: e.target.value })} /></label>
-              <label><span>Trả phòng</span><input type="datetime-local" required value={form.checkOutTarget} onChange={(e) => setForm({ ...form, checkOutTarget: e.target.value })} /></label>
-              <label className="public-booking-wide"><span>Gói thuê</span><select required value={form.pricePolicyId} onChange={(e) => setForm({ ...form, pricePolicyId: e.target.value })}>{availablePolicies.map((policy) => <option key={policy.id} value={policy.id}>{policy.policyName}</option>)}</select></label>
+              <label><span>Nhận phòng</span><input type="datetime-local" required value={form.checkInTarget} onChange={(e) => updateCheckInTarget(e.target.value)} /></label>
+              {isHourlyPolicy(selectedPolicy) ? (
+                <label><span>Trả phòng</span><input type="text" value="00:00" disabled readOnly /></label>
+              ) : (
+                <label><span>Trả phòng</span><input type="datetime-local" required value={form.checkOutTarget} disabled={isAutoCheckoutPolicy(selectedPolicy)} onChange={(e) => updateCheckOutTarget(e.target.value)} /></label>
+              )}
+              <label className="public-booking-wide"><span>Gói thuê</span><select required value={form.pricePolicyId} onChange={(e) => updatePolicy(e.target.value)}>{availablePolicies.map((policy) => <option key={policy.id} value={policy.id}>{policy.policyName}</option>)}</select></label>
             </div>
             {!availablePolicies.length && <p className="public-booking-search-note public-booking-search-note--warning">Chưa có gói thuê nào được cấu hình đủ giá cho tất cả phòng đã chọn.</p>}
+            {isOvernightPolicy(selectedPolicy) && <p className="public-booking-search-note">Book qua đêm nhận phòng từ 19h tối đến 11h sáng hôm sau.</p>}
+            {isHourlyPolicy(selectedPolicy) && <p className="public-booking-search-note">Đặt theo giờ chỉ cần chọn giờ nhận phòng. Hệ thống tạm tính 1 giờ đầu tiên.</p>}
+            {!isHourlyPolicy(selectedPolicy) && isAutoCheckoutPolicy(selectedPolicy) && <p className="public-booking-search-note">Giờ trả phòng được hệ thống tự tính theo gói thuê đã chọn.</p>}
           </section>
 
           <section className="multi-selected-section">
@@ -431,7 +607,7 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
                     <strong>Phòng {room.roomNumber}</strong>
                     <span>{room.roomTypeName} · tối đa {room.maxAdults || 0} NL · {room.maxChildren || 0} TE</span>
                   </div>
-                  <b>{formatPrice(roomPriceItems.find((item) => String(item.room.roomId) === String(room.roomId))?.price || roomPrice(room))}</b>
+                  <b>{formatPrice(roomPriceItems.find((item) => String(item.room.roomId) === String(room.roomId))?.price || roomPrice(room))}{isHourlyPolicy(selectedPolicy) && <small>/giờ</small>}</b>
                   <label><span>Người lớn</span><input type="number" min="1" max={room.maxAdults || undefined} value={roomGuests[String(room.roomId)]?.numberOfAdults || 1} onChange={(e) => updateRoomGuest(room.roomId, 'numberOfAdults', e.target.value)} /></label>
                   <label><span>Trẻ em</span><input type="number" min="0" max={room.maxChildren || undefined} value={roomGuests[String(room.roomId)]?.numberOfChildren || 0} onChange={(e) => updateRoomGuest(room.roomId, 'numberOfChildren', e.target.value)} /></label>
                 </article>
@@ -462,18 +638,20 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
         </div>
 
         {error && <div className="public-booking-error">{error}</div>}
-        {invalidDate && <div className="public-booking-warning">Giờ trả phòng phải sau giờ nhận phòng.</div>}
+        {timeError && <div className="public-booking-warning">{timeError}</div>}
+        {checkingSchedule && <div className="public-booking-warning">Đang kiểm tra lịch phòng...</div>}
+        {scheduleError && <div className="public-booking-warning">{scheduleError}</div>}
         {loadingMeta && <div className="public-booking-error">Đang tải thông tin đặt phòng...</div>}
 
         <div className="public-booking-summary">
-          <span>Tiền phòng: <strong>{formatPrice(roomTotal)}</strong></span>
+          <span>Tiền phòng: <strong>{formatPrice(roomTotal)}{isHourlyPolicy(selectedPolicy) ? ' / giờ đầu' : ''}</strong></span>
           <span>Dịch vụ: <strong>{formatPrice(serviceTotal)}</strong></span>
           <span>Tổng tạm tính: <strong>{formatPrice(roomTotal + serviceTotal)}</strong></span>
         </div>
 
         <div className="public-booking-actions">
           <button type="button" onClick={onClose}>Hủy</button>
-          <button type="submit" disabled={submitting || loadingMeta || invalidDate || !availablePolicies.length}>{submitting ? 'Đang tạo...' : 'Tạo đơn đặt phòng'}</button>
+          <button type="submit" disabled={submitting || loadingMeta || checkingSchedule || Boolean(timeError) || Boolean(scheduleError) || !availablePolicies.length}>{submitting ? 'Đang tạo...' : 'Tạo đơn đặt phòng'}</button>
         </div>
       </form>
     </div>

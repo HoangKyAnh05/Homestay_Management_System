@@ -14,6 +14,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.DayOfWeek;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
@@ -188,6 +189,7 @@ public class PublicBookingServiceImpl implements PublicBookingService {
 
         PricePolicy pricePolicy = pricePolicyRepository.findById(request.pricePolicyId())
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy gói thuê"));
+        validatePolicyTime(pricePolicy, request.checkInTarget(), request.checkOutTarget());
         String dayType = isWeekend(request.checkInTarget()) ? "WEEKEND" : "WEEKDAY";
         DepositPolicy depositPolicy = selectedRooms.stream()
                 .map(selectedRoom -> roomsById.get(selectedRoom.roomId()))
@@ -196,7 +198,8 @@ public class PublicBookingServiceImpl implements PublicBookingService {
                 .map(RoomType::getDepositPolicy)
                 .findFirst()
                 .orElse(null);
-        boolean requiresDeposit = depositPolicy != null;
+        boolean hourlyPrepaymentRequired = isHourlyPolicy(pricePolicy);
+        boolean requiresDeposit = hourlyPrepaymentRequired || depositPolicy != null;
         String bookingStatus = requiresDeposit ? "PENDING" : "CONFIRMED";
 
         Booking booking = bookingRepository.save(Booking.builder()
@@ -232,7 +235,9 @@ public class PublicBookingServiceImpl implements PublicBookingService {
         BigDecimal roomCharge = calculateRoomCharge(savedDetails);
         BigDecimal serviceCharge = saveServices(firstDetail, request.services());
         BigDecimal totalAmount = roomCharge.add(serviceCharge);
-        BigDecimal depositAmount = requiresDeposit ? calculateDepositAmount(depositPolicy, totalAmount) : BigDecimal.ZERO;
+        BigDecimal depositAmount = hourlyPrepaymentRequired
+                ? roomCharge
+                : requiresDeposit ? calculateDepositAmount(depositPolicy, totalAmount) : BigDecimal.ZERO;
 
         return new PublicBookingResponse(
                 booking.getId(),
@@ -247,9 +252,9 @@ public class PublicBookingServiceImpl implements PublicBookingService {
                 totalAmount,
                 savedDetails.stream().map(this::toPublicBookingRoomResponse).toList(),
                 requiresDeposit,
-                depositPolicy != null ? depositPolicy.getPolicyName() : null,
-                depositPolicy != null ? depositPolicy.getCalculationType() : null,
-                depositPolicy != null ? depositPolicy.getPolicyValue() : null,
+                hourlyPrepaymentRequired ? "Thanh toán 100% giờ đầu tiên" : depositPolicy != null ? depositPolicy.getPolicyName() : null,
+                hourlyPrepaymentRequired ? "PERCENTAGE" : depositPolicy != null ? depositPolicy.getCalculationType() : null,
+                hourlyPrepaymentRequired ? BigDecimal.valueOf(100) : depositPolicy != null ? depositPolicy.getPolicyValue() : null,
                 depositAmount
         );
     }
@@ -289,6 +294,33 @@ public class PublicBookingServiceImpl implements PublicBookingService {
         if (!checkOutTarget.isAfter(checkInTarget)) {
             throw new IllegalArgumentException("Giá» tráº£ phÃ²ng pháº£i sau giá» nháº­n phÃ²ng");
         }
+    }
+
+    private void validatePolicyTime(PricePolicy policy, LocalDateTime checkInTarget, LocalDateTime checkOutTarget) {
+        String rentType = normalize(policy.getRentType());
+        if (Set.of("OVERNIGHT", "NIGHTLY", "BY_NIGHT").contains(rentType)) {
+            LocalTime standardCheckIn = policy.getStandardCheckIn() != null ? policy.getStandardCheckIn() : LocalTime.of(19, 0);
+            LocalTime standardCheckOut = policy.getStandardCheckOut() != null ? policy.getStandardCheckOut() : LocalTime.of(11, 0);
+            boolean checkInTooEarly = checkInTarget.toLocalTime().isBefore(standardCheckIn);
+            boolean checkOutNotNextDay = !checkOutTarget.toLocalDate().equals(checkInTarget.toLocalDate().plusDays(1));
+            boolean checkOutTooLate = checkOutTarget.toLocalTime().isAfter(standardCheckOut);
+            if (checkInTooEarly || checkOutNotNextDay || checkOutTooLate) {
+                throw new IllegalArgumentException("Book qua đêm nhận phòng từ 19h tối đến 11h sáng hôm sau");
+            }
+        }
+
+        if (Set.of("HOURLY", "BY_HOUR", "COMBO").contains(rentType)) {
+            int limitHours = policy.getLimitHours() != null && policy.getLimitHours() > 0 ? policy.getLimitHours() : 1;
+            LocalDateTime expectedCheckOut = checkInTarget.plusHours(limitHours);
+            if (!checkOutTarget.equals(expectedCheckOut)) {
+                throw new IllegalArgumentException("Gói theo giờ/combo chỉ cần chọn giờ nhận phòng, giờ trả phòng sẽ được hệ thống tự tính");
+            }
+        }
+    }
+
+    private boolean isHourlyPolicy(PricePolicy policy) {
+        String rentType = normalize(policy.getRentType());
+        return Set.of("HOURLY", "BY_HOUR").contains(rentType);
     }
 
     private void updateCustomer(Customer customer, PublicCreateBookingRequest request) {
