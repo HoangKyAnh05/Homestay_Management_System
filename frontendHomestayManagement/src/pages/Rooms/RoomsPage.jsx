@@ -1,5 +1,6 @@
 ﻿import { useEffect, useMemo, useState } from 'react'
 import { getStoredToken, getStoredUser, logout } from '../../services/authService'
+import { clearBookingCart, readBookingCart, writeBookingCart } from '../../utils/bookingCart'
 import { resolveImageUrl } from '../../utils/imageUrl'
 import '../Home/HomePage.css'
 import './RoomsPage.css'
@@ -183,7 +184,7 @@ function RoomCard({ room, selected, onToggle }) {
     </article>
   )
 }
-function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated }) {
+export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated }) {
   const currentUser = getStoredUser()
   const [form, setForm] = useState({
     fullName: currentUser?.fullName || '',
@@ -478,9 +479,10 @@ function RoomsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [maxPrice, setMaxPrice] = useState(10000000)
-  const [selectedRooms, setSelectedRooms] = useState([])
+  const [selectedRooms, setSelectedRooms] = useState(() => readBookingCart())
   const [bookingModalOpen, setBookingModalOpen] = useState(false)
   const [createdBooking, setCreatedBooking] = useState(null)
+  const [focusRoomApplied, setFocusRoomApplied] = useState(() => readBookingCart().length > 0)
 
   useEffect(() => {
     const params = searchCriteria ? new URLSearchParams({
@@ -505,10 +507,17 @@ function RoomsPage() {
   }, [searchCriteria])
 
   useEffect(() => {
-    if (!searchCriteria?.focusRoomId || !rooms.length || selectedRooms.length) return
+    if (!searchCriteria?.focusRoomId || !rooms.length || selectedRooms.length || focusRoomApplied) return
     const focusedRoom = rooms.find((room) => String(room.roomId) === String(searchCriteria.focusRoomId))
-    if (focusedRoom) setSelectedRooms([focusedRoom])
-  }, [rooms, searchCriteria, selectedRooms.length])
+    if (focusedRoom) {
+      setSelectedRooms([focusedRoom])
+      setFocusRoomApplied(true)
+    }
+  }, [focusRoomApplied, rooms, searchCriteria, selectedRooms.length])
+
+  useEffect(() => {
+    writeBookingCart(selectedRooms)
+  }, [selectedRooms])
 
   const highestPrice = useMemo(() => {
     const highest = Math.max(...rooms.map((room) => roomPrice(room)), 0)
@@ -657,6 +666,7 @@ function RoomsPage() {
               setCreatedBooking(booking)
               setBookingModalOpen(false)
               setSelectedRooms([])
+              clearBookingCart()
             }}
           />
         )}

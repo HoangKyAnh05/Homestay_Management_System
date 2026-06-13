@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { getStoredToken, getStoredUser, logout } from '../../services/authService'
+import { clearBookingCart, readBookingCart } from '../../utils/bookingCart'
 import { resolveImageUrl } from '../../utils/imageUrl'
+import { MultiBookingModal } from './RoomsPage'
 import '../Home/HomePage.css'
 import './RoomsPage.css'
 import './RoomDetailPage.css'
@@ -113,6 +115,30 @@ function defaultCheckOutValue(checkInValue) {
   date.setDate(date.getDate() + 1)
   date.setHours(12, 0, 0, 0)
   return toDateTimeLocalValue(date)
+}
+
+function roomDetailToCartRoom(room) {
+  const weekdayPrice = room?.prices?.find((price) => String(price.dayType || '').toUpperCase() === 'WEEKDAY')?.price
+  const weekendPrice = room?.prices?.find((price) => String(price.dayType || '').toUpperCase() === 'WEEKEND')?.price
+  const firstPrice = room?.prices?.[0]
+  return {
+    roomId: room.roomId,
+    roomNumber: room.roomNumber,
+    roomTypeId: room.roomTypeId,
+    roomTypeName: room.roomTypeName,
+    maxAdults: room.maxAdults,
+    maxChildren: room.maxChildren,
+    description: room.description,
+    weekdayPrice: weekdayPrice ?? firstPrice?.price ?? 0,
+    weekendPrice: weekendPrice ?? firstPrice?.price ?? 0,
+    rentType: firstPrice?.rentType,
+    depositPolicyId: room.depositPolicyId,
+    depositPolicyName: room.depositPolicyName,
+    depositCalculationType: room.depositCalculationType,
+    depositPolicyValue: room.depositPolicyValue,
+    primaryImageUrl: room.primaryImageUrl,
+    imageUrls: room.imageUrls,
+  }
 }
 
 function UserAvatar({ user }) {
@@ -502,6 +528,7 @@ function RoomDetailPage({ roomId }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [bookingModalOpen, setBookingModalOpen] = useState(false)
+  const [multiBookingRooms, setMultiBookingRooms] = useState([])
   const [createdBooking, setCreatedBooking] = useState(null)
 
   useEffect(() => {
@@ -525,6 +552,15 @@ function RoomDetailPage({ roomId }) {
   const imageUrls = room?.imageUrls?.length ? room.imageUrls : []
   const groupedSlots = useMemo(() => groupSlotsByDate(room?.busySlots || []), [room])
   const groupedPrices = useMemo(() => groupPrices(room?.prices || []), [room])
+
+  const openBookingModal = () => {
+    if (!room) return
+    const storedRooms = readBookingCart()
+    const currentRoom = roomDetailToCartRoom(room)
+    const hasCurrentRoom = storedRooms.some((item) => String(item.roomId) === String(currentRoom.roomId))
+    setMultiBookingRooms(hasCurrentRoom ? storedRooms : [...storedRooms, currentRoom])
+    setBookingModalOpen(true)
+  }
 
   return (
     <div className="rooms-page room-detail-page">
@@ -589,7 +625,7 @@ function RoomDetailPage({ roomId }) {
                       <h2>Lịch phòng đã đặt</h2>
                       <p>Chọn khoảng ngày để kiểm tra các khung giờ bận trước khi đặt theo combo hoặc theo giờ.</p>
                     </div>
-                    <button className="room-detail-cta" type="button" onClick={() => setBookingModalOpen(true)}>
+                    <button className="room-detail-cta" type="button" onClick={openBookingModal}>
                       Chọn lịch đặt phòng
                     </button>
                   </div>
@@ -664,13 +700,14 @@ function RoomDetailPage({ roomId }) {
             )}
 
             {bookingModalOpen && (
-              <BookingModal
-                room={room}
-                initialBookingData={initialBookingData}
+              <MultiBookingModal
+                selectedRooms={multiBookingRooms}
+                criteria={initialBookingData}
                 onClose={() => setBookingModalOpen(false)}
                 onCreated={(booking) => {
                   setCreatedBooking(booking)
                   setBookingModalOpen(false)
+                  clearBookingCart()
                 }}
               />
             )}
