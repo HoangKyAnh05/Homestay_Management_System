@@ -24,8 +24,9 @@ public record PublicCreateBookingRequest(
 
         LocalDate dateOfBirth,
 
-        @NotNull(message = "Vui lòng chọn phòng")
         Long roomId,
+
+        List<@Valid PublicBookingRoomRequest> rooms,
 
         @NotNull(message = "Vui lòng chọn giờ nhận phòng")
         LocalDateTime checkInTarget,

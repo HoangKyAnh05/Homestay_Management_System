@@ -95,15 +95,14 @@ ON DUPLICATE KEY UPDATE
 -- ============================================================
 -- 5. room_types
 -- ============================================================
-INSERT INTO room_types (id, name, base_price, max_adults, max_children, description) VALUES
-(1, 'Studio', 500000.00, 2, 1, 'Phong tieu chuan nho gon cho cap doi.'),
-(2, 'Deluxe', 800000.00, 2, 2, 'Phong doi cao cap co ban cong va view dep.'),
-(3, 'Family', 1200000.00, 4, 2, 'Phong rong rai cho gia dinh.'),
-(4, 'VIP Suite', 2000000.00, 2, 1, 'Suite cao cap voi khong gian rieng tu.'),
-(5, 'Connecting Room', 1500000.00, 4, 3, 'Hai phong ket noi phu hop nhom ban.')
+INSERT INTO room_types (id, name, max_adults, max_children, description) VALUES
+(1, 'Studio', 2, 1, 'Phong tieu chuan nho gon cho cap doi.'),
+(2, 'Deluxe', 2, 2, 'Phong doi cao cap co ban cong va view dep.'),
+(3, 'Family', 4, 2, 'Phong rong rai cho gia dinh.'),
+(4, 'VIP Suite', 2, 1, 'Suite cao cap voi khong gian rieng tu.'),
+(5, 'Connecting Room', 4, 3, 'Hai phong ket noi phu hop nhom ban.')
 ON DUPLICATE KEY UPDATE
     name = VALUES(name),
-    base_price = VALUES(base_price),
     max_adults = VALUES(max_adults),
     max_children = VALUES(max_children),
     description = VALUES(description);

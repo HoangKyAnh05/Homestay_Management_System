@@ -1,6 +1,7 @@
 package com.homestayManagement.homestayManagement.service.impl;
 
 import com.homestayManagement.homestayManagement.dto.request.PublicBookingServiceRequest;
+import com.homestayManagement.homestayManagement.dto.request.PublicBookingRoomRequest;
 import com.homestayManagement.homestayManagement.dto.request.PublicCreateBookingRequest;
 import com.homestayManagement.homestayManagement.dto.response.*;
 import com.homestayManagement.homestayManagement.entity.*;
@@ -14,7 +15,9 @@ import java.math.RoundingMode;
 import java.time.DayOfWeek;
 import java.time.LocalDateTime;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -107,7 +110,7 @@ public class PublicBookingServiceImpl implements PublicBookingService {
     public PublicBookingHistoryDetailResponse getMyBookingDetail(String email, Long bookingId) {
         List<BookingDetail> details = bookingDetailRepository.findByCustomerEmailAndBookingIdForHistory(email, bookingId);
         if (details.isEmpty()) {
-            throw new IllegalArgumentException("Không tìm thấy đơn đặt phòng");
+            throw new IllegalArgumentException("KhÃ´ng tÃ¬m tháº¥y Ä‘Æ¡n Ä‘áº·t phÃ²ng");
         }
         Booking booking = details.get(0).getBooking();
         BigDecimal roomCharge = calculateRoomCharge(details);
@@ -149,19 +152,50 @@ public class PublicBookingServiceImpl implements PublicBookingService {
                 .orElseGet(() -> Customer.builder().account(account).fullName(request.fullName().trim()).build());
         updateCustomer(customer, request);
 
-        Room room = roomRepository.findById(request.roomId())
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy phòng"));
-        validateCapacity(room.getRoomType(), request.numberOfAdults(), request.numberOfChildren());
-        ensureRoomAvailable(room, request.checkInTarget(), request.checkOutTarget());
+        List<PublicBookingRoomRequest> selectedRooms = requireSelectedRooms(request);
+        Set<Long> selectedRoomIds = selectedRooms.stream()
+                .map(PublicBookingRoomRequest::roomId)
+                .collect(Collectors.toCollection(HashSet::new));
+        if (selectedRoomIds.size() != selectedRooms.size()) {
+            throw new IllegalArgumentException("Danh sách phòng bị trùng");
+        }
+
+        Map<Long, Room> roomsById = roomRepository.findAllById(selectedRoomIds).stream()
+                .collect(Collectors.toMap(Room::getId, currentRoom -> currentRoom));
+        if (roomsById.size() != selectedRoomIds.size()) {
+            throw new IllegalArgumentException("Không tìm thấy một hoặc nhiều phòng đã chọn");
+        }
+
+        for (PublicBookingRoomRequest selectedRoom : selectedRooms) {
+            Room currentRoom = roomsById.get(selectedRoom.roomId());
+            validateCapacity(currentRoom.getRoomType(), selectedRoom.numberOfAdults(), selectedRoom.numberOfChildren());
+        }
+
+        Set<Long> busyRoomIds = bookingDetailRepository.findOverlappingSchedule(request.checkInTarget(), request.checkOutTarget())
+                .stream()
+                .filter(this::isActive)
+                .map(detail -> detail.getRoom().getId())
+                .filter(selectedRoomIds::contains)
+                .collect(Collectors.toSet());
+        if (!busyRoomIds.isEmpty()) {
+            String busyRooms = busyRoomIds.stream()
+                    .map(roomsById::get)
+                    .map(Room::getRoomNumber)
+                    .sorted()
+                    .collect(Collectors.joining(", "));
+            throw new IllegalArgumentException("Phòng đã có booking trong khung giờ này: " + busyRooms);
+        }
 
         PricePolicy pricePolicy = pricePolicyRepository.findById(request.pricePolicyId())
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy gói thuê"));
         String dayType = isWeekend(request.checkInTarget()) ? "WEEKEND" : "WEEKDAY";
-        BigDecimal roomPrice = roomPriceConfigRepository
-                .findByRoomTypeIdAndPricePolicyIdAndDayType(room.getRoomType().getId(), pricePolicy.getId(), dayType)
-                .map(RoomPriceConfig::getPrice)
-                .orElseThrow(() -> new IllegalArgumentException("Chưa cấu hình giá cho phòng và gói thuê này"));
-        DepositPolicy depositPolicy = room.getRoomType().getDepositPolicy();
+        DepositPolicy depositPolicy = selectedRooms.stream()
+                .map(selectedRoom -> roomsById.get(selectedRoom.roomId()))
+                .map(Room::getRoomType)
+                .filter(roomType -> roomType != null && roomType.getDepositPolicy() != null)
+                .map(RoomType::getDepositPolicy)
+                .findFirst()
+                .orElse(null);
         boolean requiresDeposit = depositPolicy != null;
         String bookingStatus = requiresDeposit ? "PENDING" : "CONFIRMED";
 
@@ -172,33 +206,46 @@ public class PublicBookingServiceImpl implements PublicBookingService {
                 .status(bookingStatus)
                 .build());
 
-        BookingDetail detail = bookingDetailRepository.save(BookingDetail.builder()
-                .booking(booking)
-                .room(room)
-                .checkInTarget(request.checkInTarget())
-                .checkOutTarget(request.checkOutTarget())
-                .numberOfAdults(request.numberOfAdults())
-                .numberOfChildren(request.numberOfChildren())
-                .priceAtBooking(roomPrice)
-                .rentType(pricePolicy.getRentType())
-                .status(bookingStatus)
-                .build());
+        List<BookingDetail> savedDetails = selectedRooms.stream()
+                .map(selectedRoom -> {
+                    Room currentRoom = roomsById.get(selectedRoom.roomId());
+                    BigDecimal currentRoomPrice = roomPriceConfigRepository
+                            .findByRoomTypeIdAndPricePolicyIdAndDayType(currentRoom.getRoomType().getId(), pricePolicy.getId(), dayType)
+                            .map(RoomPriceConfig::getPrice)
+                            .orElseThrow(() -> new IllegalArgumentException("Chưa cấu hình giá cho phòng " + currentRoom.getRoomNumber() + " và gói thuê này"));
+                    return bookingDetailRepository.save(BookingDetail.builder()
+                            .booking(booking)
+                            .room(currentRoom)
+                            .checkInTarget(request.checkInTarget())
+                            .checkOutTarget(request.checkOutTarget())
+                            .numberOfAdults(selectedRoom.numberOfAdults())
+                            .numberOfChildren(selectedRoom.numberOfChildren())
+                            .priceAtBooking(currentRoomPrice)
+                            .rentType(pricePolicy.getRentType())
+                            .status(bookingStatus)
+                            .build());
+                })
+                .toList();
 
-        BigDecimal serviceCharge = saveServices(detail, request.services());
-        BigDecimal totalAmount = roomPrice.add(serviceCharge);
+        BookingDetail firstDetail = savedDetails.get(0);
+        Room firstRoom = firstDetail.getRoom();
+        BigDecimal roomCharge = calculateRoomCharge(savedDetails);
+        BigDecimal serviceCharge = saveServices(firstDetail, request.services());
+        BigDecimal totalAmount = roomCharge.add(serviceCharge);
         BigDecimal depositAmount = requiresDeposit ? calculateDepositAmount(depositPolicy, totalAmount) : BigDecimal.ZERO;
 
         return new PublicBookingResponse(
                 booking.getId(),
-                detail.getId(),
-                room.getId(),
-                room.getRoomNumber(),
+                firstDetail.getId(),
+                firstRoom.getId(),
+                firstRoom.getRoomNumber(),
                 booking.getStatus(),
-                detail.getCheckInTarget(),
-                detail.getCheckOutTarget(),
-                roomPrice,
+                firstDetail.getCheckInTarget(),
+                firstDetail.getCheckOutTarget(),
+                roomCharge,
                 serviceCharge,
                 totalAmount,
+                savedDetails.stream().map(this::toPublicBookingRoomResponse).toList(),
                 requiresDeposit,
                 depositPolicy != null ? depositPolicy.getPolicyName() : null,
                 depositPolicy != null ? depositPolicy.getCalculationType() : null,
@@ -206,13 +253,41 @@ public class PublicBookingServiceImpl implements PublicBookingService {
                 depositAmount
         );
     }
+    private List<PublicBookingRoomRequest> requireSelectedRooms(PublicCreateBookingRequest request) {
+        if (request.rooms() != null && !request.rooms().isEmpty()) {
+            return request.rooms();
+        }
+        if (request.roomId() != null) {
+            return List.of(new PublicBookingRoomRequest(
+                    request.roomId(),
+                    request.numberOfAdults(),
+                    request.numberOfChildren()
+            ));
+        }
+        throw new IllegalArgumentException("Vui lòng chọn ít nhất một phòng");
+    }
+
+    private PublicBookingRoomResponse toPublicBookingRoomResponse(BookingDetail detail) {
+        Room room = detail.getRoom();
+        RoomType roomType = room.getRoomType();
+        return new PublicBookingRoomResponse(
+                detail.getId(),
+                room.getId(),
+                room.getRoomNumber(),
+                roomType != null ? roomType.getName() : null,
+                detail.getNumberOfAdults(),
+                detail.getNumberOfChildren(),
+                detail.getPriceAtBooking(),
+                detail.getRentType()
+        );
+    }
 
     private void validateRange(LocalDateTime checkInTarget, LocalDateTime checkOutTarget) {
         if (checkInTarget == null || checkOutTarget == null) {
-            throw new IllegalArgumentException("Vui lòng chọn giờ nhận và trả phòng");
+            throw new IllegalArgumentException("Vui lÃ²ng chá»n giá» nháº­n vÃ  tráº£ phÃ²ng");
         }
         if (!checkOutTarget.isAfter(checkInTarget)) {
-            throw new IllegalArgumentException("Giờ trả phòng phải sau giờ nhận phòng");
+            throw new IllegalArgumentException("Giá» tráº£ phÃ²ng pháº£i sau giá» nháº­n phÃ²ng");
         }
     }
 
@@ -226,10 +301,10 @@ public class PublicBookingServiceImpl implements PublicBookingService {
 
     private void validateCapacity(RoomType roomType, Integer adults, Integer children) {
         if (roomType == null) {
-            throw new IllegalArgumentException("Phòng chưa có loại phòng");
+            throw new IllegalArgumentException("PhÃ²ng chÆ°a cÃ³ loáº¡i phÃ²ng");
         }
         if (adults > roomType.getMaxAdults() || children > roomType.getMaxChildren()) {
-            throw new IllegalArgumentException("Số khách vượt quá sức chứa của phòng");
+            throw new IllegalArgumentException("Sá»‘ khÃ¡ch vÆ°á»£t quÃ¡ sá»©c chá»©a cá»§a phÃ²ng");
         }
     }
 
@@ -238,7 +313,7 @@ public class PublicBookingServiceImpl implements PublicBookingService {
                 .filter(detail -> room.getId().equals(detail.getRoom().getId()))
                 .anyMatch(this::isActive);
         if (busy) {
-            throw new IllegalArgumentException("Phòng đã có booking trong khung giờ này");
+            throw new IllegalArgumentException("PhÃ²ng Ä‘Ã£ cÃ³ booking trong khung giá» nÃ y");
         }
     }
 
@@ -340,7 +415,7 @@ public class PublicBookingServiceImpl implements PublicBookingService {
             if ("FACILITY".equals(type)) {
                 FacilityService service = facilityServiceRepository.findById(request.serviceId())
                         .filter(FacilityService::isActive)
-                        .orElseThrow(() -> new IllegalArgumentException("Dịch vụ không hợp lệ"));
+                        .orElseThrow(() -> new IllegalArgumentException("Dá»‹ch vá»¥ khÃ´ng há»£p lá»‡"));
                 bookingServiceItemRepository.save(BookingServiceItem.builder()
                         .bookingDetail(detail)
                         .facilityService(service)
@@ -350,9 +425,9 @@ public class PublicBookingServiceImpl implements PublicBookingService {
                 total = total.add(service.getPrice().multiply(BigDecimal.valueOf(quantity)));
             } else if ("INVENTORY".equals(type)) {
                 InventoryService service = inventoryServiceRepository.findById(request.serviceId())
-                        .orElseThrow(() -> new IllegalArgumentException("Dịch vụ thuê đồ không hợp lệ"));
+                        .orElseThrow(() -> new IllegalArgumentException("Dá»‹ch vá»¥ thuÃª Ä‘á»“ khÃ´ng há»£p lá»‡"));
                 if (service.getQuantityInStock() != null && quantity > service.getQuantityInStock()) {
-                    throw new IllegalArgumentException("Số lượng dịch vụ vượt tồn kho");
+                    throw new IllegalArgumentException("Sá»‘ lÆ°á»£ng dá»‹ch vá»¥ vÆ°á»£t tá»“n kho");
                 }
                 bookingServiceItemRepository.save(BookingServiceItem.builder()
                         .bookingDetail(detail)
@@ -362,7 +437,7 @@ public class PublicBookingServiceImpl implements PublicBookingService {
                         .build());
                 total = total.add(service.getPrice().multiply(BigDecimal.valueOf(quantity)));
             } else {
-                throw new IllegalArgumentException("Loại dịch vụ không hợp lệ");
+                throw new IllegalArgumentException("Loáº¡i dá»‹ch vá»¥ khÃ´ng há»£p lá»‡");
             }
         }
         return total;
@@ -388,3 +463,4 @@ public class PublicBookingServiceImpl implements PublicBookingService {
         return value == null ? "" : value.trim().toUpperCase();
     }
 }
+

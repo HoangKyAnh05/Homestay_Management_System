@@ -66,8 +66,9 @@ function buildBookingUrl(room, criteria) {
     rooms: String(criteria.rooms),
     adults: String(criteria.adults),
     children: String(criteria.children),
+    focusRoomId: String(roomId),
   })
-  return `/rooms/${roomId}?${params.toString()}`
+  return `/rooms?${params.toString()}`
 }
 
 function RoomCard({ room, criteria }) {

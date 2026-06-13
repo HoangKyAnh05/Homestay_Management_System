@@ -2,6 +2,7 @@ package com.homestayManagement.homestayManagement.dto.response;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 public record PublicBookingResponse(
         Long bookingId,
@@ -14,6 +15,7 @@ public record PublicBookingResponse(
         BigDecimal roomCharge,
         BigDecimal serviceCharge,
         BigDecimal totalAmount,
+        List<PublicBookingRoomResponse> rooms,
         boolean requiresDeposit,
         String depositPolicyName,
         String depositCalculationType,
