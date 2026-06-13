@@ -210,6 +210,7 @@ public class RoomServiceImpl implements RoomService {
 
         List<String> imageUrls = buildRoomImageUrls(room.getId());
         String primaryImageUrl = imageUrls.isEmpty() ? null : imageUrls.get(0);
+        List<RoomPublicPriceResponse> prices = buildPublicPrices(roomType.getId());
 
         return Optional.of(new RoomSearchResponse(
                 room.getId(),
@@ -222,7 +223,8 @@ public class RoomServiceImpl implements RoomService {
                 priceConfig.get().getPrice(),
                 priceConfig.get().getPricePolicy().getRentType(),
                 primaryImageUrl,
-                imageUrls
+                imageUrls,
+                prices
         ));
     }
 
@@ -230,6 +232,7 @@ public class RoomServiceImpl implements RoomService {
         RoomType roomType = room.getRoomType();
         DepositPolicy depositPolicy = roomType.getDepositPolicy();
         List<String> imageUrls = buildRoomImageUrls(room.getId());
+        List<RoomPublicPriceResponse> prices = buildPublicPrices(roomType.getId());
 
         return new RoomPublicResponse(
                 room.getId(),
@@ -248,8 +251,18 @@ public class RoomServiceImpl implements RoomService {
                 depositPolicy != null ? depositPolicy.getPolicyValue() : null,
                 depositPolicy != null ? depositPolicy.getDescription() : null,
                 imageUrls.isEmpty() ? null : imageUrls.get(0),
-                imageUrls
+                imageUrls,
+                prices
         );
+    }
+
+    private List<RoomPublicPriceResponse> buildPublicPrices(Long roomTypeId) {
+        return roomPriceConfigRepository.findByRoomTypeIdWithPolicy(roomTypeId).stream()
+                .sorted(Comparator.comparing((RoomPriceConfig config) -> normalize(config.getPricePolicy().getRentType()))
+                        .thenComparing(config -> normalize(config.getDayType()))
+                        .thenComparing(RoomPriceConfig::getPrice))
+                .map(this::toRoomPriceResponse)
+                .toList();
     }
 
     private List<String> buildRoomImageUrls(Long roomId) {

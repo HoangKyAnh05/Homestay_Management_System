@@ -58,6 +58,20 @@ function parseSearchCriteria() {
   }
 }
 
+function bookingDayType(checkInTarget) {
+  const date = new Date(checkInTarget)
+  return [0, 6].includes(date.getDay()) ? 'WEEKEND' : 'WEEKDAY'
+}
+
+function findRoomPolicyPrice(room, policy, dayType) {
+  if (!room || !policy) return null
+  return (room.prices || []).find((price) =>
+    String(price.policyName) === String(policy.policyName)
+    && String(price.rentType).toUpperCase() === String(policy.rentType).toUpperCase()
+    && String(price.dayType).toUpperCase() === String(dayType).toUpperCase()
+  ) || null
+}
+
 function rentTypeLabel(rentType) {
   const labels = {
     OVERNIGHT: 'đêm',
@@ -239,9 +253,27 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
       .finally(() => setLoadingMeta(false))
   }, [])
 
-  const roomTotal = selectedRooms.reduce((sum, room) => sum + roomPrice(room), 0)
-  const serviceTotal = selectedServices.reduce((sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 0), 0)
   const invalidDate = form.checkInTarget && form.checkOutTarget && new Date(form.checkOutTarget) <= new Date(form.checkInTarget)
+  const selectedDayType = bookingDayType(form.checkInTarget)
+  const availablePolicies = useMemo(() => {
+    return policies.filter((policy) =>
+      selectedRooms.every((room) => findRoomPolicyPrice(room, policy, selectedDayType))
+    )
+  }, [policies, selectedDayType, selectedRooms])
+  const selectedPolicy = availablePolicies.find((policy) => String(policy.id) === String(form.pricePolicyId)) || availablePolicies[0]
+  const roomPriceItems = selectedRooms.map((room) => ({
+    room,
+    price: Number(findRoomPolicyPrice(room, selectedPolicy, selectedDayType)?.price || 0),
+  }))
+  const roomTotal = roomPriceItems.reduce((sum, item) => sum + item.price, 0)
+  const serviceTotal = selectedServices.reduce((sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 0), 0)
+
+  useEffect(() => {
+    if (!availablePolicies.length) return
+    if (!availablePolicies.some((policy) => String(policy.id) === String(form.pricePolicyId))) {
+      setForm((current) => ({ ...current, pricePolicyId: availablePolicies[0].id }))
+    }
+  }, [availablePolicies, form.pricePolicyId])
 
   const updateRoomGuest = (roomId, field, value) => {
     setRoomGuests((current) => ({
@@ -275,6 +307,10 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
       setError('Giờ trả phòng phải sau giờ nhận phòng. Vui lòng chọn lại.')
       return
     }
+    if (!availablePolicies.length || !selectedPolicy) {
+      setError('Chưa có gói thuê nào được cấu hình đủ giá cho tất cả phòng đã chọn.')
+      return
+    }
 
     setSubmitting(true)
     setError('')
@@ -287,7 +323,7 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
       body: JSON.stringify({
         ...form,
         roomId: selectedRooms[0]?.roomId,
-        pricePolicyId: Number(form.pricePolicyId),
+        pricePolicyId: Number(selectedPolicy.id),
         numberOfAdults: roomGuests[String(selectedRooms[0]?.roomId)]?.numberOfAdults || 1,
         numberOfChildren: roomGuests[String(selectedRooms[0]?.roomId)]?.numberOfChildren || 0,
         rooms: selectedRooms.map((room) => ({
@@ -381,8 +417,9 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
             <div className="public-booking-grid">
               <label><span>Nhận phòng</span><input type="datetime-local" required value={form.checkInTarget} onChange={(e) => setForm({ ...form, checkInTarget: e.target.value })} /></label>
               <label><span>Trả phòng</span><input type="datetime-local" required value={form.checkOutTarget} onChange={(e) => setForm({ ...form, checkOutTarget: e.target.value })} /></label>
-              <label className="public-booking-wide"><span>Gói thuê</span><select required value={form.pricePolicyId} onChange={(e) => setForm({ ...form, pricePolicyId: e.target.value })}>{policies.map((policy) => <option key={policy.id} value={policy.id}>{policy.policyName}</option>)}</select></label>
+              <label className="public-booking-wide"><span>Gói thuê</span><select required value={form.pricePolicyId} onChange={(e) => setForm({ ...form, pricePolicyId: e.target.value })}>{availablePolicies.map((policy) => <option key={policy.id} value={policy.id}>{policy.policyName}</option>)}</select></label>
             </div>
+            {!availablePolicies.length && <p className="public-booking-search-note public-booking-search-note--warning">Chưa có gói thuê nào được cấu hình đủ giá cho tất cả phòng đã chọn.</p>}
           </section>
 
           <section className="multi-selected-section">
@@ -394,7 +431,7 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
                     <strong>Phòng {room.roomNumber}</strong>
                     <span>{room.roomTypeName} · tối đa {room.maxAdults || 0} NL · {room.maxChildren || 0} TE</span>
                   </div>
-                  <b>{formatPrice(roomPrice(room))}</b>
+                  <b>{formatPrice(roomPriceItems.find((item) => String(item.room.roomId) === String(room.roomId))?.price || roomPrice(room))}</b>
                   <label><span>Người lớn</span><input type="number" min="1" max={room.maxAdults || undefined} value={roomGuests[String(room.roomId)]?.numberOfAdults || 1} onChange={(e) => updateRoomGuest(room.roomId, 'numberOfAdults', e.target.value)} /></label>
                   <label><span>Trẻ em</span><input type="number" min="0" max={room.maxChildren || undefined} value={roomGuests[String(room.roomId)]?.numberOfChildren || 0} onChange={(e) => updateRoomGuest(room.roomId, 'numberOfChildren', e.target.value)} /></label>
                 </article>
@@ -436,7 +473,7 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
 
         <div className="public-booking-actions">
           <button type="button" onClick={onClose}>Hủy</button>
-          <button type="submit" disabled={submitting || loadingMeta || invalidDate}>{submitting ? 'Đang tạo...' : 'Tạo đơn đặt phòng'}</button>
+          <button type="submit" disabled={submitting || loadingMeta || invalidDate || !availablePolicies.length}>{submitting ? 'Đang tạo...' : 'Tạo đơn đặt phòng'}</button>
         </div>
       </form>
     </div>
@@ -514,6 +551,14 @@ function RoomsPage() {
       setFocusRoomApplied(true)
     }
   }, [focusRoomApplied, rooms, searchCriteria, selectedRooms.length])
+
+  useEffect(() => {
+    if (!rooms.length || !selectedRooms.length) return
+    setSelectedRooms((current) => current.map((selectedRoom) => {
+      const freshRoom = rooms.find((room) => String(room.roomId) === String(selectedRoom.roomId))
+      return freshRoom ? { ...selectedRoom, ...freshRoom } : selectedRoom
+    }))
+  }, [rooms])
 
   useEffect(() => {
     writeBookingCart(selectedRooms)

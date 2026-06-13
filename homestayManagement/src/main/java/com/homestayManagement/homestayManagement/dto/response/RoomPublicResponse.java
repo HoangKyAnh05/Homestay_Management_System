@@ -20,6 +20,7 @@ public record RoomPublicResponse(
         BigDecimal depositPolicyValue,
         String depositDescription,
         String primaryImageUrl,
-        List<String> imageUrls
+        List<String> imageUrls,
+        List<RoomPublicPriceResponse> prices
 ) {
 }

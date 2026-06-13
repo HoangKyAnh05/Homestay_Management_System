@@ -138,6 +138,7 @@ function roomDetailToCartRoom(room) {
     depositPolicyValue: room.depositPolicyValue,
     primaryImageUrl: room.primaryImageUrl,
     imageUrls: room.imageUrls,
+    prices: room.prices || [],
   }
 }
 

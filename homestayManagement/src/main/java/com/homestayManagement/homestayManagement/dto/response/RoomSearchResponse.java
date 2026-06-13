@@ -14,6 +14,7 @@ public record RoomSearchResponse(
         BigDecimal price,
         String rentType,
         String primaryImageUrl,
-        List<String> imageUrls
+        List<String> imageUrls,
+        List<RoomPublicPriceResponse> prices
 ) {
 }
