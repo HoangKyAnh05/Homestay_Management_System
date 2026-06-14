@@ -30,6 +30,15 @@ public class Payment {
     @Column(name = "transaction_no", length = 100)
     private String transactionNo; // Mã giao dịch từ VNPay/MoMo trả về
 
+    @Column(name = "payment_code", unique = true, length = 30)
+    private String paymentCode;
+
+    @Column(name = "sepay_transaction_id", unique = true)
+    private Long sepayTransactionId;
+
+    @Column(name = "qr_code_url", length = 1000)
+    private String qrCodeUrl;
+
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal amount;
 

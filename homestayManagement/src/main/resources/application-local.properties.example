@@ -8,3 +8,10 @@ GOOGLE_CLIENT_ID=your_google_client_id.apps.googleusercontent.com
 
 MAIL_USERNAME=your_email@gmail.com
 MAIL_PASSWORD=your_gmail_app_password
+
+SEPAY_BANK_NAME=Vietcombank
+SEPAY_ACCOUNT_NUMBER=your_bank_account_number
+SEPAY_ACCOUNT_HOLDER=NGUYEN VAN A
+SEPAY_PAYMENT_CODE_PREFIX=HMS
+SEPAY_TRANSFER_PREFIX=
+SEPAY_WEBHOOK_SECRET=your_sepay_webhook_hmac_secret

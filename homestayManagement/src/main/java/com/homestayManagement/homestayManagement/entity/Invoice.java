@@ -24,7 +24,7 @@ public class Invoice {
     private Booking booking;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "employee_id", nullable = false)
+    @JoinColumn(name = "employee_id")
     private Employee employee;
 
     @Column(name = "room_charge", nullable = false, precision = 10, scale = 2)

@@ -15,7 +15,7 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
             join fetch i.booking b
             join fetch b.customer c
             left join fetch c.account
-            join fetch i.employee e
+            left join fetch i.employee e
             left join fetch e.account
             order by i.createdAt desc, i.id desc
             """)
@@ -24,7 +24,7 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
     @Query("""
             select i from Invoice i
             join fetch i.booking b
-            join fetch i.employee e
+            left join fetch i.employee e
             where b.id = :bookingId
             """)
     Optional<Invoice> findByBookingIdForAdmin(@Param("bookingId") Long bookingId);
@@ -34,7 +34,7 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
             join fetch i.booking b
             join fetch b.customer c
             left join fetch c.account
-            join fetch i.employee e
+            left join fetch i.employee e
             where i.createdAt >= :startInclusive
               and i.createdAt < :endExclusive
             order by i.createdAt asc, i.id asc

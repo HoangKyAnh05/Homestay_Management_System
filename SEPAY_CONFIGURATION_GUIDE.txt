@@ -1,0 +1,153 @@
+HUONG DAN CAU HINH SEPAY CHO HOMESTAY MANAGEMENT SYSTEM
+=======================================================
+
+1. Mo tai khoan SePay va lien ket ngan hang
+- Dang ky/dang nhap tai: https://my.sepay.vn
+- Them tai khoan ngan hang se nhan tien thanh toan.
+- Hoan tat cac buoc xac thuc ma SePay va ngan hang yeu cau.
+
+2. Cau hinh ma thanh toan
+He thong tao ma thanh toan theo dang:
+HMS + ID payment
+
+Vi du:
+HMS15
+HMS128
+
+Tren dashboard SePay:
+- Vao Cong ty -> Cau hinh chung -> Cau truc ma thanh toan.
+- Bat Nhan dien ma thanh toan.
+- Tao mau:
+  Tien to: HMS
+  Loai hau to: So nguyen
+  Do dai toi thieu: 1
+  Do dai toi da: 18
+
+SEPAY_PAYMENT_CODE_PREFIX trong backend phai trung chinh xac voi tien to da
+cau hinh tren SePay.
+
+3. Tao webhook
+Tren dashboard SePay:
+- Vao Webhooks -> Them webhook.
+- URL:
+  https://TEN-MIEN-BACKEND/api/payments/sepay/webhook
+- Loai su kien: Tien vao.
+- Tai khoan: chon dung tai khoan khai bao trong SEPAY_ACCOUNT_NUMBER.
+- Bat "Chi gui khi co ma thanh toan".
+- Neu co bo loc tien to, chon HMS.
+- Xac thuc: HMAC-SHA256.
+- Copy Secret Key ngay khi SePay hien thi.
+
+Webhook production phai la HTTPS va truy cap duoc tu Internet.
+localhost:8080 khong the nhan webhook tu SePay.
+
+Khi chay local, dung tunnel, vi du:
+https://abc.example-tunnel.app/api/payments/sepay/webhook
+
+4. Cau hinh application-local.properties
+Tao file:
+homestayManagement/src/main/resources/application-local.properties
+
+Co the sao chep tu application-local.properties.example, sau do them:
+
+SEPAY_BANK_NAME=Vietcombank
+SEPAY_ACCOUNT_NUMBER=0123456789
+SEPAY_ACCOUNT_HOLDER=NGUYEN VAN A
+SEPAY_PAYMENT_CODE_PREFIX=HMS
+SEPAY_TRANSFER_PREFIX=
+SEPAY_WEBHOOK_SECRET=secret_hmac_sao_chep_tu_sepay
+
+Y nghia:
+- SEPAY_BANK_NAME:
+  Ten ngan hang theo ten SePay/VietQR ho tro, vi du Vietcombank, BIDV,
+  MBBank, ACB, TPBank.
+- SEPAY_ACCOUNT_NUMBER:
+  So tai khoan nhan tien. Phai trung voi tai khoan cua webhook.
+- SEPAY_ACCOUNT_HOLDER:
+  Ten chu tai khoan hien thi tren man hinh thanh toan.
+- SEPAY_PAYMENT_CODE_PREFIX:
+  Tien to ma thanh toan. Mac dinh HMS.
+- SEPAY_TRANSFER_PREFIX:
+  Chuoi bat buoc dat truoc ma thanh toan neu ngan hang/VA yeu cau.
+- SEPAY_WEBHOOK_SECRET:
+  Secret cua webhook HMAC-SHA256. Khong commit gia tri nay len Git.
+
+5. Cau hinh theo loai ngan hang
+
+Tai khoan thong thuong:
+SEPAY_TRANSFER_PREFIX=
+
+VietinBank ca nhan/ho kinh doanh:
+Tai lieu SePay yeu cau noi dung VietQR co chuoi SEVQR.
+Dung:
+SEPAY_TRANSFER_PREFIX=SEVQR
+
+Ket qua noi dung chuyen khoan se co dang:
+SEVQRHMS15
+
+VA theo noi dung chuyen khoan:
+Neu ma VA la 001, SePay yeu cau tien to TKP001.
+Dung:
+SEPAY_TRANSFER_PREFIX=TKP001
+
+Ket qua:
+TKP001HMS15
+
+VA chinh thuc:
+SEPAY_ACCOUNT_NUMBER phai la so VA dung de tao VietQR, khong phai so tai
+khoan goc.
+
+6. Bao mat webhook
+Backend thuc hien:
+- Doc raw request body.
+- Kiem tra X-SePay-Timestamp khong qua 5 phut.
+- Xac minh X-SePay-Signature bang HMAC-SHA256.
+- Chi chap nhan giao dich transferType=in.
+- Kiem tra dung so tai khoan nhan.
+- Kiem tra ma thanh toan va so tien.
+- Chong xu ly trung bang SePay transaction ID unique.
+
+Khong tat HMAC tren production.
+
+7. Luong thanh toan
+- Booking can thanh toan co trang thai PENDING.
+- Khach bam Thanh toan.
+- He thong tao Invoice va Payment PENDING.
+- Frontend hien QR SePay, so tien va noi dung chuyen khoan.
+- Khach quet QR va chuyen khoan.
+- SePay gui webhook giao dich tien vao.
+- Backend xac minh webhook va doi chieu giao dich.
+- Payment chuyen SUCCESS.
+- Booking va BookingDetail chuyen CONFIRMED.
+- Hoa don va giao dich duoc luu trong database.
+
+8. Test mode
+- SePay co Test mode rieng biet voi Live.
+- Tao tai khoan, mau ma thanh toan va webhook trong Test mode.
+- Mo phong giao dich co noi dung HMS<ID_PAYMENT>.
+- Kiem tra response webhook phai la:
+  HTTP 200
+  {"success":true}
+
+9. Kiem tra truoc khi chay
+- MySQL dang chay.
+- Backend cong 8080.
+- Frontend cong 5173.
+- Tai khoan ngan hang da lien ket SePay.
+- Mau ma thanh toan HMS da bat.
+- Webhook HMAC da tao va URL truy cap duoc.
+- SEPAY_ACCOUNT_NUMBER trung voi tai khoan webhook.
+
+10. Migration hoa don thanh toan online
+Hoa don SePay duoc tao tu dong nen khong co nhan vien lap hoa don.
+Ung dung se tu dong chuyen invoices.employee_id sang nullable khi khoi dong.
+
+Neu tai khoan MySQL production khong co quyen ALTER TABLE, DBA can chay mot lan:
+
+ALTER TABLE invoices
+MODIFY COLUMN employee_id BIGINT NULL;
+
+Tai lieu chinh thuc:
+https://developer.sepay.vn/vi/sepay-webhooks/tich-hop-webhook
+https://developer.sepay.vn/vi/sepay-webhooks/cau-hinh-ma-thanh-toan
+https://developer.sepay.vn/vi/tien-ich-khac/tao-qr-code
