@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { getStoredToken } from '../../services/authService'
 import { formatClockTime, formatDateTime as formatAppDateTime } from '../../utils/dateTimeFormat'
+import SePayQrPayment from '../../components/SePayQrPayment/SePayQrPayment'
 import AdminLayout from './AdminLayout'
 import './AdminBookingsPage.css'
 
@@ -222,6 +223,8 @@ function BookingDetailModal({ detail, loading, error, actionLoading, actionError
   const [serviceForm, setServiceForm] = useState({ type: 'FACILITY', serviceId: '', quantity: 1 })
   const [miniBarForm, setMiniBarForm] = useState({ itemId: '', quantity: 1 })
   const [penaltyForm, setPenaltyForm] = useState({ rulesPenaltyId: '', amount: '', description: '' })
+  const [checkoutPayment, setCheckoutPayment] = useState(null)
+  const [checkoutLoading, setCheckoutLoading] = useState(false)
 
   // Reset khi detail thay đổi
   useEffect(() => {
@@ -336,9 +339,30 @@ function BookingDetailModal({ detail, loading, error, actionLoading, actionError
     onAction('penalties', { rulesPenaltyId: Number(penaltyForm.rulesPenaltyId), amount: Number(penaltyForm.amount), description: penaltyForm.description })
   }
 
+  const prepareCheckOut = () => {
+    setCheckoutLoading(true)
+    setCheckoutPayment(null)
+    fetch(`${API_BASE}/details/${detail.bookingDetailId}/prepare-check-out`, {
+      method: 'POST',
+      headers: authHeaders(),
+    })
+      .then(async (response) => {
+        const data = await response.json().catch(() => ({}))
+        if (!response.ok) throw new Error(data.message || 'Không thể chuẩn bị checkout')
+        return data
+      })
+      .then((data) => {
+        onAction('__refresh__', null, data.booking)
+        if (!data.completed) setCheckoutPayment(data.payment)
+      })
+      .catch((err) => onAction('__error__', null, err.message))
+      .finally(() => setCheckoutLoading(false))
+  }
+
   return (
-    <div className="abk-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="abk-modal">
+    <>
+      <div className="abk-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+        <div className="abk-modal">
         <div className="abk-modal-head">
           <div>
             <h3>Chi tiết đơn đặt phòng</h3>
@@ -366,8 +390,13 @@ function BookingDetailModal({ detail, loading, error, actionLoading, actionError
                     </button>
                   )}
                   {canCheckOut && (
-                    <button type="button" className="abk-action-primary" disabled={actionLoading} onClick={() => onAction('check-out')}>
-                      Check out
+                    <button
+                      type="button"
+                      className="abk-action-primary"
+                      disabled={actionLoading || checkoutLoading}
+                      onClick={prepareCheckOut}
+                    >
+                      {checkoutLoading ? 'Đang kiểm tra...' : 'Check out'}
                     </button>
                   )}
                   <button type="button" className="abk-action-secondary" onClick={() => setStayOpen(v => !v)}>
@@ -661,8 +690,21 @@ function BookingDetailModal({ detail, loading, error, actionLoading, actionError
             </>
           ) : null}
         </div>
+        </div>
       </div>
-    </div>
+      {checkoutPayment && (
+        <SePayQrPayment
+          payment={checkoutPayment}
+          statusUrl={`${API_BASE}/details/${detail.bookingDetailId}`}
+          headers={authHeaders()}
+          statusField="bookingStatus"
+          successStatus="COMPLETED"
+          title="Thanh toán chi phí phát sinh tại quầy"
+          onSuccess={(booking) => onAction('__refresh__', null, booking)}
+          onClose={() => setCheckoutPayment(null)}
+        />
+      )}
+    </>
   )
 }
 
@@ -690,6 +732,7 @@ function DirectBookingModal({ onClose, onCreated }) {
   const [roomsLoading, setRoomsLoading] = useState(false)
   const [submitLoading, setSubmitLoading] = useState(false)
   const [error, setError] = useState('')
+  const [paymentResult, setPaymentResult] = useState(null)
 
   // Load gói thuê + toàn bộ config giá một lần khi mở modal
   useEffect(() => {
@@ -866,14 +909,21 @@ function DirectBookingModal({ onClose, onCreated }) {
         if (!res.ok) throw new Error(data.message || 'Không tạo được đơn đặt phòng')
         return data
       })
-      .then(data => onCreated(data))
+      .then(data => {
+        if (data.requiresPayment && data.payment) {
+          setPaymentResult(data)
+          return
+        }
+        onCreated(data.booking)
+      })
       .catch(err => setError(err.message || 'Không tạo được đơn đặt phòng'))
       .finally(() => setSubmitLoading(false))
   }
 
   return (
-    <div className="abk-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="abk-modal abk-direct-modal">
+    <>
+      <div className="abk-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+        <div className="abk-modal abk-direct-modal">
         <div className="abk-modal-head">
           <div>
             <h3>Đặt phòng trực tiếp</h3>
@@ -1065,8 +1115,21 @@ function DirectBookingModal({ onClose, onCreated }) {
             </button>
           </div>
         </form>
+        </div>
       </div>
-    </div>
+      {paymentResult && (
+        <SePayQrPayment
+          payment={paymentResult.payment}
+          statusUrl={`${API_BASE}/details/${paymentResult.booking.bookingDetailId}`}
+          headers={authHeaders()}
+          statusField="bookingStatus"
+          successStatus="CONFIRMED"
+          title="Thanh toán đặt phòng tại quầy"
+          onSuccess={onCreated}
+          onClose={() => onCreated(paymentResult.booking)}
+        />
+      )}
+    </>
   )
 }
 
@@ -1153,6 +1216,10 @@ function AdminBookingsPage() {
     if (action === '__refresh__') {
       if (directData) setSelectedDetail(directData)
       loadSchedule()
+      return
+    }
+    if (action === '__error__') {
+      setActionError(directData || 'Không xử lý được yêu cầu')
       return
     }
     if (!selectedBookingDetailId) return

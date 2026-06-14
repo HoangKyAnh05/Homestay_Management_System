@@ -30,6 +30,7 @@ public class SePayPaymentServiceImpl implements SePayPaymentService {
     private final BookingRepository bookingRepository;
     private final BookingDetailRepository bookingDetailRepository;
     private final BookingServiceItemRepository bookingServiceItemRepository;
+    private final CheckInRecordRepository checkInRecordRepository;
     private final InvoiceRepository invoiceRepository;
     private final PaymentRepository paymentRepository;
     private final ObjectMapper objectMapper;
@@ -44,6 +45,7 @@ public class SePayPaymentServiceImpl implements SePayPaymentService {
             BookingRepository bookingRepository,
             BookingDetailRepository bookingDetailRepository,
             BookingServiceItemRepository bookingServiceItemRepository,
+            CheckInRecordRepository checkInRecordRepository,
             InvoiceRepository invoiceRepository,
             PaymentRepository paymentRepository,
             ObjectMapper objectMapper,
@@ -57,6 +59,7 @@ public class SePayPaymentServiceImpl implements SePayPaymentService {
         this.bookingRepository = bookingRepository;
         this.bookingDetailRepository = bookingDetailRepository;
         this.bookingServiceItemRepository = bookingServiceItemRepository;
+        this.checkInRecordRepository = checkInRecordRepository;
         this.invoiceRepository = invoiceRepository;
         this.paymentRepository = paymentRepository;
         this.objectMapper = objectMapper;
@@ -71,14 +74,26 @@ public class SePayPaymentServiceImpl implements SePayPaymentService {
     @Override
     @Transactional
     public SePayPaymentResponse createPayment(String email, Long bookingId) {
+        return createBookingPayment(bookingId, email);
+    }
+
+    @Override
+    @Transactional
+    public SePayPaymentResponse createBookingPaymentForAdmin(Long bookingId) {
+        return createBookingPayment(bookingId, null);
+    }
+
+    private SePayPaymentResponse createBookingPayment(Long bookingId, String customerEmail) {
         validatePaymentConfiguration();
         Booking booking = bookingRepository.findByIdForPaymentUpdate(bookingId)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy booking"));
-        String ownerEmail = booking.getCustomer().getAccount() != null
-                ? booking.getCustomer().getAccount().getEmail()
-                : null;
-        if (ownerEmail == null || !email.equalsIgnoreCase(ownerEmail)) {
-            throw new IllegalArgumentException("Bạn không có quyền thanh toán booking này");
+        if (customerEmail != null) {
+            String ownerEmail = booking.getCustomer().getAccount() != null
+                    ? booking.getCustomer().getAccount().getEmail()
+                    : null;
+            if (ownerEmail == null || !customerEmail.equalsIgnoreCase(ownerEmail)) {
+                throw new IllegalArgumentException("Bạn không có quyền thanh toán booking này");
+            }
         }
         if (!"PENDING".equalsIgnoreCase(booking.getStatus())) {
             throw new IllegalArgumentException("Booking này không ở trạng thái chờ thanh toán");
@@ -92,12 +107,53 @@ public class SePayPaymentServiceImpl implements SePayPaymentService {
         BigDecimal amount = calculateRequiredPayment(booking, details, invoice.getTotalAmount());
 
         Payment payment = paymentRepository
-                .findFirstByInvoiceIdAndPaymentMethodAndStatusOrderByIdDesc(invoice.getId(), "SEPAY", "PENDING")
+                .findFirstByInvoiceIdAndPaymentMethodAndPaymentPurposeAndStatusOrderByIdDesc(
+                        invoice.getId(), "SEPAY", "BOOKING", "PENDING"
+                )
                 .orElse(null);
         if (payment == null) {
             payment = paymentRepository.save(Payment.builder()
                     .invoice(invoice)
                     .paymentMethod("SEPAY")
+                    .paymentPurpose("BOOKING")
+                    .amount(amount)
+                    .status("PENDING")
+                    .build());
+            payment.setPaymentCode(normalizedPaymentCodePrefix() + payment.getId());
+        }
+
+        String transferContent = transferPrefix.trim() + payment.getPaymentCode();
+        payment.setAmount(amount);
+        payment.setQrCodeUrl(buildQrCodeUrl(amount, transferContent));
+        payment = paymentRepository.save(payment);
+        return toResponse(bookingId, payment, transferContent);
+    }
+
+    @Override
+    @Transactional
+    public SePayPaymentResponse createCheckoutPayment(Long bookingId, BigDecimal amount) {
+        validatePaymentConfiguration();
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Chi phí phát sinh phải lớn hơn 0");
+        }
+        Booking booking = bookingRepository.findByIdForPaymentUpdate(bookingId)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy booking"));
+        if (!"CHECKED_IN".equalsIgnoreCase(booking.getStatus())) {
+            throw new IllegalArgumentException("Booking chưa ở trạng thái lưu trú");
+        }
+        Invoice invoice = invoiceRepository.findByBookingIdForAdmin(bookingId)
+                .orElseThrow(() -> new IllegalArgumentException("Chưa tạo hóa đơn checkout"));
+
+        Payment payment = paymentRepository
+                .findFirstByInvoiceIdAndPaymentMethodAndPaymentPurposeAndStatusOrderByIdDesc(
+                        invoice.getId(), "SEPAY", "CHECKOUT", "PENDING"
+                )
+                .orElse(null);
+        if (payment == null) {
+            payment = paymentRepository.save(Payment.builder()
+                    .invoice(invoice)
+                    .paymentMethod("SEPAY")
+                    .paymentPurpose("CHECKOUT")
                     .amount(amount)
                     .status("PENDING")
                     .build());
@@ -142,11 +198,15 @@ public class SePayPaymentServiceImpl implements SePayPaymentService {
         payment.setPaymentTime(LocalDateTime.now());
         paymentRepository.save(payment);
 
-        booking.setStatus("CONFIRMED");
-        bookingRepository.save(booking);
-        List<BookingDetail> details = bookingDetailRepository.findByBookingId(booking.getId());
-        details.forEach(detail -> detail.setStatus("CONFIRMED"));
-        bookingDetailRepository.saveAll(details);
+        if ("CHECKOUT".equalsIgnoreCase(payment.getPaymentPurpose())) {
+            completeCheckout(booking);
+        } else {
+            booking.setStatus("CONFIRMED");
+            bookingRepository.save(booking);
+            List<BookingDetail> details = bookingDetailRepository.findByBookingId(booking.getId());
+            details.forEach(detail -> detail.setStatus("CONFIRMED"));
+            bookingDetailRepository.saveAll(details);
+        }
     }
 
     private Invoice getOrCreateInvoice(Booking booking, List<BookingDetail> details) {
@@ -168,6 +228,21 @@ public class SePayPaymentServiceImpl implements SePayPaymentService {
                             .createdAt(LocalDateTime.now())
                             .build());
                 });
+    }
+
+    private void completeCheckout(Booking booking) {
+        List<CheckInRecord> records = checkInRecordRepository.findByBookingIdForInvoice(booking.getId());
+        LocalDateTime now = LocalDateTime.now();
+        records.stream()
+                .filter(record -> record.getActualCheckOut() == null)
+                .forEach(record -> record.setActualCheckOut(now));
+        checkInRecordRepository.saveAll(records);
+
+        List<BookingDetail> details = bookingDetailRepository.findByBookingId(booking.getId());
+        details.forEach(detail -> detail.setStatus("COMPLETED"));
+        bookingDetailRepository.saveAll(details);
+        booking.setStatus("COMPLETED");
+        bookingRepository.save(booking);
     }
 
     private BigDecimal calculateRequiredPayment(Booking booking, List<BookingDetail> details, BigDecimal totalAmount) {

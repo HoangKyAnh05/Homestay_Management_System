@@ -32,5 +32,20 @@ public class DatabaseSchemaMigration implements ApplicationRunner {
             jdbcTemplate.execute("alter table invoices modify column employee_id bigint null");
             LOGGER.info("Updated invoices.employee_id to allow online invoices without an employee");
         }
+
+        Integer paymentPurposeColumn = jdbcTemplate.queryForObject("""
+                select count(*)
+                from information_schema.columns
+                where table_schema = database()
+                  and table_name = 'payments'
+                  and column_name = 'payment_purpose'
+                """, Integer.class);
+        if (paymentPurposeColumn != null && paymentPurposeColumn == 0) {
+            jdbcTemplate.execute("""
+                    alter table payments
+                    add column payment_purpose varchar(20) not null default 'BOOKING'
+                    """);
+            LOGGER.info("Added payments.payment_purpose for booking and checkout payments");
+        }
     }
 }

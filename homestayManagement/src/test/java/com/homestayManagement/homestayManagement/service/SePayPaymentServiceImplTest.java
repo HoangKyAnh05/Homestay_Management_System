@@ -44,6 +44,8 @@ class SePayPaymentServiceImplTest {
     @Mock
     private BookingServiceItemRepository bookingServiceItemRepository;
     @Mock
+    private com.homestayManagement.homestayManagement.repository.CheckInRecordRepository checkInRecordRepository;
+    @Mock
     private InvoiceRepository invoiceRepository;
     @Mock
     private PaymentRepository paymentRepository;
@@ -56,6 +58,7 @@ class SePayPaymentServiceImplTest {
                 bookingRepository,
                 bookingDetailRepository,
                 bookingServiceItemRepository,
+                checkInRecordRepository,
                 invoiceRepository,
                 paymentRepository,
                 new ObjectMapper(),
@@ -134,7 +137,84 @@ class SePayPaymentServiceImplTest {
         verify(bookingRepository, never()).save(org.mockito.ArgumentMatchers.any());
     }
 
+    @Test
+    void createBookingPaymentForAdminSupportsWalkInCustomer() {
+        Booking booking = Booking.builder().id(10L).status("PENDING").build();
+        BookingDetail detail = BookingDetail.builder()
+                .booking(booking)
+                .rentType("HOURLY")
+                .priceAtBooking(BigDecimal.valueOf(300_000))
+                .build();
+        Invoice invoice = Invoice.builder()
+                .id(20L)
+                .booking(booking)
+                .totalAmount(BigDecimal.valueOf(300_000))
+                .build();
+        Payment payment = Payment.builder()
+                .id(30L)
+                .invoice(invoice)
+                .paymentCode("HMS30")
+                .paymentPurpose("BOOKING")
+                .amount(BigDecimal.valueOf(300_000))
+                .status("PENDING")
+                .build();
+
+        when(bookingRepository.findByIdForPaymentUpdate(10L)).thenReturn(Optional.of(booking));
+        when(bookingDetailRepository.findByBookingId(10L)).thenReturn(List.of(detail));
+        when(invoiceRepository.findByBookingIdForAdmin(10L)).thenReturn(Optional.of(invoice));
+        when(paymentRepository.findFirstByInvoiceIdAndPaymentMethodAndPaymentPurposeAndStatusOrderByIdDesc(
+                20L, "SEPAY", "BOOKING", "PENDING"
+        )).thenReturn(Optional.of(payment));
+        when(paymentRepository.save(payment)).thenReturn(payment);
+
+        var response = service.createBookingPaymentForAdmin(10L);
+
+        assertEquals(10L, response.bookingId());
+        assertEquals(BigDecimal.valueOf(300_000), response.amount());
+        assertEquals("HMS30", response.transferContent());
+    }
+
+    @Test
+    void handleCheckoutWebhookCompletesStay() throws Exception {
+        Booking booking = Booking.builder().id(10L).status("CHECKED_IN").build();
+        Invoice invoice = Invoice.builder().id(20L).booking(booking).build();
+        Payment payment = Payment.builder()
+                .id(31L)
+                .invoice(invoice)
+                .paymentCode("HMS31")
+                .paymentPurpose("CHECKOUT")
+                .amount(BigDecimal.valueOf(150_000))
+                .status("PENDING")
+                .build();
+        BookingDetail detail = BookingDetail.builder().id(40L).booking(booking).status("CHECKED_IN").build();
+        com.homestayManagement.homestayManagement.entity.CheckInRecord record =
+                com.homestayManagement.homestayManagement.entity.CheckInRecord.builder()
+                        .id(50L)
+                        .bookingDetail(detail)
+                        .build();
+        byte[] body = webhookBody(92706L, 150_000, "HMS31");
+        String timestamp = String.valueOf(Instant.now().getEpochSecond());
+
+        when(paymentRepository.findBySepayTransactionId(92706L)).thenReturn(Optional.empty());
+        when(paymentRepository.findByPaymentCodeIgnoreCase("HMS31")).thenReturn(Optional.of(payment));
+        when(bookingRepository.findByIdForPaymentUpdate(10L)).thenReturn(Optional.of(booking));
+        when(checkInRecordRepository.findByBookingIdForInvoice(10L)).thenReturn(List.of(record));
+        when(bookingDetailRepository.findByBookingId(10L)).thenReturn(List.of(detail));
+
+        service.handleWebhook(body, signature(body, timestamp), timestamp);
+
+        assertEquals("SUCCESS", payment.getStatus());
+        assertEquals("COMPLETED", booking.getStatus());
+        assertEquals("COMPLETED", detail.getStatus());
+        org.junit.jupiter.api.Assertions.assertNotNull(record.getActualCheckOut());
+        verify(checkInRecordRepository).saveAll(List.of(record));
+    }
+
     private byte[] webhookBody(long id, long amount) {
+        return webhookBody(id, amount, "HMS30");
+    }
+
+    private byte[] webhookBody(long id, long amount, String code) {
         String json = """
                 {
                   "id": %d,
@@ -142,15 +222,15 @@ class SePayPaymentServiceImplTest {
                   "transactionDate": "2026-06-14 13:00:00",
                   "accountNumber": "0123456789",
                   "subAccount": "",
-                  "code": "HMS30",
-                  "content": "HMS30",
+                  "code": "%s",
+                  "content": "%s",
                   "transferType": "in",
                   "description": "Thanh toan booking",
                   "transferAmount": %d,
                   "accumulated": 1000000,
                   "referenceCode": "FT2600001"
                 }
-                """.formatted(id, amount);
+                """.formatted(id, code, code, amount);
         return json.getBytes(StandardCharsets.UTF_8);
     }
 

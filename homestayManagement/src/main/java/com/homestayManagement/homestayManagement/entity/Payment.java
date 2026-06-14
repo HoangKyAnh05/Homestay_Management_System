@@ -39,6 +39,11 @@ public class Payment {
     @Column(name = "qr_code_url", length = 1000)
     private String qrCodeUrl;
 
+    // BOOKING, CHECKOUT
+    @Builder.Default
+    @Column(name = "payment_purpose", nullable = false, length = 20)
+    private String paymentPurpose = "BOOKING";
+
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal amount;
 

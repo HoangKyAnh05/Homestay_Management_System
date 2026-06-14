@@ -4,6 +4,8 @@ import com.homestayManagement.homestayManagement.dto.response.AdminBookingSchedu
 import com.homestayManagement.homestayManagement.dto.response.AdminBookingDetailResponse;
 import com.homestayManagement.homestayManagement.dto.response.AdminCheckInLogBookingResponse;
 import com.homestayManagement.homestayManagement.dto.response.AdminDirectBookingRoomResponse;
+import com.homestayManagement.homestayManagement.dto.response.AdminDirectBookingResponse;
+import com.homestayManagement.homestayManagement.dto.response.AdminCheckoutResponse;
 import com.homestayManagement.homestayManagement.dto.request.AdminBookingAddMiniBarRequest;
 import com.homestayManagement.homestayManagement.dto.request.AdminBookingAddPenaltyRequest;
 import com.homestayManagement.homestayManagement.dto.request.AdminBookingAddServiceRequest;
@@ -20,11 +22,12 @@ public interface AdminBookingService {
     List<AdminCheckInLogBookingResponse> getCheckInLogs(LocalDate fromDate, LocalDate toDate);
     AdminBookingDetailResponse getBookingDetail(Long bookingDetailId);
     List<AdminDirectBookingRoomResponse> getDirectBookingRooms(LocalDateTime checkInTarget, LocalDateTime checkOutTarget);
-    AdminBookingDetailResponse createDirectBooking(AdminDirectBookingRequest request);
+    AdminDirectBookingResponse createDirectBooking(AdminDirectBookingRequest request);
     AdminBookingDetailResponse updateBookingCustomer(Long bookingDetailId, AdminUpdateBookingCustomerRequest request);
     AdminBookingDetailResponse updateBookingDetail(Long bookingDetailId, AdminUpdateBookingDetailRequest request);
     AdminBookingDetailResponse checkIn(Long bookingDetailId);
     AdminBookingDetailResponse checkOut(Long bookingDetailId);
+    AdminCheckoutResponse prepareCheckOut(Long bookingDetailId);
     AdminBookingDetailResponse addService(Long bookingDetailId, AdminBookingAddServiceRequest request);
     AdminBookingDetailResponse addMiniBar(Long bookingDetailId, AdminBookingAddMiniBarRequest request);
     AdminBookingDetailResponse addPenalty(Long bookingDetailId, AdminBookingAddPenaltyRequest request);

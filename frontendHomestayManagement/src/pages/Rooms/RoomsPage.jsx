@@ -1,5 +1,6 @@
 ﻿import { useEffect, useMemo, useState } from 'react'
 import { getStoredToken, getStoredUser, logout } from '../../services/authService'
+import SePayQrPayment from '../../components/SePayQrPayment/SePayQrPayment'
 import { clearBookingCart, readBookingCart, writeBookingCart } from '../../utils/bookingCart'
 import { formatDateTime as formatAppDateTime } from '../../utils/dateTimeFormat'
 import { resolveImageUrl } from '../../utils/imageUrl'
@@ -330,6 +331,27 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [paymentSummary, setPaymentSummary] = useState(null)
+  const [sePayPayment, setSePayPayment] = useState(null)
+  const [paymentLoading, setPaymentLoading] = useState(false)
+
+  const startPayment = () => {
+    const token = getStoredToken()
+    if (!token || !paymentSummary) return
+    setPaymentLoading(true)
+    setError('')
+    fetch(`${API_BASE_URL}/payments/sepay/bookings/${paymentSummary.bookingId}`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(async (response) => {
+        const data = await response.json().catch(() => ({}))
+        if (!response.ok) throw new Error(data.message || 'Không thể tạo mã thanh toán SePay')
+        return data
+      })
+      .then(setSePayPayment)
+      .catch((err) => setError(err.message))
+      .finally(() => setPaymentLoading(false))
+  }
 
   useEffect(() => {
     if (form.checkOutTarget) return
@@ -569,8 +591,9 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
 
   if (paymentSummary) {
     return (
-      <div className="public-booking-overlay" onClick={(event) => event.target === event.currentTarget && onClose()}>
-        <div className="public-booking-modal public-payment-summary">
+      <>
+        <div className="public-booking-overlay" onClick={(event) => event.target === event.currentTarget && onClose()}>
+          <div className="public-booking-modal public-payment-summary">
           <div className="public-booking-head">
             <div>
               <h2>Tóm tắt đơn đặt phòng</h2>
@@ -600,11 +623,25 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
             </div>
           </div>
           <div className="public-booking-actions">
+            {error && <span className="public-booking-error">{error}</span>}
             <button type="button" onClick={() => onCreated(paymentSummary)}>Để sau</button>
-            <button type="button">Thanh toán</button>
+            <button type="button" disabled={paymentLoading} onClick={startPayment}>
+              {paymentLoading ? 'Đang tạo QR...' : 'Thanh toán'}
+            </button>
           </div>
         </div>
-      </div>
+        </div>
+        {sePayPayment && (
+          <SePayQrPayment
+            payment={sePayPayment}
+            statusUrl={`${API_BASE_URL}/bookings/my/${paymentSummary.bookingId}`}
+            headers={{ Authorization: `Bearer ${getStoredToken()}` }}
+            successStatus="CONFIRMED"
+            onSuccess={(booking) => onCreated({ ...paymentSummary, ...booking, requiresDeposit: false })}
+            onClose={() => setSePayPayment(null)}
+          />
+        )}
+      </>
     )
   }
 

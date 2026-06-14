@@ -15,4 +15,10 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
             String paymentMethod,
             String status
     );
+    Optional<Payment> findFirstByInvoiceIdAndPaymentMethodAndPaymentPurposeAndStatusOrderByIdDesc(
+            Long invoiceId,
+            String paymentMethod,
+            String paymentPurpose,
+            String status
+    );
 }

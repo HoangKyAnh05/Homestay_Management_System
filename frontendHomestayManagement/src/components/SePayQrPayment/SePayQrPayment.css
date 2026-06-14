@@ -1,0 +1,167 @@
+.sepay-shared-backdrop {
+  position: fixed;
+  z-index: 2000;
+  inset: 0;
+  padding: 20px;
+  display: grid;
+  place-items: center;
+  background: rgba(15, 23, 42, 0.68);
+}
+
+.sepay-shared-modal {
+  position: relative;
+  width: min(760px, 100%);
+  max-height: calc(100vh - 40px);
+  overflow: auto;
+  padding: 28px;
+  color: #15191f;
+  background: #fff;
+  border-radius: 20px;
+  box-shadow: rgba(0, 0, 0, 0.25) 0 24px 70px;
+}
+
+.sepay-shared-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 50%;
+  color: #374151;
+  background: #f3f4f6;
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.sepay-shared-heading {
+  margin-bottom: 22px;
+  padding-right: 40px;
+}
+
+.sepay-shared-heading > span {
+  color: #15573a;
+  font-size: 13px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.sepay-shared-heading h2,
+.sepay-shared-success h2 {
+  margin: 7px 0 8px;
+}
+
+.sepay-shared-heading p,
+.sepay-shared-success p {
+  margin: 0;
+  color: #6b7280;
+}
+
+.sepay-shared-error {
+  margin-bottom: 16px;
+  padding: 12px;
+  color: #9f1d20;
+  background: #fff1f1;
+  border-radius: 10px;
+}
+
+.sepay-shared-layout {
+  display: grid;
+  grid-template-columns: minmax(240px, 310px) minmax(0, 1fr);
+  gap: 24px;
+  align-items: center;
+}
+
+.sepay-shared-qr {
+  padding: 14px;
+  text-align: center;
+  background: #f7f8f4;
+  border: 1px solid #e1e6dc;
+  border-radius: 16px;
+}
+
+.sepay-shared-qr img {
+  width: 100%;
+  display: block;
+  border-radius: 10px;
+}
+
+.sepay-shared-qr small {
+  display: block;
+  margin-top: 10px;
+  color: #b45309;
+  font-weight: 800;
+}
+
+.sepay-shared-info {
+  margin: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.sepay-shared-info div {
+  padding: 11px 12px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+}
+
+.sepay-shared-info dt {
+  margin-bottom: 4px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.sepay-shared-info dd {
+  margin: 0;
+  font-weight: 850;
+  overflow-wrap: anywhere;
+}
+
+.sepay-shared-code {
+  color: #c2410c;
+  font-size: 18px;
+  letter-spacing: 0.6px;
+}
+
+.sepay-shared-success {
+  padding: 30px 10px 16px;
+  text-align: center;
+}
+
+.sepay-shared-success > span {
+  width: 68px;
+  height: 68px;
+  margin: 0 auto 16px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: #15803d;
+  border-radius: 50%;
+  font-size: 34px;
+  font-weight: 900;
+}
+
+.sepay-shared-success button {
+  min-height: 42px;
+  margin-top: 22px;
+  padding: 0 22px;
+  border: 0;
+  border-radius: 10px;
+  color: #fff;
+  background: #1f4328;
+  font: inherit;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+@media (max-width: 620px) {
+  .sepay-shared-modal {
+    padding: 22px 16px;
+  }
+
+  .sepay-shared-layout {
+    grid-template-columns: 1fr;
+  }
+}

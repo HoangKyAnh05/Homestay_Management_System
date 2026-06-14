@@ -7,9 +7,11 @@ import com.homestayManagement.homestayManagement.dto.request.AdminDirectBookingR
 import com.homestayManagement.homestayManagement.dto.request.AdminUpdateBookingCustomerRequest;
 import com.homestayManagement.homestayManagement.dto.request.AdminUpdateBookingDetailRequest;
 import com.homestayManagement.homestayManagement.dto.response.AdminBookingDetailResponse;
+import com.homestayManagement.homestayManagement.dto.response.AdminCheckoutResponse;
 import com.homestayManagement.homestayManagement.dto.response.AdminBookingScheduleResponse;
 import com.homestayManagement.homestayManagement.dto.response.AdminCheckInLogBookingResponse;
 import com.homestayManagement.homestayManagement.dto.response.AdminDirectBookingRoomResponse;
+import com.homestayManagement.homestayManagement.dto.response.AdminDirectBookingResponse;
 import com.homestayManagement.homestayManagement.service.AdminBookingService;
 import jakarta.validation.Valid;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -71,7 +73,7 @@ public class AdminBookingController {
     }
 
     @PostMapping("/direct")
-    public AdminBookingDetailResponse createDirectBooking(@Valid @RequestBody AdminDirectBookingRequest request) {
+    public AdminDirectBookingResponse createDirectBooking(@Valid @RequestBody AdminDirectBookingRequest request) {
         return adminBookingService.createDirectBooking(request);
     }
 
@@ -99,6 +101,11 @@ public class AdminBookingController {
     @PostMapping("/details/{bookingDetailId}/check-out")
     public AdminBookingDetailResponse checkOut(@PathVariable Long bookingDetailId) {
         return adminBookingService.checkOut(bookingDetailId);
+    }
+
+    @PostMapping("/details/{bookingDetailId}/prepare-check-out")
+    public AdminCheckoutResponse prepareCheckOut(@PathVariable Long bookingDetailId) {
+        return adminBookingService.prepareCheckOut(bookingDetailId);
     }
 
     @PostMapping("/details/{bookingDetailId}/services")

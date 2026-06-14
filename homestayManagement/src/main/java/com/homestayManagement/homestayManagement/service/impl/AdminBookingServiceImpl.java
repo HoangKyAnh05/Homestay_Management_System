@@ -6,6 +6,7 @@ import com.homestayManagement.homestayManagement.dto.request.AdminDirectBookingR
 import com.homestayManagement.homestayManagement.dto.response.AdminBookingCheckInResponse;
 import com.homestayManagement.homestayManagement.dto.response.AdminBookingCustomerResponse;
 import com.homestayManagement.homestayManagement.dto.response.AdminBookingDetailResponse;
+import com.homestayManagement.homestayManagement.dto.response.AdminCheckoutResponse;
 import com.homestayManagement.homestayManagement.dto.response.AdminBookingInvoiceSummaryResponse;
 import com.homestayManagement.homestayManagement.dto.response.AdminBookingRoomResponse;
 import com.homestayManagement.homestayManagement.dto.response.AdminBookingScheduleItemResponse;
@@ -14,6 +15,7 @@ import com.homestayManagement.homestayManagement.dto.response.AdminCheckInLogBoo
 import com.homestayManagement.homestayManagement.dto.response.AdminCheckInLogDetailResponse;
 import com.homestayManagement.homestayManagement.dto.response.AdminDirectBookingBusySlotResponse;
 import com.homestayManagement.homestayManagement.dto.response.AdminDirectBookingRoomResponse;
+import com.homestayManagement.homestayManagement.dto.response.AdminDirectBookingResponse;
 import com.homestayManagement.homestayManagement.dto.request.AdminBookingAddMiniBarRequest;
 import com.homestayManagement.homestayManagement.dto.request.AdminBookingAddPenaltyRequest;
 import com.homestayManagement.homestayManagement.dto.request.AdminBookingAddServiceRequest;
@@ -25,6 +27,7 @@ import com.homestayManagement.homestayManagement.dto.response.AdminInvoiceServic
 import com.homestayManagement.homestayManagement.dto.response.AdminPaymentResponse;
 import com.homestayManagement.homestayManagement.dto.response.RoomMiniBarItemResponse;
 import com.homestayManagement.homestayManagement.dto.response.RulesPenaltyResponse;
+import com.homestayManagement.homestayManagement.dto.response.SePayPaymentResponse;
 import com.homestayManagement.homestayManagement.entity.Account;
 import com.homestayManagement.homestayManagement.entity.AppliedPenalty;
 import com.homestayManagement.homestayManagement.entity.Booking;
@@ -66,6 +69,7 @@ import com.homestayManagement.homestayManagement.repository.RoomPriceConfigRepos
 import com.homestayManagement.homestayManagement.repository.RulesPenaltyRepository;
 import com.homestayManagement.homestayManagement.repository.ServiceUsageRepository;
 import com.homestayManagement.homestayManagement.service.AdminBookingService;
+import com.homestayManagement.homestayManagement.service.SePayPaymentService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.security.core.Authentication;
@@ -111,6 +115,7 @@ public class AdminBookingServiceImpl implements AdminBookingService {
     private final PasswordEncoder passwordEncoder;
     private final PricePolicyRepository pricePolicyRepository;
     private final RoomPriceConfigRepository roomPriceConfigRepository;
+    private final SePayPaymentService sePayPaymentService;
 
     public AdminBookingServiceImpl(
             BookingDetailRepository bookingDetailRepository,
@@ -132,7 +137,8 @@ public class AdminBookingServiceImpl implements AdminBookingService {
             EmployeeRepository employeeRepository,
             PasswordEncoder passwordEncoder,
             PricePolicyRepository pricePolicyRepository,
-            RoomPriceConfigRepository roomPriceConfigRepository
+            RoomPriceConfigRepository roomPriceConfigRepository,
+            SePayPaymentService sePayPaymentService
     ) {
         this.bookingDetailRepository = bookingDetailRepository;
         this.bookingRepository = bookingRepository;
@@ -154,6 +160,7 @@ public class AdminBookingServiceImpl implements AdminBookingService {
         this.passwordEncoder = passwordEncoder;
         this.pricePolicyRepository = pricePolicyRepository;
         this.roomPriceConfigRepository = roomPriceConfigRepository;
+        this.sePayPaymentService = sePayPaymentService;
     }
 
     @Override
@@ -295,7 +302,7 @@ public class AdminBookingServiceImpl implements AdminBookingService {
 
     @Override
     @Transactional
-    public AdminBookingDetailResponse createDirectBooking(AdminDirectBookingRequest request) {
+    public AdminDirectBookingResponse createDirectBooking(AdminDirectBookingRequest request) {
         validateBookingRange(request.checkInTarget(), request.checkOutTarget());
 
         List<AdminDirectBookingRoomRequest> selectedRooms = requireSelectedRooms(request.rooms());
@@ -334,20 +341,29 @@ public class AdminBookingServiceImpl implements AdminBookingService {
         }
 
         Customer customer = findOrCreateWalkInCustomer(request);
-        Room firstRoom = roomsById.get(selectedRooms.getFirst().roomId());
-        RoomType firstRoomType = firstRoom != null ? firstRoom.getRoomType() : null;
-        DepositPolicy depositPolicy = firstRoomType != null ? firstRoomType.getDepositPolicy() : null;
+        DepositPolicy depositPolicy = selectedRooms.stream()
+                .map(selectedRoom -> roomsById.get(selectedRoom.roomId()))
+                .map(Room::getRoomType)
+                .filter(roomType -> roomType != null && roomType.getDepositPolicy() != null)
+                .map(RoomType::getDepositPolicy)
+                .findFirst()
+                .orElse(null);
 
         // Tải price policy để lấy rentType thực và tính giá
         com.homestayManagement.homestayManagement.entity.PricePolicy pricePolicy =
                 pricePolicyRepository.findById(request.pricePolicyId())
                         .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy gói thuê"));
+        String normalizedRentType = normalizeStatus(pricePolicy.getRentType());
+        boolean requiresPayment = depositPolicy != null
+                || "HOURLY".equals(normalizedRentType)
+                || "BY_HOUR".equals(normalizedRentType);
+        String initialStatus = requiresPayment ? "PENDING" : "CONFIRMED";
 
         Booking booking = bookingRepository.save(Booking.builder()
                 .customer(customer)
                 .depositPolicy(depositPolicy)
                 .bookingDate(LocalDateTime.now())
-                .status("CONFIRMED")
+                .status(initialStatus)
                 .build());
 
         BookingDetail firstDetail = null;
@@ -374,14 +390,18 @@ public class AdminBookingServiceImpl implements AdminBookingService {
                     .numberOfChildren(selectedRoom.numberOfChildren())
                     .priceAtBooking(price)
                     .rentType(pricePolicy.getRentType())
-                    .status("CONFIRMED")
+                    .status(initialStatus)
                     .build());
             if (firstDetail == null) {
                 firstDetail = detail;
             }
         }
 
-        return getBookingDetail(firstDetail.getId());
+        AdminBookingDetailResponse bookingResponse = getBookingDetail(firstDetail.getId());
+        SePayPaymentResponse payment = requiresPayment
+                ? sePayPaymentService.createBookingPaymentForAdmin(booking.getId())
+                : null;
+        return new AdminDirectBookingResponse(bookingResponse, requiresPayment, payment);
     }
 
     @Override
@@ -484,6 +504,10 @@ public class AdminBookingServiceImpl implements AdminBookingService {
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đơn đặt phòng"));
         CheckInRecord record = checkInRecordRepository.findByBookingDetailId(bookingDetailId)
                 .orElseThrow(() -> new IllegalArgumentException("Phòng này chưa check-in"));
+        BigDecimal outstandingExtraCharge = calculateOutstandingExtraCharge(detail.getBooking().getId());
+        if (outstandingExtraCharge.compareTo(BigDecimal.ZERO) > 0) {
+            throw new IllegalArgumentException("Vui lòng thanh toán chi phí phát sinh trước khi checkout");
+        }
         if (record.getActualCheckOut() == null) {
             record.setActualCheckOut(LocalDateTime.now());
             checkInRecordRepository.save(record);
@@ -492,6 +516,33 @@ public class AdminBookingServiceImpl implements AdminBookingService {
         detail.getBooking().setStatus("COMPLETED");
         bookingDetailRepository.save(detail);
         return getBookingDetail(bookingDetailId);
+    }
+
+    @Override
+    @Transactional
+    public AdminCheckoutResponse prepareCheckOut(Long bookingDetailId) {
+        BookingDetail detail = bookingDetailRepository.findByIdForAdminDetail(bookingDetailId)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đơn đặt phòng"));
+        CheckInRecord record = checkInRecordRepository.findByBookingDetailId(bookingDetailId)
+                .orElseThrow(() -> new IllegalArgumentException("Phòng này chưa check-in"));
+        if (record.getActualCheckOut() != null || "COMPLETED".equalsIgnoreCase(detail.getStatus())) {
+            return new AdminCheckoutResponse(true, getBookingDetail(bookingDetailId), null);
+        }
+
+        generateInvoice(bookingDetailId);
+        Invoice invoice = invoiceRepository.findByBookingIdForAdmin(detail.getBooking().getId())
+                .orElseThrow(() -> new IllegalArgumentException("Không thể tạo hóa đơn checkout"));
+        BigDecimal remainingExtraCharge = calculateOutstandingExtraCharge(detail.getBooking().getId());
+
+        if (remainingExtraCharge.compareTo(BigDecimal.ZERO) == 0) {
+            return new AdminCheckoutResponse(true, checkOut(bookingDetailId), null);
+        }
+
+        SePayPaymentResponse payment = sePayPaymentService.createCheckoutPayment(
+                detail.getBooking().getId(),
+                remainingExtraCharge
+        );
+        return new AdminCheckoutResponse(false, getBookingDetail(bookingDetailId), payment);
     }
 
     @Override
@@ -923,6 +974,20 @@ public class AdminBookingServiceImpl implements AdminBookingService {
                 .map(AppliedPenalty::getActualFine)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         return timePenalty.add(rulePenalty);
+    }
+
+    private BigDecimal calculateOutstandingExtraCharge(Long bookingId) {
+        BigDecimal extraCharge = calculateServiceCharge(bookingId).add(calculatePenaltyCharge(bookingId));
+        Invoice invoice = invoiceRepository.findByBookingIdForAdmin(bookingId).orElse(null);
+        if (invoice == null) {
+            return extraCharge;
+        }
+        BigDecimal paidCheckoutAmount = paymentRepository.findByInvoiceIdOrderByPaymentTimeDescIdDesc(invoice.getId()).stream()
+                .filter(payment -> "CHECKOUT".equalsIgnoreCase(payment.getPaymentPurpose()))
+                .filter(payment -> "SUCCESS".equalsIgnoreCase(payment.getStatus()))
+                .map(Payment::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        return extraCharge.subtract(paidCheckoutAmount).max(BigDecimal.ZERO);
     }
 
     private BigDecimal safeAmount(BigDecimal value) {
