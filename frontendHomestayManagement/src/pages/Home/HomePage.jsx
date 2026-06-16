@@ -131,7 +131,7 @@ function RoomCard({ room, criteria }) {
             type="button"
             onClick={() => window.location.assign(buildBookingUrl(room, criteria))}
           >
-            {criteria ? 'Chọn loại phòng' : 'Xem phòng'}
+            {criteria ? 'Đặt phòng' : 'Xem phòng'}
           </button>
         </div>
       </div>
