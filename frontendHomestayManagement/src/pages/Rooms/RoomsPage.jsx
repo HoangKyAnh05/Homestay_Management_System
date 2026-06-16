@@ -49,7 +49,10 @@ function parseSearchCriteria() {
   const params = new URLSearchParams(window.location.search)
   const checkInDate = params.get('checkInDate')
   const checkOutDate = params.get('checkOutDate')
-  if (!checkInDate || !checkOutDate) return null
+  const roomTypeId = params.get('roomTypeId')
+  if (!checkInDate || !checkOutDate) {
+    return roomTypeId ? { roomTypeId, rooms: 1, adults: 1, children: 0 } : null
+  }
   return {
     checkInDate,
     checkOutDate,
@@ -57,6 +60,7 @@ function parseSearchCriteria() {
     adults: Number(params.get('adults') || 1),
     children: Number(params.get('children') || 0),
     focusRoomId: params.get('focusRoomId'),
+    roomTypeId,
   }
 }
 
@@ -196,6 +200,14 @@ function depositLabel(room) {
   return `Thanh toán trước ${formatPrice(room.depositPolicyValue)}`
 }
 
+function roomKey(room) {
+  return room.roomId ? `room-${room.roomId}` : `type-${room.roomTypeId || room.id}`
+}
+
+function isRoomTypeSearchResult(room) {
+  return !room.roomId && Boolean(room.roomTypeId || room.availableRooms !== undefined)
+}
+
 function UserAvatar({ user }) {
   const avatarUrl = resolveImageUrl(user?.avatarUrl)
   return (
@@ -255,20 +267,24 @@ function PublicHeader() {
 }
 
 function RoomCard({ room, selected, onToggle }) {
-  const title = `${room.roomTypeName || 'Phòng'} ${room.roomNumber || ''}`.trim()
+  const typeOnly = isRoomTypeSearchResult(room)
+  const title = typeOnly ? (room.roomTypeName || room.name || 'Loại phòng') : `${room.roomTypeName || 'Phòng'} ${room.roomNumber || ''}`.trim()
   const imageUrl = room.primaryImageUrl || room.imageUrls?.[0]
   const price = roomPrice(room)
+  const detailUrl = room.roomId ? `/rooms/${room.roomId}${window.location.search || ''}` : null
 
   return (
     <article className={`public-room-card${selected ? ' is-selected' : ''}`}>
-      <a className="public-room-card-link" href={`/rooms/${room.roomId}${window.location.search || ''}`}>
+      <a className="public-room-card-link" href={detailUrl || window.location.href} onClick={(event) => !detailUrl && event.preventDefault()}>
         <div className="public-room-photo">
           {imageUrl ? (
             <img src={resolveImageUrl(imageUrl)} alt={title} loading="lazy" />
           ) : (
             <div className="public-room-photo-empty">Home Stays</div>
           )}
-          <span className="public-room-badge">Phòng {room.roomNumber}</span>
+          <span className="public-room-badge">
+            {typeOnly ? `Còn ${room.availableRooms || 0} phòng` : `Phòng ${room.roomNumber}`}
+          </span>
         </div>
       </a>
       <div className="public-room-body">
@@ -280,6 +296,7 @@ function RoomCard({ room, selected, onToggle }) {
         <div className="public-room-meta">
           <span>{room.maxAdults || 0} người lớn</span>
           <span>{room.maxChildren || 0} trẻ em</span>
+          {typeOnly && <span>Đặt theo loại phòng</span>}
         </div>
         <div className="public-room-price-row">
           <strong>{formatPrice(price)}</strong>
@@ -292,9 +309,9 @@ function RoomCard({ room, selected, onToggle }) {
           <div className="public-room-deposit">{depositLabel(room)}</div>
         )}
         <div className="public-room-actions">
-          <a href={`/rooms/${room.roomId}${window.location.search || ''}`}>Xem chi tiết</a>
-          <button type="button" className={selected ? 'is-selected' : ''} onClick={() => onToggle(room)}>
-            {selected ? 'Bỏ chọn' : 'Chọn phòng'}
+          {detailUrl ? <a href={detailUrl}>Xem chi tiết</a> : <span>Chi tiết phòng sẽ được lễ tân gán khi check-in</span>}
+          <button type="button" className={selected ? 'is-selected' : ''} disabled={typeOnly} onClick={() => onToggle(room)}>
+            {typeOnly ? 'Đặt theo loại phòng' : selected ? 'Bỏ chọn' : 'Chọn phòng'}
           </button>
         </div>
       </div>
@@ -789,7 +806,8 @@ function RoomsPage() {
   const [focusRoomApplied, setFocusRoomApplied] = useState(() => readBookingCart().length > 0)
 
   useEffect(() => {
-    const params = searchCriteria ? new URLSearchParams({
+    const hasSearchDates = Boolean(searchCriteria?.checkInDate && searchCriteria?.checkOutDate)
+    const params = hasSearchDates ? new URLSearchParams({
       checkInDate: searchCriteria.checkInDate,
       checkOutDate: searchCriteria.checkOutDate,
       rooms: String(searchCriteria.rooms),
@@ -801,7 +819,10 @@ function RoomsPage() {
     fetch(url)
       .then((response) => response.json())
       .then((data) => {
-        const nextRooms = Array.isArray(data) ? data : []
+        const allRooms = Array.isArray(data) ? data : []
+        const nextRooms = searchCriteria?.roomTypeId
+          ? allRooms.filter((room) => String(room.roomTypeId || room.id) === String(searchCriteria.roomTypeId))
+          : allRooms
         setRooms(nextRooms)
         const highest = Math.max(...nextRooms.map((room) => roomPrice(room)), 0)
         setMaxPrice(Math.max(highest, 100000))
@@ -822,7 +843,7 @@ function RoomsPage() {
   useEffect(() => {
     if (!rooms.length || !selectedRooms.length) return
     setSelectedRooms((current) => current.map((selectedRoom) => {
-      const freshRoom = rooms.find((room) => String(room.roomId) === String(selectedRoom.roomId))
+      const freshRoom = rooms.find((room) => roomKey(room) === roomKey(selectedRoom))
       return freshRoom ? { ...selectedRoom, ...freshRoom } : selectedRoom
     }))
   }, [rooms])
@@ -847,12 +868,13 @@ function RoomsPage() {
   }, [rooms, maxPrice])
 
   const requestedRooms = searchCriteria?.rooms || Math.max(1, selectedRooms.length || 1)
-  const selectedRoomIds = useMemo(() => new Set(selectedRooms.map((room) => String(room.roomId))), [selectedRooms])
+  const selectedRoomIds = useMemo(() => new Set(selectedRooms.map(roomKey)), [selectedRooms])
 
   const toggleRoom = (room) => {
+    if (isRoomTypeSearchResult(room)) return
     setSelectedRooms((current) => {
-      if (current.some((item) => String(item.roomId) === String(room.roomId))) {
-        return current.filter((item) => String(item.roomId) !== String(room.roomId))
+      if (current.some((item) => roomKey(item) === roomKey(room))) {
+        return current.filter((item) => roomKey(item) !== roomKey(room))
       }
       return [...current, room]
     })
@@ -948,9 +970,9 @@ function RoomsPage() {
               <div className="public-rooms-grid" aria-label="Danh sách phòng">
                 {visibleRooms.map((room) => (
                   <RoomCard
-                    key={room.roomId}
+                    key={roomKey(room)}
                     room={room}
-                    selected={selectedRoomIds.has(String(room.roomId))}
+                    selected={selectedRoomIds.has(roomKey(room))}
                     onToggle={toggleRoom}
                   />
                 ))}

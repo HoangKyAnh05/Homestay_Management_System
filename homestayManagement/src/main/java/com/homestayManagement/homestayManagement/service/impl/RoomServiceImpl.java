@@ -27,6 +27,7 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Comparator;
+import java.util.Map;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -142,25 +143,32 @@ public class RoomServiceImpl implements RoomService {
 
         LocalDateTime startInclusive = checkInDate.atStartOfDay();
         LocalDateTime endExclusive = checkOutDate.atStartOfDay();
-        Set<Long> busyRoomIds = bookingDetailRepository.findOverlappingSchedule(startInclusive, endExclusive)
+        Map<Long, Long> bookedCountByType = bookingDetailRepository.findOverlappingSchedule(startInclusive, endExclusive)
                 .stream()
                 .filter(this::isActiveBooking)
-                .map(detail -> detail.getRoom().getId())
-                .collect(Collectors.toSet());
+                .filter(detail -> detail.getRoomType() != null)
+                .collect(Collectors.groupingBy(detail -> detail.getRoomType().getId(), Collectors.counting()));
 
         int requestedRooms = rooms != null ? rooms : 1;
         int adultsPerRoom = (int) Math.ceil((adults != null ? adults : 1) / (double) requestedRooms);
         int childrenPerRoom = (int) Math.ceil((children != null ? children : 0) / (double) requestedRooms);
         String dayType = isWeekend(checkInDate) ? "WEEKEND" : "WEEKDAY";
+        Map<Long, Long> totalRoomsByType = roomRepository.findAllWithRoomType().stream()
+                .filter(room -> room.getRoomType() != null)
+                .collect(Collectors.groupingBy(room -> room.getRoomType().getId(), Collectors.counting()));
 
-        return roomRepository.findAllWithRoomType().stream()
-                .filter(room -> !busyRoomIds.contains(room.getId()))
-                .filter(room -> hasCapacity(room.getRoomType(), adultsPerRoom, childrenPerRoom))
-                .map(room -> toSearchResponse(room, dayType))
+        return roomTypeRepository.findAll().stream()
+                .filter(roomType -> hasCapacity(roomType, adultsPerRoom, childrenPerRoom))
+                .map(roomType -> {
+                    long totalRooms = totalRoomsByType.getOrDefault(roomType.getId(), 0L);
+                    long bookedRooms = bookedCountByType.getOrDefault(roomType.getId(), 0L);
+                    int availableRooms = Math.max(0, (int) (totalRooms - bookedRooms));
+                    return toSearchResponse(roomType, dayType, availableRooms, requestedRooms);
+                })
                 .flatMap(Optional::stream)
                 .filter(room -> maxPrice == null || room.price().compareTo(maxPrice) <= 0)
                 .sorted(Comparator.comparing(RoomSearchResponse::price)
-                        .thenComparing(RoomSearchResponse::roomNumber, Comparator.nullsLast(String::compareToIgnoreCase)))
+                        .thenComparing(RoomSearchResponse::roomTypeName, Comparator.nullsLast(String::compareToIgnoreCase)))
                 .toList();
     }
 
@@ -195,8 +203,10 @@ public class RoomServiceImpl implements RoomService {
         return roomType.getMaxAdults() >= adultsPerRoom && roomType.getMaxChildren() >= childrenPerRoom;
     }
 
-    private Optional<RoomSearchResponse> toSearchResponse(Room room, String dayType) {
-        RoomType roomType = room.getRoomType();
+    private Optional<RoomSearchResponse> toSearchResponse(RoomType roomType, String dayType, int availableRooms, int requestedRooms) {
+        if (availableRooms < requestedRooms) {
+            return Optional.empty();
+        }
         List<RoomPriceConfig> configs = roomPriceConfigRepository.findByRoomTypeIdWithPolicy(roomType.getId()).stream()
                 .filter(config -> dayType.equalsIgnoreCase(config.getDayType()))
                 .toList();
@@ -208,13 +218,13 @@ public class RoomServiceImpl implements RoomService {
             return Optional.empty();
         }
 
-        List<String> imageUrls = buildRoomImageUrls(room.getId());
+        List<String> imageUrls = buildRoomTypeImageUrls(roomType.getId());
         String primaryImageUrl = imageUrls.isEmpty() ? null : imageUrls.get(0);
         List<RoomPublicPriceResponse> prices = buildPublicPrices(roomType.getId());
 
         return Optional.of(new RoomSearchResponse(
-                room.getId(),
-                room.getRoomNumber(),
+                null,
+                null,
                 roomType.getId(),
                 roomType.getName(),
                 roomType.getMaxAdults(),
@@ -222,6 +232,7 @@ public class RoomServiceImpl implements RoomService {
                 roomType.getDescription(),
                 priceConfig.get().getPrice(),
                 priceConfig.get().getPricePolicy().getRentType(),
+                availableRooms,
                 primaryImageUrl,
                 imageUrls,
                 prices
@@ -267,6 +278,14 @@ public class RoomServiceImpl implements RoomService {
 
     private List<String> buildRoomImageUrls(Long roomId) {
         return roomImageRepository.findByRoomId(roomId).stream()
+                .sorted(Comparator.comparing(RoomImage::isPrimary).reversed().thenComparing(RoomImage::getId))
+                .map(RoomImage::getImageUrl)
+                .toList();
+    }
+
+    private List<String> buildRoomTypeImageUrls(Long roomTypeId) {
+        return roomRepository.findByRoomTypeId(roomTypeId).stream()
+                .flatMap(room -> roomImageRepository.findByRoomId(room.getId()).stream())
                 .sorted(Comparator.comparing(RoomImage::isPrimary).reversed().thenComparing(RoomImage::getId))
                 .map(RoomImage::getImageUrl)
                 .toList();

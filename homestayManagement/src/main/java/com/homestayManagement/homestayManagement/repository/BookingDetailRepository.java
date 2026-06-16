@@ -17,11 +17,11 @@ public interface BookingDetailRepository extends JpaRepository<BookingDetail, Lo
             join fetch bd.booking b
             join fetch b.customer c
             left join fetch c.account
-            join fetch bd.room r
-            join fetch r.roomType
+            join fetch bd.roomType
+            left join fetch bd.room r
             where bd.checkInTarget < :endExclusive
               and bd.checkOutTarget > :startInclusive
-            order by r.roomNumber asc, bd.checkInTarget asc
+            order by bd.checkInTarget asc, bd.id asc
             """)
     List<BookingDetail> findOverlappingSchedule(
             @Param("startInclusive") LocalDateTime startInclusive,

@@ -13,6 +13,7 @@ public record RoomSearchResponse(
         String description,
         BigDecimal price,
         String rentType,
+        Integer availableRooms,
         String primaryImageUrl,
         List<String> imageUrls,
         List<RoomPublicPriceResponse> prices

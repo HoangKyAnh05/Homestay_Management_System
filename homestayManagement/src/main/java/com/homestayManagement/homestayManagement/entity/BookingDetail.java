@@ -24,8 +24,16 @@ public class BookingDetail {
     private Booking booking;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "room_id", nullable = false)
+    @JoinColumn(name = "room_type_id", nullable = false)
+    private RoomType roomType;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "room_id")
     private Room room;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "assigned_by_employee_id")
+    private Employee assignedBy;
 
     @Column(name = "check_in_target", nullable = false)
     private LocalDateTime checkInTarget;
@@ -44,6 +52,13 @@ public class BookingDetail {
 
     @Column(name = "rent_type", nullable = false, length = 20)
     private String rentType;
+
+    @Builder.Default
+    @Column(name = "room_assignment_status", nullable = false, length = 20)
+    private String roomAssignmentStatus = "UNASSIGNED";
+
+    @Column(name = "assigned_at")
+    private LocalDateTime assignedAt;
 
     @Builder.Default
     @Column(nullable = false, length = 20)
