@@ -338,6 +338,7 @@
 }
 
 .public-room-actions a,
+.public-room-actions span,
 .public-room-actions button {
   height: 40px;
   display: inline-flex;
@@ -355,11 +356,26 @@
   border: 1px solid #dddddd;
 }
 
+.public-room-actions span {
+  min-width: 0;
+  padding: 0 10px;
+  color: #6a6a6a;
+  background: #f7f7f7;
+  border: 1px solid #ebebeb;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .public-room-actions button {
   color: #ffffff;
   background: #ff385c;
   border: 0;
   cursor: pointer;
+}
+
+.public-room-actions button:only-child {
+  grid-column: 1 / -1;
 }
 
 .public-room-actions button.is-selected {
@@ -501,7 +517,7 @@
 .multi-selected-rooms article {
   padding: 12px;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto 120px 120px;
+  grid-template-columns: minmax(0, 1fr) auto 142px 120px 120px;
   align-items: center;
   gap: 12px;
   background: #f7f8f4;
@@ -544,6 +560,27 @@
   padding: 0 10px;
   border: 1px solid #cfd6df;
   border-radius: 9px;
+}
+
+.room-quantity-stepper {
+  display: grid;
+  grid-template-columns: 34px minmax(48px, 1fr) 34px;
+  gap: 6px;
+}
+
+.room-quantity-stepper button {
+  height: 38px;
+  color: #176943;
+  background: #ecfdf5;
+  border: 1px solid #bcebd4;
+  border-radius: 9px;
+  font-size: 18px;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.room-quantity-stepper input {
+  text-align: center;
 }
 
 .multi-payment-room-list {

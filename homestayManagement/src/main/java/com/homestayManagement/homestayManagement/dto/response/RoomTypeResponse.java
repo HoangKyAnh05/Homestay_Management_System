@@ -5,6 +5,7 @@ import java.util.List;
 
 public record RoomTypeResponse(
         Long id,
+        Long representativeRoomId,
         String name,
         // basePrice đã bị loại bỏ — giá được quản lý trong room_price_configs
         Integer maxAdults,
@@ -13,7 +14,9 @@ public record RoomTypeResponse(
         BigDecimal weekdayPrice,
         BigDecimal weekendPrice,
         String rentType,
+        Integer availableRooms,
         String primaryImageUrl,
-        List<String> imageUrls
+        List<String> imageUrls,
+        List<RoomPublicPriceResponse> prices
 ) {
 }

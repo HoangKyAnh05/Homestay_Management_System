@@ -16,6 +16,7 @@ const emptyProfile = {
   phone: '',
   dateOfBirth: '',
   address: '',
+  identityDocumentNumber: '',
   avatarUrl: '',
   role: '',
 }
@@ -87,6 +88,7 @@ function ProfilePage() {
         phone: formData.phone,
         dateOfBirth: formData.dateOfBirth || null,
         address: formData.address,
+        identityDocumentNumber: formData.identityDocumentNumber || null,
       })
 
       const normalizedProfile = normalizeProfile(updatedProfile)
@@ -237,6 +239,13 @@ function ProfilePage() {
                   value={formData.address}
                   onChange={handleChange}
                 />
+                <ProfileInput
+                  label="Căn cước công dân"
+                  name="identityDocumentNumber"
+                  value={formData.identityDocumentNumber}
+                  onChange={handleChange}
+                  maxLength={30}
+                />
                 <div className="profile-form-actions">
                   <button className="profile-secondary" type="button" onClick={handleCancel}>
                     Hủy
@@ -253,6 +262,7 @@ function ProfilePage() {
                 <ProfileField label="Số điện thoại" value={profile.phone} />
                 <ProfileField label="Ngày sinh" value={profile.dateOfBirth} />
                 <ProfileField label="Địa chỉ" value={profile.address} />
+                <ProfileField label="Căn cước công dân" value={profile.identityDocumentNumber} />
                 <ProfileField label="Vai trò" value={profile.role} />
               </div>
             )}
@@ -289,6 +299,7 @@ function normalizeProfile(profile) {
     dateOfBirth: profile?.dateOfBirth || '',
     phone: profile?.phone || '',
     address: profile?.address || '',
+    identityDocumentNumber: profile?.identityDocumentNumber || '',
     avatarUrl: profile?.avatarUrl || '',
   }
 }

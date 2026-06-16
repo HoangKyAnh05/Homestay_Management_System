@@ -58,6 +58,7 @@ public class UserServiceImpl implements UserService {
             customer.setPhone(blankToNull(request.phone()));
             customer.setDateOfBirth(request.dateOfBirth());
             customer.setAddress(blankToNull(request.address()));
+            customer.setIdentityDocumentNumber(blankToNull(request.identityDocumentNumber()));
             customerRepository.save(customer);
         } else {
             validatePhoneLength(request.phone(), 15);
@@ -131,7 +132,8 @@ public class UserServiceImpl implements UserService {
                 customer != null ? customer.getDateOfBirth() : employee != null ? employee.getDateOfBirth() : null,
                 customer != null ? customer.getAddress() : employee != null ? employee.getAddress() : null,
                 customer != null ? customer.getAvatarUrl() : employee != null ? employee.getAvatarUrl() : null,
-                account.getRole().getName()
+                account.getRole().getName(),
+                customer != null ? customer.getIdentityDocumentNumber() : null
         );
     }
 

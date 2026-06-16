@@ -16,6 +16,9 @@ public record UpdateProfileRequest(
         LocalDate dateOfBirth,
 
         @Size(max = 255, message = "Dia chi toi da 255 ky tu")
-        String address
+        String address,
+
+        @Size(max = 30, message = "Can cuoc cong dan toi da 30 ky tu")
+        String identityDocumentNumber
 ) {
 }

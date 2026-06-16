@@ -24,7 +24,11 @@ public record PublicCreateBookingRequest(
 
         LocalDate dateOfBirth,
 
+        String identityDocumentNumber,
+
         Long roomId,
+
+        Long roomTypeId,
 
         List<@Valid PublicBookingRoomRequest> rooms,
 

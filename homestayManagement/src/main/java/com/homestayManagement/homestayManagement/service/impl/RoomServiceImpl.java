@@ -309,9 +309,13 @@ public class RoomServiceImpl implements RoomService {
                 .map(RoomImage::getImageUrl)
                 .toList();
         String primaryUrl = allUrls.isEmpty() ? null : allUrls.get(0);
+        List<RoomPublicPriceResponse> prices = roomPriceConfigRepository.findByRoomTypeIdWithPolicy(roomType.getId()).stream()
+                .map(this::toRoomPriceResponse)
+                .toList();
 
         return new RoomTypeResponse(
                 roomType.getId(),
+                rooms.isEmpty() ? null : rooms.get(0).getId(),
                 roomType.getName(),
                 roomType.getMaxAdults(),
                 roomType.getMaxChildren(),
@@ -319,8 +323,10 @@ public class RoomServiceImpl implements RoomService {
                 findDisplayPrice(roomType.getId(), "WEEKDAY"),
                 findDisplayPrice(roomType.getId(), "WEEKEND"),
                 findDisplayRentType(roomType.getId()),
+                rooms.size(),
                 primaryUrl,
-                allUrls
+                allUrls,
+                prices
         );
     }
 

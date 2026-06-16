@@ -10,6 +10,7 @@ public record UserResponse(
         LocalDate dateOfBirth,
         String address,
         String avatarUrl,
-        String role
+        String role,
+        String identityDocumentNumber
 ) {
 }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+﻿import { useEffect, useMemo, useState } from 'react'
 import { getStoredToken, getStoredUser, logout } from '../../services/authService'
 import SePayQrPayment from '../../components/SePayQrPayment/SePayQrPayment'
 import { clearBookingCart, readBookingCart } from '../../utils/bookingCart'
@@ -120,8 +120,8 @@ function roomDetailToCartRoom(room) {
   const weekendPrice = room?.prices?.find((price) => String(price.dayType || '').toUpperCase() === 'WEEKEND')?.price
   const firstPrice = room?.prices?.[0]
   return {
-    roomId: room.roomId,
-    roomNumber: room.roomNumber,
+    roomId: null,
+    quantity: 1,
     roomTypeId: room.roomTypeId,
     roomTypeName: room.roomTypeName,
     maxAdults: room.maxAdults,
@@ -241,6 +241,7 @@ function BookingModal({ room, initialBookingData, onClose, onCreated }) {
     email: currentUser?.email || '',
     address: currentUser?.address || '',
     dateOfBirth: currentUser?.dateOfBirth || '',
+    identityDocumentNumber: currentUser?.identityDocumentNumber || '',
     checkInTarget: initialBookingData?.checkInTarget || defaultCheckInValue(),
     checkOutTarget: initialBookingData?.checkOutTarget || '',
     pricePolicyId: '',
@@ -296,12 +297,27 @@ function BookingModal({ room, initialBookingData, onClose, onCreated }) {
     Promise.all([
       fetch(`${API_BASE_URL}/bookings/price-policies`, { headers: { Authorization: `Bearer ${token}` } }).then((res) => res.json()),
       fetch(`${API_BASE_URL}/bookings/services`, { headers: { Authorization: `Bearer ${token}` } }).then((res) => res.json()),
+      fetch(`${API_BASE_URL}/users/me`, { headers: { Authorization: `Bearer ${token}` } }).then((res) => {
+        if (!res.ok) return null
+        return res.json()
+      }).catch(() => null),
     ])
-      .then(([policyData, serviceData]) => {
+      .then(([policyData, serviceData, profileData]) => {
         const nextPolicies = Array.isArray(policyData) ? policyData : []
         setPolicies(nextPolicies)
         setServiceOptions(Array.isArray(serviceData) ? serviceData : [])
-        setForm((current) => ({ ...current, pricePolicyId: current.pricePolicyId || nextPolicies[0]?.id || '' }))
+        setForm((current) => ({
+          ...current,
+          pricePolicyId: current.pricePolicyId || nextPolicies[0]?.id || '',
+          ...(profileData ? {
+            fullName: profileData.fullName || current.fullName,
+            phone: profileData.phone || current.phone,
+            email: profileData.email || current.email,
+            address: profileData.address || current.address,
+            dateOfBirth: profileData.dateOfBirth || current.dateOfBirth,
+            identityDocumentNumber: profileData.identityDocumentNumber || current.identityDocumentNumber,
+          } : {}),
+        }))
       })
       .catch(() => setError('Không thể tải dữ liệu đặt phòng.'))
       .finally(() => setLoadingMeta(false))
@@ -405,7 +421,7 @@ function BookingModal({ room, initialBookingData, onClose, onCreated }) {
           <div className="public-booking-head">
             <div>
               <h2>Tóm tắt đơn đặt phòng</h2>
-              <p>Booking #{paymentSummary.bookingId} · Phòng {paymentSummary.roomNumber}</p>
+              <p>Booking #{paymentSummary.bookingId} · {room.roomTypeName}</p>
             </div>
             <button type="button" onClick={onClose} aria-label="Đóng">×</button>
           </div>
@@ -460,7 +476,7 @@ function BookingModal({ room, initialBookingData, onClose, onCreated }) {
         <div className="public-booking-head">
           <div>
             <h2>Đặt phòng trực tiếp</h2>
-            <p>Phòng {room.roomNumber} · {room.roomTypeName}</p>
+            <p>{room.roomTypeName}</p>
           </div>
           <button type="button" onClick={onClose} aria-label="Đóng">×</button>
         </div>
@@ -592,7 +608,7 @@ function RoomDetailPage({ roomId }) {
     if (!room) return
     const storedRooms = readBookingCart()
     const currentRoom = roomDetailToCartRoom(room)
-    const hasCurrentRoom = storedRooms.some((item) => String(item.roomId) === String(currentRoom.roomId))
+    const hasCurrentRoom = storedRooms.some((item) => String(item.roomTypeId || item.id) === String(currentRoom.roomTypeId))
     setMultiBookingRooms(hasCurrentRoom ? storedRooms : [...storedRooms, currentRoom])
     setBookingModalOpen(true)
   }
@@ -613,7 +629,7 @@ function RoomDetailPage({ roomId }) {
             <section className="room-detail-heading">
               <div>
                 <p>{room.roomTypeName}</p>
-                <h1>Phòng {room.roomNumber}</h1>
+                <h1>{room.roomTypeName}</h1>
               </div>
               <div className="room-detail-rating">★ 4.9</div>
             </section>
@@ -622,7 +638,7 @@ function RoomDetailPage({ roomId }) {
               <aside className="room-detail-media-panel" aria-label="Ảnh phòng">
                 <div className="room-detail-main-photo">
                   {selectedImage ? (
-                    <img src={resolveImageUrl(selectedImage)} alt={`Phòng ${room.roomNumber}`} />
+                    <img src={resolveImageUrl(selectedImage)} alt={room.roomTypeName || 'Phòng'} />
                   ) : (
                     <div>Home Stays</div>
                   )}
@@ -645,7 +661,7 @@ function RoomDetailPage({ roomId }) {
                   <div className="room-info-chips">
                     <span>{room.maxAdults || 0} người lớn</span>
                     <span>{room.maxChildren || 0} trẻ em</span>
-                    <span>Phòng {room.roomNumber}</span>
+                    <span>Phòng sẽ được lễ tân sắp xếp khi check-in</span>
                     <span className={room.depositPolicyId ? 'room-deposit-chip' : 'room-deposit-chip room-deposit-chip--free'}>
                       {depositText(room)}
                     </span>
@@ -654,51 +670,15 @@ function RoomDetailPage({ roomId }) {
               </aside>
 
               <div className="room-detail-content">
-                <section className="room-booking-panel">
+                <section className="room-booking-panel room-booking-panel--compact">
                   <div className="room-booking-head">
                     <div>
-                      <h2>Lịch phòng đã đặt</h2>
-                      <p>Chọn khoảng ngày để kiểm tra các khung giờ bận trước khi đặt theo combo hoặc theo giờ.</p>
+                      <h2>Đặt hạng phòng này</h2>
+                      <p>Chọn thời gian lưu trú và gói thuê phù hợp để tạo đơn đặt phòng.</p>
                     </div>
                     <button className="room-detail-cta" type="button" onClick={openBookingModal}>
                       Chọn lịch đặt phòng
                     </button>
-                  </div>
-
-                  <div className="room-date-fields">
-                    <label>
-                      <span>Từ ngày</span>
-                      <input type="date" value={fromDate} onChange={(event) => setFromDate(event.target.value)} />
-                    </label>
-                    <label>
-                      <span>Đến ngày</span>
-                      <input type="date" value={toDate} onChange={(event) => setToDate(event.target.value)} />
-                    </label>
-                  </div>
-
-                  <div className="room-busy-list">
-                    {Object.keys(groupedSlots).length ? (
-                      Object.entries(groupedSlots).map(([date, slots]) => (
-                        <div className="room-busy-day" key={date}>
-                          <h3>{date}</h3>
-                          <div className="room-busy-slots">
-                            {slots.map((slot) => (
-                              <div className="room-busy-slot" key={slot.bookingDetailId}>
-                                <div className="room-busy-slot-main">
-                                  <span>{formatBusyDateRange(slot)}</span>
-                                  <em>{formatBusyTimeRange(slot)}</em>
-                                </div>
-                                <strong>Đã đặt</strong>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="room-free-state">
-                        Chưa có khung giờ đã đặt trong khoảng ngày này.
-                      </div>
-                    )}
                   </div>
                 </section>
 

@@ -36,4 +36,7 @@ public class Customer {
 
     @Column(name = "date_of_birth")
     private LocalDate dateOfBirth;
+
+    @Column(name = "identity_document_number", length = 30)
+    private String identityDocumentNumber;
 }

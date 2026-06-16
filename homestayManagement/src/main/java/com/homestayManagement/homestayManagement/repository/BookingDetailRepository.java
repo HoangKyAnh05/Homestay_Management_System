@@ -34,8 +34,8 @@ public interface BookingDetailRepository extends JpaRepository<BookingDetail, Lo
             join fetch bd.booking b
             join fetch b.customer c
             left join fetch c.account
-            join fetch bd.room r
-            join fetch r.roomType
+            join fetch bd.roomType
+            left join fetch bd.room r
             where bd.id = :id
             """)
     Optional<BookingDetail> findByIdForAdminDetail(@Param("id") Long id);
@@ -49,8 +49,8 @@ public interface BookingDetailRepository extends JpaRepository<BookingDetail, Lo
             left join fetch b.depositPolicy
             join fetch b.customer c
             left join fetch c.account
-            join fetch bd.room r
-            join fetch r.roomType
+            join fetch bd.roomType
+            left join fetch bd.room r
             where c.account.email = :email
             order by b.bookingDate desc, b.id desc, bd.checkInTarget asc
             """)
@@ -63,8 +63,8 @@ public interface BookingDetailRepository extends JpaRepository<BookingDetail, Lo
             left join fetch b.depositPolicy
             join fetch b.customer c
             left join fetch c.account
-            join fetch bd.room r
-            join fetch r.roomType
+            join fetch bd.roomType
+            left join fetch bd.room r
             where c.account.email = :email
               and b.id = :bookingId
             order by bd.checkInTarget asc
@@ -80,8 +80,8 @@ public interface BookingDetailRepository extends JpaRepository<BookingDetail, Lo
             join fetch bd.booking b
             join fetch b.customer c
             left join fetch c.account
-            join fetch bd.room r
-            join fetch r.roomType
+            join fetch bd.roomType
+            left join fetch bd.room r
             where bd.checkInTarget < :endExclusive
               and bd.checkOutTarget > :startInclusive
             order by b.bookingDate desc, b.id desc, bd.checkInTarget asc
@@ -97,8 +97,8 @@ public interface BookingDetailRepository extends JpaRepository<BookingDetail, Lo
             join fetch bd.booking b
             join fetch b.customer c
             left join fetch c.account
-            join fetch bd.room r
-            join fetch r.roomType
+            join fetch bd.roomType
+            left join fetch bd.room r
             where bd.checkInTarget < :endExclusive
               and bd.checkOutTarget > :startInclusive
             order by bd.checkInTarget asc, bd.id asc

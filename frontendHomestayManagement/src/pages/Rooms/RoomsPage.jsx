@@ -45,13 +45,25 @@ function defaultCheckOutValue(checkInValue) {
   return toDateTimeLocal(date)
 }
 
+function defaultRoomTypeCriteria(roomTypeId = null) {
+  return {
+    checkInDate: '',
+    checkOutDate: '',
+    rooms: 1,
+    adults: 1,
+    children: 0,
+    roomTypeId,
+    isDefaultRoomTypeList: true,
+  }
+}
+
 function parseSearchCriteria() {
   const params = new URLSearchParams(window.location.search)
   const checkInDate = params.get('checkInDate')
   const checkOutDate = params.get('checkOutDate')
   const roomTypeId = params.get('roomTypeId')
   if (!checkInDate || !checkOutDate) {
-    return roomTypeId ? { roomTypeId, rooms: 1, adults: 1, children: 0 } : null
+    return defaultRoomTypeCriteria(roomTypeId)
   }
   return {
     checkInDate,
@@ -204,6 +216,14 @@ function roomKey(room) {
   return room.roomId ? `room-${room.roomId}` : `type-${room.roomTypeId || room.id}`
 }
 
+function roomTypeIdOf(room) {
+  return room.roomTypeId || room.id
+}
+
+function selectedQuantity(room) {
+  return Math.max(1, Number(room.quantity || 1))
+}
+
 function isRoomTypeSearchResult(room) {
   return !room.roomId && Boolean(room.roomTypeId || room.availableRooms !== undefined)
 }
@@ -268,10 +288,11 @@ function PublicHeader() {
 
 function RoomCard({ room, selected, onToggle }) {
   const typeOnly = isRoomTypeSearchResult(room)
-  const title = typeOnly ? (room.roomTypeName || room.name || 'Loại phòng') : `${room.roomTypeName || 'Phòng'} ${room.roomNumber || ''}`.trim()
+  const title = room.roomTypeName || room.name || 'Loại phòng'
   const imageUrl = room.primaryImageUrl || room.imageUrls?.[0]
   const price = roomPrice(room)
-  const detailUrl = room.roomId ? `/rooms/${room.roomId}${window.location.search || ''}` : null
+  const detailRoomId = room.roomId || room.representativeRoomId
+  const detailUrl = detailRoomId ? `/rooms/${detailRoomId}${window.location.search || ''}` : null
 
   return (
     <article className={`public-room-card${selected ? ' is-selected' : ''}`}>
@@ -283,7 +304,7 @@ function RoomCard({ room, selected, onToggle }) {
             <div className="public-room-photo-empty">Home Stays</div>
           )}
           <span className="public-room-badge">
-            {typeOnly ? `Còn ${room.availableRooms || 0} phòng` : `Phòng ${room.roomNumber}`}
+            {typeOnly ? `Còn ${room.availableRooms || 0} phòng` : 'Sẵn sàng đặt'}
           </span>
         </div>
       </a>
@@ -309,9 +330,9 @@ function RoomCard({ room, selected, onToggle }) {
           <div className="public-room-deposit">{depositLabel(room)}</div>
         )}
         <div className="public-room-actions">
-          {detailUrl ? <a href={detailUrl}>Xem chi tiết</a> : <span>Chi tiết phòng sẽ được lễ tân gán khi check-in</span>}
-          <button type="button" className={selected ? 'is-selected' : ''} disabled={typeOnly} onClick={() => onToggle(room)}>
-            {typeOnly ? 'Đặt theo loại phòng' : selected ? 'Bỏ chọn' : 'Chọn phòng'}
+          {detailUrl && <a href={detailUrl}>Xem chi tiết</a>}
+          <button type="button" className={selected ? 'is-selected' : ''} onClick={() => onToggle(room)}>
+            {selected ? 'Bỏ chọn' : typeOnly ? 'Đặt phòng' : 'Chọn phòng'}
           </button>
         </div>
       </div>
@@ -326,16 +347,21 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
     email: currentUser?.email || '',
     address: currentUser?.address || '',
     dateOfBirth: currentUser?.dateOfBirth || '',
+    identityDocumentNumber: '',
     checkInTarget: criteria?.checkInDate ? dateKeyToDateTimeLocal(criteria.checkInDate, 13) : defaultCheckInValue(),
     checkOutTarget: criteria?.checkOutDate ? dateKeyToDateTimeLocal(criteria.checkOutDate, 12) : '',
     pricePolicyId: '',
   })
   const [roomGuests, setRoomGuests] = useState(() => Object.fromEntries(selectedRooms.map((room) => [
-    String(room.roomId),
+    roomKey(room),
     {
       numberOfAdults: Math.max(1, Math.min(Number(room.maxAdults || 1), Math.ceil(Number(criteria?.adults || 1) / Math.max(1, selectedRooms.length)))),
       numberOfChildren: Math.max(0, Math.min(Number(room.maxChildren || 0), Math.ceil(Number(criteria?.children || 0) / Math.max(1, selectedRooms.length)))),
     },
+  ])))
+  const [roomQuantities, setRoomQuantities] = useState(() => Object.fromEntries(selectedRooms.map((room) => [
+    roomKey(room),
+    selectedQuantity(room),
   ])))
   const [policies, setPolicies] = useState([])
   const [serviceOptions, setServiceOptions] = useState([])
@@ -384,14 +410,35 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
     }
 
     Promise.all([
-      fetch(`${API_BASE_URL}/bookings/price-policies`, { headers: { Authorization: `Bearer ${token}` } }).then((res) => res.json()),
-      fetch(`${API_BASE_URL}/bookings/services`, { headers: { Authorization: `Bearer ${token}` } }).then((res) => res.json()),
+      fetch(`${API_BASE_URL}/bookings/price-policies`, { headers: { Authorization: `Bearer ${token}` } }).then((res) => {
+        if (!res.ok) throw new Error('Không thể tải gói thuê.')
+        return res.json()
+      }),
+      fetch(`${API_BASE_URL}/bookings/services`, { headers: { Authorization: `Bearer ${token}` } }).then((res) => {
+        if (!res.ok) throw new Error('Không thể tải dịch vụ đi kèm.')
+        return res.json()
+      }),
+      fetch(`${API_BASE_URL}/users/me`, { headers: { Authorization: `Bearer ${token}` } }).then((res) => {
+        if (!res.ok) return null
+        return res.json()
+      }).catch(() => null),
     ])
-      .then(([policyData, serviceData]) => {
+      .then(([policyData, serviceData, profileData]) => {
         const nextPolicies = Array.isArray(policyData) ? policyData : []
         setPolicies(nextPolicies)
         setServiceOptions(Array.isArray(serviceData) ? serviceData : [])
-        setForm((current) => ({ ...current, pricePolicyId: current.pricePolicyId || nextPolicies[0]?.id || '' }))
+        setForm((current) => ({
+          ...current,
+          pricePolicyId: current.pricePolicyId || nextPolicies[0]?.id || '',
+          ...(profileData ? {
+            fullName: profileData.fullName || current.fullName,
+            phone: profileData.phone || current.phone,
+            email: profileData.email || current.email,
+            address: profileData.address || current.address,
+            dateOfBirth: profileData.dateOfBirth || current.dateOfBirth,
+            identityDocumentNumber: profileData.identityDocumentNumber || current.identityDocumentNumber,
+          } : {}),
+        }))
       })
       .catch(() => setError('Không thể tải dữ liệu đặt phòng.'))
       .finally(() => setLoadingMeta(false))
@@ -408,11 +455,19 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
   const roomPriceItems = selectedRooms.map((room) => ({
     room,
     price: Number(findRoomPolicyPrice(room, selectedPolicy, selectedDayType)?.price || 0),
+    quantity: roomQuantities[roomKey(room)] || selectedQuantity(room),
   }))
-  const roomTotal = roomPriceItems.reduce((sum, item) => sum + item.price, 0)
+  const roomTotal = roomPriceItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
   const serviceTotal = selectedServices.reduce((sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 0), 0)
 
   useEffect(() => {
+    if (selectedRooms.some((room) => !room.roomId)) {
+      setScheduleError('')
+      setScheduleNotice('')
+      setCheckingSchedule(false)
+      return undefined
+    }
+
     if (!selectedRooms.length || !form.checkInTarget || !form.checkOutTarget) {
       setScheduleError('')
       setScheduleNotice('')
@@ -443,7 +498,7 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
         .then((items) => {
           const conflict = items.find((item) => findOverlappingSlot(item.busySlots, form.checkInTarget, form.checkOutTarget))
           if (conflict) {
-            setScheduleError(`Phòng ${conflict.room.roomNumber} đã được đặt trong khung giờ này. Vui lòng chọn giờ khác.`)
+            setScheduleError(`${conflict.room.roomTypeName || 'Loại phòng này'} đã có lịch đặt trong khung giờ này. Vui lòng chọn giờ khác.`)
             setScheduleNotice('')
             return
           }
@@ -466,7 +521,7 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
 
           const latestCheckout = new Date(nextBusy.slot.checkInTarget)
           latestCheckout.setHours(latestCheckout.getHours() - 1)
-          const message = `Phòng ${nextBusy.room.roomNumber} đã được đặt từ ${formatNoticeTime(nextBusy.slot.checkInTarget)}. Quý khách vui lòng check out trước ${formatNoticeTime(latestCheckout)}.`
+          const message = `${nextBusy.room.roomTypeName || 'Loại phòng này'} đã có lịch đặt từ ${formatNoticeTime(nextBusy.slot.checkInTarget)}. Quý khách vui lòng check out trước ${formatNoticeTime(latestCheckout)}.`
           if (checkOut > latestCheckout) {
             setScheduleError(message)
             setScheduleNotice('')
@@ -530,10 +585,20 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
     setForm((current) => ({ ...current, checkOutTarget: value }))
   }
 
-  const updateRoomGuest = (roomId, field, value) => {
+  const updateRoomGuest = (key, field, value) => {
     setRoomGuests((current) => ({
       ...current,
-      [String(roomId)]: { ...current[String(roomId)], [field]: Number(value) },
+      [key]: { ...current[key], [field]: Number(value) },
+    }))
+  }
+
+  const updateRoomQuantity = (room, nextQuantity) => {
+    const maxQuantity = Number(room.availableRooms || 99)
+    const quantity = Math.max(1, Math.min(maxQuantity, Number(nextQuantity || 1)))
+    const key = roomKey(room)
+    setRoomQuantities((current) => ({
+      ...current,
+      [key]: quantity,
     }))
   }
 
@@ -556,6 +621,10 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
     const token = getStoredToken()
     if (!token) {
       window.location.assign('/login')
+      return
+    }
+    if (!selectedRooms.length) {
+      setError('Vui lòng chọn ít nhất một loại phòng.')
       return
     }
     if (timeError) {
@@ -581,14 +650,17 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
       },
       body: JSON.stringify({
         ...form,
-        roomId: selectedRooms[0]?.roomId,
+        roomId: null,
+        roomTypeId: roomTypeIdOf(selectedRooms[0]),
         pricePolicyId: Number(selectedPolicy.id),
-        numberOfAdults: roomGuests[String(selectedRooms[0]?.roomId)]?.numberOfAdults || 1,
-        numberOfChildren: roomGuests[String(selectedRooms[0]?.roomId)]?.numberOfChildren || 0,
+        numberOfAdults: roomGuests[roomKey(selectedRooms[0])]?.numberOfAdults || 1,
+        numberOfChildren: roomGuests[roomKey(selectedRooms[0])]?.numberOfChildren || 0,
         rooms: selectedRooms.map((room) => ({
-          roomId: room.roomId,
-          numberOfAdults: Number(roomGuests[String(room.roomId)]?.numberOfAdults || 1),
-          numberOfChildren: Number(roomGuests[String(room.roomId)]?.numberOfChildren || 0),
+          roomId: null,
+          roomTypeId: roomTypeIdOf(room),
+          quantity: Number(roomQuantities[roomKey(room)] || selectedQuantity(room)),
+          numberOfAdults: Number(roomGuests[roomKey(room)]?.numberOfAdults || 1),
+          numberOfChildren: Number(roomGuests[roomKey(room)]?.numberOfChildren || 0),
         })),
         services: selectedServices.map((item) => ({ type: item.type, serviceId: item.serviceId, quantity: item.quantity })),
       }),
@@ -627,7 +699,7 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
             <div className="multi-payment-room-list">
               {(paymentSummary.rooms || []).map((room) => (
                 <div key={room.bookingDetailId}>
-                  <span>Phòng {room.roomNumber} · {room.roomTypeName}</span>
+                  <span>{room.roomTypeName}</span>
                   <strong>{formatPrice(room.priceAtBooking)}</strong>
                 </div>
               ))}
@@ -681,6 +753,7 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
               <label><span>Số điện thoại</span><input required value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></label>
               <label><span>Email</span><input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></label>
               <label><span>Ngày sinh</span><input type="date" value={form.dateOfBirth} onChange={(e) => setForm({ ...form, dateOfBirth: e.target.value })} /></label>
+              <label><span>Căn cước công dân</span><input required value={form.identityDocumentNumber} onChange={(e) => setForm({ ...form, identityDocumentNumber: e.target.value })} /></label>
               <label className="public-booking-wide"><span>Địa chỉ</span><input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} /></label>
             </div>
           </section>
@@ -704,17 +777,25 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
           </section>
 
           <section className="multi-selected-section">
-            <h3>Phòng trong booking này</h3>
+            <h3>Loại phòng trong booking này</h3>
             <div className="multi-selected-rooms">
               {selectedRooms.map((room) => (
-                <article key={room.roomId}>
+                <article key={roomKey(room)}>
                   <div>
-                    <strong>Phòng {room.roomNumber}</strong>
+                    <strong>{room.roomTypeName || room.name || 'Loại phòng'}</strong>
                     <span>{room.roomTypeName} · tối đa {room.maxAdults || 0} NL · {room.maxChildren || 0} TE</span>
                   </div>
-                  <b>{formatPrice(roomPriceItems.find((item) => String(item.room.roomId) === String(room.roomId))?.price || roomPrice(room))}{isHourlyPolicy(selectedPolicy) && <small>/giờ</small>}</b>
-                  <label><span>Người lớn</span><input type="number" min="1" max={room.maxAdults || undefined} value={roomGuests[String(room.roomId)]?.numberOfAdults || 1} onChange={(e) => updateRoomGuest(room.roomId, 'numberOfAdults', e.target.value)} /></label>
-                  <label><span>Trẻ em</span><input type="number" min="0" max={room.maxChildren || undefined} value={roomGuests[String(room.roomId)]?.numberOfChildren || 0} onChange={(e) => updateRoomGuest(room.roomId, 'numberOfChildren', e.target.value)} /></label>
+                  <b>{formatPrice(roomPriceItems.find((item) => roomKey(item.room) === roomKey(room))?.price || roomPrice(room))}{isHourlyPolicy(selectedPolicy) && <small>/giờ</small>}</b>
+                  <label className="room-quantity-field">
+                    <span>Số phòng</span>
+                    <div className="room-quantity-stepper">
+                      <button type="button" onClick={() => updateRoomQuantity(room, (roomQuantities[roomKey(room)] || 1) - 1)}>-</button>
+                      <input type="number" min="1" max={room.availableRooms || undefined} value={roomQuantities[roomKey(room)] || 1} onChange={(e) => updateRoomQuantity(room, e.target.value)} />
+                      <button type="button" onClick={() => updateRoomQuantity(room, (roomQuantities[roomKey(room)] || 1) + 1)}>+</button>
+                    </div>
+                  </label>
+                  <label><span>Người lớn</span><input type="number" min="1" max={room.maxAdults || undefined} value={roomGuests[roomKey(room)]?.numberOfAdults || 1} onChange={(e) => updateRoomGuest(roomKey(room), 'numberOfAdults', e.target.value)} /></label>
+                  <label><span>Trẻ em</span><input type="number" min="0" max={room.maxChildren || undefined} value={roomGuests[roomKey(room)]?.numberOfChildren || 0} onChange={(e) => updateRoomGuest(roomKey(room), 'numberOfChildren', e.target.value)} /></label>
                 </article>
               ))}
             </div>
@@ -765,26 +846,27 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
 }
 
 function BookingCart({ selectedRooms, requestedRooms, onRemove, onOpenBooking }) {
-  const total = selectedRooms.reduce((sum, room) => sum + roomPrice(room), 0)
-  const isEnough = selectedRooms.length >= requestedRooms
+  const total = selectedRooms.reduce((sum, room) => sum + roomPrice(room) * selectedQuantity(room), 0)
+  const selectedCount = selectedRooms.reduce((sum, room) => sum + selectedQuantity(room), 0)
+  const isEnough = selectedCount >= requestedRooms
 
   return (
     <aside className="rooms-booking-cart" aria-label="Booking của bạn">
       <div className="rooms-booking-cart-head">
         <div>
           <h2>Booking của bạn</h2>
-          <p>Đã chọn {selectedRooms.length}/{requestedRooms} phòng</p>
+          <p>Đã chọn {selectedRooms.length} loại · {selectedCount}/{requestedRooms} loại phòng</p>
         </div>
         <span className={isEnough ? 'is-ready' : ''}>{isEnough ? 'Đủ phòng' : 'Chưa đủ'}</span>
       </div>
       <div className="rooms-booking-cart-list">
         {selectedRooms.length ? selectedRooms.map((room) => (
-          <div key={room.roomId}>
-            <span>Phòng {room.roomNumber} · {room.roomTypeName}</span>
+          <div key={roomKey(room)}>
+            <span>{room.roomTypeName || room.name || 'Loại phòng'} × {selectedQuantity(room)}</span>
             <strong>{formatPrice(roomPrice(room))}</strong>
-            <button type="button" onClick={() => onRemove(room.roomId)} aria-label="Bỏ phòng">×</button>
+            <button type="button" onClick={() => onRemove(roomKey(room))} aria-label="Bỏ loại phòng">×</button>
           </div>
-        )) : <p>Chọn phòng từ danh sách để tạo booking nhiều phòng.</p>}
+        )) : <p>Chọn loại phòng từ danh sách để tạo booking.</p>}
       </div>
       <div className="rooms-booking-cart-total">
         <span>Tạm tính</span>
@@ -814,7 +896,7 @@ function RoomsPage() {
       adults: String(searchCriteria.adults),
       children: String(searchCriteria.children),
     }) : null
-    const url = params ? `${API_BASE_URL}/rooms/search?${params}` : `${API_BASE_URL}/rooms`
+    const url = params ? `${API_BASE_URL}/rooms/search?${params}` : `${API_BASE_URL}/rooms/types`
 
     fetch(url)
       .then((response) => response.json())
@@ -833,9 +915,9 @@ function RoomsPage() {
 
   useEffect(() => {
     if (!searchCriteria?.focusRoomId || !rooms.length || selectedRooms.length || focusRoomApplied) return
-    const focusedRoom = rooms.find((room) => String(room.roomId) === String(searchCriteria.focusRoomId))
+    const focusedRoom = rooms.find((room) => String(room.roomId || room.roomTypeId) === String(searchCriteria.focusRoomId))
     if (focusedRoom) {
-      setSelectedRooms([focusedRoom])
+      setSelectedRooms([{ ...focusedRoom, quantity: 1 }])
       setFocusRoomApplied(true)
     }
   }, [focusRoomApplied, rooms, searchCriteria, selectedRooms.length])
@@ -871,17 +953,16 @@ function RoomsPage() {
   const selectedRoomIds = useMemo(() => new Set(selectedRooms.map(roomKey)), [selectedRooms])
 
   const toggleRoom = (room) => {
-    if (isRoomTypeSearchResult(room)) return
     setSelectedRooms((current) => {
       if (current.some((item) => roomKey(item) === roomKey(room))) {
         return current.filter((item) => roomKey(item) !== roomKey(room))
       }
-      return [...current, room]
+      return [...current, { ...room, quantity: 1 }]
     })
   }
 
-  const removeRoom = (roomId) => {
-    setSelectedRooms((current) => current.filter((room) => String(room.roomId) !== String(roomId)))
+  const removeRoom = (key) => {
+    setSelectedRooms((current) => current.filter((room) => roomKey(room) !== key))
   }
 
   return (
@@ -952,11 +1033,11 @@ function RoomsPage() {
           <section className="rooms-results-panel">
             <div className="rooms-results-head">
               <div>
-                <h2>{searchCriteria ? 'Phòng trống phù hợp' : 'Tất cả phòng'}</h2>
+                <h2>{searchCriteria?.isDefaultRoomTypeList ? 'Tất cả loại phòng' : 'Loại phòng trống phù hợp'}</h2>
                 <p>
-                  {searchCriteria
+                  {!searchCriteria?.isDefaultRoomTypeList
                     ? `Từ ${searchCriteria.checkInDate} đến ${searchCriteria.checkOutDate} · cần ${searchCriteria.rooms} phòng`
-                    : 'Sắp xếp giá thấp lên trước.'}
+                    : 'Khách chọn loại phòng, lễ tân sẽ gán phòng cụ thể khi check-in.'}
                 </p>
               </div>
               <span>{visibleRooms.length} phù hợp</span>
@@ -1010,5 +1091,4 @@ function RoomsPage() {
 }
 
 export default RoomsPage
-
 
