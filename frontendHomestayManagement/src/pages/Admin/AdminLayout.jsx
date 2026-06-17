@@ -87,6 +87,8 @@ const NAV_ITEMS = [
   },
 ]
 
+const ADMIN_HIDDEN_NAV_KEYS = new Set(['receptionist-overview'])
+
 export function navigate(path) {
   window.history.pushState(null, '', path)
   window.dispatchEvent(new PopStateEvent('popstate'))
@@ -119,7 +121,9 @@ function AdminLayout({ activePage, children }) {
   // Dùng useMemo để tránh tạo array mới mỗi render (gây reset openGroupKey)
   const navItems = useMemo(() => {
     const allowedKeys = NAV_KEYS_BY_ROLE[role]
-    if (!allowedKeys) return NAV_ITEMS
+    if (!allowedKeys) {
+      return NAV_ITEMS.filter(item => !ADMIN_HIDDEN_NAV_KEYS.has(item.key))
+    }
     return NAV_ITEMS.filter(item => allowedKeys.includes(item.key))
   }, [role])
 

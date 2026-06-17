@@ -1364,7 +1364,9 @@ function AdminBookingsPage() {
   const todayKey = toDateKey(new Date())
   const adminScheduleBookings = schedule.bookings.filter(isAdminScheduleBookingVisible)
   const todayBookings = adminScheduleBookings.filter(booking => overlapsDay(booking, new Date()))
-  const activeRoomsToday = new Set(todayBookings.map(booking => booking.roomId)).size
+  const activeRoomsToday = new Set(
+    todayBookings.map(booking => booking.roomId).filter(roomId => roomId != null)
+  ).size
   const pendingCount = adminScheduleBookings.filter(booking =>
     [booking.bookingStatus, booking.detailStatus].some(status => normalizeStatus(status) === 'PENDING')
   ).length

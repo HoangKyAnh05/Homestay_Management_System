@@ -85,6 +85,33 @@ class AdminBookingServiceImplTest {
     }
 
     @Test
+    void getWeeklyScheduleSupportsWebBookingWithoutAssignedRoom() {
+        LocalDate weekStart = LocalDate.of(2026, 6, 15);
+        Account account = Account.builder().id(1L).email("customer@example.com").build();
+        Customer customer = Customer.builder().id(2L).account(account).fullName("Khách web").build();
+        Booking booking = Booking.builder()
+                .id(3L).customer(customer).bookingDate(weekStart.atTime(8, 0)).status("CONFIRMED").build();
+        RoomType roomType = RoomType.builder().id(4L).name("Family").build();
+        BookingDetail detail = BookingDetail.builder()
+                .id(5L).booking(booking).roomType(roomType).room(null)
+                .checkInTarget(weekStart.plusDays(1).atTime(14, 0))
+                .checkOutTarget(weekStart.plusDays(2).atTime(12, 0))
+                .numberOfAdults(2).numberOfChildren(0).priceAtBooking(BigDecimal.valueOf(1_000_000))
+                .rentType("DAILY").status("CONFIRMED").build();
+
+        when(roomRepository.findAll()).thenReturn(List.of());
+        when(bookingDetailRepository.findOverlappingSchedule(any(), any())).thenReturn(List.of(detail));
+
+        var result = assertDoesNotThrow(() -> service.getWeeklySchedule(weekStart));
+        var scheduleItem = result.bookings().getFirst();
+
+        assertNull(scheduleItem.roomId());
+        assertNull(scheduleItem.roomNumber());
+        assertEquals("Family", scheduleItem.roomTypeName());
+        assertEquals("Khách web", scheduleItem.customerName());
+    }
+
+    @Test
     void getCheckInLogsSupportsBookingDetailWithoutAssignedRoom() {
         LocalDate reportDate = LocalDate.of(2026, 6, 17);
         Account account = Account.builder().id(1L).email("customer@example.com").build();

@@ -838,13 +838,16 @@ public class AdminBookingServiceImpl implements AdminBookingService {
         Booking booking = detail.getBooking();
         Customer customer = booking.getCustomer();
         Room room = detail.getRoom();
+        RoomType roomType = detail.getRoomType() != null
+                ? detail.getRoomType()
+                : room != null ? room.getRoomType() : null;
 
         return new AdminBookingScheduleItemResponse(
                 booking.getId(),
                 detail.getId(),
-                room.getId(),
-                room.getRoomNumber(),
-                room.getRoomType() != null ? room.getRoomType().getName() : null,
+                room != null ? room.getId() : null,
+                room != null ? room.getRoomNumber() : null,
+                roomType != null ? roomType.getName() : null,
                 customer.getId(),
                 customer.getFullName(),
                 customer.getPhone(),
