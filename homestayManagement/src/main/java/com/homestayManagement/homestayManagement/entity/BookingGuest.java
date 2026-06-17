@@ -58,6 +58,9 @@ public class BookingGuest {
     @Column(length = 15)
     private String phone;
 
+    @Column(length = 100)
+    private String email;
+
     @Column(length = 255)
     private String address;
 

@@ -6,13 +6,17 @@ import com.homestayManagement.homestayManagement.dto.request.AdminBookingAddServ
 import com.homestayManagement.homestayManagement.dto.request.AdminDirectBookingRequest;
 import com.homestayManagement.homestayManagement.dto.request.AdminUpdateBookingCustomerRequest;
 import com.homestayManagement.homestayManagement.dto.request.AdminUpdateBookingDetailRequest;
+import com.homestayManagement.homestayManagement.dto.request.AdminCompleteCheckInRequest;
 import com.homestayManagement.homestayManagement.dto.response.AdminBookingDetailResponse;
 import com.homestayManagement.homestayManagement.dto.response.AdminCheckoutResponse;
 import com.homestayManagement.homestayManagement.dto.response.AdminBookingScheduleResponse;
 import com.homestayManagement.homestayManagement.dto.response.AdminCheckInLogBookingResponse;
 import com.homestayManagement.homestayManagement.dto.response.AdminDirectBookingRoomResponse;
 import com.homestayManagement.homestayManagement.dto.response.AdminDirectBookingResponse;
+import com.homestayManagement.homestayManagement.dto.response.AdminCheckInPreparationResponse;
+import com.homestayManagement.homestayManagement.dto.response.AdminCompleteCheckInResponse;
 import com.homestayManagement.homestayManagement.service.AdminBookingService;
+import com.homestayManagement.homestayManagement.service.AdminCheckInRegistrationService;
 import jakarta.validation.Valid;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
@@ -29,9 +33,14 @@ import java.util.Map;
 public class AdminBookingController {
 
     private final AdminBookingService adminBookingService;
+    private final AdminCheckInRegistrationService adminCheckInRegistrationService;
 
-    public AdminBookingController(AdminBookingService adminBookingService) {
+    public AdminBookingController(
+            AdminBookingService adminBookingService,
+            AdminCheckInRegistrationService adminCheckInRegistrationService
+    ) {
         this.adminBookingService = adminBookingService;
+        this.adminCheckInRegistrationService = adminCheckInRegistrationService;
     }
 
     @GetMapping("/schedule")
@@ -96,6 +105,19 @@ public class AdminBookingController {
     @PostMapping("/details/{bookingDetailId}/check-in")
     public AdminBookingDetailResponse checkIn(@PathVariable Long bookingDetailId) {
         return adminBookingService.checkIn(bookingDetailId);
+    }
+
+    @GetMapping("/details/{bookingDetailId}/check-in-preparation")
+    public AdminCheckInPreparationResponse prepareCheckIn(@PathVariable Long bookingDetailId) {
+        return adminCheckInRegistrationService.prepare(bookingDetailId);
+    }
+
+    @PostMapping("/details/{bookingDetailId}/complete-check-in")
+    public AdminCompleteCheckInResponse completeCheckIn(
+            @PathVariable Long bookingDetailId,
+            @Valid @RequestBody AdminCompleteCheckInRequest request
+    ) {
+        return adminCheckInRegistrationService.complete(bookingDetailId, request);
     }
 
     @PostMapping("/details/{bookingDetailId}/check-out")

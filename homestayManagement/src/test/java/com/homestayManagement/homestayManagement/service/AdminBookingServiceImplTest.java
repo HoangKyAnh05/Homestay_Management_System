@@ -41,6 +41,7 @@ class AdminBookingServiceImplTest {
                 null,
                 null,
                 null,
+                null,
                 checkInRecordRepository,
                 null,
                 null,

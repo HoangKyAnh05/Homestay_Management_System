@@ -191,6 +191,7 @@ public class AdminCustomerHistoryServiceImpl implements AdminCustomerHistoryServ
                 guest.getGender(),
                 guest.getNationality(),
                 guest.getPhone(),
+                guest.getEmail(),
                 guest.getAddress(),
                 guest.isPrimaryGuest()
         );

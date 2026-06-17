@@ -366,7 +366,7 @@ function BookingDetailModal({ detail, loading, error, actionLoading, actionError
         <div className="abk-modal-head">
           <div>
             <h3>Chi tiết đơn đặt phòng</h3>
-            <p>{detail ? `Booking #${detail.bookingId} · Phòng ${detail.roomNumber}` : 'Đang tải thông tin...'}</p>
+            <p>{detail ? `Booking #${detail.bookingId} · ${detail.roomNumber ? `Phòng ${detail.roomNumber}` : 'Chưa gán phòng'}` : 'Đang tải thông tin...'}</p>
           </div>
           <button type="button" className="abk-modal-close" onClick={onClose}>×</button>
         </div>
@@ -488,7 +488,7 @@ function BookingDetailModal({ detail, loading, error, actionLoading, actionError
 
                 {!editBooking ? (
                   <div className="abk-detail-grid">
-                    <DetailField label="Phòng"            value={`${detail.roomNumber} · ${detail.roomTypeName || 'Chưa phân loại'}`} />
+                    <DetailField label="Phòng"            value={`${detail.roomNumber ? `Phòng ${detail.roomNumber}` : 'Chưa gán phòng'} · ${detail.roomTypeName || 'Chưa phân loại'}`} />
                     <DetailField label="Ngày đặt"         value={formatAppDateTime(detail.bookingDate)} />
                     <DetailField label="Nhận phòng"       value={formatAppDateTime(detail.checkInTarget)} />
                     <DetailField label="Trả phòng"        value={formatAppDateTime(detail.checkOutTarget)} />
@@ -548,6 +548,28 @@ function BookingDetailModal({ detail, loading, error, actionLoading, actionError
                   </form>
                 )}
               </section>
+
+              {detail.guests?.length ? (
+                <section className="abk-detail-section">
+                  <div className="abk-section-head">
+                    <h4>Người lưu trú ({detail.guests.length})</h4>
+                  </div>
+                  <div className="abk-guest-list">
+                    {detail.guests.map(guest => (
+                      <article className="abk-guest-card" key={guest.id}>
+                        <div>
+                          <strong>{guest.fullName}</strong>
+                          {guest.primaryGuest && <span>Đại diện</span>}
+                        </div>
+                        <p>{guest.identityDocumentType || 'CCCD'}: {guest.identityDocumentNumber}</p>
+                        <p>{guest.dateOfBirth ? `Ngày sinh ${new Date(guest.dateOfBirth).toLocaleDateString('vi-VN')}` : 'Chưa có ngày sinh'}</p>
+                        <p>{[guest.phone, guest.email].filter(Boolean).join(' · ') || 'Chưa có thông tin liên hệ'}</p>
+                        {guest.address && <p>{guest.address}</p>}
+                      </article>
+                    ))}
+                  </div>
+                </section>
+              ) : null}
 
               {stayOpen && (
                 <section className="abk-stay-panel">

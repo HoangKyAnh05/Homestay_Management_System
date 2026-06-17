@@ -8,6 +8,8 @@ import org.springframework.data.repository.query.Param;
 import java.util.List;
 
 public interface BookingGuestRepository extends JpaRepository<BookingGuest, Long> {
+    void deleteByBookingDetailId(Long bookingDetailId);
+
     @Query("""
             select guest
             from BookingGuest guest

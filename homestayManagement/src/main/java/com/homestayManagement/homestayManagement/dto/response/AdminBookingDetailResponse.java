@@ -20,6 +20,7 @@ public record AdminBookingDetailResponse(
         BigDecimal priceAtBooking,
         String rentType,
         AdminBookingCustomerResponse customer,
+        List<AdminCustomerHistoryGuestResponse> guests,
         List<AdminBookingCheckInResponse> checkInRecords,
         List<AdminInvoiceServiceItemResponse> serviceItems,
         List<AdminInvoicePenaltyItemResponse> penaltyItems,

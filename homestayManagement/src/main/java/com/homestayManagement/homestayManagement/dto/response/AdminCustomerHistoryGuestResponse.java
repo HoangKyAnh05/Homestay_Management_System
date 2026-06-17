@@ -11,6 +11,7 @@ public record AdminCustomerHistoryGuestResponse(
         String gender,
         String nationality,
         String phone,
+        String email,
         String address,
         boolean primaryGuest
 ) {

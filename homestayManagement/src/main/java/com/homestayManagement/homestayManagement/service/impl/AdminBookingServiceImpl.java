@@ -13,6 +13,7 @@ import com.homestayManagement.homestayManagement.dto.response.AdminBookingSchedu
 import com.homestayManagement.homestayManagement.dto.response.AdminBookingScheduleResponse;
 import com.homestayManagement.homestayManagement.dto.response.AdminCheckInLogBookingResponse;
 import com.homestayManagement.homestayManagement.dto.response.AdminCheckInLogDetailResponse;
+import com.homestayManagement.homestayManagement.dto.response.AdminCustomerHistoryGuestResponse;
 import com.homestayManagement.homestayManagement.dto.response.AdminDirectBookingBusySlotResponse;
 import com.homestayManagement.homestayManagement.dto.response.AdminDirectBookingRoomResponse;
 import com.homestayManagement.homestayManagement.dto.response.AdminDirectBookingResponse;
@@ -32,6 +33,7 @@ import com.homestayManagement.homestayManagement.entity.Account;
 import com.homestayManagement.homestayManagement.entity.AppliedPenalty;
 import com.homestayManagement.homestayManagement.entity.Booking;
 import com.homestayManagement.homestayManagement.entity.BookingDetail;
+import com.homestayManagement.homestayManagement.entity.BookingGuest;
 import com.homestayManagement.homestayManagement.entity.CheckInRecord;
 import com.homestayManagement.homestayManagement.entity.Customer;
 import com.homestayManagement.homestayManagement.entity.DepositPolicy;
@@ -52,6 +54,7 @@ import com.homestayManagement.homestayManagement.entity.ServiceUsage;
 import com.homestayManagement.homestayManagement.repository.AccountRepository;
 import com.homestayManagement.homestayManagement.repository.AppliedPenaltyRepository;
 import com.homestayManagement.homestayManagement.repository.BookingDetailRepository;
+import com.homestayManagement.homestayManagement.repository.BookingGuestRepository;
 import com.homestayManagement.homestayManagement.repository.BookingRepository;
 import com.homestayManagement.homestayManagement.repository.CheckInRecordRepository;
 import com.homestayManagement.homestayManagement.repository.CustomerRepository;
@@ -97,6 +100,7 @@ public class AdminBookingServiceImpl implements AdminBookingService {
     private static final Set<String> CHECK_IN_LOG_BOOKING_STATUSES = Set.of("CONFIRMED", "CHECKED_IN", "COMPLETED");
 
     private final BookingDetailRepository bookingDetailRepository;
+    private final BookingGuestRepository bookingGuestRepository;
     private final BookingRepository bookingRepository;
     private final RoomRepository roomRepository;
     private final AccountRepository accountRepository;
@@ -120,6 +124,7 @@ public class AdminBookingServiceImpl implements AdminBookingService {
 
     public AdminBookingServiceImpl(
             BookingDetailRepository bookingDetailRepository,
+            BookingGuestRepository bookingGuestRepository,
             BookingRepository bookingRepository,
             RoomRepository roomRepository,
             AccountRepository accountRepository,
@@ -142,6 +147,7 @@ public class AdminBookingServiceImpl implements AdminBookingService {
             SePayPaymentService sePayPaymentService
     ) {
         this.bookingDetailRepository = bookingDetailRepository;
+        this.bookingGuestRepository = bookingGuestRepository;
         this.bookingRepository = bookingRepository;
         this.roomRepository = roomRepository;
         this.accountRepository = accountRepository;
@@ -240,6 +246,9 @@ public class AdminBookingServiceImpl implements AdminBookingService {
         Booking booking = detail.getBooking();
         Customer customer = booking.getCustomer();
         Room room = detail.getRoom();
+        RoomType roomType = detail.getRoomType() != null
+                ? detail.getRoomType()
+                : room != null ? room.getRoomType() : null;
         List<CheckInRecord> checkInRecords = checkInRecordRepository.findByBookingDetailIdForAdmin(detail.getId());
         List<AdminInvoiceServiceItemResponse> serviceItems = buildServiceItems(detail.getId());
         List<AdminInvoicePenaltyItemResponse> penaltyItems = appliedPenaltyRepository.findByBookingDetailIdForAdmin(detail.getId())
@@ -263,9 +272,9 @@ public class AdminBookingServiceImpl implements AdminBookingService {
                 booking.getBookingDate(),
                 booking.getStatus(),
                 detail.getStatus(),
-                room.getId(),
-                room.getRoomNumber(),
-                room.getRoomType() != null ? room.getRoomType().getName() : null,
+                room != null ? room.getId() : null,
+                room != null ? room.getRoomNumber() : null,
+                roomType != null ? roomType.getName() : null,
                 detail.getCheckInTarget(),
                 detail.getCheckOutTarget(),
                 detail.getNumberOfAdults(),
@@ -273,6 +282,9 @@ public class AdminBookingServiceImpl implements AdminBookingService {
                 detail.getPriceAtBooking(),
                 detail.getRentType(),
                 toCustomerResponse(customer),
+                bookingGuestRepository.findByBookingDetailIds(List.of(detail.getId())).stream()
+                        .map(this::toBookingGuestResponse)
+                        .toList(),
                 checkInRecords.stream().map(this::toCheckInResponse).toList(),
                 serviceItems,
                 penaltyItems,
@@ -447,7 +459,9 @@ public class AdminBookingServiceImpl implements AdminBookingService {
             throw new IllegalArgumentException("Giờ trả phòng phải sau giờ nhận phòng");
         }
 
-        RoomType roomType = detail.getRoom().getRoomType();
+        RoomType roomType = detail.getRoomType() != null
+                ? detail.getRoomType()
+                : detail.getRoom() != null ? detail.getRoom().getRoomType() : null;
         validateCapacity(roomType, request.numberOfAdults(), request.numberOfChildren());
 
         // Tính lại giá nếu có pricePolicyId mới, hoặc giữ nguyên nếu không truyền
@@ -884,6 +898,15 @@ public class AdminBookingServiceImpl implements AdminBookingService {
                 record.getLateCheckOutFee(),
                 record.getReceptionist() != null ? record.getReceptionist().getFullName() : null,
                 record.getHousekeeping() != null ? record.getHousekeeping().getFullName() : null
+        );
+    }
+
+    private AdminCustomerHistoryGuestResponse toBookingGuestResponse(BookingGuest guest) {
+        return new AdminCustomerHistoryGuestResponse(
+                guest.getId(), guest.getFullName(), guest.getIdentityDocumentType(),
+                guest.getIdentityDocumentNumber(), guest.getDateOfBirth(), guest.getGender(),
+                guest.getNationality(), guest.getPhone(), guest.getEmail(), guest.getAddress(),
+                guest.isPrimaryGuest()
         );
     }
 
