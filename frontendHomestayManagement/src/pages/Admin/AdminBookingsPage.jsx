@@ -740,6 +740,7 @@ function DirectBookingModal({ onClose, onCreated }) {
     email: '',
     address: '',
     dateOfBirth: '',
+    identityDocumentNumber: '',
     checkInTarget: initialCheckIn,
     checkOutTarget: defaultCheckOutValue(initialCheckIn),
     pricePolicyId: '',   // ID gói thuê đã chọn
@@ -869,6 +870,14 @@ function DirectBookingModal({ onClose, onCreated }) {
           depositPolicyValue: room.depositPolicyValue,
           numberOfAdults: 1,
           numberOfChildren: 0,
+          guests: [{
+            fullName: f.fullName,
+            identityDocumentNumber: f.identityDocumentNumber,
+            phone: f.phone,
+            dateOfBirth: f.dateOfBirth,
+            email: f.email,
+            address: f.address,
+          }],
         }
       }
       return { ...f, selectedRooms }
@@ -894,6 +903,31 @@ function DirectBookingModal({ onClose, onCreated }) {
     }))
   }
 
+  const updateGuest = (roomId, guestIndex, field, value) => {
+    setForm(f => {
+      const room = f.selectedRooms[String(roomId)]
+      const guests = room.guests.map((guest, index) => index === guestIndex ? { ...guest, [field]: value } : guest)
+      return { ...f, selectedRooms: { ...f.selectedRooms, [String(roomId)]: { ...room, guests } } }
+    })
+  }
+
+  const addGuest = (roomId) => {
+    setForm(f => {
+      const room = f.selectedRooms[String(roomId)]
+      const guests = [...room.guests, { fullName: '', identityDocumentNumber: '', phone: '', dateOfBirth: '', email: '', address: '' }]
+      return { ...f, selectedRooms: { ...f.selectedRooms, [String(roomId)]: { ...room, guests } } }
+    })
+  }
+
+  const removeGuest = (roomId, guestIndex) => {
+    setForm(f => {
+      const room = f.selectedRooms[String(roomId)]
+      if (room.guests.length === 1) return f
+      const guests = room.guests.filter((_, index) => index !== guestIndex)
+      return { ...f, selectedRooms: { ...f.selectedRooms, [String(roomId)]: { ...room, guests } } }
+    })
+  }
+
   const formatDeposit = (room) => {
     if (!room.depositPolicyName) return 'Không cọc'
     if (room.depositCalculationType === 'PERCENTAGE') {
@@ -915,6 +949,7 @@ function DirectBookingModal({ onClose, onCreated }) {
         email:          form.email,
         address:        form.address,
         dateOfBirth:    form.dateOfBirth || null,
+        identityDocumentNumber: form.identityDocumentNumber,
         checkInTarget:  form.checkInTarget,
         checkOutTarget: form.checkOutTarget,
         rentType:       selectedPolicy?.rentType || 'OVERNIGHT',
@@ -923,6 +958,13 @@ function DirectBookingModal({ onClose, onCreated }) {
           roomId:          Number(r.roomId),
           numberOfAdults:  Number(r.numberOfAdults),
           numberOfChildren:Number(r.numberOfChildren),
+          guests: r.guests.map(guest => ({
+            ...guest,
+            dateOfBirth: guest.dateOfBirth || null,
+            email: guest.email || null,
+            address: guest.address || null,
+          })),
+          services: [],
         })),
       }),
     })
@@ -973,6 +1015,9 @@ function DirectBookingModal({ onClose, onCreated }) {
                 </label>
                 <label><span>Ngày sinh</span>
                   <input type="date" value={form.dateOfBirth} onChange={e => updateForm('dateOfBirth', e.target.value)} />
+                </label>
+                <label><span>CCCD người đại diện</span>
+                  <input required maxLength="30" value={form.identityDocumentNumber} onChange={e => updateForm('identityDocumentNumber', e.target.value)} />
                 </label>
                 <label className="abk-form-wide"><span>Địa chỉ</span>
                   <input value={form.address} onChange={e => updateForm('address', e.target.value)} />
@@ -1063,6 +1108,23 @@ function DirectBookingModal({ onClose, onCreated }) {
                       </label>
                       {/* Fix: dùng removeRoom thay vì toggleRoom để xóa chính xác bằng key */}
                       <button type="button" className="abk-remove-room-btn" onClick={() => removeRoom(room.roomId)} aria-label="Bỏ chọn phòng">×</button>
+                      <div className="abk-room-guests">
+                        <div className="abk-room-guests-head">
+                          <strong>Thông tin người lưu trú</strong>
+                          <button type="button" onClick={() => addGuest(room.roomId)}>+ Thêm người</button>
+                        </div>
+                        {room.guests.map((guest, guestIndex) => (
+                          <div className="abk-room-guest" key={guestIndex}>
+                            <label><span>Họ tên *</span><input required maxLength="100" value={guest.fullName} onChange={e => updateGuest(room.roomId, guestIndex, 'fullName', e.target.value)} /></label>
+                            <label><span>CCCD *</span><input required maxLength="30" value={guest.identityDocumentNumber} onChange={e => updateGuest(room.roomId, guestIndex, 'identityDocumentNumber', e.target.value)} /></label>
+                            <label><span>Điện thoại *</span><input required maxLength="15" value={guest.phone} onChange={e => updateGuest(room.roomId, guestIndex, 'phone', e.target.value)} /></label>
+                            <label><span>Ngày sinh</span><input type="date" value={guest.dateOfBirth} onChange={e => updateGuest(room.roomId, guestIndex, 'dateOfBirth', e.target.value)} /></label>
+                            <label><span>Email</span><input type="email" maxLength="100" value={guest.email} onChange={e => updateGuest(room.roomId, guestIndex, 'email', e.target.value)} /></label>
+                            <label><span>Địa chỉ</span><input maxLength="255" value={guest.address} onChange={e => updateGuest(room.roomId, guestIndex, 'address', e.target.value)} /></label>
+                            {room.guests.length > 1 && <button type="button" className="abk-remove-guest-btn" onClick={() => removeGuest(room.roomId, guestIndex)}>Xóa</button>}
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )
                 }) : (
@@ -1148,7 +1210,10 @@ function DirectBookingModal({ onClose, onCreated }) {
           successStatus="CONFIRMED"
           title="Thanh toán đặt phòng tại quầy"
           onSuccess={onCreated}
-          onClose={() => onCreated(paymentResult.booking)}
+          onClose={() => {
+            setPaymentResult(null)
+            onClose()
+          }}
         />
       )}
     </>

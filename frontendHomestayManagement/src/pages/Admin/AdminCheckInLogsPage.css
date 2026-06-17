@@ -605,6 +605,21 @@
 .acl-checkin-summary span { margin-bottom: 5px; color: #6a6a6a; font-size: 12px; }
 .acl-checkin-summary strong { color: #222222; font-size: 14px; line-height: 1.4; }
 
+.acl-preregistered-notice {
+  padding: 12px 14px;
+  border: 1px solid #a7f3d0;
+  border-radius: 10px;
+  background: #ecfdf5;
+  color: #065f46;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.acl-room-options .acl-room-option--readonly {
+  cursor: default;
+}
+
 .acl-checkin-section {
   margin-top: 14px;
   padding: 18px;

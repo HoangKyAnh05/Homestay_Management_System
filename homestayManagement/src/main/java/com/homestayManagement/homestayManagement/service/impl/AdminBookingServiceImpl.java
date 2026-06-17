@@ -3,6 +3,7 @@ package com.homestayManagement.homestayManagement.service.impl;
 import com.homestayManagement.homestayManagement.dto.request.AdminUpdateBookingCustomerRequest;
 import com.homestayManagement.homestayManagement.dto.request.AdminUpdateBookingDetailRequest;
 import com.homestayManagement.homestayManagement.dto.request.AdminDirectBookingRequest;
+import com.homestayManagement.homestayManagement.dto.request.AdminDirectBookingGuestRequest;
 import com.homestayManagement.homestayManagement.dto.response.AdminBookingCheckInResponse;
 import com.homestayManagement.homestayManagement.dto.response.AdminBookingCustomerResponse;
 import com.homestayManagement.homestayManagement.dto.response.AdminBookingDetailResponse;
@@ -307,6 +308,7 @@ public class AdminBookingServiceImpl implements AdminBookingService {
                 .findOverlappingSchedule(checkInTarget, checkOutTarget)
                 .stream()
                 .filter(this::isActiveBookingDetail)
+                .filter(this::hasAssignedRoom)
                 .collect(Collectors.groupingBy(detail -> detail.getRoom().getId()));
 
         return roomRepository.findAll().stream()
@@ -339,12 +341,16 @@ public class AdminBookingServiceImpl implements AdminBookingService {
 
         for (AdminDirectBookingRoomRequest selectedRoom : selectedRooms) {
             Room room = roomsById.get(selectedRoom.roomId());
+            if (room.getRoomType() == null || room.getRoomType().getId() == null) {
+                throw new IllegalArgumentException("Phòng " + room.getRoomNumber() + " chưa được gán loại phòng");
+            }
             validateCapacity(room.getRoomType(), selectedRoom.numberOfAdults(), selectedRoom.numberOfChildren());
         }
 
         Set<Long> busyRoomIds = bookingDetailRepository.findOverlappingSchedule(request.checkInTarget(), request.checkOutTarget())
                 .stream()
                 .filter(this::isActiveBookingDetail)
+                .filter(this::hasAssignedRoom)
                 .map(detail -> detail.getRoom().getId())
                 .filter(selectedRoomIds::contains)
                 .collect(Collectors.toSet());
@@ -400,7 +406,10 @@ public class AdminBookingServiceImpl implements AdminBookingService {
                             .orElse(BigDecimal.ZERO);
             BookingDetail detail = bookingDetailRepository.save(BookingDetail.builder()
                     .booking(booking)
+                    .roomType(roomType)
                     .room(room)
+                    .roomAssignmentStatus("ASSIGNED")
+                    .assignedAt(LocalDateTime.now())
                     .checkInTarget(request.checkInTarget())
                     .checkOutTarget(request.checkOutTarget())
                     .numberOfAdults(selectedRoom.numberOfAdults())
@@ -412,6 +421,7 @@ public class AdminBookingServiceImpl implements AdminBookingService {
             if (firstDetail == null) {
                 firstDetail = detail;
             }
+            saveDirectBookingGuests(booking, detail, selectedRoom.guests());
         }
 
         AdminBookingDetailResponse bookingResponse = getBookingDetail(firstDetail.getId());
@@ -740,6 +750,32 @@ public class AdminBookingServiceImpl implements AdminBookingService {
         String detailStatus = detail.getStatus();
         String bookingStatus = detail.getBooking().getStatus();
         return !isClosedStatus(detailStatus) && !isClosedStatus(bookingStatus);
+    }
+
+    private boolean hasAssignedRoom(BookingDetail detail) {
+        return detail.getRoom() != null && detail.getRoom().getId() != null;
+    }
+
+    private void saveDirectBookingGuests(
+            Booking booking,
+            BookingDetail detail,
+            List<AdminDirectBookingGuestRequest> guests
+    ) {
+        for (int index = 0; index < guests.size(); index++) {
+            AdminDirectBookingGuestRequest guest = guests.get(index);
+            bookingGuestRepository.save(BookingGuest.builder()
+                    .booking(booking)
+                    .bookingDetail(detail)
+                    .fullName(guest.fullName().trim())
+                    .identityDocumentType("CCCD")
+                    .identityDocumentNumber(guest.identityDocumentNumber().trim())
+                    .dateOfBirth(guest.dateOfBirth())
+                    .phone(guest.phone().trim())
+                    .email(normalizeEmail(guest.email()))
+                    .address(guest.address() != null && !guest.address().isBlank() ? guest.address().trim() : null)
+                    .primaryGuest(index == 0)
+                    .build());
+        }
     }
 
     private boolean isClosedStatus(String status) {

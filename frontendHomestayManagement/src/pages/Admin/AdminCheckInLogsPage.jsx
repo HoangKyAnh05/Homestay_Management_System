@@ -186,6 +186,18 @@ function DetailCard({ detail, actionLoading, onAction }) {
 }
 
 function createGuestForms(preparation) {
+  if (preparation.preRegistered && preparation.registeredGuests?.length) {
+    return preparation.registeredGuests.map(guest => ({
+      fullName: guest.fullName || '',
+      identityDocumentNumber: guest.identityDocumentNumber || '',
+      dateOfBirth: guest.dateOfBirth || '',
+      email: guest.email || '',
+      phone: guest.phone || '',
+      address: guest.address || '',
+      gender: guest.gender || '',
+      nationality: guest.nationality || 'VIETNAM',
+    }))
+  }
   const total = Number(preparation.numberOfAdults || 0) + Number(preparation.numberOfChildren || 0)
   return Array.from({ length: total }, (_, index) => ({
     fullName: index === 0 ? preparation.customer?.fullName || '' : '',
@@ -527,7 +539,9 @@ function CheckInModal({ bookingDetailId, onClose, onCompleted }) {
         const data = await response.json().catch(() => ({}))
         if (!response.ok) throw new Error(data.message || 'Không thể chuẩn bị thông tin check-in')
         setPreparation(data)
-        setRoomId(data.availableRooms?.[0]?.id ? String(data.availableRooms[0].id) : '')
+        setRoomId(data.assignedRoom?.id
+          ? String(data.assignedRoom.id)
+          : data.availableRooms?.[0]?.id ? String(data.availableRooms[0].id) : '')
         setGuests(createGuestForms(data))
       })
       .catch(err => {
@@ -599,11 +613,24 @@ function CheckInModal({ bookingDetailId, onClose, onCompleted }) {
               <div><span>Số khách</span><strong>{preparation.numberOfAdults} người lớn · {preparation.numberOfChildren} trẻ em</strong></div>
             </section>
 
+            {preparation.preRegistered && (
+              <div className="acl-preregistered-notice">
+                Thông tin phòng và người lưu trú đã được đăng ký khi tạo đơn trực tiếp. Có thể chỉnh sửa thông tin khách trước khi xác nhận check-in.
+              </div>
+            )}
+
             <section className="acl-checkin-section">
               <div className="acl-checkin-section-head">
-                <div><span>01</span><div><h3>Gán phòng trống</h3><p>Chỉ hiển thị phòng đúng loại và không trùng lịch.</p></div></div>
+                <div><span>01</span><div><h3>{preparation.preRegistered ? 'Phòng đã đặt' : 'Gán phòng trống'}</h3><p>{preparation.preRegistered ? 'Phòng đã được xác nhận khi tạo đơn trực tiếp.' : 'Chỉ hiển thị phòng đúng loại và không trùng lịch.'}</p></div></div>
               </div>
-              {preparation.availableRooms.length ? (
+              {preparation.preRegistered && preparation.assignedRoom ? (
+                <div className="acl-room-options">
+                  <label className="is-selected acl-room-option--readonly">
+                    <input type="radio" checked readOnly />
+                    <span>Phòng</span><strong>{preparation.assignedRoom.roomNumber}</strong><small>{preparation.assignedRoom.roomTypeName}</small>
+                  </label>
+                </div>
+              ) : preparation.availableRooms.length ? (
                 <div className="acl-room-options">
                   {preparation.availableRooms.map(room => (
                     <label key={room.id} className={String(room.id) === roomId ? 'is-selected' : ''}>
@@ -618,7 +645,7 @@ function CheckInModal({ bookingDetailId, onClose, onCompleted }) {
 
             <section className="acl-checkin-section">
               <div className="acl-checkin-section-head">
-                <div><span>02</span><div><h3>Thông tin người lưu trú</h3><p>Nhập đủ {guests.length} người. Tên và CCCD là bắt buộc.</p></div></div>
+                <div><span>02</span><div><h3>Thông tin người lưu trú</h3><p>{preparation.preRegistered ? `Đã đăng ký ${guests.length} người lưu trú. Có thể cập nhật trước khi check-in.` : `Nhập đủ ${guests.length} người. Tên và CCCD là bắt buộc.`}</p></div></div>
               </div>
               <div className="acl-guest-forms">
                 {guests.map((guest, index) => {
@@ -656,7 +683,7 @@ function CheckInModal({ bookingDetailId, onClose, onCompleted }) {
             {error && <div className="acl-checkin-warning acl-checkin-warning--error">{error}</div>}
             <footer className="acl-checkin-actions">
               <button type="button" onClick={onClose}>Hủy</button>
-              <button type="submit" disabled={saving || !roomId || !preparation.availableRooms.length}>
+              <button type="submit" disabled={saving || !roomId || (!preparation.preRegistered && !preparation.availableRooms.length)}>
                 {saving ? 'Đang check-in...' : `Xác nhận check-in ${guests.length} người`}
               </button>
             </footer>

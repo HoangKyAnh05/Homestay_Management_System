@@ -30,6 +30,10 @@ public record AdminDirectBookingRequest(
 
         LocalDate dateOfBirth,
 
+        @NotBlank(message = "Vui lòng nhập căn cước công dân")
+        @Size(max = 30, message = "Căn cước công dân tối đa 30 ký tự")
+        String identityDocumentNumber,
+
         @NotEmpty(message = "Vui lòng chọn ít nhất một phòng")
         List<@Valid AdminDirectBookingRoomRequest> rooms,
 

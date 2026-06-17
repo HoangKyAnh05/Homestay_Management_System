@@ -33,6 +33,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
@@ -87,6 +88,36 @@ class AdminCheckInRegistrationServiceImplTest {
         assertEquals(1, response.availableRooms().size());
         assertEquals(102L, response.availableRooms().getFirst().id());
         assertEquals(2, response.numberOfAdults());
+        assertFalse(response.preRegistered());
+    }
+
+    @Test
+    void prepareReturnsAssignedRoomAndRegisteredGuestsForDirectBooking() {
+        TestData data = testData();
+        data.detail().setRoom(data.room());
+        BookingGuest primaryGuest = BookingGuest.builder()
+                .id(51L).booking(data.booking()).bookingDetail(data.detail())
+                .fullName("Người đặt").identityDocumentNumber("001")
+                .phone("0900000001").nationality("VIETNAM").primaryGuest(true).build();
+        BookingGuest secondGuest = BookingGuest.builder()
+                .id(52L).booking(data.booking()).bookingDetail(data.detail())
+                .fullName("Khách thứ hai").identityDocumentNumber("002")
+                .phone("0900000002").nationality("VIETNAM").build();
+
+        when(bookingDetailRepository.findByIdForAdminDetail(40L)).thenReturn(Optional.of(data.detail()));
+        when(checkInRecordRepository.findByBookingDetailId(40L)).thenReturn(Optional.empty());
+        when(bookingGuestRepository.findByBookingDetailIds(List.of(40L)))
+                .thenReturn(List.of(primaryGuest, secondGuest));
+        when(roomRepository.findByRoomTypeId(30L)).thenReturn(List.of(data.room()));
+        when(bookingDetailRepository.findOverlappingSchedule(any(), any())).thenReturn(List.of(data.detail()));
+
+        var response = service.prepare(40L);
+
+        assertTrue(response.preRegistered());
+        assertEquals(101L, response.assignedRoom().id());
+        assertEquals("101", response.assignedRoom().roomNumber());
+        assertEquals(2, response.registeredGuests().size());
+        assertEquals("001", response.registeredGuests().getFirst().identityDocumentNumber());
     }
 
     @Test

@@ -13,6 +13,9 @@ public record AdminCheckInPreparationResponse(
         Integer numberOfChildren,
         AdminBookingCustomerResponse customer,
         String customerIdentityDocumentNumber,
+        AdminBookingRoomResponse assignedRoom,
+        boolean preRegistered,
+        List<AdminCustomerHistoryGuestResponse> registeredGuests,
         List<AdminBookingRoomResponse> availableRooms
 ) {
 }

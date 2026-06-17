@@ -46,6 +46,10 @@ public class SecurityConfig {
                         // Lễ tân cần đọc gói giá khi tạo/chỉnh sửa booking.
                         .requestMatchers(HttpMethod.GET, "/api/admin/price-config/**")
                         .hasAnyAuthority("ROLE_ADMIN", "ROLE_RECEPTIONIST")
+                        .requestMatchers(HttpMethod.GET,
+                                "/api/admin/services/facility/**",
+                                "/api/admin/services/inventory/**")
+                        .hasAnyAuthority("ROLE_ADMIN", "ROLE_RECEPTIONIST")
 
                         // ── Chỉ ROLE_ADMIN ──────────────────────────────────────────────
                         // Quản lý người dùng

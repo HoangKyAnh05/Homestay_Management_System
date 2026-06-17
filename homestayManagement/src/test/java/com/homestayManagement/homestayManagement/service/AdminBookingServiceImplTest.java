@@ -5,8 +5,10 @@ import com.homestayManagement.homestayManagement.entity.Booking;
 import com.homestayManagement.homestayManagement.entity.BookingDetail;
 import com.homestayManagement.homestayManagement.entity.Customer;
 import com.homestayManagement.homestayManagement.entity.RoomType;
+import com.homestayManagement.homestayManagement.entity.Room;
 import com.homestayManagement.homestayManagement.repository.BookingDetailRepository;
 import com.homestayManagement.homestayManagement.repository.CheckInRecordRepository;
+import com.homestayManagement.homestayManagement.repository.RoomRepository;
 import com.homestayManagement.homestayManagement.service.impl.AdminBookingServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -16,6 +18,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -29,6 +32,7 @@ class AdminBookingServiceImplTest {
 
     @Mock private BookingDetailRepository bookingDetailRepository;
     @Mock private CheckInRecordRepository checkInRecordRepository;
+    @Mock private RoomRepository roomRepository;
 
     private AdminBookingServiceImpl service;
 
@@ -38,7 +42,7 @@ class AdminBookingServiceImplTest {
                 bookingDetailRepository,
                 null,
                 null,
-                null,
+                roomRepository,
                 null,
                 null,
                 null,
@@ -58,6 +62,26 @@ class AdminBookingServiceImplTest {
                 null,
                 null
         );
+    }
+
+    @Test
+    void getDirectBookingRoomsIgnoresBookingDetailWithoutAssignedRoom() {
+        LocalDateTime checkIn = LocalDateTime.of(2026, 6, 18, 14, 0);
+        LocalDateTime checkOut = LocalDateTime.of(2026, 6, 19, 12, 0);
+        Booking booking = Booking.builder().id(1L).status("CONFIRMED").build();
+        RoomType roomType = RoomType.builder().id(2L).name("Family").build();
+        BookingDetail unassignedDetail = BookingDetail.builder()
+                .id(3L).booking(booking).roomType(roomType).room(null)
+                .checkInTarget(checkIn).checkOutTarget(checkOut).status("CONFIRMED").build();
+        Room room = Room.builder().id(4L).roomNumber("101").roomType(roomType).build();
+
+        when(bookingDetailRepository.findOverlappingSchedule(checkIn, checkOut)).thenReturn(List.of(unassignedDetail));
+        when(roomRepository.findAll()).thenReturn(List.of(room));
+
+        var result = assertDoesNotThrow(() -> service.getDirectBookingRooms(checkIn, checkOut));
+
+        assertEquals(1, result.size());
+        assertEquals(true, result.getFirst().available());
     }
 
     @Test

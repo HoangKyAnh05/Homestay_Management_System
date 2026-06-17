@@ -6,6 +6,7 @@ import com.homestayManagement.homestayManagement.dto.response.AdminBookingCustom
 import com.homestayManagement.homestayManagement.dto.response.AdminBookingRoomResponse;
 import com.homestayManagement.homestayManagement.dto.response.AdminCheckInPreparationResponse;
 import com.homestayManagement.homestayManagement.dto.response.AdminCompleteCheckInResponse;
+import com.homestayManagement.homestayManagement.dto.response.AdminCustomerHistoryGuestResponse;
 import com.homestayManagement.homestayManagement.entity.BookingDetail;
 import com.homestayManagement.homestayManagement.entity.BookingGuest;
 import com.homestayManagement.homestayManagement.entity.CheckInRecord;
@@ -65,6 +66,9 @@ public class AdminCheckInRegistrationServiceImpl implements AdminCheckInRegistra
         BookingDetail detail = getCheckInCandidate(bookingDetailId);
         Customer customer = detail.getBooking().getCustomer();
         RoomType roomType = detail.getRoomType();
+        List<BookingGuest> registeredGuests = bookingGuestRepository
+                .findByBookingDetailIds(List.of(detail.getId()));
+        boolean preRegistered = hasCompletePreRegistration(detail, registeredGuests);
         return new AdminCheckInPreparationResponse(
                 detail.getBooking().getId(),
                 detail.getId(),
@@ -75,6 +79,9 @@ public class AdminCheckInRegistrationServiceImpl implements AdminCheckInRegistra
                 detail.getNumberOfChildren(),
                 toCustomerResponse(customer),
                 customer.getIdentityDocumentNumber(),
+                detail.getRoom() != null ? toRoomResponse(detail.getRoom()) : null,
+                preRegistered,
+                preRegistered ? registeredGuests.stream().map(this::toGuestResponse).toList() : List.of(),
                 findAvailableRooms(detail)
         );
     }
@@ -150,6 +157,31 @@ public class AdminCheckInRegistrationServiceImpl implements AdminCheckInRegistra
                         room.getId(), room.getRoomNumber(), room.getRoomType().getName()
                 ))
                 .toList();
+    }
+
+    private boolean hasCompletePreRegistration(BookingDetail detail, List<BookingGuest> guests) {
+        int expectedCount = valueOrZero(detail.getNumberOfAdults()) + valueOrZero(detail.getNumberOfChildren());
+        return detail.getRoom() != null
+                && detail.getRoom().getId() != null
+                && guests.size() == expectedCount
+                && guests.stream().allMatch(guest -> guest.getFullName() != null && !guest.getFullName().isBlank()
+                        && guest.getIdentityDocumentNumber() != null && !guest.getIdentityDocumentNumber().isBlank());
+    }
+
+    private AdminBookingRoomResponse toRoomResponse(Room room) {
+        return new AdminBookingRoomResponse(
+                room.getId(), room.getRoomNumber(),
+                room.getRoomType() != null ? room.getRoomType().getName() : null
+        );
+    }
+
+    private AdminCustomerHistoryGuestResponse toGuestResponse(BookingGuest guest) {
+        return new AdminCustomerHistoryGuestResponse(
+                guest.getId(), guest.getFullName(), guest.getIdentityDocumentType(),
+                guest.getIdentityDocumentNumber(), guest.getDateOfBirth(), guest.getGender(),
+                guest.getNationality(), guest.getPhone(), guest.getEmail(), guest.getAddress(),
+                guest.isPrimaryGuest()
+        );
     }
 
     private boolean isRoomAvailable(Long roomId, BookingDetail currentDetail) {

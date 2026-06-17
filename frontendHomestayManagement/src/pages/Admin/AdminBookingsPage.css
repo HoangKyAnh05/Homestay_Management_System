@@ -880,6 +880,47 @@
   cursor: pointer;
 }
 
+.abk-room-guests {
+  grid-column: 1 / -1;
+  margin-top: 4px;
+  padding-top: 12px;
+  border-top: 1px solid #bfdbfe;
+}
+
+.abk-room-guests-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.abk-room-guests-head button,
+.abk-room-guest .abk-remove-guest-btn {
+  width: auto;
+  height: 32px;
+  padding: 0 12px;
+  font-size: 12px;
+}
+
+.abk-room-guest {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  padding: 10px;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.abk-room-guest + .abk-room-guest {
+  margin-top: 8px;
+}
+
+.abk-room-guest .abk-remove-guest-btn {
+  justify-self: start;
+  background: #b91c1c;
+}
+
 .abk-room-options {
   display: grid;
   gap: 10px;
