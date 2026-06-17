@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { getStoredToken } from '../../services/authService'
 import AdminLayout from './AdminLayout'
 import './DashboardPage.css'
@@ -88,20 +88,22 @@ function RevenueChart({ data }) {
           <p>Tổng doanh thu hóa đơn, gồm tiền phòng, dịch vụ và phạt/phụ thu.</p>
         </div>
       </div>
-      <div className="dash-revenue-chart">
-        <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-label="Biểu đồ doanh thu">
-          <polyline points={points} />
-        </svg>
-        <div className="dash-bars">
-          {data.map(item => {
-            const height = Math.max(4, (Number(item.totalRevenue || 0) / max) * 100)
-            return (
-              <div className="dash-bar-day" key={item.date}>
-                <span className="dash-bar" style={{ height: `${height}%` }} title={`${formatShortDate(item.date)}: ${formatMoney(item.totalRevenue)}`} />
-                <small>{formatShortDate(item.date)}</small>
-              </div>
-            )
-          })}
+      <div className="dash-revenue-scroll">
+        <div className="dash-revenue-chart" style={{ '--chart-days': Math.max(data.length, 1) }}>
+          <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-label="Biểu đồ doanh thu">
+            <polyline points={points} />
+          </svg>
+          <div className="dash-bars">
+            {data.map(item => {
+              const height = Math.max(4, (Number(item.totalRevenue || 0) / max) * 100)
+              return (
+                <div className="dash-bar-day" key={item.date}>
+                  <span className="dash-bar" style={{ height: `${height}%` }} title={`${formatShortDate(item.date)}: ${formatMoney(item.totalRevenue)}`} />
+                  <small>{formatShortDate(item.date)}</small>
+                </div>
+              )
+            })}
+          </div>
         </div>
       </div>
     </section>
@@ -216,7 +218,13 @@ function DashboardPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  const loadSummary = async () => {
+  const loadSummary = useCallback(async () => {
+    if (fromDate > toDate) {
+      setError('Ngày bắt đầu không được sau ngày kết thúc.')
+      setSummary(null)
+      return
+    }
+
     setLoading(true)
     setError('')
     try {
@@ -231,11 +239,13 @@ function DashboardPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [fromDate, toDate])
 
   useEffect(() => {
+    // The request updates loading state before synchronizing with the dashboard API.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadSummary()
-  }, [fromDate, toDate])
+  }, [loadSummary])
 
   const kpis = summary?.kpis || {}
   const roomTypeItems = useMemo(() => summary?.roomTypeBreakdown || [], [summary])

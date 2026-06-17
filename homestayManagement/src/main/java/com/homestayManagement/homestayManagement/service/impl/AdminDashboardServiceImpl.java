@@ -142,6 +142,7 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
                     Set<Long> occupiedRoomIds = details.stream()
                             .filter(this::isActiveDetail)
                             .filter(detail -> overlapsDate(detail, date))
+                            .filter(this::hasAssignedRoom)
                             .map(detail -> detail.getRoom().getId())
                             .collect(Collectors.toCollection(HashSet::new));
                     double rate = totalRooms == 0 ? 0 : occupiedRoomIds.size() * 100.0 / totalRooms;
@@ -180,6 +181,7 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
         Map<String, RoomAggregate> aggregateByRoom = new LinkedHashMap<>();
         details.stream()
                 .filter(this::isActiveDetail)
+                .filter(this::hasAssignedRoom)
                 .forEach(detail -> {
                     Room room = detail.getRoom();
                     String roomName = "Phòng " + room.getRoomNumber();
@@ -202,8 +204,8 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
         details.stream()
                 .filter(this::isActiveDetail)
                 .forEach(detail -> {
-                    String typeName = detail.getRoom().getRoomType() != null
-                            ? detail.getRoom().getRoomType().getName()
+                    String typeName = detail.getRoomType() != null
+                            ? detail.getRoomType().getName()
                             : "Chưa phân loại";
                     RoomAggregate aggregate = aggregateByType.computeIfAbsent(typeName, key -> new RoomAggregate());
                     aggregate.amount = aggregate.amount.add(nullToZero(detail.getPriceAtBooking()));
@@ -227,6 +229,10 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
     private boolean isActiveDetail(BookingDetail detail) {
         return !"CANCELLED".equalsIgnoreCase(detail.getStatus())
                 && !"CANCELLED".equalsIgnoreCase(detail.getBooking().getStatus());
+    }
+
+    private boolean hasAssignedRoom(BookingDetail detail) {
+        return detail.getRoom() != null && detail.getRoom().getId() != null;
     }
 
     private String normalizeStatus(String status) {

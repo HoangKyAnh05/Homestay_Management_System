@@ -4,9 +4,11 @@ import com.homestayManagement.homestayManagement.dto.request.AdminCreateUserRequ
 import com.homestayManagement.homestayManagement.dto.request.AdminUpdateUserRequest;
 import com.homestayManagement.homestayManagement.dto.request.ToggleActiveRequest;
 import com.homestayManagement.homestayManagement.dto.response.AdminUserResponse;
+import com.homestayManagement.homestayManagement.dto.response.AdminCustomerBookingHistoryResponse;
 import com.homestayManagement.homestayManagement.entity.Role;
 import com.homestayManagement.homestayManagement.repository.RoleRepository;
 import com.homestayManagement.homestayManagement.service.AdminUserService;
+import com.homestayManagement.homestayManagement.service.AdminCustomerHistoryService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -21,10 +23,16 @@ import java.util.Map;
 public class AdminUserController {
 
     private final AdminUserService adminUserService;
+    private final AdminCustomerHistoryService adminCustomerHistoryService;
     private final RoleRepository roleRepository;
 
-    public AdminUserController(AdminUserService adminUserService, RoleRepository roleRepository) {
+    public AdminUserController(
+            AdminUserService adminUserService,
+            AdminCustomerHistoryService adminCustomerHistoryService,
+            RoleRepository roleRepository
+    ) {
         this.adminUserService = adminUserService;
+        this.adminCustomerHistoryService = adminCustomerHistoryService;
         this.roleRepository = roleRepository;
     }
 
@@ -41,6 +49,11 @@ public class AdminUserController {
     @GetMapping("/{id}")
     public AdminUserResponse getUserById(@PathVariable Long id) {
         return adminUserService.getUserById(id);
+    }
+
+    @GetMapping("/{id}/booking-history")
+    public AdminCustomerBookingHistoryResponse getCustomerBookingHistory(@PathVariable Long id) {
+        return adminCustomerHistoryService.getBookingHistory(id);
     }
 
     @PostMapping

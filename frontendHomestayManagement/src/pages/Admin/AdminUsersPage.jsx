@@ -46,6 +46,31 @@ function getAvatarUrl(url) {
   return `${BACKEND}${url}`
 }
 
+const BOOKING_STATUS_LABEL = {
+  PENDING: 'Chờ xác nhận',
+  CONFIRMED: 'Đã xác nhận',
+  CHECKED_IN: 'Đang lưu trú',
+  COMPLETED: 'Hoàn tất',
+  CANCELLED: 'Đã hủy',
+}
+
+function formatDateTime(value) {
+  if (!value) return '—'
+  return new Intl.DateTimeFormat('vi-VN', {
+    day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+  }).format(new Date(value))
+}
+
+function formatDate(value) {
+  if (!value) return '—'
+  return new Intl.DateTimeFormat('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(value))
+}
+
+function formatMoney(value) {
+  return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 })
+    .format(Number(value || 0))
+}
+
 // ── Modal thêm mới ────────────────────────────────────────
 function CreateUserModal({ roles, entityLabel, onClose, onSave }) {
   const [form, setForm] = useState({
@@ -250,6 +275,171 @@ function ActivateModal({ user, onClose, onConfirm, loading }) {
   )
 }
 
+function CustomerHistoryModal({ user, onClose }) {
+  const [history, setHistory] = useState(null)
+  const [selectedBookingId, setSelectedBookingId] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    const controller = new AbortController()
+    fetch(`${API}/${user.id}/booking-history`, { headers: authHeaders(), signal: controller.signal })
+      .then(async response => {
+        const data = await response.json().catch(() => ({}))
+        if (!response.ok) throw new Error(data.message || 'Không thể tải lịch sử đặt phòng')
+        setHistory(data)
+        setSelectedBookingId(data.bookings?.[0]?.bookingId ?? null)
+      })
+      .catch(err => {
+        if (err.name !== 'AbortError') setError(err.message)
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false)
+      })
+    return () => controller.abort()
+  }, [user.id])
+
+  useEffect(() => {
+    const handleKeyDown = event => event.key === 'Escape' && onClose()
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [onClose])
+
+  const selectedBooking = history?.bookings?.find(item => item.bookingId === selectedBookingId)
+
+  return (
+    <div className="aum-overlay aum-history-overlay" onClick={event => event.target === event.currentTarget && onClose()}>
+      <section className="aum-history-modal" role="dialog" aria-modal="true" aria-labelledby="customer-history-title">
+        <header className="aum-history-head">
+          <div className="aum-history-customer">
+            {getAvatarUrl(user.avatarUrl)
+              ? <img src={getAvatarUrl(user.avatarUrl)} alt="" className="aum-avatar aum-avatar--img" />
+              : <span className="aum-avatar">{getInitials(user.fullName, user.email)}</span>}
+            <div>
+              <span className="aum-history-eyebrow">Lịch sử đặt phòng</span>
+              <h2 id="customer-history-title">{user.fullName || user.email}</h2>
+              <p>{user.phone || 'Chưa có SĐT'} · {user.identityDocumentNumber ? `CCCD ${user.identityDocumentNumber}` : 'Chưa có CCCD'}</p>
+            </div>
+          </div>
+          <button type="button" className="aum-history-close" onClick={onClose} aria-label="Đóng">×</button>
+        </header>
+
+        {loading ? <div className="aum-history-state"><span className="aum-spinner" />Đang tải lịch sử...</div> : null}
+        {!loading && error ? <div className="aum-history-state aum-history-state--error">{error}</div> : null}
+        {!loading && !error && history?.bookings?.length === 0 ? (
+          <div className="aum-history-state">
+            <strong>Chưa có booking</strong>
+            <span>Khách hàng này chưa từng đặt phòng trong hệ thống.</span>
+          </div>
+        ) : null}
+
+        {!loading && !error && selectedBooking ? (
+          <div className="aum-history-layout">
+            <aside className="aum-booking-list">
+              <div className="aum-booking-list-head">
+                <strong>{history.bookingCount} booking</strong>
+                <span>Mới nhất trước</span>
+              </div>
+              {history.bookings.map(booking => (
+                <button
+                  type="button"
+                  key={booking.bookingId}
+                  className={`aum-booking-item${booking.bookingId === selectedBookingId ? ' is-active' : ''}`}
+                  onClick={() => setSelectedBookingId(booking.bookingId)}
+                >
+                  <span className="aum-booking-item-top">
+                    <strong>#{booking.bookingId}</strong>
+                    <i className={`aum-history-status status--${String(booking.status).toLowerCase()}`}>
+                      {BOOKING_STATUS_LABEL[booking.status] || booking.status}
+                    </i>
+                  </span>
+                  <span>Đặt lúc {formatDateTime(booking.bookingDate)}</span>
+                  <span>{booking.roomCount} phòng · {booking.totalAdults + booking.totalChildren} khách</span>
+                  <b>{formatMoney(booking.totalAmount)}</b>
+                </button>
+              ))}
+            </aside>
+
+            <main className="aum-booking-detail">
+              <div className="aum-booking-summary">
+                <div>
+                  <span>Booking #{selectedBooking.bookingId}</span>
+                  <h3>{formatMoney(selectedBooking.totalAmount)}</h3>
+                  <p>Ngày đặt: {formatDateTime(selectedBooking.bookingDate)}</p>
+                </div>
+                <div className="aum-booking-totals">
+                  <span><i>Tiền phòng</i><b>{formatMoney(selectedBooking.roomCharge)}</b></span>
+                  <span><i>Dịch vụ</i><b>{formatMoney(selectedBooking.serviceCharge)}</b></span>
+                  {Number(selectedBooking.penaltyCharge) > 0 && <span><i>Phụ thu/phạt</i><b>{formatMoney(selectedBooking.penaltyCharge)}</b></span>}
+                </div>
+              </div>
+
+              <div className="aum-room-list">
+                {selectedBooking.rooms.map((room, index) => (
+                  <article className="aum-history-room" key={room.bookingDetailId}>
+                    <div className="aum-room-title">
+                      <span className="aum-room-index">{index + 1}</span>
+                      <div>
+                        <h4>{room.roomNumber ? `Phòng ${room.roomNumber}` : 'Chưa gán phòng'}</h4>
+                        <p>{room.roomTypeName || 'Chưa phân loại'} · {room.rentType || '—'}</p>
+                      </div>
+                      <strong>{formatMoney(room.priceAtBooking)}</strong>
+                    </div>
+
+                    <div className="aum-stay-grid">
+                      <div><span>Nhận phòng dự kiến</span><strong>{formatDateTime(room.checkInTarget)}</strong></div>
+                      <div><span>Trả phòng dự kiến</span><strong>{formatDateTime(room.checkOutTarget)}</strong></div>
+                      <div><span>Check-in thực tế</span><strong>{formatDateTime(room.actualCheckIn)}</strong></div>
+                      <div><span>Check-out thực tế</span><strong>{formatDateTime(room.actualCheckOut)}</strong></div>
+                    </div>
+
+                    <div className="aum-room-meta">
+                      <span>{room.numberOfAdults || 0} người lớn</span>
+                      <span>{room.numberOfChildren || 0} trẻ em</span>
+                      <span>{BOOKING_STATUS_LABEL[room.status] || room.status}</span>
+                    </div>
+
+                    <div className="aum-history-section">
+                      <div className="aum-history-section-title"><h5>Người lưu trú</h5><span>{room.guests.length} người</span></div>
+                      {room.guests.length ? (
+                        <div className="aum-guest-grid">
+                          {room.guests.map(guest => (
+                            <div className="aum-guest-card" key={guest.id}>
+                              <div><strong>{guest.fullName}</strong>{guest.primaryGuest && <span>Đại diện</span>}</div>
+                              <p>{guest.identityDocumentType || 'CCCD'}: {guest.identityDocumentNumber || '—'}</p>
+                              <p>Ngày sinh: {formatDate(guest.dateOfBirth)} · {guest.gender || '—'}</p>
+                              <p>{guest.phone || 'Chưa có SĐT'} · {guest.nationality || '—'}</p>
+                              {guest.address && <p>{guest.address}</p>}
+                            </div>
+                          ))}
+                        </div>
+                      ) : <p className="aum-history-empty-row">Chưa cập nhật thông tin người lưu trú.</p>}
+                    </div>
+
+                    <div className="aum-history-section">
+                      <div className="aum-history-section-title"><h5>Dịch vụ</h5><span>{room.services.length} mục</span></div>
+                      {room.services.length ? (
+                        <div className="aum-service-list">
+                          {room.services.map(service => (
+                            <div key={service.id}>
+                              <span><strong>{service.name}</strong><small>{service.type === 'FACILITY' ? 'Tiện ích' : 'Sản phẩm'} · SL {service.quantity}</small></span>
+                              <b>{formatMoney(service.totalAmount)}</b>
+                            </div>
+                          ))}
+                        </div>
+                      ) : <p className="aum-history-empty-row">Booking này không sử dụng dịch vụ.</p>}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </main>
+          </div>
+        ) : null}
+      </section>
+    </div>
+  )
+}
+
 // ── Trang chính ───────────────────────────────────────────
 const PAGE_SIZE = 6
 
@@ -266,6 +456,7 @@ function AdminUsersPage({ userType = 'employees' }) {
   const [activateTarget, setActivateTarget] = useState(null)
   const [toggling, setToggling] = useState(false)
   const [toast, setToast] = useState('')
+  const [historyTarget, setHistoryTarget] = useState(null)
   const isCustomerPage = userType === 'customers'
   const entityLabel = isCustomerPage ? 'khách hàng' : 'nhân viên'
   const pageTitle = isCustomerPage ? 'Quản lý khách hàng' : 'Quản lý nhân viên'
@@ -296,7 +487,8 @@ function AdminUsersPage({ userType = 'employees' }) {
     const matchPage = roleBelongsToPage(u.role)
     const matchSearch = !search ||
       u.email?.toLowerCase().includes(search.toLowerCase()) ||
-      u.fullName?.toLowerCase().includes(search.toLowerCase())
+      u.fullName?.toLowerCase().includes(search.toLowerCase()) ||
+      (isCustomerPage && u.identityDocumentNumber?.includes(search.trim()))
     const matchRole = !filterRole || u.role === filterRole
     return matchPage && matchSearch && matchRole
   })
@@ -338,7 +530,7 @@ function AdminUsersPage({ userType = 'employees' }) {
       </div>
 
       <div className="aum-filters">
-        <input className="aum-search" placeholder="Tìm theo tên, email..."
+        <input className="aum-search" placeholder={isCustomerPage ? 'Tìm theo tên, email, CCCD...' : 'Tìm theo tên, email...'}
           value={search} onChange={e => setSearch(e.target.value)} />
         <select className="aum-select" value={filterRole} onChange={e => setFilterRole(e.target.value)}>
           <option value="">Tất cả role</option>
@@ -358,6 +550,7 @@ function AdminUsersPage({ userType = 'employees' }) {
                 <th>Người dùng</th>
                 <th>Email</th>
                 <th>Số điện thoại</th>
+                {isCustomerPage && <th>CCCD</th>}
                 <th>Role</th>
                 <th>Trạng thái</th>
                 <th>Ngày tạo</th>
@@ -373,11 +566,16 @@ function AdminUsersPage({ userType = 'employees' }) {
                         ? <img src={getAvatarUrl(u.avatarUrl)} alt={u.fullName} className="aum-avatar aum-avatar--img" />
                         : <span className="aum-avatar">{getInitials(u.fullName, u.email)}</span>
                       }
-                      <span>{u.fullName || '—'}</span>
+                      {isCustomerPage ? (
+                        <button type="button" className="aum-user-name-btn" onClick={() => setHistoryTarget(u)}>
+                          {u.fullName || '—'}
+                        </button>
+                      ) : <span>{u.fullName || '—'}</span>}
                     </div>
                   </td>
                   <td className="aum-text-secondary">{u.email}</td>
                   <td className="aum-text-secondary">{u.phone || '—'}</td>
+                  {isCustomerPage && <td className="aum-text-secondary">{u.identityDocumentNumber || '—'}</td>}
                   <td><span className={roleBadgeClass(u.role)}>{ROLE_LABEL[u.role] || u.role}</span></td>
                   <td>
                     <span className={`badge ${u.isActive ? 'badge--active' : 'badge--inactive'}`}>
@@ -454,6 +652,7 @@ function AdminUsersPage({ userType = 'employees' }) {
           onClose={() => setActivateTarget(null)}
           onConfirm={() => handleToggleActive(activateTarget, true)} />
       )}
+      {historyTarget && <CustomerHistoryModal user={historyTarget} onClose={() => setHistoryTarget(null)} />}
 
       {toast && <div className="aum-toast">{toast}</div>}
     </AdminLayout>

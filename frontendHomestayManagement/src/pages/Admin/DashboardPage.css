@@ -135,6 +135,7 @@
 }
 
 .dash-panel {
+  min-width: 0;
   min-height: 360px;
   padding: 18px;
   border: 1px solid #e5e7eb;
@@ -177,8 +178,16 @@
   font-weight: 900;
 }
 
+.dash-revenue-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+}
+
 .dash-revenue-chart {
   position: relative;
+  width: max(100%, calc(var(--chart-days) * 34px));
   min-height: 290px;
   padding-top: 18px;
 }
@@ -413,10 +422,13 @@
 }
 
 @media (max-width: 1180px) {
-  .dash-kpis,
+  .dash-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .dash-grid,
   .dash-grid--top {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: 1fr;
   }
 }
 
@@ -427,9 +439,13 @@
   }
 
   .dash-actions,
-  .dash-actions input,
   .dash-actions button {
     width: 100%;
+  }
+
+  .dash-actions input {
+    flex: 1 1 140px;
+    min-width: 0;
   }
 
   .dash-kpis,
@@ -441,5 +457,30 @@
 
   .dash-donut {
     justify-self: center;
+  }
+
+  .dash-panel {
+    min-height: auto;
+    padding: 14px;
+  }
+
+  .dash-rank-row {
+    grid-template-columns: 30px minmax(0, 1fr);
+  }
+
+  .dash-rank-row em {
+    grid-column: 2;
+    text-align: left;
+  }
+}
+
+@media (max-width: 520px) {
+  .dash-kpis {
+    grid-template-columns: 1fr;
+  }
+
+  .dash-occ-row {
+    grid-template-columns: 48px minmax(0, 1fr) 48px;
+    gap: 7px;
   }
 }

@@ -46,6 +46,18 @@ public interface BookingDetailRepository extends JpaRepository<BookingDetail, Lo
             select bd
             from BookingDetail bd
             join fetch bd.booking b
+            join fetch b.customer c
+            join fetch bd.roomType
+            left join fetch bd.room r
+            where c.account.id = :accountId
+            order by b.bookingDate desc, b.id desc, bd.checkInTarget asc
+            """)
+    List<BookingDetail> findByCustomerAccountIdForAdminHistory(@Param("accountId") Long accountId);
+
+    @Query("""
+            select bd
+            from BookingDetail bd
+            join fetch bd.booking b
             left join fetch b.depositPolicy
             join fetch b.customer c
             left join fetch c.account

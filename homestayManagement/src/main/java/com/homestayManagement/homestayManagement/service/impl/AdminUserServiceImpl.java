@@ -160,6 +160,7 @@ public class AdminUserServiceImpl implements AdminUserService {
                 account.getEmail(),
                 detail != null ? detail.getFullName() : employee != null ? employee.getFullName() : null,
                 detail != null ? detail.getPhone() : employee != null ? employee.getPhone() : null,
+                detail != null ? detail.getIdentityDocumentNumber() : null,
                 detail != null ? detail.getAvatarUrl() : employee != null ? employee.getAvatarUrl() : null,
                 account.getRole().getName(),
                 account.getRole().getId(),

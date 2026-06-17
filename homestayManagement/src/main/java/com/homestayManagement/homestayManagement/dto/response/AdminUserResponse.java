@@ -7,6 +7,7 @@ public record AdminUserResponse(
         String email,
         String fullName,
         String phone,
+        String identityDocumentNumber,
         String avatarUrl,
         String role,
         Long roleId,
