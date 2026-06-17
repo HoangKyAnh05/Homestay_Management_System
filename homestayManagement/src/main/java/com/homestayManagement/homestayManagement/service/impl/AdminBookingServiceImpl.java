@@ -94,6 +94,7 @@ import java.util.stream.Collectors;
 public class AdminBookingServiceImpl implements AdminBookingService {
 
     private static final Set<String> ADMIN_SCHEDULE_BOOKING_STATUSES = Set.of("CONFIRMED", "CHECKED_IN", "COMPLETED");
+    private static final Set<String> CHECK_IN_LOG_BOOKING_STATUSES = Set.of("CONFIRMED", "CHECKED_IN", "COMPLETED");
 
     private final BookingDetailRepository bookingDetailRepository;
     private final BookingRepository bookingRepository;
@@ -202,9 +203,13 @@ public class AdminBookingServiceImpl implements AdminBookingService {
         }
 
         List<BookingDetail> details = bookingDetailRepository.findCheckInLogs(
-                startDate.atStartOfDay(),
-                endDate.plusDays(1).atStartOfDay()
-        );
+                        startDate.atStartOfDay(),
+                        endDate.plusDays(1).atStartOfDay()
+                ).stream()
+                .filter(detail -> CHECK_IN_LOG_BOOKING_STATUSES.contains(
+                        normalizeStatus(detail.getBooking().getStatus())
+                ))
+                .toList();
         if (details.isEmpty()) {
             return List.of();
         }
@@ -840,11 +845,14 @@ public class AdminBookingServiceImpl implements AdminBookingService {
 
     private AdminCheckInLogDetailResponse toCheckInLogDetailResponse(BookingDetail detail, CheckInRecord record) {
         Room room = detail.getRoom();
+        RoomType roomType = detail.getRoomType() != null
+                ? detail.getRoomType()
+                : room != null ? room.getRoomType() : null;
         return new AdminCheckInLogDetailResponse(
                 detail.getId(),
-                room.getId(),
-                room.getRoomNumber(),
-                room.getRoomType() != null ? room.getRoomType().getName() : null,
+                room != null ? room.getId() : null,
+                room != null ? room.getRoomNumber() : null,
+                roomType != null ? roomType.getName() : null,
                 detail.getCheckInTarget(),
                 detail.getCheckOutTarget(),
                 detail.getNumberOfAdults(),

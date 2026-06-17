@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { getStoredToken } from '../../services/authService'
 import { formatDateTime as formatAppDateTime } from '../../utils/dateTimeFormat'
 import AdminLayout from './AdminLayout'
@@ -28,18 +28,6 @@ function defaultToDate() {
   const date = new Date()
   date.setDate(date.getDate() + 14)
   return toDateInputValue(date)
-}
-
-function formatDateTime(value) {
-  return formatAppDateTime(value)
-  if (!value) return 'Chưa có'
-  return new Date(value).toLocaleString('vi-VN', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
 }
 
 function formatDate(value) {
@@ -151,7 +139,8 @@ function SummaryCard({ label, value, tone }) {
 
 function DetailCard({ detail, actionLoading, onAction }) {
   const stage = detailStage(detail)
-  const canCheckIn = stage === 'waiting'
+  const hasAssignedRoom = Boolean(detail.roomId)
+  const canCheckIn = stage === 'waiting' && hasAssignedRoom
   const canCheckOut = stage === 'staying'
   const loading = actionLoading === detail.bookingDetailId
 
@@ -159,12 +148,12 @@ function DetailCard({ detail, actionLoading, onAction }) {
     <article className={`acl-detail acl-detail--${stage}`}>
       <div className="acl-detail-main">
         <div className="acl-room-badge">
-          <strong>{detail.roomNumber}</strong>
+          <strong>{detail.roomNumber || '—'}</strong>
           <span>{detail.roomTypeName || 'Chưa phân loại'}</span>
         </div>
         <div>
           <div className="acl-detail-title">
-            <h3>Phòng {detail.roomNumber}</h3>
+            <h3>{detail.roomNumber ? `Phòng ${detail.roomNumber}` : 'Chưa gán phòng'}</h3>
             <span className={`acl-stage acl-stage--${stage}`}>{stageLabel(stage)}</span>
           </div>
           <div className="acl-detail-grid">
@@ -184,6 +173,7 @@ function DetailCard({ detail, actionLoading, onAction }) {
           <span>{formatMoney(detail.priceAtBooking)}</span>
         </div>
         <div className="acl-detail-actions">
+          {!hasAssignedRoom && <span className="acl-assignment-note">Cần gán phòng trước khi check-in</span>}
           <button type="button" disabled={!canCheckIn || loading} onClick={() => onAction(detail.bookingDetailId, 'check-in')}>
             {loading && canCheckIn ? 'Đang xử lý...' : 'Check-in'}
           </button>
@@ -208,7 +198,7 @@ function AdminCheckInLogsPage() {
   const [actionError, setActionError] = useState('')
   const [actionLoading, setActionLoading] = useState(null)
 
-  const loadLogs = async () => {
+  const loadLogs = useCallback(async () => {
     setLoading(true)
     setError('')
     try {
@@ -229,11 +219,13 @@ function AdminCheckInLogsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [fromDate, toDate])
 
   useEffect(() => {
+    // The request updates loading state before synchronizing with the API.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadLogs()
-  }, [fromDate, toDate])
+  }, [loadLogs])
 
   const filteredBookings = useMemo(() => {
     const keyword = search.trim().toLowerCase()
@@ -243,12 +235,6 @@ function AdminCheckInLogsPage() {
   const selectedBooking = useMemo(() => {
     return filteredBookings.find(booking => booking.bookingId === selectedBookingId) || filteredBookings[0] || null
   }, [filteredBookings, selectedBookingId])
-
-  useEffect(() => {
-    if (selectedBooking && selectedBooking.bookingId !== selectedBookingId) {
-      setSelectedBookingId(selectedBooking.bookingId)
-    }
-  }, [selectedBooking, selectedBookingId])
 
   const allDetails = bookings.flatMap(booking => booking.details)
   const waitingCount = allDetails.filter(detail => detailStage(detail) === 'waiting').length
