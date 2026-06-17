@@ -10,6 +10,8 @@ import AdminServiceCategoriesPage from './pages/Admin/AdminServiceCategoriesPage
 import AdminSurchargesPage from './pages/Admin/AdminSurchargesPage'
 import AdminUsersPage from './pages/Admin/AdminUsersPage'
 import DashboardPage from './pages/Admin/DashboardPage'
+import HousekeepingPage from './pages/Admin/HousekeepingPage'
+import ReceptionistOverviewPage from './pages/Admin/ReceptionistOverviewPage'
 import BookingHistoryPage from './pages/BookingHistory/BookingHistoryPage'
 import ForgotPasswordPage from './pages/ForgotPassword/ForgotPasswordPage'
 import HomePage from './pages/Home/HomePage'
@@ -19,8 +21,7 @@ import RegisterPage from './pages/Register/RegisterPage'
 import RoomDetailPage from './pages/Rooms/RoomDetailPage'
 import RoomsPage from './pages/Rooms/RoomsPage'
 import { getStoredUser } from './services/authService'
-
-const STAFF_ROLES = new Set(['ROLE_ADMIN', 'ROLE_RECEPTIONIST', 'ROLE_HOUSEKEEPING', 'ROLE_MARKETING'])
+import { STAFF_ROLES, roleCanAccess, roleDefaultPath } from './utils/roleUtils'
 
 function normalizePath() {
   if (window.location.pathname === '/') {
@@ -90,6 +91,20 @@ function App() {
       return null
     }
 
+    const role = user.role
+
+    // Nếu vào /admin (root) → redirect đến trang mặc định theo role
+    if (currentPath === '/admin' && role !== 'ROLE_ADMIN') {
+      window.location.replace(roleDefaultPath(role))
+      return null
+    }
+
+    // Kiểm tra quyền truy cập route — non-admin không được vào route ngoài phạm vi
+    if (role !== 'ROLE_ADMIN' && !roleCanAccess(role, currentPath)) {
+      window.location.replace(roleDefaultPath(role))
+      return null
+    }
+
     if (currentPath === '/admin/users' || currentPath === '/admin/users/employees') {
       return <AdminUsersPage userType="employees" />
     }
@@ -97,11 +112,12 @@ function App() {
     if (currentPath === '/admin/rooms') return <AdminRoomsPage />
     if (currentPath === '/admin/bookings') return <AdminBookingsPage />
     if (currentPath === '/admin/check-in-logs') return <AdminCheckInLogsPage />
-    if (currentPath === '/admin/check-in-logs') return <AdminPlaceholderPage activePage="check-in-logs" title="Nhật ký Lưu trú (Check-in)" />
     if (currentPath === '/admin/services/categories') return <AdminServiceCategoriesPage />
     if (currentPath === '/admin/services/surcharges') return <AdminSurchargesPage />
     if (currentPath === '/admin/rules-penalties') return <AdminRulesPenaltiesPage />
     if (currentPath === '/admin/invoices') return <AdminInvoicesPage />
+    if (currentPath === '/admin/housekeeping') return <HousekeepingPage />
+    if (currentPath === '/admin/receptionist') return <ReceptionistOverviewPage />
     if (currentPath === '/admin/marketing/ai-agent') return <AdminPlaceholderPage activePage="ai-post-agent" title="AI Agent Đăng bài" />
     if (currentPath === '/admin/marketing/post-logs') return <AdminPlaceholderPage activePage="post-logs" title="Nhật ký Bài đăng" />
     if (currentPath === '/admin/marketing/vouchers') return <AdminPlaceholderPage activePage="vouchers" title="Mã giảm giá (Vouchers)" />

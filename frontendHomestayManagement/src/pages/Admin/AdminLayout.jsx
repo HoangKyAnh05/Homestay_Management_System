@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { getStoredUser, logout } from '../../services/authService'
+import { NAV_KEYS_BY_ROLE } from '../../utils/roleUtils'
 import './AdminLayout.css'
 
 const ICONS = {
@@ -27,10 +28,17 @@ const ICONS = {
   marketing: (
     <svg viewBox="0 0 24 24"><path d="M3 11v3a2 2 0 0 0 2 2h2l4 4v-4h4l6-4V7l-6-4H5a2 2 0 0 0-2 2v3"/><path d="M3 8h8"/></svg>
   ),
+  housekeeping: (
+    <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 17h6M12 13v4"/><circle cx="12" cy="10" r="1.5"/></svg>
+  ),
+  receptionist: (
+    <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+  ),
 }
 
 const NAV_ITEMS = [
   { key: 'dashboard', label: 'Tổng quan', path: '/admin', icon: ICONS.dashboard },
+  { key: 'receptionist-overview', label: 'Tổng quan', path: '/admin/receptionist', icon: ICONS.receptionist },
   {
     key: 'users',
     label: 'Quản lí người dùng',
@@ -66,6 +74,7 @@ const NAV_ITEMS = [
   },
   { key: 'rules', label: 'Cấu hình Nội quy & Phạt', path: '/admin/rules-penalties', icon: ICONS.rules },
   { key: 'invoices', label: 'Quản lý Hóa đơn', path: '/admin/invoices', icon: ICONS.invoices },
+  { key: 'housekeeping', label: 'Housekeeping', path: '/admin/housekeeping', icon: ICONS.housekeeping },
   {
     key: 'marketing',
     label: 'Marketing & AI Agent',
@@ -83,22 +92,46 @@ export function navigate(path) {
   window.dispatchEvent(new PopStateEvent('popstate'))
 }
 
+function roleBadgeLabel(role) {
+  const labels = {
+    ROLE_ADMIN: 'Quản trị viên',
+    ROLE_RECEPTIONIST: 'Lễ tân',
+    ROLE_HOUSEKEEPING: 'Housekeeping',
+    ROLE_MARKETING: 'Marketing',
+  }
+  return labels[role] || role || 'Nhân viên'
+}
+
 function isGroupActive(item, activePage) {
   return item.key === activePage || item.children?.some(child => child.key === activePage)
 }
 
-function getActiveGroupKey(activePage) {
-  return NAV_ITEMS.find(item => item.children && isGroupActive(item, activePage))?.key || null
+function getActiveGroupKey(activePage, navItems) {
+  return navItems.find(item => item.children && isGroupActive(item, activePage))?.key || null
 }
 
 function AdminLayout({ activePage, children }) {
   const user = getStoredUser()
+  const role = user?.role || 'ROLE_ADMIN'
   const [collapsed, setCollapsed] = useState(false)
-  const [openGroupKey, setOpenGroupKey] = useState(() => getActiveGroupKey(activePage))
+
+  // Lọc menu theo role: null = toàn bộ (admin)
+  // Dùng useMemo để tránh tạo array mới mỗi render (gây reset openGroupKey)
+  const navItems = useMemo(() => {
+    const allowedKeys = NAV_KEYS_BY_ROLE[role]
+    if (!allowedKeys) return NAV_ITEMS
+    return NAV_ITEMS.filter(item => allowedKeys.includes(item.key))
+  }, [role])
+
+  const [openGroupKey, setOpenGroupKey] = useState(() => getActiveGroupKey(activePage, navItems))
 
   useEffect(() => {
-    setOpenGroupKey(getActiveGroupKey(activePage))
-  }, [activePage])
+    setOpenGroupKey(prev => {
+      const next = getActiveGroupKey(activePage, navItems)
+      // Chỉ set lại nếu có nhóm active và chưa mở
+      return next || prev
+    })
+  }, [activePage, navItems])
 
   const handleLogout = () => {
     logout()
@@ -120,7 +153,7 @@ function AdminLayout({ activePage, children }) {
         </div>
 
         <nav className="admin-nav">
-          {NAV_ITEMS.map((item) => {
+          {navItems.map((item) => {
             const active = isGroupActive(item, activePage)
 
             if (item.children) {
@@ -229,7 +262,10 @@ function AdminLayout({ activePage, children }) {
               <span className="admin-topbar-avatar">
                 {user?.fullName?.split(' ').pop()?.[0]?.toUpperCase() || 'A'}
               </span>
-              <strong>{user?.fullName || user?.email}</strong>
+              <div>
+                <strong>{user?.fullName || user?.email}</strong>
+                <span className="admin-topbar-role">{roleBadgeLabel(role)}</span>
+              </div>
             </div>
           </div>
         </header>

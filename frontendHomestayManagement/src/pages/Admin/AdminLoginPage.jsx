@@ -1,8 +1,7 @@
 import { useState } from 'react'
 import { adminLogin } from '../../services/authService'
+import { roleDefaultPath } from '../../utils/roleUtils'
 import './AdminLoginPage.css'
-
-const STAFF_ROLES = new Set(['ROLE_ADMIN', 'ROLE_RECEPTIONIST', 'ROLE_HOUSEKEEPING', 'ROLE_MARKETING'])
 
 function AdminLoginPage() {
   const [email, setEmail] = useState('')
@@ -19,10 +18,7 @@ function AdminLoginPage() {
 
     try {
       const data = await adminLogin(email, password, remember)
-      if (!STAFF_ROLES.has(data.user?.role)) {
-        throw new Error('Tai khoan nay khong thuoc nhan vien he thong')
-      }
-      window.location.assign('/admin')
+      window.location.assign(roleDefaultPath(data.user?.role))
     } catch (error) {
       setErrorMessage(error.message)
     } finally {
