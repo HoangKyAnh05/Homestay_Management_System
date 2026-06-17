@@ -345,6 +345,55 @@
   font-size: 12px;
 }
 
+.ain-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.ain-pagination > span {
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.ain-pagination > div {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.ain-pagination button {
+  min-width: 36px;
+  height: 36px;
+  padding: 0 9px;
+  border: 1px solid #dddddd;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #3f3f3f;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ain-pagination button:hover:not(:disabled) {
+  border-color: #c1c1c1;
+  background: #f7f7f7;
+}
+
+.ain-pagination button.is-active {
+  border-color: #ff385c;
+  background: #ff385c;
+  color: #ffffff;
+}
+
+.ain-pagination button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 @media (max-width: 900px) {
   .ain-stats,
   .ain-detail-grid {
@@ -367,4 +416,24 @@
   .ain-payment-row {
     grid-template-columns: 1fr;
   }
+
+  .ain-pagination {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .ain-pagination > div {
+    max-width: 100%;
+    overflow-x: auto;
+  }
+}
+.ain-error {
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-size: 13px;
+  font-weight: 700;
 }

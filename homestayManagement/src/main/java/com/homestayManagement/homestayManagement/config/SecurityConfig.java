@@ -39,7 +39,33 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/payments/sepay/webhook").permitAll()
                         .requestMatchers("/uploads/**").permitAll()
                         .requestMatchers("/api/rooms/**").permitAll()
+
+                        // ── Admin + Lễ tân ────────────────────────────────────────────
+                        .requestMatchers("/api/admin/bookings/**", "/api/admin/invoices/**")
+                        .hasAnyAuthority("ROLE_ADMIN", "ROLE_RECEPTIONIST")
+                        // Lễ tân cần đọc gói giá khi tạo/chỉnh sửa booking.
+                        .requestMatchers(HttpMethod.GET, "/api/admin/price-config/**")
+                        .hasAnyAuthority("ROLE_ADMIN", "ROLE_RECEPTIONIST")
+
+                        // ── Chỉ ROLE_ADMIN ──────────────────────────────────────────────
+                        // Quản lý người dùng
+                        .requestMatchers("/api/admin/users/**").hasAuthority("ROLE_ADMIN")
+                        // Quản lý phòng & loại phòng
+                        .requestMatchers("/api/admin/rooms/**").hasAuthority("ROLE_ADMIN")
+                        // Cấu hình giá
+                        .requestMatchers("/api/admin/price-config/**").hasAuthority("ROLE_ADMIN")
+                        // Danh mục dịch vụ & mini-bar (chỉ CRUD cấu hình, không phải gọi dịch vụ)
+                        .requestMatchers("/api/admin/services/facility/**").hasAuthority("ROLE_ADMIN")
+                        .requestMatchers("/api/admin/services/inventory/**").hasAuthority("ROLE_ADMIN")
+                        .requestMatchers("/api/admin/services/mini-bar-items/**").hasAuthority("ROLE_ADMIN")
+                        // Nội quy & phạt
+                        .requestMatchers("/api/admin/rules-penalties/**").hasAuthority("ROLE_ADMIN")
+                        // Dashboard tổng quan
+                        .requestMatchers("/api/admin/dashboard/**").hasAuthority("ROLE_ADMIN")
+
+                        // Các API admin còn lại không tự động mở cho role chuyên biệt.
                         .requestMatchers("/api/admin/**").hasAuthority("ROLE_ADMIN")
+
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
