@@ -66,6 +66,7 @@ function TaskCard({ task, active, onClick }) {
 
 function TaskDetail({ task, busy, onStart, onSubmitInspection, onCompleteCleaning, onClose }) {
   const [quantities, setQuantities] = useState(() => Object.fromEntries((task?.miniBarItems || []).map(item => [item.itemId, item.quantityUsed || 0])))
+  const [penaltySelections, setPenaltySelections] = useState(() => Object.fromEntries((task?.penaltyItems || []).map(item => [item.ruleId, item.selected])))
   const [note, setNote] = useState(() => task?.note || '')
 
   if (!task) {
@@ -83,6 +84,9 @@ function TaskDetail({ task, busy, onStart, onSubmitInspection, onCompleteCleanin
   const total = (task.miniBarItems || []).reduce(
     (sum, item) => sum + Number(item.unitPrice || 0) * Number(quantities[item.itemId] || 0), 0,
   )
+  const penaltyTotal = (task.penaltyItems || []).reduce(
+    (sum, item) => sum + (penaltySelections[item.ruleId] ? Number(item.amount || 0) : 0), 0,
+  )
 
   const changeQuantity = (item, delta) => {
     if (inspectionDone) return
@@ -94,6 +98,7 @@ function TaskDetail({ task, busy, onStart, onSubmitInspection, onCompleteCleanin
 
   const submitInspection = () => onSubmitInspection({
     items: task.miniBarItems.map(item => ({ itemId: item.itemId, quantityUsed: Number(quantities[item.itemId] || 0) })),
+    penaltyRuleIds: task.penaltyItems.filter(item => penaltySelections[item.ruleId]).map(item => item.ruleId),
     note,
   })
 
@@ -145,13 +150,37 @@ function TaskDetail({ task, busy, onStart, onSubmitInspection, onCompleteCleanin
             ))}
           </div>
 
+          <div className="hk-section-title hk-section-title--penalty">
+            <div><span>Vi phạm nội quy</span><h3>Khoản phạt áp dụng</h3></div>
+            <strong>{money(penaltyTotal)}</strong>
+          </div>
+          <div className="hk-penalties">
+            {task.penaltyItems?.length ? task.penaltyItems.map(item => (
+              <label className={`hk-penalty${penaltySelections[item.ruleId] ? ' hk-penalty--selected' : ''}`} key={item.ruleId}>
+                <input
+                  type="checkbox"
+                  disabled={inspectionDone || busy}
+                  checked={Boolean(penaltySelections[item.ruleId])}
+                  onChange={event => setPenaltySelections(current => ({ ...current, [item.ruleId]: event.target.checked }))}
+                />
+                <span className="hk-penalty__check">✓</span>
+                <span><strong>{item.title}</strong><small>Mức phạt theo cấu hình nội quy</small></span>
+                <b>{money(item.amount)}</b>
+              </label>
+            )) : <div className="hk-no-items">Chưa có khoản phạt nào trong cấu hình nội quy.</div>}
+          </div>
+
           <label className="hk-note">
             <span>Ghi chú tình trạng phòng</span>
             <textarea maxLength={1000} disabled={inspectionDone || busy} value={note} onChange={event => setNote(event.target.value)} placeholder="Ví dụ: thiếu 1 khăn tắm, điều hòa hoạt động bình thường..." />
           </label>
 
           <div className="hk-summary">
-            <div><span>Tổng chi phí minibar</span><strong>{money(total)}</strong></div>
+            <div className="hk-summary-lines">
+              <p><span>Chi phí minibar</span><b>{money(total)}</b></p>
+              <p><span>Khoản phạt nội quy</span><b>{money(penaltyTotal)}</b></p>
+              <p className="hk-summary-total"><span>Tổng phát sinh</span><strong>{money(total + penaltyTotal)}</strong></p>
+            </div>
             {!inspectionDone ? (
               <button type="button" className="hk-primary" disabled={busy} onClick={submitInspection}>
                 {busy ? 'Đang gửi...' : 'Gửi chi phí cho lễ tân'}

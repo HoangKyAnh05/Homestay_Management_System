@@ -3,6 +3,7 @@ package com.homestayManagement.homestayManagement.service.impl;
 import com.homestayManagement.homestayManagement.dto.request.HousekeepingInspectionItemRequest;
 import com.homestayManagement.homestayManagement.dto.request.HousekeepingInspectionRequest;
 import com.homestayManagement.homestayManagement.dto.response.HousekeepingMiniBarItemResponse;
+import com.homestayManagement.homestayManagement.dto.response.HousekeepingPenaltyItemResponse;
 import com.homestayManagement.homestayManagement.dto.response.HousekeepingTaskResponse;
 import com.homestayManagement.homestayManagement.entity.*;
 import com.homestayManagement.homestayManagement.repository.*;
@@ -33,6 +34,8 @@ public class HousekeepingServiceImpl implements HousekeepingService {
     private final RoomRepository roomRepository;
     private final RoomMiniBarItemRepository roomMiniBarItemRepository;
     private final RoomAmenitiesUsageRepository roomAmenitiesUsageRepository;
+    private final RulesPenaltyRepository rulesPenaltyRepository;
+    private final AppliedPenaltyRepository appliedPenaltyRepository;
     private final AdminBookingService adminBookingService;
 
     public HousekeepingServiceImpl(
@@ -43,6 +46,8 @@ public class HousekeepingServiceImpl implements HousekeepingService {
             RoomRepository roomRepository,
             RoomMiniBarItemRepository roomMiniBarItemRepository,
             RoomAmenitiesUsageRepository roomAmenitiesUsageRepository,
+            RulesPenaltyRepository rulesPenaltyRepository,
+            AppliedPenaltyRepository appliedPenaltyRepository,
             AdminBookingService adminBookingService
     ) {
         this.housekeepingTaskRepository = housekeepingTaskRepository;
@@ -52,6 +57,8 @@ public class HousekeepingServiceImpl implements HousekeepingService {
         this.roomRepository = roomRepository;
         this.roomMiniBarItemRepository = roomMiniBarItemRepository;
         this.roomAmenitiesUsageRepository = roomAmenitiesUsageRepository;
+        this.rulesPenaltyRepository = rulesPenaltyRepository;
+        this.appliedPenaltyRepository = appliedPenaltyRepository;
         this.adminBookingService = adminBookingService;
     }
 
@@ -182,6 +189,31 @@ public class HousekeepingServiceImpl implements HousekeepingService {
                 .toList();
         roomAmenitiesUsageRepository.saveAll(usages);
 
+        Set<Long> penaltyRuleIds = new LinkedHashSet<>(request.penaltyRuleIds());
+        if (penaltyRuleIds.size() != request.penaltyRuleIds().size()) {
+            throw new IllegalArgumentException("Danh sách khoản phạt có nội quy bị trùng");
+        }
+        Map<Long, RulesPenalty> penaltyCatalog = rulesPenaltyRepository.findAll().stream()
+                .collect(Collectors.toMap(RulesPenalty::getId, Function.identity()));
+        for (Long ruleId : penaltyRuleIds) {
+            if (!penaltyCatalog.containsKey(ruleId)) {
+                throw new IllegalArgumentException("Không tìm thấy khoản phạt #" + ruleId);
+            }
+        }
+        appliedPenaltyRepository.deleteByCheckRecordId(checkInRecordId);
+        appliedPenaltyRepository.flush();
+        appliedPenaltyRepository.saveAll(penaltyRuleIds.stream()
+                .map(ruleId -> {
+                    RulesPenalty rule = penaltyCatalog.get(ruleId);
+                    return AppliedPenalty.builder()
+                            .checkRecord(task.getCheckInRecord())
+                            .rulesPenalty(rule)
+                            .actualFine(rule.getPenaltyAmount())
+                            .description("Ghi nhận khi housekeeping kiểm tra phòng")
+                            .build();
+                })
+                .toList());
+
         task.setNote(blankToNull(request.note()));
         task.setInspectionStatus("COMPLETED");
         task.setInspectionCompletedAt(LocalDateTime.now());
@@ -280,6 +312,20 @@ public class HousekeepingServiceImpl implements HousekeepingService {
                 .map(HousekeepingMiniBarItemResponse::totalPrice)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
+        Set<Long> selectedPenaltyIds = appliedPenaltyRepository.findByBookingDetailIdForAdmin(detail.getId()).stream()
+                .map(penalty -> penalty.getRulesPenalty().getId())
+                .collect(Collectors.toSet());
+        List<HousekeepingPenaltyItemResponse> penaltyItems = rulesPenaltyRepository.findAll().stream()
+                .sorted(Comparator.comparing(RulesPenalty::getTitle, String.CASE_INSENSITIVE_ORDER))
+                .map(rule -> new HousekeepingPenaltyItemResponse(
+                        rule.getId(), rule.getTitle(), rule.getPenaltyAmount(), selectedPenaltyIds.contains(rule.getId())
+                ))
+                .toList();
+        BigDecimal totalPenaltyCharge = penaltyItems.stream()
+                .filter(HousekeepingPenaltyItemResponse::selected)
+                .map(HousekeepingPenaltyItemResponse::amount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
         Employee requestedBy = task.getRequestedBy();
         Employee assigned = task.getAssignedHousekeeping();
         return new HousekeepingTaskResponse(
@@ -293,7 +339,7 @@ public class HousekeepingServiceImpl implements HousekeepingService {
                 assigned != null ? assigned.getFullName() : null,
                 task.getNote(), task.getRequestedAt(), task.getStartedAt(),
                 task.getInspectionCompletedAt(), task.getCleaningCompletedAt(),
-                totalCharge, miniBarItems
+                totalCharge, miniBarItems, totalPenaltyCharge, totalCharge.add(totalPenaltyCharge), penaltyItems
         );
     }
 

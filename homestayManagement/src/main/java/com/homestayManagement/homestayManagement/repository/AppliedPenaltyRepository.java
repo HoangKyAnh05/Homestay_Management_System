@@ -10,6 +10,8 @@ import java.util.List;
 public interface AppliedPenaltyRepository extends JpaRepository<AppliedPenalty, Long> {
     boolean existsByRulesPenaltyId(Long rulesPenaltyId);
 
+    void deleteByCheckRecordId(Long checkRecordId);
+
     @Query("""
             select p from AppliedPenalty p
             join fetch p.checkRecord cr

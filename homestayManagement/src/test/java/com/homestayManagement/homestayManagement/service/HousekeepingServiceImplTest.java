@@ -34,6 +34,8 @@ class HousekeepingServiceImplTest {
     @Mock private RoomRepository roomRepository;
     @Mock private RoomMiniBarItemRepository roomMiniBarItemRepository;
     @Mock private RoomAmenitiesUsageRepository roomAmenitiesUsageRepository;
+    @Mock private RulesPenaltyRepository rulesPenaltyRepository;
+    @Mock private AppliedPenaltyRepository appliedPenaltyRepository;
     @Mock private AdminBookingService adminBookingService;
 
     private HousekeepingServiceImpl service;
@@ -46,7 +48,8 @@ class HousekeepingServiceImplTest {
         service = new HousekeepingServiceImpl(
                 housekeepingTaskRepository, bookingDetailRepository, checkInRecordRepository,
                 employeeRepository, roomRepository, roomMiniBarItemRepository,
-                roomAmenitiesUsageRepository, adminBookingService
+                roomAmenitiesUsageRepository, rulesPenaltyRepository, appliedPenaltyRepository,
+                adminBookingService
         );
 
         housekeeper = Employee.builder().id(8L).fullName("Nhân viên dọn phòng").build();
@@ -71,6 +74,8 @@ class HousekeepingServiceImplTest {
         lenient().when(housekeepingTaskRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
         lenient().when(roomMiniBarItemRepository.findAll()).thenReturn(List.of(water));
         lenient().when(roomAmenitiesUsageRepository.findByBookingDetailIdForAdmin(5L)).thenReturn(List.of());
+        lenient().when(rulesPenaltyRepository.findAll()).thenReturn(List.of());
+        lenient().when(appliedPenaltyRepository.findByBookingDetailIdForAdmin(5L)).thenReturn(List.of());
     }
 
     @AfterEach
@@ -97,14 +102,36 @@ class HousekeepingServiceImplTest {
         task.setCleaningStatus("IN_PROGRESS");
 
         service.submitInspection(7L, new HousekeepingInspectionRequest(
-                List.of(new HousekeepingInspectionItemRequest(9L, 3)), "Đã kiểm tra"
+                List.of(new HousekeepingInspectionItemRequest(9L, 3)), List.of(), "Đã kiểm tra"
         ));
 
         assertEquals("COMPLETED", task.getInspectionStatus());
         assertEquals("IN_PROGRESS", task.getCleaningStatus());
         verify(roomAmenitiesUsageRepository).deleteByCheckInRecordId(6L);
         verify(roomAmenitiesUsageRepository).saveAll(argThat(items -> items.iterator().next().getQuantityUsed() == 3));
+        verify(appliedPenaltyRepository).deleteByCheckRecordId(6L);
         verify(adminBookingService).generateInvoice(5L);
+    }
+
+    @Test
+    void submitInspectionSavesConfiguredRulePenalty() {
+        task.setAssignedHousekeeping(housekeeper);
+        task.setStartedAt(LocalDateTime.now());
+        task.setInspectionStatus("IN_PROGRESS");
+        task.setCleaningStatus("IN_PROGRESS");
+        RulesPenalty noSmoking = RulesPenalty.builder().id(11L).title("Hút thuốc trong phòng")
+                .penaltyAmount(BigDecimal.valueOf(500_000)).build();
+        when(rulesPenaltyRepository.findAll()).thenReturn(List.of(noSmoking));
+
+        service.submitInspection(7L, new HousekeepingInspectionRequest(
+                List.of(new HousekeepingInspectionItemRequest(9L, 0)), List.of(11L), "Có mùi thuốc"
+        ));
+
+        verify(appliedPenaltyRepository).saveAll(argThat(penalties -> {
+            AppliedPenalty saved = penalties.iterator().next();
+            return saved.getRulesPenalty().getId().equals(11L)
+                    && saved.getActualFine().compareTo(BigDecimal.valueOf(500_000)) == 0;
+        }));
     }
 
     @Test

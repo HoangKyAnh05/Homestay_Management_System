@@ -10,6 +10,9 @@ public record HousekeepingInspectionRequest(
         @NotNull(message = "Danh sách mini-bar không được để trống")
         List<@Valid HousekeepingInspectionItemRequest> items,
 
+        @NotNull(message = "Danh sách khoản phạt không được để trống")
+        List<@NotNull(message = "Khoản phạt không hợp lệ") Long> penaltyRuleIds,
+
         @Size(max = 1000, message = "Ghi chú không được vượt quá 1000 ký tự")
         String note
 ) {

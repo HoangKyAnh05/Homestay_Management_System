@@ -27,6 +27,9 @@ public record HousekeepingTaskResponse(
         LocalDateTime inspectionCompletedAt,
         LocalDateTime cleaningCompletedAt,
         BigDecimal totalMiniBarCharge,
-        List<HousekeepingMiniBarItemResponse> miniBarItems
+        List<HousekeepingMiniBarItemResponse> miniBarItems,
+        BigDecimal totalPenaltyCharge,
+        BigDecimal totalCharge,
+        List<HousekeepingPenaltyItemResponse> penaltyItems
 ) {
 }
