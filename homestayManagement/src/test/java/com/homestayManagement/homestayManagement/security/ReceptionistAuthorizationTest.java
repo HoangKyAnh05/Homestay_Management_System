@@ -3,9 +3,11 @@ package com.homestayManagement.homestayManagement.security;
 import com.homestayManagement.homestayManagement.config.SecurityConfig;
 import com.homestayManagement.homestayManagement.controller.AdminBookingController;
 import com.homestayManagement.homestayManagement.controller.AdminInvoiceController;
+import com.homestayManagement.homestayManagement.controller.HousekeepingController;
 import com.homestayManagement.homestayManagement.service.AdminBookingService;
 import com.homestayManagement.homestayManagement.service.AdminCheckInRegistrationService;
 import com.homestayManagement.homestayManagement.service.AdminInvoiceService;
+import com.homestayManagement.homestayManagement.service.HousekeepingService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -21,10 +23,11 @@ import java.util.List;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 
-@WebMvcTest(controllers = {AdminBookingController.class, AdminInvoiceController.class})
+@WebMvcTest(controllers = {AdminBookingController.class, AdminInvoiceController.class, HousekeepingController.class})
 @ImportAutoConfiguration({SecurityAutoConfiguration.class, ServletWebSecurityAutoConfiguration.class})
 @Import({SecurityConfig.class, JwtAuthenticationFilter.class})
 class ReceptionistAuthorizationTest {
@@ -36,6 +39,7 @@ class ReceptionistAuthorizationTest {
     @MockitoBean private AdminBookingService adminBookingService;
     @MockitoBean private AdminCheckInRegistrationService adminCheckInRegistrationService;
     @MockitoBean private AdminInvoiceService adminInvoiceService;
+    @MockitoBean private HousekeepingService housekeepingService;
 
     @Test
     void receptionistCanLoadBookingData() throws Exception {
@@ -59,6 +63,28 @@ class ReceptionistAuthorizationTest {
     void receptionistCannotAccessAdminOnlyUserManagement() throws Exception {
         mockMvc.perform(get("/api/admin/users")
                         .with(user("receptionist").authorities(() -> "ROLE_RECEPTIONIST")))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void receptionistCanRequestInspectionButCannotStartHousekeepingTask() throws Exception {
+        mockMvc.perform(post("/api/housekeeping/booking-details/10/request")
+                        .with(user("receptionist").authorities(() -> "ROLE_RECEPTIONIST")))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/housekeeping/tasks/20/start")
+                        .with(user("receptionist").authorities(() -> "ROLE_RECEPTIONIST")))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void housekeepingCanStartTaskButCannotCreateInspectionRequest() throws Exception {
+        mockMvc.perform(post("/api/housekeeping/tasks/20/start")
+                        .with(user("housekeeping").authorities(() -> "ROLE_HOUSEKEEPING")))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/housekeeping/booking-details/10/request")
+                        .with(user("housekeeping").authorities(() -> "ROLE_HOUSEKEEPING")))
                 .andExpect(status().isForbidden());
     }
 }

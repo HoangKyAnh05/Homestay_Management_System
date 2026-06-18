@@ -94,6 +94,9 @@ public class AdminCheckInRegistrationServiceImpl implements AdminCheckInRegistra
 
         Room room = roomRepository.findByIdForCheckIn(request.roomId())
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy phòng"));
+        if (!"AVAILABLE".equalsIgnoreCase(room.getStatus())) {
+            throw new IllegalArgumentException("Phòng chưa sẵn sàng để nhận khách");
+        }
         if (detail.getRoomType() == null || room.getRoomType() == null
                 || !detail.getRoomType().getId().equals(room.getRoomType().getId())) {
             throw new IllegalArgumentException("Phòng được chọn không đúng loại phòng khách đã đặt");
@@ -110,6 +113,8 @@ public class AdminCheckInRegistrationServiceImpl implements AdminCheckInRegistra
         detail.setAssignedBy(employee);
         detail.setStatus("CHECKED_IN");
         detail.getBooking().setStatus("CHECKED_IN");
+        room.setStatus("OCCUPIED");
+        roomRepository.save(room);
         bookingDetailRepository.save(detail);
         bookingRepository.save(detail.getBooking());
 
@@ -152,6 +157,7 @@ public class AdminCheckInRegistrationServiceImpl implements AdminCheckInRegistra
 
     private List<AdminBookingRoomResponse> findAvailableRooms(BookingDetail detail) {
         return roomRepository.findByRoomTypeId(detail.getRoomType().getId()).stream()
+                .filter(room -> "AVAILABLE".equalsIgnoreCase(room.getStatus()))
                 .filter(room -> isRoomAvailable(room.getId(), detail))
                 .map(room -> new AdminBookingRoomResponse(
                         room.getId(), room.getRoomNumber(), room.getRoomType().getName()

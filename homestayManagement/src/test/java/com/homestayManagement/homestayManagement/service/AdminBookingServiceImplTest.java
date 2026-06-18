@@ -60,6 +60,7 @@ class AdminBookingServiceImplTest {
                 null,
                 null,
                 null,
+                null,
                 null
         );
     }

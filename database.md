@@ -85,6 +85,9 @@ Dinh danh phong vat ly thuc te. Phong nay chi duoc gan vao booking khi le tan la
 | `id` | bigint | PK, auto increment |
 | `room_number` | varchar(10) | Unique, vi du 101, 102 |
 | `room_type_id` | bigint | FK -> `room_types.id` |
+| `status` | varchar(20) | Trang thai hien tai: `AVAILABLE`, `OCCUPIED`, `CLEANING`, `MAINTENANCE` |
+
+`rooms.status` la trang thai van hanh hien tai cua phong. Khi check-in, phong chuyen sang `OCCUPIED`; housekeeping nhan viec thi chuyen sang `CLEANING`; chi khi don phong xong moi chuyen ve `AVAILABLE`.
 
 ### `room_images`
 
@@ -255,6 +258,40 @@ Luồng check-in de xuat:
 4. He thong cap nhat `room_id`, `assigned_by_employee_id`, `assigned_at`, `room_assignment_status = ASSIGNED`.
 5. Le tan nhap danh sach `booking_guests` va xac thuc giay to.
 6. He thong tao `check_in_records` va doi status sang `CHECKED_IN`.
+
+### `housekeeping_tasks`
+
+Moi dong dai dien cho mot yeu cau kiem tra va don phong cua mot lan luu tru. Task gan theo `check_in_record_id`, khong chi gan theo phong, de minibar va chi phi luon thuoc dung booking detail.
+
+| Column | Type | Note |
+|---|---|---|
+| `id` | bigint | PK, auto increment |
+| `check_in_record_id` | bigint | FK -> `check_in_records.id`, unique |
+| `room_id` | bigint | FK -> `rooms.id` |
+| `requested_by_employee_id` | bigint | FK -> `employees.id`, le tan/admin gui yeu cau |
+| `assigned_housekeeping_id` | bigint | FK -> `employees.id`, nullable den khi co nguoi nhan viec |
+| `inspection_status` | varchar(20) | `PENDING`, `IN_PROGRESS`, `COMPLETED` |
+| `cleaning_status` | varchar(20) | `PENDING`, `IN_PROGRESS`, `COMPLETED` |
+| `note` | varchar(1000) | Ghi chu tinh trang phong |
+| `requested_at` | datetime | Thoi gian le tan gui yeu cau |
+| `started_at` | datetime | Thoi gian housekeeping nhan viec |
+| `inspection_completed_at` | datetime | Thoi gian chot minibar va gui chi phi cho le tan |
+| `cleaning_completed_at` | datetime | Thoi gian don phong xong |
+| `version` | bigint | Optimistic lock, ngan hai thiet bi ghi de len nhau |
+| `created_at` | datetime | Thoi gian tao |
+| `updated_at` | datetime | Thoi gian cap nhat gan nhat |
+
+Unique constraint: `check_in_record_id`.
+
+Luong checkout va don phong:
+
+1. Le tan/admin tao housekeeping task cho phong dang `CHECKED_IN`.
+2. Housekeeping nhan task; hai trang thai chuyen sang `IN_PROGRESS`, phong chuyen `OCCUPIED -> CLEANING`.
+3. Housekeeping ghi nhan minibar trong `room_amenities_usage` va gui ket qua; `inspection_status = COMPLETED`.
+4. Hoa don duoc tinh lai. Le tan co the thu tien va checkout ngay, khong can cho don phong xong.
+5. Housekeeping tiep tuc don phong. Khi xac nhan hoan tat, `cleaning_status = COMPLETED` va phong chuyen `CLEANING -> AVAILABLE`.
+
+Dieu kien checkout chi phu thuoc `inspection_status = COMPLETED`. Dieu kien phong san sang don khach moi thuoc `cleaning_status = COMPLETED`; hai moc nay doc lap.
 
 ## 7. Dich Vu Va Phu Phi
 
@@ -471,6 +508,11 @@ customers.id              1 - N  check_in_records.customer_id
 employees.id              1 - N  check_in_records.housekeeping_id
 employees.id              1 - N  check_in_records.receptionist_id
 
+check_in_records.id       1 - 1  housekeeping_tasks.check_in_record_id
+rooms.id                  1 - N  housekeeping_tasks.room_id
+employees.id              1 - N  housekeeping_tasks.requested_by_employee_id
+employees.id              1 - N  housekeeping_tasks.assigned_housekeeping_id
+
 booking_details.id        1 - N  booking_service_items.booking_detail_id
 facility_services.id      1 - N  booking_service_items.facility_service_id
 inventory_services.id     1 - N  booking_service_items.inventory_service_id
@@ -493,4 +535,3 @@ customers.id              1 - 1  customer_loyalty.customer_id
 ai_agent_configs.id       1 - N  marketing_posts.agent_config_id
 employees.id              1 - N  marketing_posts.creator_id
 ```
-

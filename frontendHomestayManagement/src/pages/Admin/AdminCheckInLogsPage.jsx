@@ -138,7 +138,7 @@ function SummaryCard({ label, value, tone }) {
   )
 }
 
-function DetailCard({ detail, actionLoading, onAction }) {
+function DetailCard({ detail, actionLoading, housekeepingRequested, onAction }) {
   const stage = detailStage(detail)
   const canCheckIn = stage === 'waiting'
   const canCheckOut = stage === 'staying'
@@ -175,6 +175,9 @@ function DetailCard({ detail, actionLoading, onAction }) {
         <div className="acl-detail-actions">
           <button type="button" disabled={!canCheckIn || loading} onClick={() => onAction(detail.bookingDetailId, 'check-in')}>
             {loading && canCheckIn ? 'Đang xử lý...' : 'Check-in'}
+          </button>
+          <button type="button" disabled={!canCheckOut || loading || housekeepingRequested} onClick={() => onAction(detail.bookingDetailId, 'housekeeping-request')}>
+            {loading && canCheckOut ? 'Đang gửi...' : housekeepingRequested ? 'Đã yêu cầu kiểm tra' : 'Yêu cầu kiểm tra'}
           </button>
           <button type="button" disabled={!canCheckOut || loading} onClick={() => onAction(detail.bookingDetailId, 'check-out')}>
             {loading && canCheckOut ? 'Đang xử lý...' : 'Check-out'}
@@ -707,15 +710,26 @@ function AdminCheckInLogsPage() {
   const [actionLoading, setActionLoading] = useState(null)
   const [checkInTargetId, setCheckInTargetId] = useState(null)
   const [checkOutTargetId, setCheckOutTargetId] = useState(null)
+  const [housekeepingRequestedIds, setHousekeepingRequestedIds] = useState(() => new Set())
 
   const loadLogs = useCallback(async () => {
     setLoading(true)
     setError('')
     try {
       const params = new URLSearchParams({ fromDate, toDate })
-      const response = await fetch(`${API_BASE}/check-in-logs?${params}`, { headers: authHeaders() })
-      const data = await response.json().catch(() => ({}))
+      const [response, housekeepingResponse] = await Promise.all([
+        fetch(`${API_BASE}/check-in-logs?${params}`, { headers: authHeaders() }),
+        fetch('http://localhost:8080/api/housekeeping/tasks?status=ALL', { headers: authHeaders() }),
+      ])
+      const [data, housekeepingData] = await Promise.all([
+        response.json().catch(() => ({})),
+        housekeepingResponse.json().catch(() => ([])),
+      ])
       if (!response.ok) throw new Error(data.message || 'Không thể tải nhật ký lưu trú')
+      setHousekeepingRequestedIds(new Set(
+        (housekeepingResponse.ok && Array.isArray(housekeepingData) ? housekeepingData : [])
+          .map(task => task.bookingDetailId),
+      ))
       const nextBookings = Array.isArray(data) ? data : []
       setBookings(nextBookings)
       setSelectedBookingId(current => {
@@ -763,7 +777,10 @@ function AdminCheckInLogsPage() {
     setActionLoading(bookingDetailId)
     setActionError('')
     try {
-      const response = await fetch(`${API_BASE}/details/${bookingDetailId}/${action}`, {
+      const url = action === 'housekeeping-request'
+        ? `http://localhost:8080/api/housekeeping/booking-details/${bookingDetailId}/request`
+        : `${API_BASE}/details/${bookingDetailId}/${action}`
+      const response = await fetch(url, {
         method: 'POST',
         headers: authHeaders(),
       })
@@ -860,6 +877,7 @@ function AdminCheckInLogsPage() {
                     key={detail.bookingDetailId}
                     detail={detail}
                     actionLoading={actionLoading}
+                    housekeepingRequested={housekeepingRequestedIds.has(detail.bookingDetailId)}
                     onAction={runAction}
                   />
                 ))}

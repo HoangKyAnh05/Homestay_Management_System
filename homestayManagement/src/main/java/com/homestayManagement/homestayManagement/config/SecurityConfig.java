@@ -40,6 +40,14 @@ public class SecurityConfig {
                         .requestMatchers("/uploads/**").permitAll()
                         .requestMatchers("/api/rooms/**").permitAll()
 
+                        // Lễ tân/admin tạo và theo dõi; housekeeping/admin thực hiện công việc.
+                        .requestMatchers(HttpMethod.GET, "/api/housekeeping/**")
+                        .hasAnyAuthority("ROLE_ADMIN", "ROLE_RECEPTIONIST", "ROLE_HOUSEKEEPING")
+                        .requestMatchers(HttpMethod.POST, "/api/housekeeping/booking-details/*/request")
+                        .hasAnyAuthority("ROLE_ADMIN", "ROLE_RECEPTIONIST")
+                        .requestMatchers("/api/housekeeping/**")
+                        .hasAnyAuthority("ROLE_ADMIN", "ROLE_HOUSEKEEPING")
+
                         // ── Admin + Lễ tân ────────────────────────────────────────────
                         .requestMatchers("/api/admin/bookings/**", "/api/admin/invoices/**")
                         .hasAnyAuthority("ROLE_ADMIN", "ROLE_RECEPTIONIST")

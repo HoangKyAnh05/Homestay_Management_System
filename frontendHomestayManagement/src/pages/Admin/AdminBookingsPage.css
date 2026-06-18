@@ -513,6 +513,16 @@
   font-weight: 800;
 }
 
+.abk-inline-success {
+  margin: -6px 0 16px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #edf9f2;
+  color: #16794b;
+  font-size: 13px;
+  font-weight: 700;
+}
+
 .abk-detail-section {
   margin-bottom: 22px;
 }

@@ -6,6 +6,7 @@ import AdminLayout from './AdminLayout'
 import './AdminBookingsPage.css'
 
 const API_BASE = 'http://localhost:8080/api/admin/bookings'
+const HOUSEKEEPING_API = 'http://localhost:8080/api/housekeeping'
 const SCHEDULE_API = `${API_BASE}/schedule`
 const PAGE_SIZE_OPTIONS = [6, 8, 12]
 const ADMIN_SCHEDULE_STATUSES = new Set(['CONFIRMED', 'CHECKED_IN', 'COMPLETED'])
@@ -225,6 +226,9 @@ function BookingDetailModal({ detail, loading, error, actionLoading, actionError
   const [penaltyForm, setPenaltyForm] = useState({ rulesPenaltyId: '', amount: '', description: '' })
   const [checkoutPayment, setCheckoutPayment] = useState(null)
   const [checkoutLoading, setCheckoutLoading] = useState(false)
+  const [housekeepingLoading, setHousekeepingLoading] = useState(false)
+  const [housekeepingNotice, setHousekeepingNotice] = useState('')
+  const [housekeepingTask, setHousekeepingTask] = useState(null)
 
   // Reset khi detail thay đổi
   useEffect(() => {
@@ -236,7 +240,21 @@ function BookingDetailModal({ detail, loading, error, actionLoading, actionError
     setServiceForm({ type: 'FACILITY', serviceId: '', quantity: 1 })
     setMiniBarForm({ itemId: '', quantity: 1 })
     setPenaltyForm({ rulesPenaltyId: '', amount: '', description: '' })
+    setHousekeepingNotice('')
+    setHousekeepingTask(null)
   }, [detail?.bookingDetailId])
+
+  useEffect(() => {
+    if (!detail?.bookingDetailId || !detail?.checkInRecords?.length) return undefined
+    let active = true
+    fetch(`${HOUSEKEEPING_API}/booking-details/${detail.bookingDetailId}`, { headers: authHeaders() })
+      .then(async response => ({ ok: response.ok, data: await response.json().catch(() => ({})) }))
+      .then(({ ok, data }) => {
+        if (active) setHousekeepingTask(ok ? data : null)
+      })
+      .catch(() => { if (active) setHousekeepingTask(null) })
+    return () => { active = false }
+  }, [detail?.bookingDetailId, detail?.checkInRecords?.length])
 
   // Khi mở form sửa khách → pre-fill
   useEffect(() => {
@@ -359,6 +377,26 @@ function BookingDetailModal({ detail, loading, error, actionLoading, actionError
       .finally(() => setCheckoutLoading(false))
   }
 
+  const requestHousekeeping = () => {
+    setHousekeepingLoading(true)
+    setHousekeepingNotice('')
+    fetch(`${HOUSEKEEPING_API}/booking-details/${detail.bookingDetailId}/request`, {
+      method: 'POST',
+      headers: authHeaders(),
+    })
+      .then(async response => {
+        const data = await response.json().catch(() => ({}))
+        if (!response.ok) throw new Error(data.message || 'Không thể gửi yêu cầu kiểm tra phòng')
+        return data
+      })
+      .then(data => {
+        setHousekeepingTask(data)
+        setHousekeepingNotice('Đã gửi yêu cầu kiểm tra phòng cho housekeeping.')
+      })
+      .catch(err => onAction('__error__', null, err.message))
+      .finally(() => setHousekeepingLoading(false))
+  }
+
   return (
     <>
       <div className="abk-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
@@ -392,6 +430,16 @@ function BookingDetailModal({ detail, loading, error, actionLoading, actionError
                   {canCheckOut && (
                     <button
                       type="button"
+                      className="abk-action-secondary"
+                      disabled={actionLoading || housekeepingLoading || Boolean(housekeepingTask)}
+                      onClick={requestHousekeeping}
+                    >
+                      {housekeepingLoading ? 'Đang gửi...' : housekeepingTask ? 'Đã yêu cầu kiểm tra' : 'Yêu cầu kiểm tra phòng'}
+                    </button>
+                  )}
+                  {canCheckOut && (
+                    <button
+                      type="button"
                       className="abk-action-primary"
                       disabled={actionLoading || checkoutLoading}
                       onClick={prepareCheckOut}
@@ -405,6 +453,7 @@ function BookingDetailModal({ detail, loading, error, actionLoading, actionError
                 </div>
               </div>
               {actionError && <div className="abk-inline-error">{actionError}</div>}
+              {housekeepingNotice && <div className="abk-inline-success">{housekeepingNotice}</div>}
 
               {/* ══════════════════════════════════════════
                   THÔNG TIN KHÁCH HÀNG

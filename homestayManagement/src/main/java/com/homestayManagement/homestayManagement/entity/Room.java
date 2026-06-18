@@ -24,6 +24,6 @@ public class Room {
     private RoomType roomType;
 
     @Builder.Default
-    @Transient
+    @Column(nullable = false, length = 20, columnDefinition = "varchar(20) default 'AVAILABLE'")
     private String status = "AVAILABLE";
 }

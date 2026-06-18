@@ -62,6 +62,7 @@ import com.homestayManagement.homestayManagement.repository.CustomerRepository;
 import com.homestayManagement.homestayManagement.repository.EmployeeRepository;
 import com.homestayManagement.homestayManagement.repository.FacilityServiceRepository;
 import com.homestayManagement.homestayManagement.repository.InvoiceRepository;
+import com.homestayManagement.homestayManagement.repository.HousekeepingTaskRepository;
 import com.homestayManagement.homestayManagement.repository.InventoryServiceRepository;
 import com.homestayManagement.homestayManagement.repository.PaymentRepository;
 import com.homestayManagement.homestayManagement.repository.RoleRepository;
@@ -122,6 +123,7 @@ public class AdminBookingServiceImpl implements AdminBookingService {
     private final PricePolicyRepository pricePolicyRepository;
     private final RoomPriceConfigRepository roomPriceConfigRepository;
     private final SePayPaymentService sePayPaymentService;
+    private final HousekeepingTaskRepository housekeepingTaskRepository;
 
     public AdminBookingServiceImpl(
             BookingDetailRepository bookingDetailRepository,
@@ -145,7 +147,8 @@ public class AdminBookingServiceImpl implements AdminBookingService {
             PasswordEncoder passwordEncoder,
             PricePolicyRepository pricePolicyRepository,
             RoomPriceConfigRepository roomPriceConfigRepository,
-            SePayPaymentService sePayPaymentService
+            SePayPaymentService sePayPaymentService,
+            HousekeepingTaskRepository housekeepingTaskRepository
     ) {
         this.bookingDetailRepository = bookingDetailRepository;
         this.bookingGuestRepository = bookingGuestRepository;
@@ -169,6 +172,7 @@ public class AdminBookingServiceImpl implements AdminBookingService {
         this.pricePolicyRepository = pricePolicyRepository;
         this.roomPriceConfigRepository = roomPriceConfigRepository;
         this.sePayPaymentService = sePayPaymentService;
+        this.housekeepingTaskRepository = housekeepingTaskRepository;
     }
 
     @Override
@@ -522,6 +526,10 @@ public class AdminBookingServiceImpl implements AdminBookingService {
         ));
         detail.setStatus("CHECKED_IN");
         detail.getBooking().setStatus("CHECKED_IN");
+        if (detail.getRoom() != null) {
+            detail.getRoom().setStatus("OCCUPIED");
+            roomRepository.save(detail.getRoom());
+        }
         bookingDetailRepository.save(detail);
         return getBookingDetail(bookingDetailId);
     }
@@ -533,6 +541,7 @@ public class AdminBookingServiceImpl implements AdminBookingService {
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đơn đặt phòng"));
         CheckInRecord record = checkInRecordRepository.findByBookingDetailId(bookingDetailId)
                 .orElseThrow(() -> new IllegalArgumentException("Phòng này chưa check-in"));
+        requireInspectionComplete(record);
         BigDecimal outstandingExtraCharge = calculateOutstandingExtraCharge(detail.getBooking().getId());
         if (outstandingExtraCharge.compareTo(BigDecimal.ZERO) > 0) {
             throw new IllegalArgumentException("Vui lòng thanh toán chi phí phát sinh trước khi checkout");
@@ -542,8 +551,8 @@ public class AdminBookingServiceImpl implements AdminBookingService {
             checkInRecordRepository.save(record);
         }
         detail.setStatus("COMPLETED");
-        detail.getBooking().setStatus("COMPLETED");
         bookingDetailRepository.save(detail);
+        updateBookingCompletionStatus(detail.getBooking());
         return getBookingDetail(bookingDetailId);
     }
 
@@ -558,6 +567,7 @@ public class AdminBookingServiceImpl implements AdminBookingService {
             return new AdminCheckoutResponse(true, getBookingDetail(bookingDetailId), null);
         }
 
+        requireInspectionComplete(record);
         generateInvoice(bookingDetailId);
         Invoice invoice = invoiceRepository.findByBookingIdForAdmin(detail.getBooking().getId())
                 .orElseThrow(() -> new IllegalArgumentException("Không thể tạo hóa đơn checkout"));
@@ -1062,6 +1072,26 @@ public class AdminBookingServiceImpl implements AdminBookingService {
 
     private BigDecimal safeAmount(BigDecimal value) {
         return value != null ? value : BigDecimal.ZERO;
+    }
+
+    private void requireInspectionComplete(CheckInRecord record) {
+        if (housekeepingTaskRepository == null) {
+            throw new IllegalArgumentException("Chức năng housekeeping chưa sẵn sàng");
+        }
+        var task = housekeepingTaskRepository.findByCheckInRecordId(record.getId())
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Vui lòng gửi yêu cầu housekeeping kiểm tra phòng trước khi checkout"
+                ));
+        if (!"COMPLETED".equalsIgnoreCase(task.getInspectionStatus())) {
+            throw new IllegalArgumentException("Housekeeping chưa gửi kết quả kiểm tra chi phí");
+        }
+    }
+
+    private void updateBookingCompletionStatus(Booking booking) {
+        boolean allClosed = bookingDetailRepository.findByBookingId(booking.getId()).stream()
+                .allMatch(item -> Set.of("COMPLETED", "CANCELLED").contains(normalizeStatus(item.getStatus())));
+        booking.setStatus(allClosed ? "COMPLETED" : "CHECKED_IN");
+        bookingRepository.save(booking);
     }
 
     private Employee getCurrentEmployee() {

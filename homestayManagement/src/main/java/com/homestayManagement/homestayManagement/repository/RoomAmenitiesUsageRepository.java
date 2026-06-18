@@ -10,6 +10,8 @@ import java.util.List;
 public interface RoomAmenitiesUsageRepository extends JpaRepository<RoomAmenitiesUsage, Long> {
     boolean existsByItemId(Long itemId);
 
+    void deleteByCheckInRecordId(Long checkInRecordId);
+
     @Query("""
             select u from RoomAmenitiesUsage u
             join fetch u.checkInRecord cr
