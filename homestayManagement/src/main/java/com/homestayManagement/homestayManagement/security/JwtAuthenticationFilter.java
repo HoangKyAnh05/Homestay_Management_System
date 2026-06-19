@@ -57,22 +57,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             SecurityContextHolder.clearContext();
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             response.setContentType("application/json;charset=UTF-8");
-            response.getWriter().write("{\"message\":\"Token dang nhap khong hop le: " + sanitize(exception.getMessage()) + "\"}");
+            response.getWriter().write("{\"message\":\"Phiên đăng nhập đã hết hạn hoặc không hợp lệ, vui lòng đăng nhập lại\"}");
             return;
         }
 
         filterChain.doFilter(request, response);
-    }
-
-    private String sanitize(String message) {
-        if (message == null || message.isBlank()) {
-            return "vui long dang nhap lai";
-        }
-
-        return message
-                .replace("\\", "\\\\")
-                .replace("\"", "\\\"")
-                .replace("\r", " ")
-                .replace("\n", " ");
     }
 }

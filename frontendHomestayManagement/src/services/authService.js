@@ -2,6 +2,7 @@ const API_BASE_URL = 'http://localhost:8080/api'
 const TOKEN_KEY = 'homeStayAccessToken'
 const USER_KEY = 'homeStayUser'
 const REMEMBER_KEY = 'homeStayRememberEmail'
+let expirationTimer = null
 
 function getAuthStorage(remember) {
   return remember ? localStorage : sessionStorage
@@ -14,10 +15,60 @@ function findAuthStorage() {
 }
 
 function clearStoredAuth() {
+  if (expirationTimer) {
+    window.clearTimeout(expirationTimer)
+    expirationTimer = null
+  }
   localStorage.removeItem(TOKEN_KEY)
   localStorage.removeItem(USER_KEY)
   sessionStorage.removeItem(TOKEN_KEY)
   sessionStorage.removeItem(USER_KEY)
+}
+
+function readTokenExpiration(token) {
+  try {
+    const payloadPart = token.split('.')[1]
+    if (!payloadPart) return null
+    const normalized = payloadPart.replace(/-/g, '+').replace(/_/g, '/')
+    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=')
+    const payload = JSON.parse(window.atob(padded))
+    return typeof payload.exp === 'number' ? payload.exp * 1000 : null
+  } catch {
+    return null
+  }
+}
+
+function redirectAfterExpiration() {
+  const path = window.location.pathname
+  const target = path.startsWith('/admin') ? '/admin/login' : '/login'
+  const protectedCustomerPage = path === '/profile' || path === '/booking-history'
+
+  window.dispatchEvent(new CustomEvent('auth-session-expired'))
+  if ((path.startsWith('/admin') || protectedCustomerPage) && path !== target) {
+    window.location.replace(target)
+  }
+}
+
+function expireSession() {
+  clearStoredAuth()
+  window.setTimeout(redirectAfterExpiration, 0)
+}
+
+function scheduleTokenExpiration(token) {
+  if (expirationTimer) window.clearTimeout(expirationTimer)
+  expirationTimer = null
+
+  const expiresAt = readTokenExpiration(token)
+  if (expiresAt == null) return true
+
+  const remaining = expiresAt - Date.now()
+  if (remaining <= 0) {
+    expireSession()
+    return false
+  }
+
+  expirationTimer = window.setTimeout(expireSession, Math.min(remaining, 2_147_483_647))
+  return true
 }
 
 function saveAuthSession(data, remember = true) {
@@ -25,6 +76,7 @@ function saveAuthSession(data, remember = true) {
   const storage = getAuthStorage(remember)
   storage.setItem(TOKEN_KEY, data.accessToken)
   storage.setItem(USER_KEY, JSON.stringify(data.user))
+  scheduleTokenExpiration(data.accessToken)
 }
 
 async function parseJson(response) {
@@ -288,6 +340,7 @@ export async function updateCurrentAvatar(file) {
 }
 
 export function getStoredUser() {
+  if (!getStoredToken()) return null
   const storage = findAuthStorage()
   if (!storage) return null
 
@@ -307,7 +360,9 @@ export function getStoredUser() {
 
 export function getStoredToken() {
   const storage = findAuthStorage()
-  return storage ? storage.getItem(TOKEN_KEY) : null
+  const token = storage ? storage.getItem(TOKEN_KEY) : null
+  if (!token) return null
+  return scheduleTokenExpiration(token) ? token : null
 }
 
 export function logout() {

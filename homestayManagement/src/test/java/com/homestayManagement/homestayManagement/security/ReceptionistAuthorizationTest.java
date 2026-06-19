@@ -25,6 +25,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 
 @WebMvcTest(controllers = {AdminBookingController.class, AdminInvoiceController.class, HousekeepingController.class})
@@ -86,5 +87,18 @@ class ReceptionistAuthorizationTest {
         mockMvc.perform(post("/api/housekeeping/booking-details/10/request")
                         .with(user("housekeeping").authorities(() -> "ROLE_HOUSEKEEPING")))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void expiredJwtReturnsFriendlyUnauthorizedMessage() throws Exception {
+        when(jwtService.extractEmail("expired-token"))
+                .thenThrow(new RuntimeException("JWT expired 709838 milliseconds ago"));
+
+        mockMvc.perform(get("/api/admin/bookings/check-in-logs")
+                        .header("Authorization", "Bearer expired-token"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value(
+                        "Phiên đăng nhập đã hết hạn hoặc không hợp lệ, vui lòng đăng nhập lại"
+                ));
     }
 }
