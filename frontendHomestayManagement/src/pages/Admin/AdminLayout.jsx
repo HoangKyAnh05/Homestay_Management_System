@@ -83,7 +83,6 @@ const NAV_ITEMS = [
       { key: 'housekeeping-room-calendar', label: 'Lịch trạng thái phòng', path: '/admin/housekeeping/room-calendar', adminOnly: true },
       { key: 'housekeeping-tasks', label: 'Công việc vệ sinh', path: '/admin/housekeeping/tasks' },
       { key: 'housekeeping-checklists', label: 'Cấu hình checklist', path: '/admin/housekeeping/checklists', adminOnly: true },
-      { key: 'housekeeping-quality', label: 'Lịch sử & chất lượng', path: '/admin/housekeeping/quality', adminOnly: true },
     ],
   },
   {

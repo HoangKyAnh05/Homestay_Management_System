@@ -1,12 +1,14 @@
 package com.homestayManagement.homestayManagement.controller;
 
 import com.homestayManagement.homestayManagement.dto.response.AdminHousekeepingCalendarResponse;
+import com.homestayManagement.homestayManagement.dto.response.AdminHousekeepingCleaningTraceResponse;
 import com.homestayManagement.homestayManagement.service.AdminHousekeepingCalendarService;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Map;
 
 @RestController
@@ -26,6 +28,15 @@ public class AdminHousekeepingCalendarController {
             @RequestParam(required = false) Long roomTypeId
     ) {
         return calendarService.getCalendar(startDate, days, roomTypeId);
+    }
+
+    @GetMapping("/rooms/{roomId}/latest-cleaning")
+    public AdminHousekeepingCleaningTraceResponse getLatestCleaning(
+            @PathVariable Long roomId,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime completedBefore
+    ) {
+        return calendarService.getLatestCleaningTrace(roomId, completedBefore);
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

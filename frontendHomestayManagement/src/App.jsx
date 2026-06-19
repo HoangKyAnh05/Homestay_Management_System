@@ -133,9 +133,6 @@ function App() {
     if (currentPath === '/admin/housekeeping/checklists') {
       return <AdminHousekeepingChecklistsPage />
     }
-    if (currentPath === '/admin/housekeeping/quality') {
-      return <AdminBlankPage activePage="housekeeping-quality" />
-    }
     if (currentPath === '/admin/receptionist') return <ReceptionistOverviewPage />
     if (currentPath === '/admin/marketing/ai-agent') return <AdminPlaceholderPage activePage="ai-post-agent" title="AI Agent Đăng bài" />
     if (currentPath === '/admin/marketing/post-logs') return <AdminPlaceholderPage activePage="post-logs" title="Nhật ký Bài đăng" />

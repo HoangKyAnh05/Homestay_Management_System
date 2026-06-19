@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -85,6 +86,42 @@ public class AdminHousekeepingCalendarServiceImpl implements AdminHousekeepingCa
         );
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public AdminHousekeepingCleaningTraceResponse getLatestCleaningTrace(Long roomId, LocalDateTime completedBefore) {
+        Room room = roomRepository.findById(roomId)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy phòng"));
+        LocalDateTime cutoff = completedBefore == null ? LocalDateTime.now() : completedBefore;
+        HousekeepingTask task = housekeepingTaskRepository
+                .findFirstByRoomIdAndCleaningCompletedAtIsNotNullAndCleaningCompletedAtLessThanEqualOrderByCleaningCompletedAtDesc(roomId, cutoff)
+                .orElse(null);
+        if (task == null) {
+            return new AdminHousekeepingCleaningTraceResponse(
+                    room.getId(), room.getRoomNumber(), null, null, null, null, null, null, null, List.of()
+            );
+        }
+
+        Employee employee = task.getAssignedHousekeeping();
+        Long durationMinutes = task.getStartedAt() == null || task.getCleaningCompletedAt() == null
+                ? null
+                : Math.max(0, ChronoUnit.MINUTES.between(task.getStartedAt(), task.getCleaningCompletedAt()));
+        List<HousekeepingCleaningChecklistItemResponse> checklist = taskChecklistItemRepository
+                .findByHousekeepingTaskIdOrderByDisplayOrderAsc(task.getId()).stream()
+                .map(item -> new HousekeepingCleaningChecklistItemResponse(
+                        item.getId(), item.getTitleSnapshot(), item.getDescriptionSnapshot(), item.isRequired(),
+                        item.getDisplayOrder(), item.isCompleted(),
+                        item.getCompletedBy() == null ? null : item.getCompletedBy().getId(),
+                        item.getCompletedBy() == null ? null : item.getCompletedBy().getFullName(),
+                        item.getCompletedAt()
+                ))
+                .toList();
+        return new AdminHousekeepingCleaningTraceResponse(
+                room.getId(), room.getRoomNumber(), task.getId(),
+                employee == null ? null : employee.getId(), employee == null ? null : employee.getFullName(),
+                task.getStartedAt(), task.getCleaningCompletedAt(), durationMinutes, task.getNote(), checklist
+        );
+    }
+
     private List<AdminHousekeepingCalendarDayResponse> buildDays(
             Room room,
             LocalDate startDate,
@@ -125,7 +162,8 @@ public class AdminHousekeepingCalendarServiceImpl implements AdminHousekeepingCa
             }
 
             BookingDetail booking = bookings.stream()
-                    .filter(detail -> overlaps(detail.getCheckInTarget(), detail.getCheckOutTarget(), dayStart, dayEnd))
+                    .filter(detail -> detail.getCheckInTarget() != null
+                            && detail.getCheckInTarget().toLocalDate().equals(date))
                     .max(Comparator.comparingInt(this::bookingPriority)).orElse(null);
             if (booking != null) {
                 String status = "CHECKED_IN".equals(normalize(booking.getStatus())) ? "OCCUPIED" : "BOOKED";

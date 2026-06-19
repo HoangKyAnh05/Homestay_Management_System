@@ -12,6 +12,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
@@ -37,7 +38,7 @@ class AdminHousekeepingCalendarServiceImplTest {
     }
 
     @Test
-    void calendarShowsAssignedConfirmedBookingAndAvailableFollowingDay() {
+    void calendarShowsBookingOnlyOnCheckInDate() {
         LocalDate start = LocalDate.of(2026, 6, 20);
         RoomType roomType = RoomType.builder().id(1L).name("Deluxe").build();
         Room room = Room.builder().id(10L).roomNumber("101").roomType(roomType).status("AVAILABLE").build();
@@ -58,7 +59,36 @@ class AdminHousekeepingCalendarServiceImplTest {
 
         assertEquals("BOOKED", result.rooms().get(0).days().get(0).status());
         assertEquals("Nguyễn An", result.rooms().get(0).days().get(0).customerName());
-        assertEquals("BOOKED", result.rooms().get(0).days().get(1).status());
+        assertEquals("AVAILABLE", result.rooms().get(0).days().get(1).status());
         assertEquals(1, result.summary().booked());
+    }
+
+    @Test
+    void latestCleaningTraceReturnsEmployeeDurationAndChecklist() {
+        RoomType roomType = RoomType.builder().id(1L).name("Deluxe").build();
+        Room room = Room.builder().id(10L).roomNumber("101").roomType(roomType).status("OCCUPIED").build();
+        Employee employee = Employee.builder().id(8L).fullName("Nguyễn An").build();
+        HousekeepingTask task = HousekeepingTask.builder()
+                .id(20L).room(room).assignedHousekeeping(employee)
+                .startedAt(LocalDateTime.of(2026, 6, 20, 12, 0))
+                .cleaningCompletedAt(LocalDateTime.of(2026, 6, 20, 12, 45))
+                .build();
+        HousekeepingTaskChecklistItem item = HousekeepingTaskChecklistItem.builder()
+                .id(30L).housekeepingTask(task).titleSnapshot("Thay chăn ga gối")
+                .required(true).completed(true).displayOrder(1).completedBy(employee)
+                .completedAt(LocalDateTime.of(2026, 6, 20, 12, 40)).build();
+        when(roomRepository.findById(10L)).thenReturn(Optional.of(room));
+        when(housekeepingTaskRepository
+                .findFirstByRoomIdAndCleaningCompletedAtIsNotNullAndCleaningCompletedAtLessThanEqualOrderByCleaningCompletedAtDesc(any(), any()))
+                .thenReturn(Optional.of(task));
+        when(taskChecklistItemRepository.findByHousekeepingTaskIdOrderByDisplayOrderAsc(20L))
+                .thenReturn(List.of(item));
+
+        var result = service.getLatestCleaningTrace(10L, LocalDateTime.of(2026, 6, 20, 14, 0));
+
+        assertEquals("Nguyễn An", result.employeeName());
+        assertEquals(45L, result.durationMinutes());
+        assertEquals(1, result.checklistItems().size());
+        assertEquals("Thay chăn ga gối", result.checklistItems().get(0).title());
     }
 }

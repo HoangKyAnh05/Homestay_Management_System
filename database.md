@@ -91,6 +91,10 @@ Dinh danh phong vat ly thuc te. Phong nay chi duoc gan vao booking khi le tan la
 
 Trang Lich trang thai phong khong tao them bang trang thai theo ngay. Moi o lich duoc tong hop tu `booking_details`, `housekeeping_tasks`, `room_schedules` va `rooms.status` theo thu tu uu tien: `MAINTENANCE` -> `CLEANING` -> `OCCUPIED` -> `BOOKED` -> `AVAILABLE`. Cach nay tranh luu trung va tranh lech trang thai giua lich voi nghiep vu thuc te.
 
+Tren ma tran ngay, moi booking chi hien thi tai ngay cua `booking_details.check_in_target`. Ngay `check_out_target` khong tao them mot o booking rieng, tranh truong hop mot booking qua dem bi dem va hien thi hai lan.
+
+Khi Admin mo chi tiet mot phong de truy vet phan anh ve ve sinh, he thong lay `housekeeping_tasks` co `cleaning_completed_at` gan nhat nhung khong lon hon thoi diem check-in cua booking dang xem. Danh sach da lam, nguoi thuc hien va thoi gian tung muc duoc doc tu `housekeeping_task_checklist_items`; khong can them bang lich su hoac bang danh gia chat luong.
+
 ### `room_images`
 
 Anh hien tai gan theo phong vat ly. Khi hien thi theo loai phong, co the lay anh tu mot phong dai dien trong cung loai phong.
