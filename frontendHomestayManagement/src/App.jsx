@@ -3,7 +3,9 @@ import AdminRoomsPage from './pages/Admin/AdminRoomsPage'
 import AdminLoginPage from './pages/Admin/AdminLoginPage'
 import AdminInvoicesPage from './pages/Admin/AdminInvoicesPage'
 import AdminBookingsPage from './pages/Admin/AdminBookingsPage'
+import AdminBlankPage from './pages/Admin/AdminBlankPage'
 import AdminCheckInLogsPage from './pages/Admin/AdminCheckInLogsPage'
+import AdminHousekeepingChecklistsPage from './pages/Admin/AdminHousekeepingChecklistsPage'
 import AdminPlaceholderPage from './pages/Admin/AdminPlaceholderPage'
 import AdminRulesPenaltiesPage from './pages/Admin/AdminRulesPenaltiesPage'
 import AdminServiceCategoriesPage from './pages/Admin/AdminServiceCategoriesPage'
@@ -116,7 +118,23 @@ function App() {
     if (currentPath === '/admin/services/surcharges') return <AdminSurchargesPage />
     if (currentPath === '/admin/rules-penalties') return <AdminRulesPenaltiesPage />
     if (currentPath === '/admin/invoices') return <AdminInvoicesPage />
-    if (currentPath === '/admin/housekeeping') return <HousekeepingPage />
+    if (currentPath === '/admin/housekeeping') {
+      window.location.replace('/admin/housekeeping/tasks')
+      return null
+    }
+    if (currentPath === '/admin/housekeeping/tasks') return <HousekeepingPage />
+    if (currentPath === '/admin/housekeeping/overview') {
+      return <AdminBlankPage activePage="housekeeping-overview" />
+    }
+    if (currentPath === '/admin/housekeeping/room-calendar') {
+      return <AdminBlankPage activePage="housekeeping-room-calendar" />
+    }
+    if (currentPath === '/admin/housekeeping/checklists') {
+      return <AdminHousekeepingChecklistsPage />
+    }
+    if (currentPath === '/admin/housekeeping/quality') {
+      return <AdminBlankPage activePage="housekeeping-quality" />
+    }
     if (currentPath === '/admin/receptionist') return <ReceptionistOverviewPage />
     if (currentPath === '/admin/marketing/ai-agent') return <AdminPlaceholderPage activePage="ai-post-agent" title="AI Agent Đăng bài" />
     if (currentPath === '/admin/marketing/post-logs') return <AdminPlaceholderPage activePage="post-logs" title="Nhật ký Bài đăng" />

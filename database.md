@@ -293,6 +293,69 @@ Luong checkout va don phong:
 
 Dieu kien checkout chi phu thuoc `inspection_status = COMPLETED`. Dieu kien phong san sang don khach moi thuoc `cleaning_status = COMPLETED`; hai moc nay doc lap.
 
+### `housekeeping_checklist_templates`
+
+Luu mau checklist ve sinh mac dinh theo loai phong va checklist ghi de cho tung phong vat ly. `room_id = null` nghia la checklist mac dinh cua `room_type_id`; neu `room_id` co gia tri thi day la checklist tuy chinh cho rieng phong do.
+
+| Column | Type | Note |
+|---|---|---|
+| `id` | bigint | PK, auto increment |
+| `room_type_id` | bigint | FK -> `room_types.id`, bat buoc |
+| `room_id` | bigint | FK -> `rooms.id`, nullable, unique |
+| `name` | varchar(120) | Ten checklist |
+| `is_active` | boolean | Checklist co dang duoc ap dung hay khong |
+| `version` | bigint | Optimistic lock khi hai Admin cung cap nhat |
+| `created_at` | datetime | Thoi gian tao |
+| `updated_at` | datetime | Thoi gian cap nhat gan nhat |
+
+Quy tac ke thua:
+
+1. Neu phong co template rieng theo `room_id`, he thong dung template rieng.
+2. Neu phong khong co template rieng, he thong dung template mac dinh co cung `room_type_id` va `room_id = null`.
+3. Khi phong thay doi loai phong, checklist tuy chinh cu duoc xoa de phong ke thua tieu chuan cua loai phong moi.
+4. Moi loai phong chi co mot template mac dinh; moi phong chi co toi da mot template tuy chinh.
+
+### `housekeeping_checklist_items`
+
+Luu cac hang muc cong viec thuoc mot checklist. Thu tu trong checklist do `display_order` quyet dinh.
+
+| Column | Type | Note |
+|---|---|---|
+| `id` | bigint | PK, auto increment |
+| `template_id` | bigint | FK -> `housekeeping_checklist_templates.id` |
+| `title` | varchar(200) | Ten hang muc |
+| `description` | varchar(500) | Huong dan hoac tieu chuan can dat, nullable |
+| `is_required` | boolean | Bat buoc hoan thanh truoc khi dong task |
+| `is_active` | boolean | Hang muc co dang duoc ap dung hay khong |
+| `display_order` | int | Thu tu hien thi, bat dau tu 1 |
+
+Khi tao `housekeeping_tasks`, checklist hieu luc duoc sao chep sang `housekeeping_task_checklist_items` thay vi doc truc tiep cau hinh moi lan. Cach nay dam bao viec Admin sua checklist khong lam thay doi cong viec dang lam hoac lich su cu.
+
+### `housekeeping_task_checklist_items`
+
+Luu snapshot va ket qua thuc hien tung hang muc cua mot housekeeping task.
+
+| Column | Type | Note |
+|---|---|---|
+| `id` | bigint | PK, auto increment |
+| `housekeeping_task_id` | bigint | FK -> `housekeeping_tasks.id` |
+| `source_template_item_id` | bigint | ID hang muc cau hinh goc, chi dung truy vet, nullable |
+| `title_snapshot` | varchar(200) | Ten hang muc tai thoi diem tao task |
+| `description_snapshot` | varchar(500) | Huong dan tai thoi diem tao task, nullable |
+| `is_required` | boolean | Hang muc bat buoc hay tuy chon |
+| `display_order` | int | Thu tu hien thi trong task |
+| `is_completed` | boolean | Da hoan thanh hay chua |
+| `completed_by_employee_id` | bigint | FK -> `employees.id`, nullable |
+| `completed_at` | datetime | Thoi gian xac nhan hoan thanh, nullable |
+
+Unique constraint: `housekeeping_task_id`, `display_order`.
+
+Quy tac hoan tat don phong:
+
+1. Request phai gui day du cac hang muc snapshot cua task, khong chap nhan ID thuoc task khac.
+2. Tat ca hang muc `is_required = true` phai duoc hoan thanh.
+3. Khi hop le, he thong luu `is_completed`, `completed_by_employee_id`, `completed_at` trong cung transaction voi viec chuyen phong sang `AVAILABLE`.
+
 ## 7. Dich Vu Va Phu Phi
 
 ### `facility_services`
@@ -512,6 +575,12 @@ check_in_records.id       1 - 1  housekeeping_tasks.check_in_record_id
 rooms.id                  1 - N  housekeeping_tasks.room_id
 employees.id              1 - N  housekeeping_tasks.requested_by_employee_id
 employees.id              1 - N  housekeeping_tasks.assigned_housekeeping_id
+
+room_types.id             1 - N  housekeeping_checklist_templates.room_type_id
+rooms.id                  1 - 0..1 housekeeping_checklist_templates.room_id
+housekeeping_checklist_templates.id 1 - N housekeeping_checklist_items.template_id
+housekeeping_tasks.id       1 - N  housekeeping_task_checklist_items.housekeeping_task_id
+employees.id                1 - N  housekeeping_task_checklist_items.completed_by_employee_id
 
 booking_details.id        1 - N  booking_service_items.booking_detail_id
 facility_services.id      1 - N  booking_service_items.facility_service_id

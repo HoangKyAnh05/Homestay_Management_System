@@ -74,7 +74,18 @@ const NAV_ITEMS = [
   },
   { key: 'rules', label: 'Cấu hình Nội quy & Phạt', path: '/admin/rules-penalties', icon: ICONS.rules },
   { key: 'invoices', label: 'Quản lý Hóa đơn', path: '/admin/invoices', icon: ICONS.invoices },
-  { key: 'housekeeping', label: 'Housekeeping', path: '/admin/housekeeping', icon: ICONS.housekeeping },
+  {
+    key: 'housekeeping',
+    label: 'Quản lý Housekeeping',
+    icon: ICONS.housekeeping,
+    children: [
+      { key: 'housekeeping-overview', label: 'Tổng quan', path: '/admin/housekeeping/overview', adminOnly: true },
+      { key: 'housekeeping-room-calendar', label: 'Lịch trạng thái phòng', path: '/admin/housekeeping/room-calendar', adminOnly: true },
+      { key: 'housekeeping-tasks', label: 'Công việc vệ sinh', path: '/admin/housekeeping/tasks' },
+      { key: 'housekeeping-checklists', label: 'Cấu hình checklist', path: '/admin/housekeeping/checklists', adminOnly: true },
+      { key: 'housekeeping-quality', label: 'Lịch sử & chất lượng', path: '/admin/housekeeping/quality', adminOnly: true },
+    ],
+  },
   {
     key: 'marketing',
     label: 'Marketing & AI Agent',
@@ -124,7 +135,11 @@ function AdminLayout({ activePage, children }) {
     if (!allowedKeys) {
       return NAV_ITEMS.filter(item => !ADMIN_HIDDEN_NAV_KEYS.has(item.key))
     }
-    return NAV_ITEMS.filter(item => allowedKeys.includes(item.key))
+    return NAV_ITEMS
+      .filter(item => allowedKeys.includes(item.key))
+      .map(item => item.children
+        ? { ...item, children: item.children.filter(child => !child.adminOnly) }
+        : item)
   }, [role])
 
   const [openGroupKey, setOpenGroupKey] = useState(() => getActiveGroupKey(activePage, navItems))

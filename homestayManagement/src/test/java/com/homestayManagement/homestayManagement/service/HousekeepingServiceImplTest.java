@@ -2,6 +2,8 @@ package com.homestayManagement.homestayManagement.service;
 
 import com.homestayManagement.homestayManagement.dto.request.HousekeepingInspectionItemRequest;
 import com.homestayManagement.homestayManagement.dto.request.HousekeepingInspectionRequest;
+import com.homestayManagement.homestayManagement.dto.request.HousekeepingCleaningCompletionRequest;
+import com.homestayManagement.homestayManagement.dto.request.HousekeepingCleaningItemRequest;
 import com.homestayManagement.homestayManagement.entity.*;
 import com.homestayManagement.homestayManagement.repository.*;
 import com.homestayManagement.homestayManagement.service.impl.HousekeepingServiceImpl;
@@ -21,6 +23,9 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -37,6 +42,8 @@ class HousekeepingServiceImplTest {
     @Mock private RulesPenaltyRepository rulesPenaltyRepository;
     @Mock private AppliedPenaltyRepository appliedPenaltyRepository;
     @Mock private AdminBookingService adminBookingService;
+    @Mock private HousekeepingChecklistTemplateRepository checklistTemplateRepository;
+    @Mock private HousekeepingTaskChecklistItemRepository taskChecklistItemRepository;
 
     private HousekeepingServiceImpl service;
     private HousekeepingTask task;
@@ -49,7 +56,7 @@ class HousekeepingServiceImplTest {
                 housekeepingTaskRepository, bookingDetailRepository, checkInRecordRepository,
                 employeeRepository, roomRepository, roomMiniBarItemRepository,
                 roomAmenitiesUsageRepository, rulesPenaltyRepository, appliedPenaltyRepository,
-                adminBookingService
+                adminBookingService, checklistTemplateRepository, taskChecklistItemRepository
         );
 
         housekeeper = Employee.builder().id(8L).fullName("Nhân viên dọn phòng").build();
@@ -141,10 +148,43 @@ class HousekeepingServiceImplTest {
         task.setCleaningStatus("IN_PROGRESS");
         task.getRoom().setStatus("CLEANING");
 
-        service.completeCleaning(7L);
+        when(taskChecklistItemRepository.existsByHousekeepingTaskId(7L)).thenReturn(true);
+        when(taskChecklistItemRepository.findByHousekeepingTaskIdOrderByDisplayOrderAsc(7L)).thenReturn(List.of());
+
+        service.completeCleaning(7L, new HousekeepingCleaningCompletionRequest(List.of()));
 
         assertEquals("COMPLETED", task.getCleaningStatus());
         assertEquals("AVAILABLE", task.getRoom().getStatus());
         verify(roomRepository).save(task.getRoom());
+    }
+
+    @Test
+    void completeCleaningRequiresAndPersistsMandatoryChecklist() {
+        task.setAssignedHousekeeping(housekeeper);
+        task.setInspectionStatus("COMPLETED");
+        task.setCleaningStatus("IN_PROGRESS");
+        task.getRoom().setStatus("CLEANING");
+        HousekeepingTaskChecklistItem requiredItem = HousekeepingTaskChecklistItem.builder()
+                .id(21L).housekeepingTask(task).titleSnapshot("Thay chăn ga gối")
+                .required(true).displayOrder(1).build();
+        when(taskChecklistItemRepository.existsByHousekeepingTaskId(7L)).thenReturn(true);
+        when(taskChecklistItemRepository.findByHousekeepingTaskIdOrderByDisplayOrderAsc(7L))
+                .thenReturn(List.of(requiredItem));
+
+        assertThrows(IllegalArgumentException.class, () -> service.completeCleaning(
+                7L,
+                new HousekeepingCleaningCompletionRequest(List.of(new HousekeepingCleaningItemRequest(21L, false)))
+        ));
+
+        service.completeCleaning(
+                7L,
+                new HousekeepingCleaningCompletionRequest(List.of(new HousekeepingCleaningItemRequest(21L, true)))
+        );
+
+        assertTrue(requiredItem.isCompleted());
+        assertEquals(housekeeper, requiredItem.getCompletedBy());
+        assertNotNull(requiredItem.getCompletedAt());
+        assertEquals("AVAILABLE", task.getRoom().getStatus());
+        verify(taskChecklistItemRepository).saveAll(List.of(requiredItem));
     }
 }

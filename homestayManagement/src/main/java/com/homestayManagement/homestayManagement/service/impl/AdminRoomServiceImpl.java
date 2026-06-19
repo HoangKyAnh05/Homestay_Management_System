@@ -12,6 +12,7 @@ import com.homestayManagement.homestayManagement.entity.Room;
 import com.homestayManagement.homestayManagement.entity.RoomImage;
 import com.homestayManagement.homestayManagement.entity.RoomType;
 import com.homestayManagement.homestayManagement.repository.DepositPolicyRepository;
+import com.homestayManagement.homestayManagement.repository.HousekeepingChecklistTemplateRepository;
 import com.homestayManagement.homestayManagement.repository.RoomImageRepository;
 import com.homestayManagement.homestayManagement.repository.RoomRepository;
 import com.homestayManagement.homestayManagement.repository.RoomTypeRepository;
@@ -40,17 +41,20 @@ public class AdminRoomServiceImpl implements AdminRoomService {
     private final RoomTypeRepository roomTypeRepository;
     private final RoomRepository roomRepository;
     private final RoomImageRepository roomImageRepository;
+    private final HousekeepingChecklistTemplateRepository housekeepingChecklistTemplateRepository;
 
     public AdminRoomServiceImpl(
             DepositPolicyRepository depositPolicyRepository,
             RoomTypeRepository roomTypeRepository,
             RoomRepository roomRepository,
-            RoomImageRepository roomImageRepository
+            RoomImageRepository roomImageRepository,
+            HousekeepingChecklistTemplateRepository housekeepingChecklistTemplateRepository
     ) {
         this.depositPolicyRepository = depositPolicyRepository;
         this.roomTypeRepository = roomTypeRepository;
         this.roomRepository = roomRepository;
         this.roomImageRepository = roomImageRepository;
+        this.housekeepingChecklistTemplateRepository = housekeepingChecklistTemplateRepository;
     }
 
     // ── DepositPolicy ─────────────────────────────────────────
@@ -136,6 +140,8 @@ public class AdminRoomServiceImpl implements AdminRoomService {
         if (!roomRepository.findByRoomTypeId(id).isEmpty()) {
             throw new IllegalArgumentException("Không thể xoá loại phòng đang có phòng sử dụng");
         }
+        housekeepingChecklistTemplateRepository.findByRoomTypeIdAndRoomIsNull(id)
+                .ifPresent(housekeepingChecklistTemplateRepository::delete);
         roomTypeRepository.deleteById(id);
     }
 
@@ -237,8 +243,13 @@ public class AdminRoomServiceImpl implements AdminRoomService {
         if (roomRepository.existsByRoomNumberAndIdNot(request.roomNumber(), id)) {
             throw new IllegalArgumentException("Số phòng đã tồn tại");
         }
+        RoomType nextRoomType = getRoomTypeById(request.roomTypeId());
+        if (!room.getRoomType().getId().equals(nextRoomType.getId())) {
+            housekeepingChecklistTemplateRepository.findByRoomId(id)
+                    .ifPresent(housekeepingChecklistTemplateRepository::delete);
+        }
         room.setRoomNumber(request.roomNumber());
-        room.setRoomType(getRoomTypeById(request.roomTypeId()));
+        room.setRoomType(nextRoomType);
         room.setStatus(request.status());
         return toRoomResponse(roomRepository.save(room));
     }
@@ -247,6 +258,8 @@ public class AdminRoomServiceImpl implements AdminRoomService {
     @Transactional
     public void deleteRoom(Long id) {
         Room room = getRoomById(id);
+        housekeepingChecklistTemplateRepository.findByRoomId(id)
+                .ifPresent(housekeepingChecklistTemplateRepository::delete);
         roomImageRepository.findByRoomId(id).forEach(img -> deleteFile(img.getImageUrl()));
         roomImageRepository.deleteByRoomId(id);
         roomRepository.delete(room);

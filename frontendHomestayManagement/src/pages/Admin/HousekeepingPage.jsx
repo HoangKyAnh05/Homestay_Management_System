@@ -67,6 +67,7 @@ function TaskCard({ task, active, onClick }) {
 function TaskDetail({ task, busy, onStart, onSubmitInspection, onCompleteCleaning, onClose }) {
   const [quantities, setQuantities] = useState(() => Object.fromEntries((task?.miniBarItems || []).map(item => [item.itemId, item.quantityUsed || 0])))
   const [penaltySelections, setPenaltySelections] = useState(() => Object.fromEntries((task?.penaltyItems || []).map(item => [item.ruleId, item.selected])))
+  const [checklistSelections, setChecklistSelections] = useState(() => Object.fromEntries((task?.cleaningChecklistItems || []).map(item => [item.id, item.completed])))
   const [note, setNote] = useState(() => task?.note || '')
 
   if (!task) {
@@ -87,6 +88,12 @@ function TaskDetail({ task, busy, onStart, onSubmitInspection, onCompleteCleanin
   const penaltyTotal = (task.penaltyItems || []).reduce(
     (sum, item) => sum + (penaltySelections[item.ruleId] ? Number(item.amount || 0) : 0), 0,
   )
+  const cleaningDone = task.cleaningStatus === 'COMPLETED'
+  const checklistItems = task.cleaningChecklistItems || []
+  const completedChecklistCount = checklistItems.filter(item => checklistSelections[item.id]).length
+  const requiredChecklistComplete = checklistItems
+    .filter(item => item.required)
+    .every(item => checklistSelections[item.id])
 
   const changeQuantity = (item, delta) => {
     if (inspectionDone) return
@@ -100,6 +107,13 @@ function TaskDetail({ task, busy, onStart, onSubmitInspection, onCompleteCleanin
     items: task.miniBarItems.map(item => ({ itemId: item.itemId, quantityUsed: Number(quantities[item.itemId] || 0) })),
     penaltyRuleIds: task.penaltyItems.filter(item => penaltySelections[item.ruleId]).map(item => item.ruleId),
     note,
+  })
+
+  const completeCleaning = () => onCompleteCleaning({
+    items: checklistItems.map(item => ({
+      taskChecklistItemId: item.id,
+      completed: Boolean(checklistSelections[item.id]),
+    })),
   })
 
   return (
@@ -175,6 +189,49 @@ function TaskDetail({ task, busy, onStart, onSubmitInspection, onCompleteCleanin
             <textarea maxLength={1000} disabled={inspectionDone || busy} value={note} onChange={event => setNote(event.target.value)} placeholder="Ví dụ: thiếu 1 khăn tắm, điều hòa hoạt động bình thường..." />
           </label>
 
+          <section className="hk-cleaning-checklist">
+            <div className="hk-checklist-head">
+              <div>
+                <span>TIÊU CHUẨN VỆ SINH</span>
+                <h3>Checklist hoàn thiện phòng</h3>
+                <p>Hoàn thành đầy đủ các mục bắt buộc trước khi chuyển phòng sang sẵn sàng.</p>
+              </div>
+              <div className="hk-checklist-progress">
+                <strong>{completedChecklistCount}/{checklistItems.length}</strong>
+                <span>đã hoàn thành</span>
+              </div>
+            </div>
+
+            {checklistItems.length === 0 ? (
+              <div className="hk-checklist-empty">Phòng này chưa được cấu hình checklist vệ sinh.</div>
+            ) : (
+              <div className="hk-checklist-items">
+                {checklistItems.map(item => {
+                  const checked = Boolean(checklistSelections[item.id])
+                  return (
+                    <label className={`hk-checklist-item${checked ? ' is-completed' : ''}`} key={item.id}>
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        disabled={cleaningDone || busy}
+                        onChange={event => setChecklistSelections(current => ({ ...current, [item.id]: event.target.checked }))}
+                      />
+                      <span className="hk-checklist-box">✓</span>
+                      <span className="hk-checklist-copy">
+                        <strong>{item.title}</strong>
+                        {item.description && <small>{item.description}</small>}
+                        {item.completedAt && <small>Hoàn thành bởi {item.completedByName || 'nhân viên'} · {time(item.completedAt)}</small>}
+                      </span>
+                      <span className={`hk-checklist-requirement${item.required ? ' is-required' : ''}`}>
+                        {item.required ? 'Bắt buộc' : 'Tùy chọn'}
+                      </span>
+                    </label>
+                  )
+                })}
+              </div>
+            )}
+          </section>
+
           <div className="hk-summary">
             <div className="hk-summary-lines">
               <p><span>Chi phí minibar</span><b>{money(total)}</b></p>
@@ -188,7 +245,8 @@ function TaskDetail({ task, busy, onStart, onSubmitInspection, onCompleteCleanin
             ) : task.cleaningStatus !== 'COMPLETED' ? (
               <div className="hk-cleaning-action">
                 <p><b>Chi phí đã gửi.</b> Lễ tân có thể checkout, bạn tiếp tục dọn phòng.</p>
-                <button type="button" className="hk-primary" disabled={busy} onClick={onCompleteCleaning}>
+                {!requiredChecklistComplete && checklistItems.length > 0 && <small className="hk-required-warning">Vui lòng hoàn thành tất cả hạng mục bắt buộc.</small>}
+                <button type="button" className="hk-primary" disabled={busy || !requiredChecklistComplete} onClick={completeCleaning}>
                   {busy ? 'Đang hoàn tất...' : 'Hoàn tất dọn phòng'}
                 </button>
               </div>
@@ -251,7 +309,7 @@ function HousekeepingPage() {
   }
 
   return (
-    <AdminLayout activePage="housekeeping">
+    <AdminLayout activePage="housekeeping-tasks">
       <div className="hk-page">
         <header className="hk-page-head">
           <div><span className="hk-eyebrow">Vận hành phòng</span><h1>Housekeeping</h1><p>Kiểm tra chi phí trước checkout và theo dõi tiến độ dọn phòng.</p></div>
@@ -283,7 +341,7 @@ function HousekeepingPage() {
             onClose={() => setSelectedId(null)}
             onStart={() => runAction(`/tasks/${selected.id}/start`, { method: 'POST' }, `Đã nhận phòng ${selected.roomNumber}`)}
             onSubmitInspection={body => runAction(`/tasks/${selected.id}/inspection`, { method: 'PUT', body: JSON.stringify(body) }, 'Đã gửi chi phí cho lễ tân')}
-            onCompleteCleaning={() => runAction(`/tasks/${selected.id}/complete-cleaning`, { method: 'POST' }, `Phòng ${selected.roomNumber} đã sẵn sàng`)}
+            onCompleteCleaning={body => runAction(`/tasks/${selected.id}/complete-cleaning`, { method: 'POST', body: JSON.stringify(body) }, `Phòng ${selected.roomNumber} đã sẵn sàng`)}
           />
         </div>
       </div>

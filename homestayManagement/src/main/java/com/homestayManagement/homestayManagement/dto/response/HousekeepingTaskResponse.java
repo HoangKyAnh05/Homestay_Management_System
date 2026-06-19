@@ -30,6 +30,7 @@ public record HousekeepingTaskResponse(
         List<HousekeepingMiniBarItemResponse> miniBarItems,
         BigDecimal totalPenaltyCharge,
         BigDecimal totalCharge,
-        List<HousekeepingPenaltyItemResponse> penaltyItems
+        List<HousekeepingPenaltyItemResponse> penaltyItems,
+        List<HousekeepingCleaningChecklistItemResponse> cleaningChecklistItems
 ) {
 }

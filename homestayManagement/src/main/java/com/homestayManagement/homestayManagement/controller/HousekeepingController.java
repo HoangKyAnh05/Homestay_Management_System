@@ -1,6 +1,7 @@
 package com.homestayManagement.homestayManagement.controller;
 
 import com.homestayManagement.homestayManagement.dto.request.HousekeepingInspectionRequest;
+import com.homestayManagement.homestayManagement.dto.request.HousekeepingCleaningCompletionRequest;
 import com.homestayManagement.homestayManagement.dto.response.HousekeepingTaskResponse;
 import com.homestayManagement.homestayManagement.service.HousekeepingService;
 import jakarta.validation.Valid;
@@ -57,8 +58,11 @@ public class HousekeepingController {
     }
 
     @PostMapping("/tasks/{taskId}/complete-cleaning")
-    public HousekeepingTaskResponse completeCleaning(@PathVariable Long taskId) {
-        return housekeepingService.completeCleaning(taskId);
+    public HousekeepingTaskResponse completeCleaning(
+            @PathVariable Long taskId,
+            @Valid @RequestBody HousekeepingCleaningCompletionRequest request
+    ) {
+        return housekeepingService.completeCleaning(taskId, request);
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

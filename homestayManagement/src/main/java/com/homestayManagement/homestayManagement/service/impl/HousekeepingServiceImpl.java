@@ -2,9 +2,12 @@ package com.homestayManagement.homestayManagement.service.impl;
 
 import com.homestayManagement.homestayManagement.dto.request.HousekeepingInspectionItemRequest;
 import com.homestayManagement.homestayManagement.dto.request.HousekeepingInspectionRequest;
+import com.homestayManagement.homestayManagement.dto.request.HousekeepingCleaningCompletionRequest;
+import com.homestayManagement.homestayManagement.dto.request.HousekeepingCleaningItemRequest;
 import com.homestayManagement.homestayManagement.dto.response.HousekeepingMiniBarItemResponse;
 import com.homestayManagement.homestayManagement.dto.response.HousekeepingPenaltyItemResponse;
 import com.homestayManagement.homestayManagement.dto.response.HousekeepingTaskResponse;
+import com.homestayManagement.homestayManagement.dto.response.HousekeepingCleaningChecklistItemResponse;
 import com.homestayManagement.homestayManagement.entity.*;
 import com.homestayManagement.homestayManagement.repository.*;
 import com.homestayManagement.homestayManagement.service.AdminBookingService;
@@ -37,6 +40,8 @@ public class HousekeepingServiceImpl implements HousekeepingService {
     private final RulesPenaltyRepository rulesPenaltyRepository;
     private final AppliedPenaltyRepository appliedPenaltyRepository;
     private final AdminBookingService adminBookingService;
+    private final HousekeepingChecklistTemplateRepository checklistTemplateRepository;
+    private final HousekeepingTaskChecklistItemRepository taskChecklistItemRepository;
 
     public HousekeepingServiceImpl(
             HousekeepingTaskRepository housekeepingTaskRepository,
@@ -48,7 +53,9 @@ public class HousekeepingServiceImpl implements HousekeepingService {
             RoomAmenitiesUsageRepository roomAmenitiesUsageRepository,
             RulesPenaltyRepository rulesPenaltyRepository,
             AppliedPenaltyRepository appliedPenaltyRepository,
-            AdminBookingService adminBookingService
+            AdminBookingService adminBookingService,
+            HousekeepingChecklistTemplateRepository checklistTemplateRepository,
+            HousekeepingTaskChecklistItemRepository taskChecklistItemRepository
     ) {
         this.housekeepingTaskRepository = housekeepingTaskRepository;
         this.bookingDetailRepository = bookingDetailRepository;
@@ -60,6 +67,8 @@ public class HousekeepingServiceImpl implements HousekeepingService {
         this.rulesPenaltyRepository = rulesPenaltyRepository;
         this.appliedPenaltyRepository = appliedPenaltyRepository;
         this.adminBookingService = adminBookingService;
+        this.checklistTemplateRepository = checklistTemplateRepository;
+        this.taskChecklistItemRepository = taskChecklistItemRepository;
     }
 
     @Override
@@ -93,7 +102,10 @@ public class HousekeepingServiceImpl implements HousekeepingService {
     @Transactional
     public HousekeepingTaskResponse requestInspection(Long bookingDetailId) {
         Optional<HousekeepingTask> existing = housekeepingTaskRepository.findByBookingDetailIdForDetail(bookingDetailId);
-        if (existing.isPresent()) return toResponse(existing.get());
+        if (existing.isPresent()) {
+            ensureChecklistSnapshot(existing.get());
+            return toResponse(existing.get());
+        }
 
         BookingDetail detail = bookingDetailRepository.findByIdForAdminDetail(bookingDetailId)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đơn đặt phòng"));
@@ -117,7 +129,9 @@ public class HousekeepingServiceImpl implements HousekeepingService {
                 .cleaningStatus("PENDING")
                 .requestedAt(LocalDateTime.now())
                 .build();
-        return toResponse(housekeepingTaskRepository.save(task));
+        HousekeepingTask savedTask = housekeepingTaskRepository.save(task);
+        ensureChecklistSnapshot(savedTask);
+        return toResponse(savedTask);
     }
 
     @Override
@@ -141,6 +155,7 @@ public class HousekeepingServiceImpl implements HousekeepingService {
         roomRepository.save(task.getRoom());
         task.getCheckInRecord().setHousekeeping(task.getAssignedHousekeeping());
         checkInRecordRepository.save(task.getCheckInRecord());
+        ensureChecklistSnapshot(task);
         return toResponse(housekeepingTaskRepository.save(task));
     }
 
@@ -226,7 +241,7 @@ public class HousekeepingServiceImpl implements HousekeepingService {
 
     @Override
     @Transactional
-    public HousekeepingTaskResponse completeCleaning(Long taskId) {
+    public HousekeepingTaskResponse completeCleaning(Long taskId, HousekeepingCleaningCompletionRequest request) {
         HousekeepingTask task = getTaskEntity(taskId);
         Employee employee = getCurrentEmployee();
         requireOwnerOrAdmin(task, employee);
@@ -238,11 +253,74 @@ public class HousekeepingServiceImpl implements HousekeepingService {
         }
         if ("COMPLETED".equalsIgnoreCase(task.getCleaningStatus())) return toResponse(task);
 
+        ensureChecklistSnapshot(task);
+        List<HousekeepingTaskChecklistItem> checklist = taskChecklistItemRepository
+                .findByHousekeepingTaskIdOrderByDisplayOrderAsc(taskId);
+        applyChecklistCompletion(checklist, request.items(), employee);
+        taskChecklistItemRepository.saveAll(checklist);
+
         task.setCleaningStatus("COMPLETED");
         task.setCleaningCompletedAt(LocalDateTime.now());
         task.getRoom().setStatus("AVAILABLE");
         roomRepository.save(task.getRoom());
         return toResponse(housekeepingTaskRepository.save(task));
+    }
+
+    private void ensureChecklistSnapshot(HousekeepingTask task) {
+        if (task.getId() == null || taskChecklistItemRepository.existsByHousekeepingTaskId(task.getId())) return;
+
+        Optional<HousekeepingChecklistTemplate> roomOverride = checklistTemplateRepository.findByRoomId(task.getRoom().getId());
+        HousekeepingChecklistTemplate template = roomOverride.orElseGet(() -> checklistTemplateRepository
+                .findByRoomTypeIdAndRoomIsNull(task.getRoom().getRoomType().getId())
+                .orElse(null));
+        if (template == null || !template.isActive()) return;
+
+        List<HousekeepingTaskChecklistItem> snapshot = template.getItems().stream()
+                .filter(HousekeepingChecklistItem::isActive)
+                .sorted(Comparator.comparing(HousekeepingChecklistItem::getDisplayOrder))
+                .map(item -> HousekeepingTaskChecklistItem.builder()
+                        .housekeepingTask(task)
+                        .sourceTemplateItemId(item.getId())
+                        .titleSnapshot(item.getTitle())
+                        .descriptionSnapshot(item.getDescription())
+                        .required(item.isRequired())
+                        .displayOrder(item.getDisplayOrder())
+                        .build())
+                .toList();
+        taskChecklistItemRepository.saveAll(snapshot);
+    }
+
+    private void applyChecklistCompletion(
+            List<HousekeepingTaskChecklistItem> checklist,
+            List<HousekeepingCleaningItemRequest> requestedItems,
+            Employee employee
+    ) {
+        Map<Long, HousekeepingCleaningItemRequest> requestedById = new LinkedHashMap<>();
+        for (HousekeepingCleaningItemRequest requested : requestedItems) {
+            if (requestedById.putIfAbsent(requested.taskChecklistItemId(), requested) != null) {
+                throw new IllegalArgumentException("Checklist có hạng mục bị trùng");
+            }
+        }
+        Set<Long> validIds = checklist.stream().map(HousekeepingTaskChecklistItem::getId).collect(Collectors.toSet());
+        if (!validIds.equals(requestedById.keySet())) {
+            throw new IllegalArgumentException("Checklist không đầy đủ hoặc chứa hạng mục không thuộc công việc này");
+        }
+        List<String> missingRequired = checklist.stream()
+                .filter(HousekeepingTaskChecklistItem::isRequired)
+                .filter(item -> !requestedById.get(item.getId()).completed())
+                .map(HousekeepingTaskChecklistItem::getTitleSnapshot)
+                .toList();
+        if (!missingRequired.isEmpty()) {
+            throw new IllegalArgumentException("Chưa hoàn thành hạng mục bắt buộc: " + String.join(", ", missingRequired));
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        checklist.forEach(item -> {
+            boolean completed = requestedById.get(item.getId()).completed();
+            item.setCompleted(completed);
+            item.setCompletedBy(completed ? employee : null);
+            item.setCompletedAt(completed ? now : null);
+        });
     }
 
     private HousekeepingTask getTaskEntity(Long taskId) {
@@ -328,6 +406,16 @@ public class HousekeepingServiceImpl implements HousekeepingService {
 
         Employee requestedBy = task.getRequestedBy();
         Employee assigned = task.getAssignedHousekeeping();
+        List<HousekeepingCleaningChecklistItemResponse> cleaningChecklistItems = taskChecklistItemRepository
+                .findByHousekeepingTaskIdOrderByDisplayOrderAsc(task.getId()).stream()
+                .map(item -> new HousekeepingCleaningChecklistItemResponse(
+                        item.getId(), item.getTitleSnapshot(), item.getDescriptionSnapshot(), item.isRequired(),
+                        item.getDisplayOrder(), item.isCompleted(),
+                        item.getCompletedBy() == null ? null : item.getCompletedBy().getId(),
+                        item.getCompletedBy() == null ? null : item.getCompletedBy().getFullName(),
+                        item.getCompletedAt()
+                ))
+                .toList();
         return new HousekeepingTaskResponse(
                 task.getId(), task.getVersion(), booking.getId(), detail.getId(),
                 task.getRoom().getId(), task.getRoom().getRoomNumber(), task.getRoom().getStatus(),
@@ -339,7 +427,8 @@ public class HousekeepingServiceImpl implements HousekeepingService {
                 assigned != null ? assigned.getFullName() : null,
                 task.getNote(), task.getRequestedAt(), task.getStartedAt(),
                 task.getInspectionCompletedAt(), task.getCleaningCompletedAt(),
-                totalCharge, miniBarItems, totalPenaltyCharge, totalCharge.add(totalPenaltyCharge), penaltyItems
+                totalCharge, miniBarItems, totalPenaltyCharge, totalCharge.add(totalPenaltyCharge), penaltyItems,
+                cleaningChecklistItems
         );
     }
 

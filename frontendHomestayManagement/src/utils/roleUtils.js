@@ -17,7 +17,7 @@ export function roleDefaultPath(role) {
   switch (role) {
     case 'ROLE_ADMIN':        return '/admin'
     case 'ROLE_RECEPTIONIST': return '/admin/receptionist'
-    case 'ROLE_HOUSEKEEPING': return '/admin/housekeeping'
+    case 'ROLE_HOUSEKEEPING': return '/admin/housekeeping/tasks'
     case 'ROLE_MARKETING':    return '/admin/marketing/ai-agent'
     default:                  return '/admin'
   }
@@ -62,7 +62,7 @@ export function roleCanAccess(role, path) {
       '/admin/invoices',
     ],
     ROLE_HOUSEKEEPING: [
-      '/admin/housekeeping',
+      '/admin/housekeeping/tasks',
     ],
     ROLE_MARKETING: [
       '/admin/marketing/ai-agent',
