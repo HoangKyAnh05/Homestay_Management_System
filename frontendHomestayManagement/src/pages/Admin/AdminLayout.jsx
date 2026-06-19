@@ -79,7 +79,6 @@ const NAV_ITEMS = [
     label: 'Quản lý Housekeeping',
     icon: ICONS.housekeeping,
     children: [
-      { key: 'housekeeping-overview', label: 'Tổng quan', path: '/admin/housekeeping/overview', adminOnly: true },
       { key: 'housekeeping-room-calendar', label: 'Lịch trạng thái phòng', path: '/admin/housekeeping/room-calendar', adminOnly: true },
       { key: 'housekeeping-tasks', label: 'Công việc vệ sinh', path: '/admin/housekeeping/tasks' },
       { key: 'housekeeping-checklists', label: 'Cấu hình checklist', path: '/admin/housekeeping/checklists', adminOnly: true },

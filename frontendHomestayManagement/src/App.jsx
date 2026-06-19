@@ -3,7 +3,6 @@ import AdminRoomsPage from './pages/Admin/AdminRoomsPage'
 import AdminLoginPage from './pages/Admin/AdminLoginPage'
 import AdminInvoicesPage from './pages/Admin/AdminInvoicesPage'
 import AdminBookingsPage from './pages/Admin/AdminBookingsPage'
-import AdminBlankPage from './pages/Admin/AdminBlankPage'
 import AdminCheckInLogsPage from './pages/Admin/AdminCheckInLogsPage'
 import AdminHousekeepingChecklistsPage from './pages/Admin/AdminHousekeepingChecklistsPage'
 import AdminHousekeepingCalendarPage from './pages/Admin/AdminHousekeepingCalendarPage'
@@ -124,9 +123,6 @@ function App() {
       return null
     }
     if (currentPath === '/admin/housekeeping/tasks') return <HousekeepingPage />
-    if (currentPath === '/admin/housekeeping/overview') {
-      return <AdminBlankPage activePage="housekeeping-overview" />
-    }
     if (currentPath === '/admin/housekeeping/room-calendar') {
       return <AdminHousekeepingCalendarPage />
     }
