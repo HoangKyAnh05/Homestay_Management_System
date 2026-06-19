@@ -60,7 +60,8 @@ class HousekeepingServiceImplTest {
         );
 
         housekeeper = Employee.builder().id(8L).fullName("Nhân viên dọn phòng").build();
-        Room room = Room.builder().id(210L).roomNumber("210").status("OCCUPIED").build();
+        RoomType roomType = RoomType.builder().id(2L).name("Standard").build();
+        Room room = Room.builder().id(210L).roomNumber("210").roomType(roomType).status("OCCUPIED").build();
         Customer customer = Customer.builder().id(3L).fullName("Khách 210").phone("0900000000").build();
         Booking booking = Booking.builder().id(4L).customer(customer).status("CHECKED_IN").build();
         BookingDetail detail = BookingDetail.builder().id(5L).booking(booking).room(room)

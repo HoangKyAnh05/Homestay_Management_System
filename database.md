@@ -89,6 +89,8 @@ Dinh danh phong vat ly thuc te. Phong nay chi duoc gan vao booking khi le tan la
 
 `rooms.status` la trang thai van hanh hien tai cua phong. Khi check-in, phong chuyen sang `OCCUPIED`; housekeeping nhan viec thi chuyen sang `CLEANING`; chi khi don phong xong moi chuyen ve `AVAILABLE`.
 
+Trang Lich trang thai phong khong tao them bang trang thai theo ngay. Moi o lich duoc tong hop tu `booking_details`, `housekeeping_tasks`, `room_schedules` va `rooms.status` theo thu tu uu tien: `MAINTENANCE` -> `CLEANING` -> `OCCUPIED` -> `BOOKED` -> `AVAILABLE`. Cach nay tranh luu trung va tranh lech trang thai giua lich voi nghiep vu thuc te.
+
 ### `room_images`
 
 Anh hien tai gan theo phong vat ly. Khi hien thi theo loai phong, co the lay anh tu mot phong dai dien trong cung loai phong.
