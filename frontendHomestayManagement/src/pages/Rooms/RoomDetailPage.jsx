@@ -168,7 +168,7 @@ function PublicHeader() {
       <nav className="home-nav" aria-label="Điều hướng chính">
         <a href="/home">Trang chủ</a>
         <a href="/rooms" className="home-nav-active">Phòng</a>
-        <a href="/home#amenities">Tiện nghi</a>
+        <a href="/amenities">Tiện nghi</a>
         <a href="/home#contact">Liên hệ</a>
         <a href="/home#about">Giới thiệu</a>
       </nav>

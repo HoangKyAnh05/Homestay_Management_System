@@ -382,7 +382,7 @@ function HomeFooter() {
           <ul>
             <li><a href="/rooms">Phòng &amp; Suites</a></li>
             <li><a href="#about">Về chúng tôi</a></li>
-            <li><a href="#amenities">Tiện nghi</a></li>
+            <li><a href="/amenities">Tiện nghi</a></li>
             <li><a href="#contact">Liên hệ</a></li>
           </ul>
         </div>
@@ -472,7 +472,7 @@ function HomePage() {
         <nav className="home-nav" aria-label="Điều hướng chính">
           <a href="/home" className="home-nav-active">Trang chủ</a>
           <a href="/rooms">Phòng</a>
-          <a href="#amenities">Tiện nghi</a>
+          <a href="/amenities">Tiện nghi</a>
           <a href="#contact">Liên hệ</a>
           <a href="#about">Giới thiệu</a>
         </nav>
