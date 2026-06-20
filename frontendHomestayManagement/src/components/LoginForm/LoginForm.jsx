@@ -5,6 +5,10 @@ const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID
 const hasGoogleClientId = GOOGLE_CLIENT_ID && !GOOGLE_CLIENT_ID.includes('YOUR_GOOGLE_CLIENT_ID')
 
 function LoginForm() {
+  const nextPath = (() => {
+    const requested = new URLSearchParams(window.location.search).get('next')
+    return requested?.startsWith('/') && !requested.startsWith('//') ? requested : '/home'
+  })()
   const googleTokenClientRef = useRef(null)
   const [showPassword, setShowPassword] = useState(false)
   const rememberedEmail = getRememberedEmail()
@@ -50,13 +54,13 @@ function LoginForm() {
 
     try {
       await loginWithGoogle(response.access_token)
-      window.location.assign('/home')
+      window.location.assign(nextPath)
     } catch (error) {
       setErrorMessage(error.message)
     } finally {
       setIsGoogleLoading(false)
     }
-  }, [])
+  }, [nextPath])
 
   const initializeGoogleClient = useCallback(async () => {
     if (googleTokenClientRef.current) {
@@ -127,7 +131,7 @@ function LoginForm() {
         await navigator.credentials.store(credential)
       }
 
-      window.location.assign('/home')
+      window.location.assign(nextPath)
     } catch (error) {
       setErrorMessage(error.message)
     } finally {

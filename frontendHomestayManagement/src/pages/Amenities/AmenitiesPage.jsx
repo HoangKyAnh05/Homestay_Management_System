@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react'
-import { getStoredUser, logout } from '../../services/authService'
+import { useEffect, useMemo, useState } from 'react'
+import { getStoredToken, getStoredUser, logout } from '../../services/authService'
 import { resolveImageUrl } from '../../utils/imageUrl'
 import '../Home/HomePage.css'
 import './AmenitiesPage.css'
@@ -41,13 +41,13 @@ const amenities = [
   },
   {
     id: 3,
-    name: 'Khu vực BBQ',
-    category: 'dining',
-    categoryLabel: 'Ẩm thực',
-    price: 300000,
-    schedule: '17:00 – 22:00',
+    name: 'Sân vườn thư giãn',
+    category: 'shared',
+    categoryLabel: 'Không gian chung',
+    price: 0,
+    schedule: '06:00 – 22:00',
     location: 'Sân vườn phía sau',
-    description: 'Khu nướng ngoài trời dành cho gia đình và nhóm bạn. Vui lòng đăng ký trước ít nhất 2 giờ.',
+    description: 'Khoảng xanh yên tĩnh để đọc sách, trò chuyện và tận hưởng không khí trong lành.',
     image: '/home_3/image_3.jpg',
     icon: 'fire',
     featured: true,
@@ -79,13 +79,13 @@ const amenities = [
   },
   {
     id: 6,
-    name: 'Giặt ủi',
+    name: 'Hỗ trợ lễ tân',
     category: 'service',
     categoryLabel: 'Dịch vụ hỗ trợ',
-    price: 50000,
-    schedule: '08:00 – 18:00',
-    location: 'Đăng ký tại lễ tân',
-    description: 'Nhận và trả đồ ngay tại phòng. Chi phí thực tế được xác nhận theo số lượng và loại trang phục.',
+    price: 0,
+    schedule: 'Phục vụ 24/7',
+    location: 'Quầy lễ tân',
+    description: 'Luôn sẵn sàng hỗ trợ thông tin lưu trú, hành lý và những nhu cầu thiết yếu trong chuyến đi.',
     image: '/home_5/image_1.jpg',
     icon: 'shirt',
   },
@@ -103,17 +103,35 @@ const amenities = [
   },
   {
     id: 8,
-    name: 'Bữa sáng tại homestay',
+    name: 'Không gian dùng bữa',
     category: 'dining',
     categoryLabel: 'Ẩm thực',
-    price: 80000,
-    schedule: '06:30 – 09:30',
+    price: 0,
+    schedule: '06:00 – 22:00',
     location: 'Nhà ăn tầng trệt',
-    description: 'Thực đơn sáng nhẹ nhàng với nguyên liệu địa phương. Có lựa chọn dành cho trẻ em và người ăn chay.',
+    description: 'Không gian dùng bữa chung thoáng sáng, phù hợp cho gia đình và nhóm bạn quây quần.',
     image: '/home_5/image_3.jpg',
     icon: 'coffee',
   },
 ]
+
+const API_BASE_URL = 'http://localhost:8080/api'
+const PENDING_SERVICE_KEY = 'homeStayPendingAmenityService'
+const serviceImages = ['/home_3/image_3.jpg', '/home_5/image_1.jpg', '/home_5/image_3.jpg', '/home_2/image_2.jpg']
+
+function serviceDescription(name) {
+  const normalized = String(name || '').toLowerCase()
+  if (normalized.includes('giặt')) return 'Chăm sóc trang phục thuận tiện trong suốt kỳ nghỉ của bạn.'
+  if (normalized.includes('bbq') || normalized.includes('nướng')) return 'Chuẩn bị cho một buổi tối ấm cúng bên gia đình và bạn bè.'
+  if (normalized.includes('sáng') || normalized.includes('ăn')) return 'Thưởng thức hương vị địa phương ngay tại Home Stays.'
+  if (normalized.includes('xe') || normalized.includes('đón')) return 'Di chuyển nhẹ nhàng hơn với sự hỗ trợ từ đội ngũ của chúng tôi.'
+  return 'Dịch vụ bổ sung giúp kỳ lưu trú của bạn thoải mái và trọn vẹn hơn.'
+}
+
+function formatDateTime(value) {
+  if (!value) return '—'
+  return new Intl.DateTimeFormat('vi-VN', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(value))
+}
 
 function AmenityIcon({ type }) {
   const paths = {
@@ -188,12 +206,99 @@ function formatPrice(price) {
 function AmenitiesPage() {
   const [activeGroup, setActiveGroup] = useState('all')
   const [priceFilter, setPriceFilter] = useState('all')
+  const [databaseServices, setDatabaseServices] = useState([])
+  const [servicesLoading, setServicesLoading] = useState(true)
+  const [servicesError, setServicesError] = useState('')
+  const [selectedService, setSelectedService] = useState(null)
+  const [eligibleBookings, setEligibleBookings] = useState([])
+  const [selectedBookingId, setSelectedBookingId] = useState('')
+  const [quantity, setQuantity] = useState(1)
+  const [modalLoading, setModalLoading] = useState(false)
+  const [modalError, setModalError] = useState('')
+  const [successMessage, setSuccessMessage] = useState('')
   const visibleAmenities = useMemo(() => amenities.filter(item => {
     const matchesGroup = activeGroup === 'all' || item.category === activeGroup
     const matchesPrice = priceFilter === 'all'
       || (priceFilter === 'free' ? item.price === 0 : item.price > 0)
     return matchesGroup && matchesPrice
   }), [activeGroup, priceFilter])
+
+  useEffect(() => {
+    const controller = new AbortController()
+    fetch(`${API_BASE_URL}/amenities`, { signal: controller.signal })
+      .then(async response => {
+        const data = await response.json().catch(() => ([]))
+        if (!response.ok) throw new Error('Không thể tải dịch vụ lúc này.')
+        return data
+      })
+      .then(data => setDatabaseServices(Array.isArray(data) ? data : []))
+      .catch(error => {
+        if (error.name !== 'AbortError') setServicesError(error.message)
+      })
+      .finally(() => setServicesLoading(false))
+    return () => controller.abort()
+  }, [])
+
+  const rememberService = (service) => {
+    window.sessionStorage.setItem(PENDING_SERVICE_KEY, JSON.stringify({
+      type: 'FACILITY', serviceId: service.id, name: service.name,
+    }))
+  }
+
+  const chooseService = async (service) => {
+    setSuccessMessage('')
+    setModalError('')
+    rememberService(service)
+    const token = getStoredToken()
+    if (!token) {
+      window.location.assign('/login?next=/amenities')
+      return
+    }
+    setModalLoading(true)
+    try {
+      const response = await fetch(`${API_BASE_URL}/amenities/eligible-bookings`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const data = await response.json().catch(() => ([]))
+      if (!response.ok) throw new Error(data.message || 'Không thể kiểm tra đơn đặt phòng.')
+      if (!Array.isArray(data) || data.length === 0) {
+        window.location.assign('/rooms?from=amenities')
+        return
+      }
+      setSelectedService(service)
+      setEligibleBookings(data)
+      setSelectedBookingId(String(data[0].bookingId))
+      setQuantity(1)
+    } catch (error) {
+      setModalError(error.message)
+      setSelectedService(service)
+    } finally {
+      setModalLoading(false)
+    }
+  }
+
+  const addServiceToBooking = async () => {
+    const token = getStoredToken()
+    if (!token || !selectedService || !selectedBookingId) return
+    setModalLoading(true)
+    setModalError('')
+    try {
+      const response = await fetch(`${API_BASE_URL}/amenities/bookings/${selectedBookingId}/services`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ serviceId: selectedService.id, quantity: Number(quantity) }),
+      })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(data.message || 'Không thể thêm dịch vụ vào đơn đặt phòng.')
+      window.sessionStorage.removeItem(PENDING_SERVICE_KEY)
+      setSelectedService(null)
+      setSuccessMessage(`Đã thêm ${data.serviceName} vào booking #${data.bookingId}.`)
+    } catch (error) {
+      setModalError(error.message)
+    } finally {
+      setModalLoading(false)
+    }
+  }
 
   return (
     <div className="amenities-page">
@@ -211,6 +316,40 @@ function AmenitiesPage() {
           <div className="amenities-hero-note">
             <strong>24/7</strong><span>Luôn sẵn sàng<br />hỗ trợ bạn</span>
           </div>
+        </section>
+
+        <section className="bookable-services" id="services">
+          <div className="bookable-services-head">
+            <div><span>MỚI TẠI HOME STAYS</span><h2>Dịch vụ cho chuyến đi</h2><p>Thêm trực tiếp vào booking hiện tại hoặc chọn trước khi bắt đầu đặt phòng.</p></div>
+            <a href="/booking-history">Xem chuyến đi của bạn</a>
+          </div>
+          {successMessage && <div className="amenities-success" role="status">✓ {successMessage}</div>}
+          {servicesLoading ? (
+            <div className="services-state">Đang tải dịch vụ...</div>
+          ) : servicesError ? (
+            <div className="services-state services-state-error">{servicesError}</div>
+          ) : databaseServices.length === 0 ? (
+            <div className="services-state">Hiện chưa có dịch vụ bổ sung đang hoạt động.</div>
+          ) : (
+            <div className="bookable-services-grid">
+              {databaseServices.map((service, index) => (
+                <article className="bookable-service-card" key={service.id}>
+                  <div className="bookable-service-photo">
+                    <img src={serviceImages[index % serviceImages.length]} alt={service.name} loading="lazy" />
+                    <span>Dịch vụ</span>
+                  </div>
+                  <div className="bookable-service-body">
+                    <h3>{service.name}</h3>
+                    <p>{serviceDescription(service.name)}</p>
+                    <div><strong>{Number(service.price) === 0 ? 'Miễn phí' : formatPrice(service.price)}</strong><span>/ lần</span></div>
+                    <button type="button" disabled={modalLoading} onClick={() => chooseService(service)}>
+                      {modalLoading ? 'Đang kiểm tra...' : 'Thêm vào chuyến đi'}
+                    </button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
         </section>
 
         <section className="amenities-intro" id="explore">
@@ -277,6 +416,32 @@ function AmenitiesPage() {
           <div><span>ĐÃ SẴN SÀNG CHO CHUYẾN ĐI?</span><h2>Chọn căn phòng<br />dành riêng cho bạn.</h2><p>Những ngày bình yên đang chờ ở Home Stays.</p><a href="/rooms">Khám phá phòng <b>→</b></a></div>
         </section>
       </main>
+
+      {selectedService && (
+        <div className="amenity-modal-overlay" onMouseDown={event => event.target === event.currentTarget && setSelectedService(null)}>
+          <section className="amenity-reservation-modal" role="dialog" aria-modal="true" aria-labelledby="amenity-modal-title">
+            <button className="amenity-modal-close" type="button" aria-label="Đóng" onClick={() => setSelectedService(null)}>×</button>
+            <div className="amenity-modal-heading"><span>THÊM DỊCH VỤ</span><h2 id="amenity-modal-title">{selectedService.name}</h2><p>Chọn chuyến đi bạn muốn sử dụng dịch vụ này.</p></div>
+            {modalError && <div className="amenity-modal-error">{modalError}</div>}
+            {eligibleBookings.length > 0 && (
+              <>
+                <div className="amenity-booking-list">
+                  {eligibleBookings.map(booking => (
+                    <label className={String(booking.bookingId) === selectedBookingId ? 'selected' : ''} key={booking.bookingId}>
+                      <input type="radio" name="booking" value={booking.bookingId} checked={String(booking.bookingId) === selectedBookingId} onChange={event => setSelectedBookingId(event.target.value)} />
+                      <span><strong>Booking #{booking.bookingId} · {booking.roomTypeName}</strong><small>{formatDateTime(booking.checkInTarget)} → {formatDateTime(booking.checkOutTarget)} · {booking.roomCount} phòng</small></span>
+                      <b>{booking.status}</b>
+                    </label>
+                  ))}
+                </div>
+                <div className="amenity-quantity-row"><span>Số lượng</span><div><button type="button" onClick={() => setQuantity(value => Math.max(1, value - 1))}>−</button><strong>{quantity}</strong><button type="button" onClick={() => setQuantity(value => Math.min(20, value + 1))}>+</button></div></div>
+                <div className="amenity-total-row"><span>Tổng cộng</span><strong>{formatPrice(Number(selectedService.price) * quantity)}</strong></div>
+                <button className="amenity-confirm-button" type="button" disabled={modalLoading} onClick={addServiceToBooking}>{modalLoading ? 'Đang thêm...' : 'Xác nhận thêm dịch vụ'}</button>
+              </>
+            )}
+          </section>
+        </div>
+      )}
 
       <footer className="amenities-footer">
         <div><a className="home-logo" href="/home">Home Stays</a><p>Ngôi nhà thứ hai của bạn giữa thiên nhiên.</p></div>

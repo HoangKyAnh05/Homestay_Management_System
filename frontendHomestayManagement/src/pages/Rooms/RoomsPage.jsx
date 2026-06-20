@@ -425,8 +425,19 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
     ])
       .then(([policyData, serviceData, profileData]) => {
         const nextPolicies = Array.isArray(policyData) ? policyData : []
+        const nextServices = Array.isArray(serviceData) ? serviceData : []
         setPolicies(nextPolicies)
-        setServiceOptions(Array.isArray(serviceData) ? serviceData : [])
+        setServiceOptions(nextServices)
+        try {
+          const pending = JSON.parse(window.sessionStorage.getItem('homeStayPendingAmenityService') || 'null')
+          const matched = nextServices.find(item => item.type === 'FACILITY' && String(item.id) === String(pending?.serviceId))
+          if (matched) {
+            setSelectedServices([{ type: matched.type, serviceId: matched.id, name: matched.name, price: matched.price, quantity: 1 }])
+            window.sessionStorage.removeItem('homeStayPendingAmenityService')
+          }
+        } catch {
+          window.sessionStorage.removeItem('homeStayPendingAmenityService')
+        }
         setForm((current) => ({
           ...current,
           pricePolicyId: current.pricePolicyId || nextPolicies[0]?.id || '',
