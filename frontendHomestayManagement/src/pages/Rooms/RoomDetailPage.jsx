@@ -115,6 +115,12 @@ function defaultCheckOutValue(checkInValue) {
   return toDateTimeLocalValue(date)
 }
 
+function nowDateTimeLocalMin() {
+  const now = new Date()
+  now.setSeconds(0, 0)
+  return toDateTimeLocalValue(now)
+}
+
 function roomDetailToCartRoom(room) {
   const weekdayPrice = room?.prices?.find((price) => String(price.dayType || '').toUpperCase() === 'WEEKDAY')?.price
   const weekendPrice = room?.prices?.find((price) => String(price.dayType || '').toUpperCase() === 'WEEKEND')?.price
@@ -501,8 +507,17 @@ function BookingModal({ room, initialBookingData, onClose, onCreated }) {
               </p>
             )}
             <div className="public-booking-grid">
-              <label><span>Nhận phòng dự kiến</span><input type="datetime-local" required value={form.checkInTarget} onChange={(e) => setForm({ ...form, checkInTarget: e.target.value })} /></label>
-              <label><span>Trả phòng dự kiến</span><input type="datetime-local" required value={form.checkOutTarget} onChange={(e) => setForm({ ...form, checkOutTarget: e.target.value })} /></label>
+              <label><span>Nhận phòng dự kiến</span><input type="datetime-local" required value={form.checkInTarget} min={nowDateTimeLocalMin()} onChange={(e) => {
+                const value = e.target.value
+                const now = new Date(); now.setSeconds(0, 0)
+                if (value && new Date(value) < now) return
+                setForm({ ...form, checkInTarget: value })
+              }} /></label>
+              <label><span>Trả phòng dự kiến</span><input type="datetime-local" required value={form.checkOutTarget} min={form.checkInTarget || nowDateTimeLocalMin()} onChange={(e) => {
+                const value = e.target.value
+                if (value && form.checkInTarget && new Date(value) <= new Date(form.checkInTarget)) return
+                setForm({ ...form, checkOutTarget: value })
+              }} /></label>
               <label className="public-booking-wide"><span>Gói thuê</span><select required value={form.pricePolicyId} onChange={(e) => setForm({ ...form, pricePolicyId: e.target.value })}>
                 {policies.map((policy) => <option key={policy.id} value={policy.id}>{policy.policyName}</option>)}
               </select></label>

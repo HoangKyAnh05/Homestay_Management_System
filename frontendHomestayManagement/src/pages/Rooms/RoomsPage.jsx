@@ -145,6 +145,12 @@ function addHoursToDateTimeLocal(value, hours) {
   return toDateTimeLocal(date)
 }
 
+function nowDateTimeLocalMin() {
+  const now = new Date()
+  now.setSeconds(0, 0)
+  return toDateTimeLocal(now)
+}
+
 function overnightCheckoutValue(checkInTarget) {
   const date = new Date(checkInTarget)
   date.setDate(date.getDate() + 1)
@@ -574,6 +580,9 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
   }
 
   const updateCheckInTarget = (value) => {
+    const now = new Date()
+    now.setSeconds(0, 0)
+    if (value && new Date(value) < now) return
     setError('')
     setScheduleError('')
     setScheduleNotice('')
@@ -590,6 +599,7 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
   }
 
   const updateCheckOutTarget = (value) => {
+    if (value && form.checkInTarget && new Date(value) <= new Date(form.checkInTarget)) return
     setError('')
     setScheduleError('')
     setScheduleNotice('')
@@ -773,11 +783,11 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
             <h3>Thời gian và gói thuê</h3>
             {criteria && <p className="public-booking-search-note">Đã lấy từ tìm kiếm: {criteria.rooms} phòng · {criteria.adults} người lớn · {criteria.children} trẻ em</p>}
             <div className="public-booking-grid">
-              <label><span>Nhận phòng</span><input type="datetime-local" required value={form.checkInTarget} onChange={(e) => updateCheckInTarget(e.target.value)} /></label>
+              <label><span>Nhận phòng</span><input type="datetime-local" required value={form.checkInTarget} min={nowDateTimeLocalMin()} onChange={(e) => updateCheckInTarget(e.target.value)} /></label>
               {isHourlyPolicy(selectedPolicy) ? (
                 <label><span>Trả phòng</span><input type="text" value="00:00" disabled readOnly /></label>
               ) : (
-                <label><span>Trả phòng</span><input type="datetime-local" required value={form.checkOutTarget} disabled={isAutoCheckoutPolicy(selectedPolicy)} onChange={(e) => updateCheckOutTarget(e.target.value)} /></label>
+                <label><span>Trả phòng</span><input type="datetime-local" required value={form.checkOutTarget} min={form.checkInTarget || nowDateTimeLocalMin()} disabled={isAutoCheckoutPolicy(selectedPolicy)} onChange={(e) => updateCheckOutTarget(e.target.value)} /></label>
               )}
               <label className="public-booking-wide"><span>Gói thuê</span><select required value={form.pricePolicyId} onChange={(e) => updatePolicy(e.target.value)}>{availablePolicies.map((policy) => <option key={policy.id} value={policy.id}>{policy.policyName}</option>)}</select></label>
             </div>
