@@ -22,6 +22,7 @@ public record AdminBookingDetailResponse(
         AdminBookingCustomerResponse customer,
         List<AdminCustomerHistoryGuestResponse> guests,
         List<AdminBookingCheckInResponse> checkInRecords,
+        boolean housekeepingInspectionCompleted,
         List<AdminInvoiceServiceItemResponse> serviceItems,
         List<AdminInvoicePenaltyItemResponse> penaltyItems,
         AdminBookingInvoiceSummaryResponse invoice,

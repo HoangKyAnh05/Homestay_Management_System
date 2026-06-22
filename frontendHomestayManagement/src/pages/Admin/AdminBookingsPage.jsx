@@ -247,13 +247,20 @@ function BookingDetailModal({ detail, loading, error, actionLoading, actionError
   useEffect(() => {
     if (!detail?.bookingDetailId || !detail?.checkInRecords?.length) return undefined
     let active = true
-    fetch(`${HOUSEKEEPING_API}/booking-details/${detail.bookingDetailId}`, { headers: authHeaders() })
-      .then(async response => ({ ok: response.ok, data: await response.json().catch(() => ({})) }))
-      .then(({ ok, data }) => {
-        if (active) setHousekeepingTask(ok ? data : null)
-      })
-      .catch(() => { if (active) setHousekeepingTask(null) })
-    return () => { active = false }
+    const loadHousekeepingTask = () => {
+      fetch(`${HOUSEKEEPING_API}/booking-details/${detail.bookingDetailId}`, { headers: authHeaders() })
+        .then(async response => ({ ok: response.ok, data: await response.json().catch(() => ({})) }))
+        .then(({ ok, data }) => {
+          if (active) setHousekeepingTask(ok ? data : null)
+        })
+        .catch(() => { if (active) setHousekeepingTask(null) })
+    }
+    loadHousekeepingTask()
+    const refreshTimer = window.setInterval(loadHousekeepingTask, 10_000)
+    return () => {
+      active = false
+      window.clearInterval(refreshTimer)
+    }
   }, [detail?.bookingDetailId, detail?.checkInRecords?.length])
 
   // Khi mở form sửa khách → pre-fill
@@ -293,7 +300,12 @@ function BookingDetailModal({ detail, loading, error, actionLoading, actionError
   const canEdit     = detail && !hasCheckIn && !['CANCELLED', 'COMPLETED'].includes(String(detail.bookingStatus).toUpperCase())
   const canCheckIn  = canEdit
   const canCheckOut = detail && hasCheckIn && !hasCheckOut
+  const inspectionComplete = Boolean(
+    detail?.housekeepingInspectionCompleted || housekeepingTask?.inspectionStatus === 'COMPLETED'
+  )
   const services    = serviceForm.type === 'FACILITY' ? detail?.facilityServices || [] : detail?.inventoryServices || []
+  const selectedServices = detail?.serviceItems?.filter(item => item.type !== 'MINI_BAR') || []
+  const selectedMiniBars = detail?.serviceItems?.filter(item => item.type === 'MINI_BAR') || []
 
   // ── Lưu chỉnh sửa khách hàng ──
   const saveCustomer = (e) => {
@@ -355,6 +367,12 @@ function BookingDetailModal({ detail, loading, error, actionLoading, actionError
   const submitPenalty = (e) => {
     e.preventDefault()
     onAction('penalties', { rulesPenaltyId: Number(penaltyForm.rulesPenaltyId), amount: Number(penaltyForm.amount), description: penaltyForm.description })
+  }
+
+  const removeCharge = (path, label) => {
+    if (window.confirm(`Xóa ${label} khỏi ca lưu trú này?`)) {
+      onAction(path, null, undefined, 'DELETE')
+    }
   }
 
   const prepareCheckOut = () => {
@@ -441,7 +459,8 @@ function BookingDetailModal({ detail, loading, error, actionLoading, actionError
                     <button
                       type="button"
                       className="abk-action-primary"
-                      disabled={actionLoading || checkoutLoading}
+                      disabled={actionLoading || checkoutLoading || !inspectionComplete}
+                      title={!inspectionComplete ? 'Chờ housekeeping gửi chi phí kiểm tra phòng' : undefined}
                       onClick={prepareCheckOut}
                     >
                       {checkoutLoading ? 'Đang kiểm tra...' : 'Check out'}
@@ -662,15 +681,25 @@ function BookingDetailModal({ detail, loading, error, actionLoading, actionError
                       </select>
                       <input type="number" min="1" value={serviceForm.quantity} onChange={e => setServiceForm({ ...serviceForm, quantity: e.target.value })} />
                     </AddRow>
-                    {detail.serviceItems?.length ? (
+                    {selectedServices.length ? (
                       <div className="abk-line-list">
-                        {detail.serviceItems.map(item => (
+                        {selectedServices.map(item => (
                           <div className="abk-line-row" key={`${item.type}-${item.id}`}>
                             <div>
                               <strong>{item.name}</strong>
                               <span>{serviceTypeLabel(item.type)} · SL {item.quantity} × {formatMoney(item.unitPrice)}</span>
                             </div>
-                            <strong>{formatMoney(item.totalPrice)}</strong>
+                            <div className="abk-line-actions">
+                              <strong>{formatMoney(item.totalPrice)}</strong>
+                              <button
+                                type="button"
+                                className="abk-remove-line"
+                                disabled={actionLoading || hasCheckOut}
+                                aria-label={`Xóa ${item.name}`}
+                                title={`Xóa ${item.name}`}
+                                onClick={() => removeCharge(`services/${item.id}`, item.name)}
+                              >×</button>
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -690,6 +719,31 @@ function BookingDetailModal({ detail, loading, error, actionLoading, actionError
                       </select>
                       <input type="number" min="1" value={miniBarForm.quantity} onChange={e => setMiniBarForm({ ...miniBarForm, quantity: e.target.value })} />
                     </AddRow>
+                    {selectedMiniBars.length ? (
+                      <div className="abk-line-list">
+                        {selectedMiniBars.map(item => (
+                          <div className="abk-line-row" key={`MINI_BAR-${item.id}`}>
+                            <div>
+                              <strong>{item.name}</strong>
+                              <span>Mini-bar · SL {item.quantity} × {formatMoney(item.unitPrice)}</span>
+                            </div>
+                            <div className="abk-line-actions">
+                              <strong>{formatMoney(item.totalPrice)}</strong>
+                              <button
+                                type="button"
+                                className="abk-remove-line"
+                                disabled={actionLoading || hasCheckOut}
+                                aria-label={`Xóa ${item.name}`}
+                                title={`Xóa ${item.name}`}
+                                onClick={() => removeCharge(`mini-bar/${item.id}`, item.name)}
+                              >×</button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="abk-empty abk-empty--sm">Chưa ghi nhận mini-bar.</div>
+                    )}
                   </div>
 
                   <div className="abk-stay-block">
@@ -712,7 +766,17 @@ function BookingDetailModal({ detail, loading, error, actionLoading, actionError
                               <strong>{item.title}</strong>
                               <span>{item.description || 'Không có ghi chú'}</span>
                             </div>
-                            <strong>{formatMoney(item.amount)}</strong>
+                            <div className="abk-line-actions">
+                              <strong>{formatMoney(item.amount)}</strong>
+                              <button
+                                type="button"
+                                className="abk-remove-line"
+                                disabled={actionLoading || hasCheckOut}
+                                aria-label={`Xóa ${item.title}`}
+                                title={`Xóa ${item.title}`}
+                                onClick={() => removeCharge(`penalties/${item.id}`, item.title)}
+                              >×</button>
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -1347,7 +1411,7 @@ function AdminBookingsPage() {
     loadDetail(bookingDetailId)
   }
 
-  const runDetailAction = (action, body, directData) => {
+  const runDetailAction = (action, body, directData, method = 'POST') => {
     // '__refresh__' là signal từ inline edit form — data đã có sẵn, chỉ cần set state
     if (action === '__refresh__') {
       if (directData) setSelectedDetail(directData)
@@ -1363,7 +1427,7 @@ function AdminBookingsPage() {
     setActionError('')
 
     fetch(`${API_BASE}/details/${selectedBookingDetailId}/${action}`, {
-      method: 'POST',
+      method,
       headers: authHeaders(),
       body: body ? JSON.stringify(body) : undefined,
     })

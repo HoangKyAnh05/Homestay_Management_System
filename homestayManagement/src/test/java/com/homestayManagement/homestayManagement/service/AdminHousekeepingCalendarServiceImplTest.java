@@ -64,6 +64,54 @@ class AdminHousekeepingCalendarServiceImplTest {
     }
 
     @Test
+    void calendarShowsAvailableAfterCleaningTaskIsCompleted() {
+        LocalDate date = LocalDate.of(2026, 6, 20);
+        RoomType roomType = RoomType.builder().id(1L).name("Deluxe").build();
+        Room room = Room.builder().id(10L).roomNumber("101").roomType(roomType).status("AVAILABLE").build();
+        HousekeepingTask completedTask = HousekeepingTask.builder()
+                .id(20L)
+                .room(room)
+                .startedAt(date.atTime(12, 0))
+                .cleaningCompletedAt(date.atTime(12, 45))
+                .cleaningStatus("COMPLETED")
+                .build();
+        when(roomRepository.findAllWithRoomType()).thenReturn(List.of(room));
+        when(bookingDetailRepository.findOverlappingSchedule(any(), any())).thenReturn(List.of());
+        when(housekeepingTaskRepository.findAllForHousekeeping()).thenReturn(List.of(completedTask));
+        when(taskChecklistItemRepository.findAll()).thenReturn(List.of());
+        when(roomScheduleRepository.findOverlapping(any(), any())).thenReturn(List.of());
+
+        var result = service.getCalendar(date, 1, null);
+
+        assertEquals("AVAILABLE", result.rooms().getFirst().days().getFirst().status());
+        assertEquals(1, result.summary().available());
+        assertEquals(0, result.summary().cleaning());
+    }
+
+    @Test
+    void calendarStillShowsCleaningForActiveTask() {
+        LocalDate date = LocalDate.of(2026, 6, 20);
+        RoomType roomType = RoomType.builder().id(1L).name("Deluxe").build();
+        Room room = Room.builder().id(10L).roomNumber("101").roomType(roomType).status("CLEANING").build();
+        HousekeepingTask activeTask = HousekeepingTask.builder()
+                .id(20L)
+                .room(room)
+                .startedAt(date.atTime(12, 0))
+                .cleaningStatus("IN_PROGRESS")
+                .build();
+        when(roomRepository.findAllWithRoomType()).thenReturn(List.of(room));
+        when(bookingDetailRepository.findOverlappingSchedule(any(), any())).thenReturn(List.of());
+        when(housekeepingTaskRepository.findAllForHousekeeping()).thenReturn(List.of(activeTask));
+        when(taskChecklistItemRepository.findAll()).thenReturn(List.of());
+        when(roomScheduleRepository.findOverlapping(any(), any())).thenReturn(List.of());
+
+        var result = service.getCalendar(date, 1, null);
+
+        assertEquals("CLEANING", result.rooms().getFirst().days().getFirst().status());
+        assertEquals(1, result.summary().cleaning());
+    }
+
+    @Test
     void latestCleaningTraceReturnsEmployeeDurationAndChecklist() {
         RoomType roomType = RoomType.builder().id(1L).name("Deluxe").build();
         Room room = Room.builder().id(10L).roomNumber("101").roomType(roomType).status("OCCUPIED").build();

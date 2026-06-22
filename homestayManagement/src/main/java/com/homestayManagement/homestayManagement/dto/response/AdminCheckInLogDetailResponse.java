@@ -15,6 +15,7 @@ public record AdminCheckInLogDetailResponse(
         BigDecimal priceAtBooking,
         String rentType,
         String detailStatus,
-        AdminBookingCheckInResponse checkInRecord
+        AdminBookingCheckInResponse checkInRecord,
+        boolean housekeepingInspectionCompleted
 ) {
 }

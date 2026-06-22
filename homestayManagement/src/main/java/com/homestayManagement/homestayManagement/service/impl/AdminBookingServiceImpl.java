@@ -229,6 +229,14 @@ public class AdminBookingServiceImpl implements AdminBookingService {
                 .findByBookingDetailIdsForAdmin(details.stream().map(BookingDetail::getId).toList())
                 .stream()
                 .collect(Collectors.toMap(record -> record.getBookingDetail().getId(), record -> record));
+        Set<Long> inspectedRecordIds = recordsByDetailId.isEmpty()
+                ? Set.of()
+                : housekeepingTaskRepository.findByCheckInRecordIdIn(
+                                recordsByDetailId.values().stream().map(CheckInRecord::getId).toList()
+                        ).stream()
+                        .filter(task -> "COMPLETED".equalsIgnoreCase(task.getInspectionStatus()))
+                        .map(task -> task.getCheckInRecord().getId())
+                        .collect(Collectors.toSet());
 
         Map<Long, List<BookingDetail>> detailsByBooking = details.stream()
                 .collect(Collectors.groupingBy(
@@ -238,7 +246,7 @@ public class AdminBookingServiceImpl implements AdminBookingService {
                 ));
 
         return detailsByBooking.values().stream()
-                .map(group -> toCheckInLogBookingResponse(group, recordsByDetailId))
+                .map(group -> toCheckInLogBookingResponse(group, recordsByDetailId, inspectedRecordIds))
                 .toList();
     }
 
@@ -291,6 +299,7 @@ public class AdminBookingServiceImpl implements AdminBookingService {
                         .map(this::toBookingGuestResponse)
                         .toList(),
                 checkInRecords.stream().map(this::toCheckInResponse).toList(),
+                checkInRecords.stream().anyMatch(this::isInspectionComplete),
                 serviceItems,
                 penaltyItems,
                 invoice != null ? toInvoiceSummaryResponse(invoice) : null,
@@ -638,6 +647,39 @@ public class AdminBookingServiceImpl implements AdminBookingService {
 
     @Override
     @Transactional
+    public AdminBookingDetailResponse removeService(Long bookingDetailId, Long serviceUsageId) {
+        CheckInRecord record = requireOpenCheckInRecord(bookingDetailId);
+        ServiceUsage usage = serviceUsageRepository.findById(serviceUsageId)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy dịch vụ đã chọn"));
+        requireSameCheckInRecord(record, usage.getCheckInRecord().getId());
+        serviceUsageRepository.delete(usage);
+        return getBookingDetail(bookingDetailId);
+    }
+
+    @Override
+    @Transactional
+    public AdminBookingDetailResponse removeMiniBar(Long bookingDetailId, Long miniBarUsageId) {
+        CheckInRecord record = requireOpenCheckInRecord(bookingDetailId);
+        RoomAmenitiesUsage usage = roomAmenitiesUsageRepository.findById(miniBarUsageId)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy mini-bar đã chọn"));
+        requireSameCheckInRecord(record, usage.getCheckInRecord().getId());
+        roomAmenitiesUsageRepository.delete(usage);
+        return getBookingDetail(bookingDetailId);
+    }
+
+    @Override
+    @Transactional
+    public AdminBookingDetailResponse removePenalty(Long bookingDetailId, Long penaltyId) {
+        CheckInRecord record = requireOpenCheckInRecord(bookingDetailId);
+        AppliedPenalty penalty = appliedPenaltyRepository.findById(penaltyId)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy khoản phạt đã chọn"));
+        requireSameCheckInRecord(record, penalty.getCheckRecord().getId());
+        appliedPenaltyRepository.delete(penalty);
+        return getBookingDetail(bookingDetailId);
+    }
+
+    @Override
+    @Transactional
     public AdminBookingDetailResponse generateInvoice(Long bookingDetailId) {
         BookingDetail detail = bookingDetailRepository.findByIdForAdminDetail(bookingDetailId)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đơn đặt phòng"));
@@ -875,13 +917,18 @@ public class AdminBookingServiceImpl implements AdminBookingService {
 
     private AdminCheckInLogBookingResponse toCheckInLogBookingResponse(
             List<BookingDetail> details,
-            Map<Long, CheckInRecord> recordsByDetailId
+            Map<Long, CheckInRecord> recordsByDetailId,
+            Set<Long> inspectedRecordIds
     ) {
         Booking booking = details.getFirst().getBooking();
         Customer customer = booking.getCustomer();
         List<AdminCheckInLogDetailResponse> detailResponses = details.stream()
                 .sorted(Comparator.comparing(BookingDetail::getCheckInTarget))
-                .map(detail -> toCheckInLogDetailResponse(detail, recordsByDetailId.get(detail.getId())))
+                .map(detail -> toCheckInLogDetailResponse(
+                        detail,
+                        recordsByDetailId.get(detail.getId()),
+                        inspectedRecordIds
+                ))
                 .toList();
         BigDecimal totalAmount = details.stream()
                 .map(BookingDetail::getPriceAtBooking)
@@ -906,7 +953,11 @@ public class AdminBookingServiceImpl implements AdminBookingService {
         );
     }
 
-    private AdminCheckInLogDetailResponse toCheckInLogDetailResponse(BookingDetail detail, CheckInRecord record) {
+    private AdminCheckInLogDetailResponse toCheckInLogDetailResponse(
+            BookingDetail detail,
+            CheckInRecord record,
+            Set<Long> inspectedRecordIds
+    ) {
         Room room = detail.getRoom();
         RoomType roomType = detail.getRoomType() != null
                 ? detail.getRoomType()
@@ -923,7 +974,8 @@ public class AdminBookingServiceImpl implements AdminBookingService {
                 detail.getPriceAtBooking(),
                 detail.getRentType(),
                 detail.getStatus(),
-                record != null ? toCheckInResponse(record) : null
+                record != null ? toCheckInResponse(record) : null,
+                record != null && inspectedRecordIds.contains(record.getId())
         );
     }
 
@@ -1034,6 +1086,26 @@ public class AdminBookingServiceImpl implements AdminBookingService {
     private CheckInRecord requireCheckInRecord(Long bookingDetailId) {
         return checkInRecordRepository.findByBookingDetailId(bookingDetailId)
                 .orElseThrow(() -> new IllegalArgumentException("Vui lòng check-in trước khi ghi nhận phát sinh"));
+    }
+
+    private CheckInRecord requireOpenCheckInRecord(Long bookingDetailId) {
+        CheckInRecord record = requireCheckInRecord(bookingDetailId);
+        if (record.getActualCheckOut() != null) {
+            throw new IllegalArgumentException("Không thể xóa chi phí sau khi đã check-out");
+        }
+        return record;
+    }
+
+    private void requireSameCheckInRecord(CheckInRecord expectedRecord, Long actualRecordId) {
+        if (!expectedRecord.getId().equals(actualRecordId)) {
+            throw new IllegalArgumentException("Khoản chi phí không thuộc ca lưu trú này");
+        }
+    }
+
+    private boolean isInspectionComplete(CheckInRecord record) {
+        return housekeepingTaskRepository.findByCheckInRecordId(record.getId())
+                .map(task -> "COMPLETED".equalsIgnoreCase(task.getInspectionStatus()))
+                .orElse(false);
     }
 
     private BigDecimal calculateServiceCharge(Long bookingId) {

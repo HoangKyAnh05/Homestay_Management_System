@@ -1073,6 +1073,33 @@
   line-height: 1.4;
 }
 
+.abk-line-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.abk-remove-line {
+  width: 28px;
+  height: 28px;
+  border: 1px solid #efb8b8;
+  border-radius: 50%;
+  background: #fff5f5;
+  color: #b42318;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.abk-remove-line:hover:not(:disabled) {
+  background: #fee4e2;
+}
+
+.abk-remove-line:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
 .abk-footer {
   display: flex;
   align-items: center;

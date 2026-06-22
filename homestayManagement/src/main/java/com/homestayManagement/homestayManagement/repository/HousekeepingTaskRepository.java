@@ -12,6 +12,8 @@ public interface HousekeepingTaskRepository extends JpaRepository<HousekeepingTa
 
     Optional<HousekeepingTask> findByCheckInRecordId(Long checkInRecordId);
 
+    List<HousekeepingTask> findByCheckInRecordIdIn(List<Long> checkInRecordIds);
+
     @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {"room", "assignedHousekeeping"})
     Optional<HousekeepingTask> findFirstByRoomIdAndCleaningCompletedAtIsNotNullAndCleaningCompletedAtLessThanEqualOrderByCleaningCompletedAtDesc(
             Long roomId,

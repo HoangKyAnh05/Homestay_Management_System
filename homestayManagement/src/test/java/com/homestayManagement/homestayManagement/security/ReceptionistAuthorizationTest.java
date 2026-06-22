@@ -23,6 +23,7 @@ import java.util.List;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -75,6 +76,17 @@ class ReceptionistAuthorizationTest {
 
         mockMvc.perform(post("/api/housekeeping/tasks/20/start")
                         .with(user("receptionist").authorities(() -> "ROLE_RECEPTIONIST")))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void receptionistCanRemoveStayChargeButHousekeepingCannot() throws Exception {
+        mockMvc.perform(delete("/api/admin/bookings/details/10/services/20")
+                        .with(user("receptionist").authorities(() -> "ROLE_RECEPTIONIST")))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(delete("/api/admin/bookings/details/10/services/20")
+                        .with(user("housekeeping").authorities(() -> "ROLE_HOUSEKEEPING")))
                 .andExpect(status().isForbidden());
     }
 

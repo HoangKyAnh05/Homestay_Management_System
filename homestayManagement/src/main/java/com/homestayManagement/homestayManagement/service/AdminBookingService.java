@@ -31,5 +31,8 @@ public interface AdminBookingService {
     AdminBookingDetailResponse addService(Long bookingDetailId, AdminBookingAddServiceRequest request);
     AdminBookingDetailResponse addMiniBar(Long bookingDetailId, AdminBookingAddMiniBarRequest request);
     AdminBookingDetailResponse addPenalty(Long bookingDetailId, AdminBookingAddPenaltyRequest request);
+    AdminBookingDetailResponse removeService(Long bookingDetailId, Long serviceUsageId);
+    AdminBookingDetailResponse removeMiniBar(Long bookingDetailId, Long miniBarUsageId);
+    AdminBookingDetailResponse removePenalty(Long bookingDetailId, Long penaltyId);
     AdminBookingDetailResponse generateInvoice(Long bookingDetailId);
 }

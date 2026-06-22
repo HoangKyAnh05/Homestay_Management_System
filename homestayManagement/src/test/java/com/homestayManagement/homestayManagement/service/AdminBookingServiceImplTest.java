@@ -4,11 +4,14 @@ import com.homestayManagement.homestayManagement.entity.Account;
 import com.homestayManagement.homestayManagement.entity.Booking;
 import com.homestayManagement.homestayManagement.entity.BookingDetail;
 import com.homestayManagement.homestayManagement.entity.Customer;
+import com.homestayManagement.homestayManagement.entity.CheckInRecord;
 import com.homestayManagement.homestayManagement.entity.RoomType;
 import com.homestayManagement.homestayManagement.entity.Room;
+import com.homestayManagement.homestayManagement.entity.ServiceUsage;
 import com.homestayManagement.homestayManagement.repository.BookingDetailRepository;
 import com.homestayManagement.homestayManagement.repository.CheckInRecordRepository;
 import com.homestayManagement.homestayManagement.repository.RoomRepository;
+import com.homestayManagement.homestayManagement.repository.ServiceUsageRepository;
 import com.homestayManagement.homestayManagement.service.impl.AdminBookingServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -20,12 +23,16 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 class AdminBookingServiceImplTest {
@@ -33,6 +40,7 @@ class AdminBookingServiceImplTest {
     @Mock private BookingDetailRepository bookingDetailRepository;
     @Mock private CheckInRecordRepository checkInRecordRepository;
     @Mock private RoomRepository roomRepository;
+    @Mock private ServiceUsageRepository serviceUsageRepository;
 
     private AdminBookingServiceImpl service;
 
@@ -47,7 +55,7 @@ class AdminBookingServiceImplTest {
                 null,
                 null,
                 checkInRecordRepository,
-                null,
+                serviceUsageRepository,
                 null,
                 null,
                 null,
@@ -144,5 +152,33 @@ class AdminBookingServiceImplTest {
         assertNull(responseDetail.roomId());
         assertNull(responseDetail.roomNumber());
         assertEquals("Family", responseDetail.roomTypeName());
+    }
+
+    @Test
+    void removeServiceRejectsChargeFromAnotherStay() {
+        CheckInRecord expectedRecord = CheckInRecord.builder().id(10L).build();
+        CheckInRecord otherRecord = CheckInRecord.builder().id(11L).build();
+        ServiceUsage otherUsage = ServiceUsage.builder().id(20L).checkInRecord(otherRecord).build();
+        when(checkInRecordRepository.findByBookingDetailId(1L)).thenReturn(Optional.of(expectedRecord));
+        when(serviceUsageRepository.findById(20L)).thenReturn(Optional.of(otherUsage));
+
+        var error = assertThrows(IllegalArgumentException.class, () -> service.removeService(1L, 20L));
+
+        assertEquals("Khoản chi phí không thuộc ca lưu trú này", error.getMessage());
+        verify(serviceUsageRepository, never()).delete(any());
+    }
+
+    @Test
+    void removeServiceRejectsCompletedStay() {
+        CheckInRecord completedRecord = CheckInRecord.builder()
+                .id(10L)
+                .actualCheckOut(LocalDateTime.now())
+                .build();
+        when(checkInRecordRepository.findByBookingDetailId(1L)).thenReturn(Optional.of(completedRecord));
+
+        var error = assertThrows(IllegalArgumentException.class, () -> service.removeService(1L, 20L));
+
+        assertEquals("Không thể xóa chi phí sau khi đã check-out", error.getMessage());
+        verify(serviceUsageRepository, never()).findById(any());
     }
 }

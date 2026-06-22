@@ -64,6 +64,7 @@ public class AdminHousekeepingCalendarServiceImpl implements AdminHousekeepingCa
         Map<Long, List<HousekeepingTask>> tasksByRoom = housekeepingTaskRepository.findAllForHousekeeping().stream()
                 .filter(task -> roomIds.contains(task.getRoom().getId()))
                 .filter(task -> task.getStartedAt() != null)
+                .filter(task -> !"COMPLETED".equals(normalize(task.getCleaningStatus())))
                 .filter(task -> overlaps(task.getStartedAt(), taskEnd(task), rangeStart, rangeEnd))
                 .collect(Collectors.groupingBy(task -> task.getRoom().getId()));
         Map<Long, List<HousekeepingTaskChecklistItem>> checklistByTask = taskChecklistItemRepository.findAll().stream()

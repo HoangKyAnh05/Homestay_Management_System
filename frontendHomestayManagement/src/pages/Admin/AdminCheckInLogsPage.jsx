@@ -179,7 +179,12 @@ function DetailCard({ detail, actionLoading, housekeepingRequested, onAction }) 
           <button type="button" disabled={!canCheckOut || loading || housekeepingRequested} onClick={() => onAction(detail.bookingDetailId, 'housekeeping-request')}>
             {loading && canCheckOut ? 'Đang gửi...' : housekeepingRequested ? 'Đã yêu cầu kiểm tra' : 'Yêu cầu kiểm tra'}
           </button>
-          <button type="button" disabled={!canCheckOut || loading} onClick={() => onAction(detail.bookingDetailId, 'check-out')}>
+          <button
+            type="button"
+            disabled={!canCheckOut || loading || !detail.housekeepingInspectionCompleted}
+            title={canCheckOut && !detail.housekeepingInspectionCompleted ? 'Chờ housekeeping gửi chi phí kiểm tra phòng' : undefined}
+            onClick={() => onAction(detail.bookingDetailId, 'check-out')}
+          >
             {loading && canCheckOut ? 'Đang xử lý...' : 'Check-out'}
           </button>
         </div>
@@ -238,7 +243,7 @@ function CheckOutModal({ bookingDetailId, onClose, onCompleted }) {
 
   const handleCheckOut = async () => {
     setCheckingOut(true)
-    setError('')
+    if (!silent) setError('')
     try {
       const response = await fetch(`${API_BASE}/details/${bookingDetailId}/prepare-check-out`, {
         method: 'POST',
@@ -662,14 +667,16 @@ function CheckInModal({ bookingDetailId, onClose, onCompleted }) {
                       <div className="acl-guest-fields">
                         <label><span>Họ và tên *</span><input required maxLength="100" value={guest.fullName}
                           onChange={event => updateGuest(index, 'fullName', event.target.value)} /></label>
-                        <label><span>Căn cước công dân *</span><input required maxLength="30" value={guest.identityDocumentNumber}
-                          onChange={event => updateGuest(index, 'identityDocumentNumber', event.target.value)} /></label>
+                        <label><span>Căn cước công dân *</span><input required inputMode="numeric" pattern="[0-9]{12}" maxLength="12"
+                          title="Căn cước công dân phải gồm đúng 12 chữ số" value={guest.identityDocumentNumber}
+                          onChange={event => updateGuest(index, 'identityDocumentNumber', event.target.value.replace(/\D/g, ''))} /></label>
                         <label><span>Ngày sinh</span><input type="date" value={guest.dateOfBirth}
                           onChange={event => updateGuest(index, 'dateOfBirth', event.target.value)} /></label>
-                        <label><span>Email</span><input type="email" maxLength="100" value={guest.email}
+                        <label><span>Email</span><input type="email" maxLength="100" title="Vui lòng nhập đúng định dạng email" value={guest.email}
                           onChange={event => updateGuest(index, 'email', event.target.value)} /></label>
-                        <label><span>Số điện thoại</span><input maxLength="15" value={guest.phone}
-                          onChange={event => updateGuest(index, 'phone', event.target.value)} /></label>
+                        <label><span>Số điện thoại</span><input inputMode="numeric" pattern="[0-9]{10}" maxLength="10"
+                          title="Số điện thoại phải gồm đúng 10 chữ số" value={guest.phone}
+                          onChange={event => updateGuest(index, 'phone', event.target.value.replace(/\D/g, ''))} /></label>
                         <label><span>Giới tính</span><select value={guest.gender}
                           onChange={event => updateGuest(index, 'gender', event.target.value)}>
                           <option value="">Chưa chọn</option><option value="MALE">Nam</option><option value="FEMALE">Nữ</option><option value="OTHER">Khác</option>
@@ -712,8 +719,8 @@ function AdminCheckInLogsPage() {
   const [checkOutTargetId, setCheckOutTargetId] = useState(null)
   const [housekeepingRequestedIds, setHousekeepingRequestedIds] = useState(() => new Set())
 
-  const loadLogs = useCallback(async () => {
-    setLoading(true)
+  const loadLogs = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
     setError('')
     try {
       const params = new URLSearchParams({ fromDate, toDate })
@@ -737,11 +744,13 @@ function AdminCheckInLogsPage() {
         return nextBookings[0]?.bookingId || null
       })
     } catch (err) {
-      setError(err.message)
-      setBookings([])
-      setSelectedBookingId(null)
+      if (!silent) {
+        setError(err.message)
+        setBookings([])
+        setSelectedBookingId(null)
+      }
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }, [fromDate, toDate])
 
@@ -749,6 +758,8 @@ function AdminCheckInLogsPage() {
     // The request updates loading state before synchronizing with the API.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     loadLogs()
+    const refreshTimer = window.setInterval(() => loadLogs(true), 10_000)
+    return () => window.clearInterval(refreshTimer)
   }, [loadLogs])
 
   const filteredBookings = useMemo(() => {

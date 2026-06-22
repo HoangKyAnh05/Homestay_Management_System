@@ -154,6 +154,30 @@ public class AdminBookingController {
         return adminBookingService.addPenalty(bookingDetailId, request);
     }
 
+    @DeleteMapping("/details/{bookingDetailId}/services/{serviceUsageId}")
+    public AdminBookingDetailResponse removeService(
+            @PathVariable Long bookingDetailId,
+            @PathVariable Long serviceUsageId
+    ) {
+        return adminBookingService.removeService(bookingDetailId, serviceUsageId);
+    }
+
+    @DeleteMapping("/details/{bookingDetailId}/mini-bar/{miniBarUsageId}")
+    public AdminBookingDetailResponse removeMiniBar(
+            @PathVariable Long bookingDetailId,
+            @PathVariable Long miniBarUsageId
+    ) {
+        return adminBookingService.removeMiniBar(bookingDetailId, miniBarUsageId);
+    }
+
+    @DeleteMapping("/details/{bookingDetailId}/penalties/{penaltyId}")
+    public AdminBookingDetailResponse removePenalty(
+            @PathVariable Long bookingDetailId,
+            @PathVariable Long penaltyId
+    ) {
+        return adminBookingService.removePenalty(bookingDetailId, penaltyId);
+    }
+
     @PostMapping("/details/{bookingDetailId}/invoice")
     public AdminBookingDetailResponse generateInvoice(@PathVariable Long bookingDetailId) {
         return adminBookingService.generateInvoice(bookingDetailId);

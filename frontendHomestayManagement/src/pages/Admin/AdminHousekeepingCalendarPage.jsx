@@ -48,9 +48,11 @@ function AdminHousekeepingCalendarPage() {
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState(null)
 
-  const loadCalendar = useCallback(async () => {
-    setLoading(true)
-    setError('')
+  const loadCalendar = useCallback(async (silent = false) => {
+    if (!silent) {
+      setLoading(true)
+      setError('')
+    }
     try {
       const params = new URLSearchParams({ startDate, days: '7' })
       const response = await fetch(`${API}?${params}`, {
@@ -60,14 +62,16 @@ function AdminHousekeepingCalendarPage() {
       if (!response.ok) throw new Error(result.message || 'Không thể tải lịch trạng thái phòng')
       setData(result)
     } catch (err) {
-      setError(err.message)
+      if (!silent) setError(err.message)
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }, [startDate])
 
   useEffect(() => {
     loadCalendar()
+    const refreshTimer = window.setInterval(() => loadCalendar(true), 10_000)
+    return () => window.clearInterval(refreshTimer)
   }, [loadCalendar])
 
   const allRoomTypes = useMemo(() => {
@@ -135,7 +139,7 @@ function AdminHousekeepingCalendarPage() {
             <option value="ALL">Tất cả trạng thái</option>
             {Object.entries(STATUS).map(([key, item]) => <option key={key} value={key}>{item.label}</option>)}
           </select>
-          <button type="button" className="hkr-refresh" onClick={loadCalendar} disabled={loading}>↻ Làm mới</button>
+          <button type="button" className="hkr-refresh" onClick={() => loadCalendar()} disabled={loading}>↻ Làm mới</button>
         </div>
 
         {error && <div className="hkr-error">{error}</div>}
