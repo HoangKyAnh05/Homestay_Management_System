@@ -179,8 +179,17 @@ function HomeSearch({ onSearch, isSearching = false }) {
   const searchRef = useRef(null)
   const [isCalendarOpen, setIsCalendarOpen] = useState(false)
   const [activeDateField, setActiveDateField] = useState('checkin')
-  const [checkInDate, setCheckInDate] = useState(new Date(2026, 5, 14))
-  const [checkOutDate, setCheckOutDate] = useState(new Date(2026, 5, 15))
+  const [checkInDate, setCheckInDate] = useState(() => {
+    const d = new Date()
+    d.setHours(0, 0, 0, 0)
+    return d
+  })
+  const [checkOutDate, setCheckOutDate] = useState(() => {
+    const d = new Date()
+    d.setHours(0, 0, 0, 0)
+    d.setDate(d.getDate() + 1)
+    return d
+  })
   const [isGuestOpen, setIsGuestOpen] = useState(false)
   const [rooms, setRooms] = useState(1)
   const [adults, setAdults] = useState(2)
