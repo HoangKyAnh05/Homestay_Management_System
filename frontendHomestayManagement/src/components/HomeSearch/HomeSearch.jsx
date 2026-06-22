@@ -92,7 +92,13 @@ function CounterRow({ label, hint, value, min, onDecrease, onIncrease }) {
   )
 }
 
-function MonthCalendar({ month, checkInDate, checkOutDate, onSelectDate }) {
+function MonthCalendar({ month, checkInDate, checkOutDate, onSelectDate, activeDateField }) {
+  const today = useMemo(() => {
+    const d = new Date()
+    d.setHours(0, 0, 0, 0)
+    return d
+  }, [])
+
   const cells = [
     ...Array.from({ length: month.leading }, (_, index) => ({ key: `empty-${index}` })),
     ...Array.from({ length: month.days }, (_, index) => ({ key: index + 1, day: index + 1 })),
@@ -115,6 +121,12 @@ function MonthCalendar({ month, checkInDate, checkOutDate, onSelectDate }) {
           const isEnd = isSameDate(date, checkOutDate)
           const isInRange = isBetweenDates(date, checkInDate, checkOutDate)
 
+          // Disable past dates for check-in
+          // Disable dates before or equal to check-in for check-out
+          const isPast = date < today
+          const isBeforeCheckIn = activeDateField === 'checkout' && checkInDate && date <= checkInDate
+          const isDisabled = isPast || isBeforeCheckIn
+
           return (
             <button
               key={cell.key}
@@ -124,8 +136,11 @@ function MonthCalendar({ month, checkInDate, checkOutDate, onSelectDate }) {
                 isStart ? 'is-selected is-start' : '',
                 isEnd ? 'is-selected is-end' : '',
                 isInRange ? 'is-in-range' : '',
+                isDisabled ? 'is-disabled' : '',
               ].filter(Boolean).join(' ')}
-              onClick={() => onSelectDate(date)}
+              disabled={isDisabled}
+              aria-disabled={isDisabled}
+              onClick={() => !isDisabled && onSelectDate(date)}
             >
               {cell.day}
             </button>
@@ -136,7 +151,7 @@ function MonthCalendar({ month, checkInDate, checkOutDate, onSelectDate }) {
   )
 }
 
-function CalendarDropdown({ months, checkInDate, checkOutDate, onSelectDate }) {
+function CalendarDropdown({ months, checkInDate, checkOutDate, onSelectDate, activeDateField }) {
   return (
     <div className="calendar-dropdown">
       <div className="calendar-tabs">
@@ -152,6 +167,7 @@ function CalendarDropdown({ months, checkInDate, checkOutDate, onSelectDate }) {
             checkInDate={checkInDate}
             checkOutDate={checkOutDate}
             onSelectDate={onSelectDate}
+            activeDateField={activeDateField}
           />
         ))}
       </div>
@@ -197,9 +213,16 @@ function HomeSearch({ onSearch, isSearching = false }) {
   }
 
   const handleSelectDate = (date) => {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+
+    // Block past dates for check-in
+    if (activeDateField === 'checkin' && date < today) return
+
+    // Block past dates and dates before/equal check-in for check-out
     if (activeDateField === 'checkout') {
+      if (date < today) return
       if (date <= checkInDate) {
-        setCheckOutDate(date)
         setDateError('Ngày trả phòng phải sau ngày nhận phòng. Vui lòng chọn lại ngày.')
         setActiveDateField('checkout')
         return
@@ -279,6 +302,7 @@ function HomeSearch({ onSearch, isSearching = false }) {
               checkInDate={checkInDate}
               checkOutDate={checkOutDate}
               onSelectDate={handleSelectDate}
+              activeDateField={activeDateField}
             />
           )}
         </div>
