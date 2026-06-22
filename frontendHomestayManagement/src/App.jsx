@@ -26,6 +26,8 @@ import RoomsPage from './pages/Rooms/RoomsPage'
 import { getStoredUser } from './services/authService'
 import { STAFF_ROLES, roleCanAccess, roleDefaultPath } from './utils/roleUtils'
 
+const AUTH_STORAGE_KEYS = new Set(['homeStayAccessToken', 'homeStayUser'])
+
 function normalizePath() {
   if (window.location.pathname === '/') {
     window.history.replaceState(null, '', '/home')
@@ -36,11 +38,23 @@ function normalizePath() {
 
 function App() {
   const [currentPath, setCurrentPath] = useState(normalizePath)
+  const [, setAuthVersion] = useState(0)
 
   useEffect(() => {
     const handleRouteChange = () => setCurrentPath(normalizePath())
     window.addEventListener('popstate', handleRouteChange)
     return () => window.removeEventListener('popstate', handleRouteChange)
+  }, [])
+
+  useEffect(() => {
+    const handleSharedAuthChange = (event) => {
+      if (AUTH_STORAGE_KEYS.has(event.key)) {
+        setAuthVersion((version) => version + 1)
+      }
+    }
+
+    window.addEventListener('storage', handleSharedAuthChange)
+    return () => window.removeEventListener('storage', handleSharedAuthChange)
   }, [])
 
   useEffect(() => {
@@ -86,7 +100,14 @@ function App() {
     const roomId = currentPath.split('/').filter(Boolean).at(-1)
     return <RoomDetailPage roomId={roomId} />
   }
-  if (currentPath === '/admin/login') return <AdminLoginPage />
+  if (currentPath === '/admin/login') {
+    const user = getStoredUser()
+    if (user && STAFF_ROLES.has(user.role)) {
+      window.location.replace(roleDefaultPath(user.role))
+      return null
+    }
+    return <AdminLoginPage />
+  }
 
   if (currentPath.startsWith('/admin')) {
     const user = getStoredUser()

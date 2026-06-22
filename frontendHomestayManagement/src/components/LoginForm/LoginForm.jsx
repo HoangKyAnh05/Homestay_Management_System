@@ -236,7 +236,7 @@ function LoginForm() {
             checked={remember}
             onChange={(event) => setRemember(event.target.checked)}
           />
-          <span>Ghi nhớ đăng nhập</span>
+          <span>Ghi nhớ email</span>
         </label>
 
         <button className="primary-button" type="submit" disabled={isSubmitting}>

@@ -4,13 +4,20 @@ const USER_KEY = 'homeStayUser'
 const REMEMBER_KEY = 'homeStayRememberEmail'
 let expirationTimer = null
 
-function getAuthStorage(remember) {
-  return remember ? localStorage : sessionStorage
-}
-
 function findAuthStorage() {
-  if (sessionStorage.getItem(TOKEN_KEY)) return sessionStorage
   if (localStorage.getItem(TOKEN_KEY)) return localStorage
+
+  // Migrate sessions created before authentication became shared across tabs.
+  const legacyToken = sessionStorage.getItem(TOKEN_KEY)
+  if (legacyToken) {
+    const legacyUser = sessionStorage.getItem(USER_KEY)
+    if (legacyUser) localStorage.setItem(USER_KEY, legacyUser)
+    localStorage.setItem(TOKEN_KEY, legacyToken)
+    sessionStorage.removeItem(TOKEN_KEY)
+    sessionStorage.removeItem(USER_KEY)
+    return localStorage
+  }
+
   return null
 }
 
@@ -71,11 +78,11 @@ function scheduleTokenExpiration(token) {
   return true
 }
 
-function saveAuthSession(data, remember = true) {
+function saveAuthSession(data) {
   clearStoredAuth()
-  const storage = getAuthStorage(remember)
-  storage.setItem(TOKEN_KEY, data.accessToken)
-  storage.setItem(USER_KEY, JSON.stringify(data.user))
+  // Write the user first so the token change is the atomic signal observed by other tabs.
+  localStorage.setItem(USER_KEY, JSON.stringify(data.user))
+  localStorage.setItem(TOKEN_KEY, data.accessToken)
   scheduleTokenExpiration(data.accessToken)
 }
 
@@ -103,7 +110,7 @@ export async function login(email, password, remember = false) {
   const data = await parseJson(response)
   if (!response.ok) throw new Error(data.message || 'Đăng nhập thất bại')
 
-  saveAuthSession(data, remember)
+  saveAuthSession(data)
 
   if (remember) {
     localStorage.setItem(REMEMBER_KEY, email)
@@ -114,7 +121,7 @@ export async function login(email, password, remember = false) {
   return data
 }
 
-export async function adminLogin(email, password, remember = false) {
+export async function adminLogin(email, password) {
   let response
 
   try {
@@ -130,7 +137,7 @@ export async function adminLogin(email, password, remember = false) {
   const data = await parseJson(response)
   if (!response.ok) throw new Error(data.message || 'Đăng nhập nhân viên thất bại')
 
-  saveAuthSession(data, remember)
+  saveAuthSession(data)
   return data
 }
 
@@ -150,7 +157,7 @@ export async function loginWithGoogle(accessToken) {
   const data = await parseJson(response)
   if (!response.ok) throw new Error(data.message || 'Đăng nhập Google thất bại')
 
-  saveAuthSession(data, true)
+  saveAuthSession(data)
   return data
 }
 
@@ -192,7 +199,7 @@ export async function verifyEmail(email, otp) {
   const data = await parseJson(response)
   if (!response.ok) throw new Error(data.message || 'Xác minh thất bại')
 
-  saveAuthSession(data, true)
+  saveAuthSession(data)
   return data
 }
 

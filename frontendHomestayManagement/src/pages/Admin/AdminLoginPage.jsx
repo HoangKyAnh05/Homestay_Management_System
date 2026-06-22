@@ -6,7 +6,6 @@ import './AdminLoginPage.css'
 function AdminLoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [remember, setRemember] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -17,7 +16,7 @@ function AdminLoginPage() {
     setIsSubmitting(true)
 
     try {
-      const data = await adminLogin(email, password, remember)
+      const data = await adminLogin(email, password)
       window.location.assign(roleDefaultPath(data.user?.role))
     } catch (error) {
       setErrorMessage(error.message)
@@ -85,15 +84,6 @@ function AdminLoginPage() {
             </label>
 
             {errorMessage && <p className="admin-login-error">{errorMessage}</p>}
-
-            <label className="admin-login-remember">
-              <input
-                type="checkbox"
-                checked={remember}
-                onChange={(event) => setRemember(event.target.checked)}
-              />
-              <span>Ghi nhớ trên thiết bị này</span>
-            </label>
 
             <button className="admin-login-submit" type="submit" disabled={isSubmitting}>
               {isSubmitting ? 'Đang đăng nhập...' : 'Vào hệ thống'}

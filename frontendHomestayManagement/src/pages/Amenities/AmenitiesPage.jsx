@@ -341,7 +341,7 @@ function AmenitiesPage() {
                   <div className="bookable-service-body">
                     <h3>{service.name}</h3>
                     <p>{serviceDescription(service.name)}</p>
-                    <div><strong>{Number(service.price) === 0 ? 'Miễn phí' : formatPrice(service.price)}</strong><span>/ lần</span></div>
+                    <div><strong>{Number(service.price) === 0 ? 'Miễn phí' : formatPrice(service.price)}</strong><span>/ người</span></div>
                     <button type="button" disabled={modalLoading} onClick={() => chooseService(service)}>
                       {modalLoading ? 'Đang kiểm tra...' : 'Thêm vào chuyến đi'}
                     </button>
