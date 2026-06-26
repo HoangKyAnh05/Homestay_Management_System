@@ -436,7 +436,7 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
         setServiceOptions(nextServices)
         try {
           const pending = JSON.parse(window.sessionStorage.getItem('homeStayPendingAmenityService') || 'null')
-          const matched = nextServices.find(item => item.type === 'FACILITY' && String(item.id) === String(pending?.serviceId))
+          const matched = nextServices.find(item => item.type === pending?.type && String(item.id) === String(pending?.serviceId))
           if (matched) {
             setSelectedServices([{ type: matched.type, serviceId: matched.id, name: matched.name, price: matched.price, quantity: 1 }])
             window.sessionStorage.removeItem('homeStayPendingAmenityService')

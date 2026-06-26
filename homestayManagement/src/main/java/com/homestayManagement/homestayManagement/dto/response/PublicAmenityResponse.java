@@ -5,6 +5,8 @@ import java.math.BigDecimal;
 public record PublicAmenityResponse(
         Long id,
         String name,
-        BigDecimal price
+        BigDecimal price,
+        String type,
+        Integer quantityInStock
 ) {
 }

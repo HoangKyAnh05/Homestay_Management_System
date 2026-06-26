@@ -243,7 +243,7 @@ function CheckOutModal({ bookingDetailId, onClose, onCompleted }) {
 
   const handleCheckOut = async () => {
     setCheckingOut(true)
-    if (!silent) setError('')
+    setError('')
     try {
       const response = await fetch(`${API_BASE}/details/${bookingDetailId}/prepare-check-out`, {
         method: 'POST',

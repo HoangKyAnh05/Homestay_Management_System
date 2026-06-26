@@ -26,6 +26,19 @@ function serviceTypeLabel(type) {
   return type === 'FACILITY' ? 'Dịch vụ' : 'Thuê đồ'
 }
 
+function canAddService(booking) {
+  const status = String(booking?.status || '').toUpperCase()
+  const checkoutValue = booking?.checkOutTarget || booking?.rooms
+    ?.map(room => room.checkOutTarget)
+    .filter(Boolean)
+    .sort()
+    .at(-1)
+  const checkout = checkoutValue ? new Date(checkoutValue) : null
+  return ['CONFIRMED', 'CHECKED_IN'].includes(status)
+    && checkout
+    && checkout.getTime() > Date.now()
+}
+
 function UserAvatar({ user }) {
   const avatarUrl = resolveImageUrl(user?.avatarUrl)
   return (
@@ -97,6 +110,21 @@ function PaymentButton({ bookingId, compact = false, loading = false, onPay }) {
     >
       {loading ? 'Đang tạo QR...' : 'Thanh toán'}
     </button>
+  )
+}
+
+function AddServiceButton({ bookingId, compact = false }) {
+  const className = compact
+    ? 'history-add-service-btn history-add-service-btn--compact'
+    : 'history-add-service-btn'
+  return (
+    <a
+      className={className}
+      href={`/amenities?bookingId=${bookingId}#services`}
+      onClick={(event) => event.stopPropagation()}
+    >
+      Thêm dịch vụ
+    </a>
   )
 }
 
@@ -264,6 +292,7 @@ function BookingHistoryPage() {
                   <p>{formatAppDateTime(booking.checkInTarget, { weekday: 'long' })}</p>
                   <div className="history-card-bottom">
                     <span>{booking.roomCount} phòng · {formatMoney(booking.totalAmount)}</span>
+                    {canAddService(booking) && <AddServiceButton bookingId={booking.bookingId} compact />}
                     {booking.requiresPayment && (
                       <PaymentButton
                         bookingId={booking.bookingId}
@@ -287,13 +316,16 @@ function BookingHistoryPage() {
                       <span>Booking #{detail.bookingId}</span>
                       <h2>{statusLabel(detail.status)}</h2>
                     </div>
-                    {detail.requiresPayment && (
-                      <PaymentButton
-                        bookingId={detail.bookingId}
-                        loading={paymentLoadingId === detail.bookingId}
-                        onPay={handlePayment}
-                      />
-                    )}
+                    <div className="history-detail-actions">
+                      {canAddService(detail) && <AddServiceButton bookingId={detail.bookingId} />}
+                      {detail.requiresPayment && (
+                        <PaymentButton
+                          bookingId={detail.bookingId}
+                          loading={paymentLoadingId === detail.bookingId}
+                          onPay={handlePayment}
+                        />
+                      )}
+                    </div>
                   </div>
 
                   {paymentError && <div className="history-payment-error">{paymentError}</div>}

@@ -691,14 +691,16 @@ function BookingDetailModal({ detail, loading, error, actionLoading, actionError
                             </div>
                             <div className="abk-line-actions">
                               <strong>{formatMoney(item.totalPrice)}</strong>
-                              <button
-                                type="button"
-                                className="abk-remove-line"
-                                disabled={actionLoading || hasCheckOut}
-                                aria-label={`Xóa ${item.name}`}
-                                title={`Xóa ${item.name}`}
-                                onClick={() => removeCharge(`services/${item.id}`, item.name)}
-                              >×</button>
+                              {Number(item.id) > 0 && (
+                                <button
+                                  type="button"
+                                  className="abk-remove-line"
+                                  disabled={actionLoading || hasCheckOut}
+                                  aria-label={`Xóa ${item.name}`}
+                                  title={`Xóa ${item.name}`}
+                                  onClick={() => removeCharge(`services/${item.id}`, item.name)}
+                                >×</button>
+                              )}
                             </div>
                           </div>
                         ))}

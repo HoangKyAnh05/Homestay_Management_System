@@ -118,6 +118,11 @@ const amenities = [
 const API_BASE_URL = 'http://localhost:8080/api'
 const PENDING_SERVICE_KEY = 'homeStayPendingAmenityService'
 const serviceImages = ['/home_3/image_3.jpg', '/home_5/image_1.jpg', '/home_5/image_3.jpg', '/home_2/image_2.jpg']
+const bookableServiceTabs = [
+  { id: 'all', label: 'Tất cả' },
+  { id: 'FACILITY', label: 'Dịch vụ tiện ích' },
+  { id: 'INVENTORY', label: 'Dịch vụ thuê đồ' },
+]
 
 function serviceDescription(name) {
   const normalized = String(name || '').toLowerCase()
@@ -126,6 +131,24 @@ function serviceDescription(name) {
   if (normalized.includes('sáng') || normalized.includes('ăn')) return 'Thưởng thức hương vị địa phương ngay tại Home Stays.'
   if (normalized.includes('xe') || normalized.includes('đón')) return 'Di chuyển nhẹ nhàng hơn với sự hỗ trợ từ đội ngũ của chúng tôi.'
   return 'Dịch vụ bổ sung giúp kỳ lưu trú của bạn thoải mái và trọn vẹn hơn.'
+}
+
+function normalizeServiceType(type) {
+  return String(type || '').trim().toUpperCase() === 'INVENTORY' ? 'INVENTORY' : 'FACILITY'
+}
+
+function serviceTypeLabel(type) {
+  return normalizeServiceType(type) === 'INVENTORY' ? 'Thuê đồ' : 'Dịch vụ'
+}
+
+function serviceUnitLabel(type) {
+  return normalizeServiceType(type) === 'INVENTORY' ? '/ lượt thuê' : '/ người'
+}
+
+function serviceMaxQuantity(service) {
+  if (normalizeServiceType(service?.type) !== 'INVENTORY') return 20
+  const stock = Number(service.quantityInStock || 0)
+  return stock > 0 ? Math.min(20, stock) : 1
 }
 
 function formatDateTime(value) {
@@ -206,6 +229,7 @@ function formatPrice(price) {
 function AmenitiesPage() {
   const [activeGroup, setActiveGroup] = useState('all')
   const [priceFilter, setPriceFilter] = useState('all')
+  const [bookableServiceFilter, setBookableServiceFilter] = useState('all')
   const [databaseServices, setDatabaseServices] = useState([])
   const [servicesLoading, setServicesLoading] = useState(true)
   const [servicesError, setServicesError] = useState('')
@@ -222,6 +246,10 @@ function AmenitiesPage() {
       || (priceFilter === 'free' ? item.price === 0 : item.price > 0)
     return matchesGroup && matchesPrice
   }), [activeGroup, priceFilter])
+  const visibleDatabaseServices = useMemo(() => databaseServices.filter(service => (
+    bookableServiceFilter === 'all' || service.type === bookableServiceFilter
+  )), [bookableServiceFilter, databaseServices])
+  const preferredBookingId = useMemo(() => new URLSearchParams(window.location.search).get('bookingId'), [])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -231,7 +259,10 @@ function AmenitiesPage() {
         if (!response.ok) throw new Error('Không thể tải dịch vụ lúc này.')
         return data
       })
-      .then(data => setDatabaseServices(Array.isArray(data) ? data : []))
+      .then(data => setDatabaseServices(Array.isArray(data)
+        ? data.map(service => ({ ...service, type: normalizeServiceType(service.type) }))
+        : []
+      ))
       .catch(error => {
         if (error.name !== 'AbortError') setServicesError(error.message)
       })
@@ -241,7 +272,7 @@ function AmenitiesPage() {
 
   const rememberService = (service) => {
     window.sessionStorage.setItem(PENDING_SERVICE_KEY, JSON.stringify({
-      type: 'FACILITY', serviceId: service.id, name: service.name,
+      type: normalizeServiceType(service.type), serviceId: service.id, name: service.name,
     }))
   }
 
@@ -267,7 +298,8 @@ function AmenitiesPage() {
       }
       setSelectedService(service)
       setEligibleBookings(data)
-      setSelectedBookingId(String(data[0].bookingId))
+      const preferred = data.find(booking => String(booking.bookingId) === String(preferredBookingId))
+      setSelectedBookingId(String((preferred || data[0]).bookingId))
       setQuantity(1)
     } catch (error) {
       setModalError(error.message)
@@ -286,7 +318,7 @@ function AmenitiesPage() {
       const response = await fetch(`${API_BASE_URL}/amenities/bookings/${selectedBookingId}/services`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ serviceId: selectedService.id, quantity: Number(quantity) }),
+        body: JSON.stringify({ serviceId: selectedService.id, type: normalizeServiceType(selectedService.type), quantity: Number(quantity) }),
       })
       const data = await response.json().catch(() => ({}))
       if (!response.ok) throw new Error(data.message || 'Không thể thêm dịch vụ vào đơn đặt phòng.')
@@ -323,6 +355,18 @@ function AmenitiesPage() {
             <div><span>MỚI TẠI HOME STAYS</span><h2>Dịch vụ cho chuyến đi</h2><p>Thêm trực tiếp vào booking hiện tại hoặc chọn trước khi bắt đầu đặt phòng.</p></div>
             <a href="/booking-history">Xem chuyến đi của bạn</a>
           </div>
+          <div className="bookable-service-tabs" aria-label="Lọc dịch vụ cho chuyến đi">
+            {bookableServiceTabs.map(tab => (
+              <button
+                key={tab.id}
+                type="button"
+                className={bookableServiceFilter === tab.id ? 'active' : ''}
+                onClick={() => setBookableServiceFilter(tab.id)}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
           {successMessage && <div className="amenities-success" role="status">✓ {successMessage}</div>}
           {servicesLoading ? (
             <div className="services-state">Đang tải dịch vụ...</div>
@@ -330,18 +374,23 @@ function AmenitiesPage() {
             <div className="services-state services-state-error">{servicesError}</div>
           ) : databaseServices.length === 0 ? (
             <div className="services-state">Hiện chưa có dịch vụ bổ sung đang hoạt động.</div>
+          ) : visibleDatabaseServices.length === 0 ? (
+            <div className="services-state">Không có dịch vụ phù hợp với bộ lọc hiện tại.</div>
           ) : (
             <div className="bookable-services-grid">
-              {databaseServices.map((service, index) => (
-                <article className="bookable-service-card" key={service.id}>
+              {visibleDatabaseServices.map((service, index) => (
+                <article className="bookable-service-card" key={`${normalizeServiceType(service.type)}-${service.id}`}>
                   <div className="bookable-service-photo">
                     <img src={serviceImages[index % serviceImages.length]} alt={service.name} loading="lazy" />
-                    <span>Dịch vụ</span>
+                    <span>{serviceTypeLabel(service.type)}</span>
                   </div>
                   <div className="bookable-service-body">
                     <h3>{service.name}</h3>
                     <p>{serviceDescription(service.name)}</p>
-                    <div><strong>{Number(service.price) === 0 ? 'Miễn phí' : formatPrice(service.price)}</strong><span>/ người</span></div>
+                    <div><strong>{Number(service.price) === 0 ? 'Miễn phí' : formatPrice(service.price)}</strong><span>{serviceUnitLabel(service.type)}</span></div>
+                    <small className={`bookable-service-stock${normalizeServiceType(service.type) !== 'INVENTORY' ? ' is-placeholder' : ''}`}>
+                      {normalizeServiceType(service.type) === 'INVENTORY' ? `${service.quantityInStock} còn lại` : 'Còn hàng'}
+                    </small>
                     <button type="button" disabled={modalLoading} onClick={() => chooseService(service)}>
                       {modalLoading ? 'Đang kiểm tra...' : 'Thêm vào chuyến đi'}
                     </button>
@@ -434,7 +483,17 @@ function AmenitiesPage() {
                     </label>
                   ))}
                 </div>
-                <div className="amenity-quantity-row"><span>Số lượng</span><div><button type="button" onClick={() => setQuantity(value => Math.max(1, value - 1))}>−</button><strong>{quantity}</strong><button type="button" onClick={() => setQuantity(value => Math.min(20, value + 1))}>+</button></div></div>
+                <div className="amenity-quantity-row">
+                  <span>Số lượng</span>
+                  <div>
+                    <button type="button" onClick={() => setQuantity(value => Math.max(1, value - 1))}>−</button>
+                    <strong>{quantity}</strong>
+                    <button type="button" onClick={() => setQuantity(value => Math.min(serviceMaxQuantity(selectedService), value + 1))}>+</button>
+                  </div>
+                </div>
+                {normalizeServiceType(selectedService.type) === 'INVENTORY' && (
+                  <p className="amenity-stock-note">Còn {selectedService.quantityInStock} trong kho, mỗi lần thêm tối đa {serviceMaxQuantity(selectedService)}.</p>
+                )}
                 <div className="amenity-total-row"><span>Tổng cộng</span><strong>{formatPrice(Number(selectedService.price) * quantity)}</strong></div>
                 <button className="amenity-confirm-button" type="button" disabled={modalLoading} onClick={addServiceToBooking}>{modalLoading ? 'Đang thêm...' : 'Xác nhận thêm dịch vụ'}</button>
               </>

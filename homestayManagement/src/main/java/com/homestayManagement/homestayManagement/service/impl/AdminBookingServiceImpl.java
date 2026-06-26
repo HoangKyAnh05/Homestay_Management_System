@@ -34,6 +34,7 @@ import com.homestayManagement.homestayManagement.entity.Account;
 import com.homestayManagement.homestayManagement.entity.AppliedPenalty;
 import com.homestayManagement.homestayManagement.entity.Booking;
 import com.homestayManagement.homestayManagement.entity.BookingDetail;
+import com.homestayManagement.homestayManagement.entity.BookingServiceItem;
 import com.homestayManagement.homestayManagement.entity.BookingGuest;
 import com.homestayManagement.homestayManagement.entity.CheckInRecord;
 import com.homestayManagement.homestayManagement.entity.Customer;
@@ -57,6 +58,7 @@ import com.homestayManagement.homestayManagement.repository.AppliedPenaltyReposi
 import com.homestayManagement.homestayManagement.repository.BookingDetailRepository;
 import com.homestayManagement.homestayManagement.repository.BookingGuestRepository;
 import com.homestayManagement.homestayManagement.repository.BookingRepository;
+import com.homestayManagement.homestayManagement.repository.BookingServiceItemRepository;
 import com.homestayManagement.homestayManagement.repository.CheckInRecordRepository;
 import com.homestayManagement.homestayManagement.repository.CustomerRepository;
 import com.homestayManagement.homestayManagement.repository.EmployeeRepository;
@@ -109,6 +111,7 @@ public class AdminBookingServiceImpl implements AdminBookingService {
     private final CustomerRepository customerRepository;
     private final RoleRepository roleRepository;
     private final CheckInRecordRepository checkInRecordRepository;
+    private final BookingServiceItemRepository bookingServiceItemRepository;
     private final ServiceUsageRepository serviceUsageRepository;
     private final RoomAmenitiesUsageRepository roomAmenitiesUsageRepository;
     private final AppliedPenaltyRepository appliedPenaltyRepository;
@@ -134,6 +137,7 @@ public class AdminBookingServiceImpl implements AdminBookingService {
             CustomerRepository customerRepository,
             RoleRepository roleRepository,
             CheckInRecordRepository checkInRecordRepository,
+            BookingServiceItemRepository bookingServiceItemRepository,
             ServiceUsageRepository serviceUsageRepository,
             RoomAmenitiesUsageRepository roomAmenitiesUsageRepository,
             AppliedPenaltyRepository appliedPenaltyRepository,
@@ -158,6 +162,7 @@ public class AdminBookingServiceImpl implements AdminBookingService {
         this.customerRepository = customerRepository;
         this.roleRepository = roleRepository;
         this.checkInRecordRepository = checkInRecordRepository;
+        this.bookingServiceItemRepository = bookingServiceItemRepository;
         this.serviceUsageRepository = serviceUsageRepository;
         this.roomAmenitiesUsageRepository = roomAmenitiesUsageRepository;
         this.appliedPenaltyRepository = appliedPenaltyRepository;
@@ -1013,6 +1018,9 @@ public class AdminBookingServiceImpl implements AdminBookingService {
 
     private List<AdminInvoiceServiceItemResponse> buildServiceItems(Long bookingDetailId) {
         List<AdminInvoiceServiceItemResponse> items = new ArrayList<>();
+        bookingServiceItemRepository.findByBookingDetailIds(List.of(bookingDetailId)).stream()
+                .map(this::toBookingServiceItemResponse)
+                .forEach(items::add);
         serviceUsageRepository.findByBookingDetailIdForAdmin(bookingDetailId).stream()
                 .map(this::toServiceItemResponse)
                 .forEach(items::add);
@@ -1020,6 +1028,22 @@ public class AdminBookingServiceImpl implements AdminBookingService {
                 .map(this::toMiniBarItemResponse)
                 .forEach(items::add);
         return items;
+    }
+
+    private AdminInvoiceServiceItemResponse toBookingServiceItemResponse(BookingServiceItem item) {
+        String type = item.getFacilityService() != null ? "FACILITY" : "INVENTORY";
+        String name = item.getFacilityService() != null
+                ? item.getFacilityService().getName()
+                : item.getInventoryService().getName();
+        BigDecimal totalPrice = item.getPriceAtBooking().multiply(BigDecimal.valueOf(item.getQuantity()));
+        return new AdminInvoiceServiceItemResponse(
+                -Math.abs(item.getId()),
+                type,
+                name,
+                item.getQuantity(),
+                item.getPriceAtBooking(),
+                totalPrice
+        );
     }
 
     private AdminInvoiceServiceItemResponse toServiceItemResponse(ServiceUsage usage) {
@@ -1109,13 +1133,21 @@ public class AdminBookingServiceImpl implements AdminBookingService {
     }
 
     private BigDecimal calculateServiceCharge(Long bookingId) {
+        List<Long> detailIds = bookingDetailRepository.findByBookingId(bookingId).stream()
+                .map(BookingDetail::getId)
+                .toList();
+        BigDecimal bookedServiceTotal = detailIds.isEmpty()
+                ? BigDecimal.ZERO
+                : bookingServiceItemRepository.findByBookingDetailIds(detailIds).stream()
+                        .map(item -> item.getPriceAtBooking().multiply(BigDecimal.valueOf(item.getQuantity())))
+                        .reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal serviceTotal = serviceUsageRepository.findByBookingIdForInvoice(bookingId).stream()
                 .map(usage -> usage.getPriceAtUse().multiply(BigDecimal.valueOf(usage.getQuantity())))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal miniBarTotal = roomAmenitiesUsageRepository.findByBookingIdForInvoice(bookingId).stream()
                 .map(usage -> usage.getItem().getPrice().multiply(BigDecimal.valueOf(usage.getQuantityUsed())))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-        return serviceTotal.add(miniBarTotal);
+        return bookedServiceTotal.add(serviceTotal).add(miniBarTotal);
     }
 
     private BigDecimal calculatePenaltyCharge(Long bookingId) {

@@ -3,14 +3,26 @@ package com.homestayManagement.homestayManagement.service;
 import com.homestayManagement.homestayManagement.entity.Account;
 import com.homestayManagement.homestayManagement.entity.Booking;
 import com.homestayManagement.homestayManagement.entity.BookingDetail;
+import com.homestayManagement.homestayManagement.entity.BookingServiceItem;
 import com.homestayManagement.homestayManagement.entity.Customer;
 import com.homestayManagement.homestayManagement.entity.CheckInRecord;
+import com.homestayManagement.homestayManagement.entity.FacilityService;
 import com.homestayManagement.homestayManagement.entity.RoomType;
 import com.homestayManagement.homestayManagement.entity.Room;
 import com.homestayManagement.homestayManagement.entity.ServiceUsage;
+import com.homestayManagement.homestayManagement.repository.AppliedPenaltyRepository;
 import com.homestayManagement.homestayManagement.repository.BookingDetailRepository;
+import com.homestayManagement.homestayManagement.repository.BookingGuestRepository;
+import com.homestayManagement.homestayManagement.repository.BookingServiceItemRepository;
 import com.homestayManagement.homestayManagement.repository.CheckInRecordRepository;
+import com.homestayManagement.homestayManagement.repository.FacilityServiceRepository;
+import com.homestayManagement.homestayManagement.repository.InventoryServiceRepository;
+import com.homestayManagement.homestayManagement.repository.InvoiceRepository;
+import com.homestayManagement.homestayManagement.repository.PaymentRepository;
+import com.homestayManagement.homestayManagement.repository.RoomAmenitiesUsageRepository;
+import com.homestayManagement.homestayManagement.repository.RoomMiniBarItemRepository;
 import com.homestayManagement.homestayManagement.repository.RoomRepository;
+import com.homestayManagement.homestayManagement.repository.RulesPenaltyRepository;
 import com.homestayManagement.homestayManagement.repository.ServiceUsageRepository;
 import com.homestayManagement.homestayManagement.service.impl.AdminBookingServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
@@ -38,9 +50,19 @@ import static org.mockito.Mockito.verify;
 class AdminBookingServiceImplTest {
 
     @Mock private BookingDetailRepository bookingDetailRepository;
+    @Mock private BookingGuestRepository bookingGuestRepository;
+    @Mock private BookingServiceItemRepository bookingServiceItemRepository;
     @Mock private CheckInRecordRepository checkInRecordRepository;
     @Mock private RoomRepository roomRepository;
     @Mock private ServiceUsageRepository serviceUsageRepository;
+    @Mock private RoomAmenitiesUsageRepository roomAmenitiesUsageRepository;
+    @Mock private AppliedPenaltyRepository appliedPenaltyRepository;
+    @Mock private InvoiceRepository invoiceRepository;
+    @Mock private PaymentRepository paymentRepository;
+    @Mock private FacilityServiceRepository facilityServiceRepository;
+    @Mock private InventoryServiceRepository inventoryServiceRepository;
+    @Mock private RoomMiniBarItemRepository roomMiniBarItemRepository;
+    @Mock private RulesPenaltyRepository rulesPenaltyRepository;
 
     private AdminBookingServiceImpl service;
 
@@ -48,22 +70,23 @@ class AdminBookingServiceImplTest {
     void setUp() {
         service = new AdminBookingServiceImpl(
                 bookingDetailRepository,
-                null,
+                bookingGuestRepository,
                 null,
                 roomRepository,
                 null,
                 null,
                 null,
                 checkInRecordRepository,
+                bookingServiceItemRepository,
                 serviceUsageRepository,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
+                roomAmenitiesUsageRepository,
+                appliedPenaltyRepository,
+                invoiceRepository,
+                paymentRepository,
+                facilityServiceRepository,
+                inventoryServiceRepository,
+                roomMiniBarItemRepository,
+                rulesPenaltyRepository,
                 null,
                 null,
                 null,
@@ -180,5 +203,49 @@ class AdminBookingServiceImplTest {
 
         assertEquals("Không thể xóa chi phí sau khi đã check-out", error.getMessage());
         verify(serviceUsageRepository, never()).findById(any());
+    }
+
+    @Test
+    void getBookingDetailIncludesCustomerAddedBookingServices() {
+        Account account = Account.builder().id(1L).email("customer@example.com").build();
+        Customer customer = Customer.builder().id(2L).account(account).fullName("Khách hàng").build();
+        Booking booking = Booking.builder()
+                .id(3L).customer(customer).bookingDate(LocalDateTime.now()).status("CHECKED_IN").build();
+        RoomType roomType = RoomType.builder().id(4L).name("Family").build();
+        Room room = Room.builder().id(5L).roomNumber("101").roomType(roomType).build();
+        BookingDetail detail = BookingDetail.builder()
+                .id(6L).booking(booking).roomType(roomType).room(room)
+                .checkInTarget(LocalDateTime.now().minusHours(1))
+                .checkOutTarget(LocalDateTime.now().plusDays(1))
+                .numberOfAdults(2).numberOfChildren(0)
+                .priceAtBooking(BigDecimal.valueOf(1_000_000))
+                .rentType("DAILY").status("CHECKED_IN").build();
+        FacilityService facility = FacilityService.builder()
+                .id(7L).name("Bữa sáng buffet").price(BigDecimal.valueOf(12_000)).isActive(true).build();
+        BookingServiceItem bookingServiceItem = BookingServiceItem.builder()
+                .id(8L).bookingDetail(detail).facilityService(facility)
+                .quantity(2).priceAtBooking(BigDecimal.valueOf(12_000)).build();
+
+        when(bookingDetailRepository.findByIdForAdminDetail(6L)).thenReturn(Optional.of(detail));
+        when(checkInRecordRepository.findByBookingDetailIdForAdmin(6L)).thenReturn(List.of());
+        when(bookingServiceItemRepository.findByBookingDetailIds(List.of(6L))).thenReturn(List.of(bookingServiceItem));
+        when(serviceUsageRepository.findByBookingDetailIdForAdmin(6L)).thenReturn(List.of());
+        when(roomAmenitiesUsageRepository.findByBookingDetailIdForAdmin(6L)).thenReturn(List.of());
+        when(appliedPenaltyRepository.findByBookingDetailIdForAdmin(6L)).thenReturn(List.of());
+        when(invoiceRepository.findByBookingIdForAdmin(3L)).thenReturn(Optional.empty());
+        when(bookingGuestRepository.findByBookingDetailIds(List.of(6L))).thenReturn(List.of());
+        when(facilityServiceRepository.findAll()).thenReturn(List.of());
+        when(inventoryServiceRepository.findAll()).thenReturn(List.of());
+        when(roomMiniBarItemRepository.findAll()).thenReturn(List.of());
+        when(rulesPenaltyRepository.findAll()).thenReturn(List.of());
+
+        var result = service.getBookingDetail(6L);
+        var serviceItem = result.serviceItems().getFirst();
+
+        assertEquals(1, result.serviceItems().size());
+        assertEquals(-8L, serviceItem.id());
+        assertEquals("FACILITY", serviceItem.type());
+        assertEquals("Bữa sáng buffet", serviceItem.name());
+        assertEquals(BigDecimal.valueOf(24_000), serviceItem.totalPrice());
     }
 }

@@ -9,10 +9,12 @@ import com.homestayManagement.homestayManagement.entity.BookingDetail;
 import com.homestayManagement.homestayManagement.entity.BookingServiceItem;
 import com.homestayManagement.homestayManagement.entity.FacilityService;
 import com.homestayManagement.homestayManagement.entity.Invoice;
+import com.homestayManagement.homestayManagement.entity.InventoryService;
 import com.homestayManagement.homestayManagement.repository.BookingDetailRepository;
 import com.homestayManagement.homestayManagement.repository.BookingRepository;
 import com.homestayManagement.homestayManagement.repository.BookingServiceItemRepository;
 import com.homestayManagement.homestayManagement.repository.FacilityServiceRepository;
+import com.homestayManagement.homestayManagement.repository.InventoryServiceRepository;
 import com.homestayManagement.homestayManagement.repository.InvoiceRepository;
 import com.homestayManagement.homestayManagement.service.PublicAmenityService;
 import org.springframework.stereotype.Service;
@@ -24,13 +26,15 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Service
 public class PublicAmenityServiceImpl implements PublicAmenityService {
 
-    private static final Set<String> ELIGIBLE_STATUSES = Set.of("CONFIRMED");
+    private static final Set<String> ELIGIBLE_STATUSES = Set.of("CONFIRMED", "CHECKED_IN");
 
     private final FacilityServiceRepository facilityServiceRepository;
+    private final InventoryServiceRepository inventoryServiceRepository;
     private final BookingRepository bookingRepository;
     private final BookingDetailRepository bookingDetailRepository;
     private final BookingServiceItemRepository bookingServiceItemRepository;
@@ -38,12 +42,14 @@ public class PublicAmenityServiceImpl implements PublicAmenityService {
 
     public PublicAmenityServiceImpl(
             FacilityServiceRepository facilityServiceRepository,
+            InventoryServiceRepository inventoryServiceRepository,
             BookingRepository bookingRepository,
             BookingDetailRepository bookingDetailRepository,
             BookingServiceItemRepository bookingServiceItemRepository,
             InvoiceRepository invoiceRepository
     ) {
         this.facilityServiceRepository = facilityServiceRepository;
+        this.inventoryServiceRepository = inventoryServiceRepository;
         this.bookingRepository = bookingRepository;
         this.bookingDetailRepository = bookingDetailRepository;
         this.bookingServiceItemRepository = bookingServiceItemRepository;
@@ -53,10 +59,18 @@ public class PublicAmenityServiceImpl implements PublicAmenityService {
     @Override
     @Transactional(readOnly = true)
     public List<PublicAmenityResponse> getActiveAmenities() {
-        return facilityServiceRepository.findAll().stream()
+        Stream<PublicAmenityResponse> facilities = facilityServiceRepository.findAll().stream()
                 .filter(FacilityService::isActive)
-                .sorted(Comparator.comparing(FacilityService::getName, String.CASE_INSENSITIVE_ORDER))
-                .map(service -> new PublicAmenityResponse(service.getId(), service.getName(), service.getPrice()))
+                .map(service -> new PublicAmenityResponse(
+                        service.getId(), service.getName(), service.getPrice(), "FACILITY", null
+                ));
+        Stream<PublicAmenityResponse> inventories = inventoryServiceRepository.findAll().stream()
+                .filter(service -> service.getQuantityInStock() == null || service.getQuantityInStock() > 0)
+                .map(service -> new PublicAmenityResponse(
+                        service.getId(), service.getName(), service.getPrice(), "INVENTORY", service.getQuantityInStock()
+                ));
+        return Stream.concat(facilities, inventories)
+                .sorted(Comparator.comparing(PublicAmenityResponse::name, Comparator.nullsLast(String::compareToIgnoreCase)))
                 .toList();
     }
 
@@ -93,32 +107,32 @@ public class PublicAmenityServiceImpl implements PublicAmenityService {
             throw new IllegalArgumentException("Đơn đặt phòng không còn đủ điều kiện để thêm dịch vụ");
         }
 
-        FacilityService service = facilityServiceRepository.findById(request.serviceId())
-                .filter(FacilityService::isActive)
-                .orElseThrow(() -> new IllegalArgumentException("Dịch vụ không tồn tại hoặc đã ngừng phục vụ"));
         BookingDetail targetDetail = details.stream()
                 .min(Comparator.comparing(BookingDetail::getCheckInTarget))
                 .orElseThrow(() -> new IllegalArgumentException("Đơn đặt phòng chưa có thông tin phòng"));
 
         List<Long> detailIds = details.stream().map(BookingDetail::getId).toList();
+        String type = normalize(request.type());
+        ServiceSelection selected = resolveService(type, request.serviceId());
         BookingServiceItem item = bookingServiceItemRepository.findByBookingDetailIds(detailIds).stream()
-                .filter(existing -> existing.getFacilityService() != null)
-                .filter(existing -> service.getId().equals(existing.getFacilityService().getId()))
-                .filter(existing -> service.getPrice().compareTo(existing.getPriceAtBooking()) == 0)
+                .filter(existing -> matchesService(existing, selected))
+                .filter(existing -> selected.price().compareTo(existing.getPriceAtBooking()) == 0)
                 .findFirst()
                 .orElseGet(() -> BookingServiceItem.builder()
                         .bookingDetail(targetDetail)
-                        .facilityService(service)
+                        .facilityService(selected.facilityService())
+                        .inventoryService(selected.inventoryService())
                         .quantity(0)
-                        .priceAtBooking(service.getPrice())
+                        .priceAtBooking(selected.price())
                         .build());
         if (item.getQuantity() + request.quantity() > 20) {
             throw new IllegalArgumentException("Mỗi dịch vụ chỉ được chọn tối đa 20 lần cho một booking");
         }
+        validateInventoryStock(selected, item.getQuantity() + request.quantity());
         item.setQuantity(item.getQuantity() + request.quantity());
         item = bookingServiceItemRepository.save(item);
 
-        BigDecimal addedAmount = service.getPrice().multiply(BigDecimal.valueOf(request.quantity()));
+        BigDecimal addedAmount = selected.price().multiply(BigDecimal.valueOf(request.quantity()));
         invoiceRepository.findByBookingIdForAdmin(bookingId).ifPresent(invoice -> updateInvoice(invoice, addedAmount));
 
         List<BookingServiceItem> currentItems = bookingServiceItemRepository.findByBookingDetailIds(detailIds);
@@ -131,13 +145,49 @@ public class PublicAmenityServiceImpl implements PublicAmenityService {
         return new AddedBookingServiceResponse(
                 bookingId,
                 item.getId(),
-                service.getName(),
+                selected.name(),
                 request.quantity(),
-                service.getPrice(),
+                selected.price(),
                 addedAmount,
                 serviceCharge,
                 roomCharge.add(serviceCharge)
         );
+    }
+
+    private ServiceSelection resolveService(String type, Long serviceId) {
+        if ("FACILITY".equals(type)) {
+            FacilityService service = facilityServiceRepository.findById(serviceId)
+                    .filter(FacilityService::isActive)
+                    .orElseThrow(() -> new IllegalArgumentException("Dịch vụ không tồn tại hoặc đã ngừng phục vụ"));
+            return new ServiceSelection(service.getId(), service.getName(), service.getPrice(), service, null);
+        }
+        if ("INVENTORY".equals(type)) {
+            InventoryService service = inventoryServiceRepository.findById(serviceId)
+                    .orElseThrow(() -> new IllegalArgumentException("Dịch vụ thuê đồ không tồn tại"));
+            if (service.getQuantityInStock() != null && service.getQuantityInStock() <= 0) {
+                throw new IllegalArgumentException("Dịch vụ thuê đồ đã hết tồn kho");
+            }
+            return new ServiceSelection(service.getId(), service.getName(), service.getPrice(), null, service);
+        }
+        throw new IllegalArgumentException("Loại dịch vụ không hợp lệ");
+    }
+
+    private boolean matchesService(BookingServiceItem item, ServiceSelection selected) {
+        if (selected.facilityService() != null) {
+            return item.getFacilityService() != null
+                    && selected.id().equals(item.getFacilityService().getId());
+        }
+        return item.getInventoryService() != null
+                && selected.id().equals(item.getInventoryService().getId());
+    }
+
+    private void validateInventoryStock(ServiceSelection selected, int requestedQuantity) {
+        InventoryService inventoryService = selected.inventoryService();
+        if (inventoryService != null
+                && inventoryService.getQuantityInStock() != null
+                && requestedQuantity > inventoryService.getQuantityInStock()) {
+            throw new IllegalArgumentException("Số lượng dịch vụ thuê đồ vượt tồn kho");
+        }
     }
 
     private boolean isEligible(List<BookingDetail> details, LocalDateTime now) {
@@ -173,5 +223,14 @@ public class PublicAmenityServiceImpl implements PublicAmenityService {
 
     private String normalize(String value) {
         return value == null ? "" : value.trim().toUpperCase();
+    }
+
+    private record ServiceSelection(
+            Long id,
+            String name,
+            BigDecimal price,
+            FacilityService facilityService,
+            InventoryService inventoryService
+    ) {
     }
 }

@@ -25,6 +25,7 @@ import static org.mockito.Mockito.*;
 class PublicAmenityServiceImplTest {
 
     @Mock private FacilityServiceRepository facilityServiceRepository;
+    @Mock private InventoryServiceRepository inventoryServiceRepository;
     @Mock private BookingRepository bookingRepository;
     @Mock private BookingDetailRepository bookingDetailRepository;
     @Mock private BookingServiceItemRepository bookingServiceItemRepository;
@@ -36,6 +37,7 @@ class PublicAmenityServiceImplTest {
     void setUp() {
         service = new PublicAmenityServiceImpl(
                 facilityServiceRepository,
+                inventoryServiceRepository,
                 bookingRepository,
                 bookingDetailRepository,
                 bookingServiceItemRepository,
@@ -47,12 +49,17 @@ class PublicAmenityServiceImplTest {
     void publicCatalogOnlyReturnsActiveServices() {
         FacilityService active = FacilityService.builder().id(1L).name("BBQ").price(BigDecimal.TEN).isActive(true).build();
         FacilityService inactive = FacilityService.builder().id(2L).name("Old service").price(BigDecimal.ONE).isActive(false).build();
+        InventoryService rental = InventoryService.builder().id(5L).name("Xe dap").price(BigDecimal.valueOf(50_000)).quantityInStock(2).build();
+        InventoryService outOfStock = InventoryService.builder().id(6L).name("Ao phao").price(BigDecimal.ONE).quantityInStock(0).build();
         when(facilityServiceRepository.findAll()).thenReturn(List.of(inactive, active));
+        when(inventoryServiceRepository.findAll()).thenReturn(List.of(outOfStock, rental));
 
         var result = service.getActiveAmenities();
 
-        assertEquals(1, result.size());
+        assertEquals(2, result.size());
         assertEquals(1L, result.get(0).id());
+        assertEquals("FACILITY", result.get(0).type());
+        assertEquals("INVENTORY", result.get(1).type());
     }
 
     @Test
@@ -61,7 +68,7 @@ class PublicAmenityServiceImplTest {
         when(bookingRepository.findByIdForPaymentUpdate(10L)).thenReturn(Optional.of(booking));
 
         assertThrows(IllegalArgumentException.class, () -> service.addServiceToBooking(
-                "other@example.com", 10L, new AddBookingFacilityServiceRequest(3L, 1)
+                "other@example.com", 10L, new AddBookingFacilityServiceRequest(3L, "FACILITY", 1)
         ));
         verify(bookingServiceItemRepository, never()).save(any());
     }
@@ -92,7 +99,7 @@ class PublicAmenityServiceImplTest {
         when(invoiceRepository.findByBookingIdForAdmin(10L)).thenReturn(Optional.of(invoice));
 
         var result = service.addServiceToBooking(
-                "guest@example.com", 10L, new AddBookingFacilityServiceRequest(3L, 2)
+                "guest@example.com", 10L, new AddBookingFacilityServiceRequest(3L, "FACILITY", 2)
         );
 
         assertEquals(BigDecimal.valueOf(160_000), result.addedAmount());
@@ -100,6 +107,41 @@ class PublicAmenityServiceImplTest {
         assertEquals(BigDecimal.valueOf(160_000), invoice.getServiceCharge());
         assertEquals(BigDecimal.valueOf(660_000), invoice.getTotalAmount());
         verify(invoiceRepository).save(invoice);
+    }
+
+    @Test
+    void addInventoryServiceAllowsCheckedInBookingsAndValidatesStock() {
+        Booking booking = booking("guest@example.com");
+        booking.setStatus("CHECKED_IN");
+        BookingDetail detail = BookingDetail.builder()
+                .id(20L).booking(booking).roomType(RoomType.builder().name("Garden Room").build())
+                .checkInTarget(LocalDateTime.now().minusHours(2)).checkOutTarget(LocalDateTime.now().plusDays(1))
+                .priceAtBooking(BigDecimal.valueOf(500_000)).status("CHECKED_IN").build();
+        InventoryService rental = InventoryService.builder()
+                .id(7L).name("Xe dap").price(BigDecimal.valueOf(50_000)).quantityInStock(3).build();
+        AtomicReference<BookingServiceItem> savedItem = new AtomicReference<>();
+
+        when(bookingRepository.findByIdForPaymentUpdate(10L)).thenReturn(Optional.of(booking));
+        when(bookingDetailRepository.findByBookingId(10L)).thenReturn(List.of(detail));
+        when(inventoryServiceRepository.findById(7L)).thenReturn(Optional.of(rental));
+        when(bookingServiceItemRepository.findByBookingDetailIds(List.of(20L)))
+                .thenAnswer(invocation -> savedItem.get() == null ? List.of() : List.of(savedItem.get()));
+        when(bookingServiceItemRepository.save(any())).thenAnswer(invocation -> {
+            BookingServiceItem item = invocation.getArgument(0);
+            item.setId(31L);
+            savedItem.set(item);
+            return item;
+        });
+        when(invoiceRepository.findByBookingIdForAdmin(10L)).thenReturn(Optional.empty());
+
+        var result = service.addServiceToBooking(
+                "guest@example.com", 10L, new AddBookingFacilityServiceRequest(7L, "INVENTORY", 2)
+        );
+
+        assertEquals("Xe dap", result.serviceName());
+        assertEquals(BigDecimal.valueOf(100_000), result.addedAmount());
+        assertEquals(2, savedItem.get().getQuantity());
+        assertEquals(7L, savedItem.get().getInventoryService().getId());
     }
 
     private Booking booking(String email) {

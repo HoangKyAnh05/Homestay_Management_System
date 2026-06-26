@@ -124,6 +124,10 @@
   font-weight: 800;
 }
 
+.history-card-bottom {
+  flex-wrap: wrap;
+}
+
 .history-pay-btn {
   min-height: 42px;
   padding: 0 18px;
@@ -146,6 +150,36 @@
 .history-pay-btn:disabled {
   cursor: wait;
   opacity: 0.7;
+}
+
+.history-add-service-btn {
+  min-height: 42px;
+  padding: 0 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #1f4328;
+  border-radius: 10px;
+  color: #1f4328;
+  background: #ffffff;
+  font-size: 14px;
+  font-weight: 850;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.history-add-service-btn--compact {
+  min-height: 32px;
+  padding: 0 12px;
+  font-size: 12px;
+}
+
+.history-detail-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .history-payment-error {
