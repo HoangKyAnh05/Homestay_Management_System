@@ -5,10 +5,13 @@ import com.homestayManagement.homestayManagement.dto.response.RoomMiniBarItemRes
 import com.homestayManagement.homestayManagement.service.AdminMiniBarItemService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
@@ -41,6 +44,13 @@ public class AdminMiniBarItemController {
     public ResponseEntity<Void> deleteItem(@PathVariable Long id) {
         adminMiniBarItemService.deleteItem(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping(value = "/{id}/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<RoomMiniBarItemResponse> uploadImage(
+            @PathVariable Long id,
+            @RequestParam("image") MultipartFile image) throws IOException {
+        return ResponseEntity.ok(adminMiniBarItemService.uploadImage(id, image));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

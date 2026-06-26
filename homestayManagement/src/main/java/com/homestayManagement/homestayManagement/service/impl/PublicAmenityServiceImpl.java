@@ -62,12 +62,12 @@ public class PublicAmenityServiceImpl implements PublicAmenityService {
         Stream<PublicAmenityResponse> facilities = facilityServiceRepository.findAll().stream()
                 .filter(FacilityService::isActive)
                 .map(service -> new PublicAmenityResponse(
-                        service.getId(), service.getName(), service.getPrice(), "FACILITY", null
+                        service.getId(), service.getName(), service.getPrice(), "FACILITY", null, service.getImageUrl()
                 ));
         Stream<PublicAmenityResponse> inventories = inventoryServiceRepository.findAll().stream()
                 .filter(service -> service.getQuantityInStock() == null || service.getQuantityInStock() > 0)
                 .map(service -> new PublicAmenityResponse(
-                        service.getId(), service.getName(), service.getPrice(), "INVENTORY", service.getQuantityInStock()
+                        service.getId(), service.getName(), service.getPrice(), "INVENTORY", service.getQuantityInStock(), service.getImageUrl()
                 ));
         return Stream.concat(facilities, inventories)
                 .sorted(Comparator.comparing(PublicAmenityResponse::name, Comparator.nullsLast(String::compareToIgnoreCase)))

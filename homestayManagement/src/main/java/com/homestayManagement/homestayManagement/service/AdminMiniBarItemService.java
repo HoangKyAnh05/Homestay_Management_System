@@ -2,7 +2,9 @@ package com.homestayManagement.homestayManagement.service;
 
 import com.homestayManagement.homestayManagement.dto.request.RoomMiniBarItemRequest;
 import com.homestayManagement.homestayManagement.dto.response.RoomMiniBarItemResponse;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
 
 public interface AdminMiniBarItemService {
@@ -10,4 +12,5 @@ public interface AdminMiniBarItemService {
     RoomMiniBarItemResponse createItem(RoomMiniBarItemRequest request);
     RoomMiniBarItemResponse updateItem(Long id, RoomMiniBarItemRequest request);
     void deleteItem(Long id);
+    RoomMiniBarItemResponse uploadImage(Long id, MultipartFile file) throws IOException;
 }

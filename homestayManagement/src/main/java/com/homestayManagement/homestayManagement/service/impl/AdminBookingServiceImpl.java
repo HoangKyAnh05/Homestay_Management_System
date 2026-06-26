@@ -1208,15 +1208,33 @@ public class AdminBookingServiceImpl implements AdminBookingService {
     }
 
     private FacilityServiceResponse toFacilityServiceResponse(FacilityService service) {
-        return new FacilityServiceResponse(service.getId(), service.getName(), service.getPrice(), service.isActive());
+        return new FacilityServiceResponse(
+                service.getId(),
+                service.getName(),
+                service.getPrice(),
+                service.isActive(),
+                service.getImageUrl()
+        );
     }
 
     private InventoryServiceResponse toInventoryServiceResponse(InventoryService service) {
-        return new InventoryServiceResponse(service.getId(), service.getName(), service.getPrice(), service.getQuantityInStock());
+        return new InventoryServiceResponse(
+                service.getId(),
+                service.getName(),
+                service.getPrice(),
+                service.getQuantityInStock(),
+                service.getImageUrl()
+        );
     }
 
     private RoomMiniBarItemResponse toMiniBarResponse(RoomMiniBarItem item) {
-        return new RoomMiniBarItemResponse(item.getId(), item.getName(), item.getPrice(), item.getQuantityInStock());
+        return new RoomMiniBarItemResponse(
+                item.getId(),
+                item.getName(),
+                item.getPrice(),
+                item.getQuantityInStock(),
+                item.getImageUrl()
+        );
     }
 
     private RulesPenaltyResponse toRulesPenaltyResponse(RulesPenalty penalty) {

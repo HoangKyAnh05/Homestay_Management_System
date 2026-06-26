@@ -26,4 +26,7 @@ public class RoomMiniBarItem {
 
     @Column(name = "quantity_in_stock", nullable = false)
     private Integer quantityInStock;
+
+    @Column(name = "image_url", length = 500)
+    private String imageUrl;
 }

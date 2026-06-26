@@ -403,3 +403,62 @@
     overflow-x: auto;
   }
 }
+
+/* ── Service image cell ──────────────────────────────────────────────── */
+.asc-img-cell {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.asc-thumb {
+  width: 52px;
+  height: 52px;
+  object-fit: cover;
+  border-radius: 50%;
+  border: 1px solid #e5e7eb;
+  background: #f3f4f6;
+  display: block;
+}
+
+.asc-img-upload-btn {
+  position: absolute;
+  bottom: -6px;
+  right: -6px;
+  width: 24px;
+  height: 24px;
+  display: inline-grid;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: #2d5a3d;
+  color: #ffffff;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.18);
+  transition: background 0.15s;
+}
+
+.asc-img-upload-btn:hover {
+  background: #245033;
+}
+
+.asc-img-upload-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.asc-img-upload-btn svg {
+  width: 13px;
+  height: 13px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Upload spinner */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}

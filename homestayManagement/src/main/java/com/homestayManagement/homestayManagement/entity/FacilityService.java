@@ -27,4 +27,7 @@ public class FacilityService {
     @Builder.Default
     @Column(name = "is_active", nullable = false)
     private boolean isActive = true;
+
+    @Column(name = "image_url", length = 500)
+    private String imageUrl;
 }

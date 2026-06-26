@@ -6,6 +6,7 @@ public record FacilityServiceResponse(
         Long id,
         String name,
         BigDecimal price,
-        Boolean isActive
+        Boolean isActive,
+        String imageUrl
 ) {
 }

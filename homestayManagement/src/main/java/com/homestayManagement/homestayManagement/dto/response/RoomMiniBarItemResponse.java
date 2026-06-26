@@ -6,6 +6,7 @@ public record RoomMiniBarItemResponse(
         Long id,
         String name,
         BigDecimal price,
-        Integer quantityInStock
+        Integer quantityInStock,
+        String imageUrl
 ) {
 }

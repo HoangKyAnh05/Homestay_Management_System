@@ -117,7 +117,20 @@ const amenities = [
 
 const API_BASE_URL = 'http://localhost:8080/api'
 const PENDING_SERVICE_KEY = 'homeStayPendingAmenityService'
-const serviceImages = ['/home_3/image_3.jpg', '/home_5/image_1.jpg', '/home_5/image_3.jpg', '/home_2/image_2.jpg']
+
+// ── Đọc ảnh dịch vụ từ API response (field imageUrl) ───────────────
+const BACKEND = 'http://localhost:8080'
+const DEFAULT_SERVICE_IMAGE = '/img.png'
+
+function resolveServiceImage(service) {
+  const url = service?.imageUrl
+  if (!url) return DEFAULT_SERVICE_IMAGE
+  if (url.startsWith('http')) return url
+  if (url.startsWith('/uploads/')) return `${BACKEND}${url}`
+  return url
+}
+// ─────────────────────────────────────────────────────────────────────
+
 const bookableServiceTabs = [
   { id: 'all', label: 'Tất cả' },
   { id: 'FACILITY', label: 'Dịch vụ tiện ích' },
@@ -378,10 +391,10 @@ function AmenitiesPage() {
             <div className="services-state">Không có dịch vụ phù hợp với bộ lọc hiện tại.</div>
           ) : (
             <div className="bookable-services-grid">
-              {visibleDatabaseServices.map((service, index) => (
+              {visibleDatabaseServices.map((service) => (
                 <article className="bookable-service-card" key={`${normalizeServiceType(service.type)}-${service.id}`}>
                   <div className="bookable-service-photo">
-                    <img src={serviceImages[index % serviceImages.length]} alt={service.name} loading="lazy" />
+                    <img src={resolveServiceImage(service)} alt={service.name} loading="lazy" />
                     <span>{serviceTypeLabel(service.type)}</span>
                   </div>
                   <div className="bookable-service-body">

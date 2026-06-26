@@ -1,9 +1,81 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { getStoredToken } from '../../services/authService'
 import AdminLayout from './AdminLayout'
 import './AdminServiceCategoriesPage.css'
 
 const API = 'http://localhost:8080/api/admin/services'
+
+// ── Image storage helpers ─────────────────────────────────────────────
+const DEFAULT_IMAGE = '/img.png'
+
+// ── Image upload component ────────────────────────────────────────────
+function ServiceImageCell({ type, item, onImageUpdated }) {
+  const fileRef = useRef()
+  const [uploading, setUploading] = useState(false)
+  const [imgUrl, setImgUrl] = useState(item.imageUrl || null)
+
+  // Sync nếu item thay đổi từ bên ngoài (sau save)
+  useEffect(() => { setImgUrl(item.imageUrl || null) }, [item.imageUrl])
+
+  const handleFileChange = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true)
+    try {
+      const formData = new FormData()
+      formData.append('image', file)
+      const endpoint = type === 'facility'
+        ? `http://localhost:8080/api/admin/services/facility/${item.id}/image`
+        : `http://localhost:8080/api/admin/services/inventory/${item.id}/image`
+      const res = await fetch(endpoint, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${getStoredToken()}` },
+        body: formData,
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.message || 'Upload ảnh thất bại')
+      // Lấy URL từ response backend (là /uploads/...)
+      const newUrl = data.imageUrl || null
+      setImgUrl(newUrl)
+      onImageUpdated({ ...item, imageUrl: newUrl })
+    } catch (err) {
+      alert(err.message)
+    } finally {
+      setUploading(false)
+      if (fileRef.current) fileRef.current.value = ''
+    }
+  }
+
+  const resolvedSrc = imgUrl
+    ? (imgUrl.startsWith('/uploads/') ? `http://localhost:8080${imgUrl}` : imgUrl)
+    : DEFAULT_IMAGE
+
+  return (
+    <div className="asc-img-cell">
+      <img
+        src={resolvedSrc}
+        alt=""
+        className="asc-thumb"
+        onError={e => { e.currentTarget.src = DEFAULT_IMAGE }}
+      />
+      <button
+        type="button"
+        className="asc-img-upload-btn"
+        title="Đổi ảnh"
+        disabled={uploading}
+        onClick={() => fileRef.current?.click()}
+      >
+        {uploading
+          ? <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" strokeDasharray="28" strokeDashoffset="0"><animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="0.8s" repeatCount="indefinite"/></circle></svg>
+          : <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        }
+      </button>
+      <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={handleFileChange} />
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────
 
 function authHeaders() {
   return { 'Content-Type': 'application/json', Authorization: `Bearer ${getStoredToken()}` }
@@ -148,9 +220,7 @@ function AdminServiceCategoriesPage() {
     }).finally(() => setLoading(false))
   }, [])
 
-  useEffect(() => {
-    setSearch('')
-  }, [tab])
+  useEffect(() => { setSearch('') }, [tab])
 
   const filteredItems = useMemo(() => {
     const keyword = search.trim().toLowerCase()
@@ -158,15 +228,8 @@ function AdminServiceCategoriesPage() {
     return currentItems.filter(item => item.name?.toLowerCase().includes(keyword))
   }, [currentItems, search])
 
-  const openCreate = () => {
-    setEditItem(null)
-    setModalType(tab)
-  }
-
-  const openEdit = (item) => {
-    setEditItem(item)
-    setModalType(tab)
-  }
+  const openCreate = () => { setEditItem(null); setModalType(tab) }
+  const openEdit = (item) => { setEditItem(item); setModalType(tab) }
 
   const applySaved = (saved, isEdit) => {
     const setter = modalType === 'facility' ? setFacilityServices : setInventoryServices
@@ -234,6 +297,7 @@ function AdminServiceCategoriesPage() {
           <table className="asc-table">
             <thead>
               <tr>
+                <th style={{ width: 72 }}>Ảnh</th>
                 <th>Tên dịch vụ</th>
                 <th>Giá</th>
                 <th>{isFacility ? 'Trạng thái' : 'Tồn kho'}</th>
@@ -243,6 +307,18 @@ function AdminServiceCategoriesPage() {
             <tbody>
               {filteredItems.map(item => (
                 <tr key={item.id}>
+                  <td>
+                    <ServiceImageCell
+                      key={`${tab}_${item.id}`}
+                      type={tab}
+                      item={item}
+                      onImageUpdated={(updatedItem) => {
+                        const setter = tab === 'facility' ? setFacilityServices : setInventoryServices
+                        setter(prev => prev.map(s => s.id === updatedItem.id ? updatedItem : s))
+                        showToast('Đã cập nhật ảnh')
+                      }}
+                    />
+                  </td>
                   <td>
                     <strong>{item.name}</strong>
                     <small>{isFacility ? 'Tiện ích tính phí' : 'Dịch vụ có quản lý tồn kho'}</small>

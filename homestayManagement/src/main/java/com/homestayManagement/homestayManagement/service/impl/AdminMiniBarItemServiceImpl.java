@@ -8,11 +8,21 @@ import com.homestayManagement.homestayManagement.repository.RoomMiniBarItemRepos
 import com.homestayManagement.homestayManagement.service.AdminMiniBarItemService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 
 @Service
 public class AdminMiniBarItemServiceImpl implements AdminMiniBarItemService {
+
+    private static final Path UPLOAD_DIR = Paths.get("uploads");
+    private static final Set<String> ALLOWED_TYPES = Set.of("image/jpeg", "image/png", "image/webp");
 
     private final RoomMiniBarItemRepository roomMiniBarItemRepository;
     private final RoomAmenitiesUsageRepository roomAmenitiesUsageRepository;
@@ -71,12 +81,38 @@ public class AdminMiniBarItemServiceImpl implements AdminMiniBarItemService {
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy mặt hàng mini-bar"));
     }
 
+    @Override
+    @Transactional
+    public RoomMiniBarItemResponse uploadImage(Long id, MultipartFile file) throws IOException {
+        RoomMiniBarItem item = getItemById(id);
+        item.setImageUrl(saveImage(file));
+        return toResponse(roomMiniBarItemRepository.save(item));
+    }
+
+    private String saveImage(MultipartFile file) throws IOException {
+        if (file == null || file.isEmpty()) throw new IllegalArgumentException("File ảnh không hợp lệ");
+        String contentType = file.getContentType();
+        if (!ALLOWED_TYPES.contains(contentType)) throw new IllegalArgumentException("Chỉ chấp nhận ảnh JPG, PNG, WEBP");
+        Files.createDirectories(UPLOAD_DIR);
+        String ext = getExtension(file.getOriginalFilename());
+        String filename = "minibar-" + UUID.randomUUID() + ext;
+        Path target = UPLOAD_DIR.resolve(filename).normalize();
+        file.transferTo(target);
+        return "/uploads/" + filename;
+    }
+
+    private String getExtension(String filename) {
+        if (filename == null || !filename.contains(".")) return ".jpg";
+        return filename.substring(filename.lastIndexOf("."));
+    }
+
     private RoomMiniBarItemResponse toResponse(RoomMiniBarItem item) {
         return new RoomMiniBarItemResponse(
                 item.getId(),
                 item.getName(),
                 item.getPrice(),
-                item.getQuantityInStock()
+                item.getQuantityInStock(),
+                item.getImageUrl()
         );
     }
 }

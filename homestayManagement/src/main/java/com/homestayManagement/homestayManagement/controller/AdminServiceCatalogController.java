@@ -7,10 +7,13 @@ import com.homestayManagement.homestayManagement.dto.response.InventoryServiceRe
 import com.homestayManagement.homestayManagement.service.AdminServiceCatalogService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
@@ -45,6 +48,13 @@ public class AdminServiceCatalogController {
         return ResponseEntity.noContent().build();
     }
 
+    @PatchMapping(value = "/facility/{id}/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<FacilityServiceResponse> uploadFacilityImage(
+            @PathVariable Long id,
+            @RequestParam("image") MultipartFile image) throws IOException {
+        return ResponseEntity.ok(adminServiceCatalogService.uploadFacilityImage(id, image));
+    }
+
     @GetMapping("/inventory")
     public List<InventoryServiceResponse> getAllInventoryServices() {
         return adminServiceCatalogService.getAllInventoryServices();
@@ -64,6 +74,13 @@ public class AdminServiceCatalogController {
     public ResponseEntity<Void> deleteInventoryService(@PathVariable Long id) {
         adminServiceCatalogService.deleteInventoryService(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping(value = "/inventory/{id}/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<InventoryServiceResponse> uploadInventoryImage(
+            @PathVariable Long id,
+            @RequestParam("image") MultipartFile image) throws IOException {
+        return ResponseEntity.ok(adminServiceCatalogService.uploadInventoryImage(id, image));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
