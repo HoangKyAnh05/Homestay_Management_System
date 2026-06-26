@@ -560,11 +560,19 @@ public class AdminBookingServiceImpl implements AdminBookingService {
         if (outstandingExtraCharge.compareTo(BigDecimal.ZERO) > 0) {
             throw new IllegalArgumentException("Vui lòng thanh toán chi phí phát sinh trước khi checkout");
         }
-        if (record.getActualCheckOut() == null) {
+        boolean firstCheckout = record.getActualCheckOut() == null;
+        if (firstCheckout) {
             record.setActualCheckOut(LocalDateTime.now());
             checkInRecordRepository.save(record);
         }
         detail.setStatus("COMPLETED");
+        if (detail.getRoom() != null) {
+            detail.getRoom().setStatus("AVAILABLE");
+            roomRepository.save(detail.getRoom());
+        }
+        if (firstCheckout) {
+            restoreInventoryServices(detail.getId());
+        }
         bookingDetailRepository.save(detail);
         updateBookingCompletionStatus(detail.getBooking());
         return getBookingDetail(bookingDetailId);
@@ -613,6 +621,13 @@ public class AdminBookingServiceImpl implements AdminBookingService {
         } else if ("INVENTORY".equals(type)) {
             InventoryService service = inventoryServiceRepository.findById(request.serviceId())
                     .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy dịch vụ kho"));
+            if (service.getQuantityInStock() != null) {
+                if (request.quantity() > service.getQuantityInStock()) {
+                    throw new IllegalArgumentException("Số lượng dịch vụ thuê đồ vượt tồn kho");
+                }
+                service.setQuantityInStock(service.getQuantityInStock() - request.quantity());
+                inventoryServiceRepository.save(service);
+            }
             builder.inventoryService(service).priceAtUse(service.getPrice());
         } else {
             throw new IllegalArgumentException("Loại dịch vụ không hợp lệ");
@@ -1124,6 +1139,23 @@ public class AdminBookingServiceImpl implements AdminBookingService {
         if (!expectedRecord.getId().equals(actualRecordId)) {
             throw new IllegalArgumentException("Khoản chi phí không thuộc ca lưu trú này");
         }
+    }
+
+    private void restoreInventoryServices(Long bookingDetailId) {
+        bookingServiceItemRepository.findByBookingDetailIds(List.of(bookingDetailId)).stream()
+                .filter(item -> item.getInventoryService() != null)
+                .forEach(item -> restoreInventoryStock(item.getInventoryService(), item.getQuantity()));
+        serviceUsageRepository.findByBookingDetailIdForAdmin(bookingDetailId).stream()
+                .filter(usage -> usage.getInventoryService() != null)
+                .forEach(usage -> restoreInventoryStock(usage.getInventoryService(), usage.getQuantity()));
+    }
+
+    private void restoreInventoryStock(InventoryService service, Integer quantity) {
+        if (service == null || service.getQuantityInStock() == null || quantity == null || quantity <= 0) {
+            return;
+        }
+        service.setQuantityInStock(service.getQuantityInStock() + quantity);
+        inventoryServiceRepository.save(service);
     }
 
     private boolean isInspectionComplete(CheckInRecord record) {

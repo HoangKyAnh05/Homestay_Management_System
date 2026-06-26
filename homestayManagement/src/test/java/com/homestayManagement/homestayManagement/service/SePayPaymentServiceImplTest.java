@@ -3,13 +3,18 @@ package com.homestayManagement.homestayManagement.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.homestayManagement.homestayManagement.entity.Booking;
 import com.homestayManagement.homestayManagement.entity.BookingDetail;
+import com.homestayManagement.homestayManagement.entity.BookingServiceItem;
 import com.homestayManagement.homestayManagement.entity.Invoice;
+import com.homestayManagement.homestayManagement.entity.InventoryService;
 import com.homestayManagement.homestayManagement.entity.Payment;
+import com.homestayManagement.homestayManagement.entity.ServiceUsage;
 import com.homestayManagement.homestayManagement.repository.BookingDetailRepository;
 import com.homestayManagement.homestayManagement.repository.BookingRepository;
 import com.homestayManagement.homestayManagement.repository.BookingServiceItemRepository;
+import com.homestayManagement.homestayManagement.repository.InventoryServiceRepository;
 import com.homestayManagement.homestayManagement.repository.InvoiceRepository;
 import com.homestayManagement.homestayManagement.repository.PaymentRepository;
+import com.homestayManagement.homestayManagement.repository.ServiceUsageRepository;
 import com.homestayManagement.homestayManagement.service.impl.SePayPaymentServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -49,6 +54,10 @@ class SePayPaymentServiceImplTest {
     private InvoiceRepository invoiceRepository;
     @Mock
     private PaymentRepository paymentRepository;
+    @Mock
+    private ServiceUsageRepository serviceUsageRepository;
+    @Mock
+    private InventoryServiceRepository inventoryServiceRepository;
 
     private SePayPaymentServiceImpl service;
 
@@ -61,6 +70,8 @@ class SePayPaymentServiceImplTest {
                 checkInRecordRepository,
                 invoiceRepository,
                 paymentRepository,
+                serviceUsageRepository,
+                inventoryServiceRepository,
                 new ObjectMapper(),
                 "Vietcombank",
                 "0123456789",
@@ -192,6 +203,16 @@ class SePayPaymentServiceImplTest {
                         .id(50L)
                         .bookingDetail(detail)
                         .build();
+        InventoryService bookedRental = InventoryService.builder()
+                .id(60L).name("Xe dap").price(BigDecimal.valueOf(10_000)).quantityInStock(9).build();
+        BookingServiceItem bookedRentalItem = BookingServiceItem.builder()
+                .id(61L).bookingDetail(detail).inventoryService(bookedRental)
+                .quantity(1).priceAtBooking(BigDecimal.valueOf(10_000)).build();
+        InventoryService stayRental = InventoryService.builder()
+                .id(62L).name("Ao phao").price(BigDecimal.valueOf(10_000)).quantityInStock(3).build();
+        ServiceUsage stayRentalUsage = ServiceUsage.builder()
+                .id(63L).checkInRecord(record).inventoryService(stayRental)
+                .quantity(2).priceAtUse(BigDecimal.valueOf(10_000)).build();
         byte[] body = webhookBody(92706L, 150_000, "HMS31");
         String timestamp = String.valueOf(Instant.now().getEpochSecond());
 
@@ -200,14 +221,20 @@ class SePayPaymentServiceImplTest {
         when(bookingRepository.findByIdForPaymentUpdate(10L)).thenReturn(Optional.of(booking));
         when(checkInRecordRepository.findByBookingIdForInvoice(10L)).thenReturn(List.of(record));
         when(bookingDetailRepository.findByBookingId(10L)).thenReturn(List.of(detail));
+        when(bookingServiceItemRepository.findByBookingDetailIds(List.of(40L))).thenReturn(List.of(bookedRentalItem));
+        when(serviceUsageRepository.findByBookingDetailIdForAdmin(40L)).thenReturn(List.of(stayRentalUsage));
 
         service.handleWebhook(body, signature(body, timestamp), timestamp);
 
         assertEquals("SUCCESS", payment.getStatus());
         assertEquals("COMPLETED", booking.getStatus());
         assertEquals("COMPLETED", detail.getStatus());
+        assertEquals(10, bookedRental.getQuantityInStock());
+        assertEquals(5, stayRental.getQuantityInStock());
         org.junit.jupiter.api.Assertions.assertNotNull(record.getActualCheckOut());
         verify(checkInRecordRepository).saveAll(List.of(record));
+        verify(inventoryServiceRepository).save(bookedRental);
+        verify(inventoryServiceRepository).save(stayRental);
     }
 
     private byte[] webhookBody(long id, long amount) {

@@ -537,6 +537,10 @@ public class PublicBookingServiceImpl implements PublicBookingService {
                         .quantity(quantity)
                         .priceAtBooking(service.getPrice())
                         .build());
+                if (service.getQuantityInStock() != null) {
+                    service.setQuantityInStock(service.getQuantityInStock() - quantity);
+                    inventoryServiceRepository.save(service);
+                }
                 total = total.add(service.getPrice().multiply(BigDecimal.valueOf(quantity)));
             } else {
                 throw new IllegalArgumentException("LoÃ¡ÂºÂ¡i dÃ¡Â»â€¹ch vÃ¡Â»Â¥ khÃƒÂ´ng hÃ¡Â»Â£p lÃ¡Â»â€¡");

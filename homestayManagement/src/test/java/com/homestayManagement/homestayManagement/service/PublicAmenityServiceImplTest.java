@@ -142,6 +142,8 @@ class PublicAmenityServiceImplTest {
         assertEquals(BigDecimal.valueOf(100_000), result.addedAmount());
         assertEquals(2, savedItem.get().getQuantity());
         assertEquals(7L, savedItem.get().getInventoryService().getId());
+        assertEquals(1, rental.getQuantityInStock());
+        verify(inventoryServiceRepository).save(rental);
     }
 
     private Booking booking(String email) {

@@ -33,6 +33,8 @@ public class SePayPaymentServiceImpl implements SePayPaymentService {
     private final CheckInRecordRepository checkInRecordRepository;
     private final InvoiceRepository invoiceRepository;
     private final PaymentRepository paymentRepository;
+    private final ServiceUsageRepository serviceUsageRepository;
+    private final InventoryServiceRepository inventoryServiceRepository;
     private final ObjectMapper objectMapper;
     private final String bankName;
     private final String accountNumber;
@@ -48,6 +50,8 @@ public class SePayPaymentServiceImpl implements SePayPaymentService {
             CheckInRecordRepository checkInRecordRepository,
             InvoiceRepository invoiceRepository,
             PaymentRepository paymentRepository,
+            ServiceUsageRepository serviceUsageRepository,
+            InventoryServiceRepository inventoryServiceRepository,
             ObjectMapper objectMapper,
             @Value("${sepay.bank-name:}") String bankName,
             @Value("${sepay.account-number:}") String accountNumber,
@@ -62,6 +66,8 @@ public class SePayPaymentServiceImpl implements SePayPaymentService {
         this.checkInRecordRepository = checkInRecordRepository;
         this.invoiceRepository = invoiceRepository;
         this.paymentRepository = paymentRepository;
+        this.serviceUsageRepository = serviceUsageRepository;
+        this.inventoryServiceRepository = inventoryServiceRepository;
         this.objectMapper = objectMapper;
         this.bankName = bankName;
         this.accountNumber = accountNumber;
@@ -239,10 +245,32 @@ public class SePayPaymentServiceImpl implements SePayPaymentService {
         checkInRecordRepository.saveAll(records);
 
         List<BookingDetail> details = bookingDetailRepository.findByBookingId(booking.getId());
+        restoreInventoryServices(details);
         details.forEach(detail -> detail.setStatus("COMPLETED"));
         bookingDetailRepository.saveAll(details);
         booking.setStatus("COMPLETED");
         bookingRepository.save(booking);
+    }
+
+    private void restoreInventoryServices(List<BookingDetail> details) {
+        List<Long> detailIds = details.stream().map(BookingDetail::getId).toList();
+        if (detailIds.isEmpty()) {
+            return;
+        }
+        bookingServiceItemRepository.findByBookingDetailIds(detailIds).stream()
+                .filter(item -> item.getInventoryService() != null)
+                .forEach(item -> restoreInventoryStock(item.getInventoryService(), item.getQuantity()));
+        detailIds.forEach(detailId -> serviceUsageRepository.findByBookingDetailIdForAdmin(detailId).stream()
+                .filter(usage -> usage.getInventoryService() != null)
+                .forEach(usage -> restoreInventoryStock(usage.getInventoryService(), usage.getQuantity())));
+    }
+
+    private void restoreInventoryStock(InventoryService service, Integer quantity) {
+        if (service == null || service.getQuantityInStock() == null || quantity == null || quantity <= 0) {
+            return;
+        }
+        service.setQuantityInStock(service.getQuantityInStock() + quantity);
+        inventoryServiceRepository.save(service);
     }
 
     private BigDecimal calculateRequiredPayment(Booking booking, List<BookingDetail> details, BigDecimal totalAmount) {

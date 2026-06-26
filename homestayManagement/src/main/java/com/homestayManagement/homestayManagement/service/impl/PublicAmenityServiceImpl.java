@@ -128,9 +128,10 @@ public class PublicAmenityServiceImpl implements PublicAmenityService {
         if (item.getQuantity() + request.quantity() > 20) {
             throw new IllegalArgumentException("Mỗi dịch vụ chỉ được chọn tối đa 20 lần cho một booking");
         }
-        validateInventoryStock(selected, item.getQuantity() + request.quantity());
+        validateInventoryStock(selected, request.quantity());
         item.setQuantity(item.getQuantity() + request.quantity());
         item = bookingServiceItemRepository.save(item);
+        decreaseInventoryStock(selected.inventoryService(), request.quantity());
 
         BigDecimal addedAmount = selected.price().multiply(BigDecimal.valueOf(request.quantity()));
         invoiceRepository.findByBookingIdForAdmin(bookingId).ifPresent(invoice -> updateInvoice(invoice, addedAmount));
@@ -198,6 +199,14 @@ public class PublicAmenityServiceImpl implements PublicAmenityService {
                 ELIGIBLE_STATUSES.contains(normalize(detail.getStatus()))
                         && detail.getCheckOutTarget() != null
                         && detail.getCheckOutTarget().isAfter(now));
+    }
+
+    private void decreaseInventoryStock(InventoryService inventoryService, int quantity) {
+        if (inventoryService == null || inventoryService.getQuantityInStock() == null) {
+            return;
+        }
+        inventoryService.setQuantityInStock(inventoryService.getQuantityInStock() - quantity);
+        inventoryServiceRepository.save(inventoryService);
     }
 
     private EligibleServiceBookingResponse toEligibleResponse(List<BookingDetail> details) {

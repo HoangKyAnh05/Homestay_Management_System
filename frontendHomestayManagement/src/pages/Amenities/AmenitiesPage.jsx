@@ -328,14 +328,27 @@ function AmenitiesPage() {
     setModalLoading(true)
     setModalError('')
     try {
+      const selectedType = normalizeServiceType(selectedService.type)
+      const addedQuantity = Number(quantity)
       const response = await fetch(`${API_BASE_URL}/amenities/bookings/${selectedBookingId}/services`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ serviceId: selectedService.id, type: normalizeServiceType(selectedService.type), quantity: Number(quantity) }),
+        body: JSON.stringify({ serviceId: selectedService.id, type: selectedType, quantity: addedQuantity }),
       })
       const data = await response.json().catch(() => ({}))
       if (!response.ok) throw new Error(data.message || 'Không thể thêm dịch vụ vào đơn đặt phòng.')
       window.sessionStorage.removeItem(PENDING_SERVICE_KEY)
+      if (selectedType === 'INVENTORY') {
+        setDatabaseServices(services => services
+          .map(service => {
+            const sameService = service.id === selectedService.id && normalizeServiceType(service.type) === selectedType
+            if (!sameService || service.quantityInStock == null) return service
+            return { ...service, quantityInStock: Math.max(0, Number(service.quantityInStock || 0) - addedQuantity) }
+          })
+          .filter(service => normalizeServiceType(service.type) !== 'INVENTORY'
+            || service.quantityInStock == null
+            || Number(service.quantityInStock) > 0))
+      }
       setSelectedService(null)
       setSuccessMessage(`Đã thêm ${data.serviceName} vào booking #${data.bookingId}.`)
     } catch (error) {
