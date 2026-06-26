@@ -7,6 +7,7 @@ public record PublicServiceOptionResponse(
         String name,
         BigDecimal price,
         String type,
-        Integer quantityInStock
+        Integer quantityInStock,
+        String imageUrl
 ) {
 }

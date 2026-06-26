@@ -14,6 +14,18 @@ function formatPrice(price) {
   return new Intl.NumberFormat('vi-VN').format(Number(price || 0)) + 'đ'
 }
 
+function serviceKey(service) {
+  return `${service.type}-${service.id}`
+}
+
+function serviceUnit(type) {
+  return String(type || '').toUpperCase() === 'INVENTORY' ? 'lượt' : 'người'
+}
+
+function serviceTypeLabel(type) {
+  return String(type || '').toUpperCase() === 'INVENTORY' ? 'Thuê đồ' : 'Tiện ích'
+}
+
 function roomPrice(room) {
   return Number(room.price ?? room.weekdayPrice ?? room.weekendPrice ?? 0)
 }
@@ -373,6 +385,7 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
   const [serviceOptions, setServiceOptions] = useState([])
   const [selectedServices, setSelectedServices] = useState([])
   const [serviceForm, setServiceForm] = useState({ optionKey: '', quantity: 1 })
+  const [servicePickerOpen, setServicePickerOpen] = useState(false)
   const [loadingMeta, setLoadingMeta] = useState(true)
   const [checkingSchedule, setCheckingSchedule] = useState(false)
   const [scheduleError, setScheduleError] = useState('')
@@ -476,6 +489,7 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
   }))
   const roomTotal = roomPriceItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
   const serviceTotal = selectedServices.reduce((sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 0), 0)
+  const selectedServiceOption = serviceOptions.find((item) => serviceKey(item) === serviceForm.optionKey)
 
   useEffect(() => {
     if (selectedRooms.some((room) => !room.roomId)) {
@@ -624,7 +638,7 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
   }
 
   const addService = () => {
-    const option = serviceOptions.find((item) => `${item.type}-${item.id}` === serviceForm.optionKey)
+    const option = serviceOptions.find((item) => serviceKey(item) === serviceForm.optionKey)
     if (!option) return
     const quantity = Number(serviceForm.quantity || 1)
     setSelectedServices((current) => {
@@ -632,9 +646,17 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
       if (existing) {
         return current.map((item) => item === existing ? { ...item, quantity: item.quantity + quantity } : item)
       }
-      return [...current, { type: option.type, serviceId: option.id, name: option.name, price: option.price, quantity }]
+      return [...current, {
+        type: option.type,
+        serviceId: option.id,
+        name: option.name,
+        price: option.price,
+        quantity,
+        imageUrl: option.imageUrl,
+      }]
     })
     setServiceForm({ optionKey: '', quantity: 1 })
+    setServicePickerOpen(false)
   }
 
   const submit = (event) => {
@@ -825,17 +847,70 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
           <section>
             <h3>Dịch vụ đi kèm</h3>
             <div className="public-service-add">
-              <select value={serviceForm.optionKey} onChange={(e) => setServiceForm({ ...serviceForm, optionKey: e.target.value })}>
-                <option value="">Chọn dịch vụ</option>
-                {serviceOptions.map((service) => <option key={`${service.type}-${service.id}`} value={`${service.type}-${service.id}`}>{service.name} · {formatPrice(service.price)}</option>)}
-              </select>
+              <div className="public-service-picker">
+                <button
+                  type="button"
+                  className="public-service-picker-trigger"
+                  onClick={() => setServicePickerOpen((open) => !open)}
+                >
+                  {selectedServiceOption ? (
+                    <>
+                      <span className="public-service-avatar">
+                        {selectedServiceOption.imageUrl ? (
+                          <img src={resolveImageUrl(selectedServiceOption.imageUrl)} alt={selectedServiceOption.name} />
+                        ) : selectedServiceOption.name?.charAt(0)}
+                      </span>
+                      <span>
+                        <strong>{selectedServiceOption.name}</strong>
+                        <small>{formatPrice(selectedServiceOption.price)} / {serviceUnit(selectedServiceOption.type)}</small>
+                      </span>
+                    </>
+                  ) : <span>Chọn dịch vụ</span>}
+                  <b>⌄</b>
+                </button>
+                {servicePickerOpen && (
+                  <div className="public-service-options">
+                    {serviceOptions.map((service) => (
+                      <button
+                        key={serviceKey(service)}
+                        type="button"
+                        className={serviceForm.optionKey === serviceKey(service) ? 'selected' : ''}
+                        onClick={() => {
+                          setServiceForm({ ...serviceForm, optionKey: serviceKey(service) })
+                          setServicePickerOpen(false)
+                        }}
+                      >
+                        <span className="public-service-avatar">
+                          {service.imageUrl ? (
+                            <img src={resolveImageUrl(service.imageUrl)} alt={service.name} />
+                          ) : service.name?.charAt(0)}
+                        </span>
+                        <span>
+                          <strong>{service.name}</strong>
+                          <small>{serviceTypeLabel(service.type)} · {formatPrice(service.price)} / {serviceUnit(service.type)}</small>
+                        </span>
+                        {String(service.type).toUpperCase() === 'INVENTORY' && (
+                          <em>{service.quantityInStock} còn lại</em>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
               <input type="number" min="1" value={serviceForm.quantity} onChange={(e) => setServiceForm({ ...serviceForm, quantity: e.target.value })} />
               <button type="button" onClick={addService} disabled={!serviceForm.optionKey}>Thêm</button>
             </div>
             <div className="public-service-list">
               {selectedServices.length ? selectedServices.map((service) => (
                 <div key={`${service.type}-${service.serviceId}`}>
-                  <span>{service.name} × {service.quantity}</span>
+                  <span className="public-service-selected-name">
+                    <span className="public-service-avatar">
+                      {service.imageUrl ? (
+                        <img src={resolveImageUrl(service.imageUrl)} alt={service.name} />
+                      ) : service.name?.charAt(0)}
+                    </span>
+                    <span>{service.name} × {service.quantity}<small>{formatPrice(service.price)} / {serviceUnit(service.type)}</small></span>
+                  </span>
                   <strong>{formatPrice(Number(service.price) * service.quantity)}</strong>
                   <button type="button" onClick={() => setSelectedServices((current) => current.filter((item) => item !== service))}>×</button>
                 </div>

@@ -90,11 +90,11 @@ public class PublicBookingServiceImpl implements PublicBookingService {
     public List<PublicServiceOptionResponse> getServiceOptions() {
         List<PublicServiceOptionResponse> facilities = facilityServiceRepository.findAll().stream()
                 .filter(FacilityService::isActive)
-                .map(service -> new PublicServiceOptionResponse(service.getId(), service.getName(), service.getPrice(), "FACILITY", null))
+                .map(service -> new PublicServiceOptionResponse(service.getId(), service.getName(), service.getPrice(), "FACILITY", null, service.getImageUrl()))
                 .toList();
         List<PublicServiceOptionResponse> inventories = inventoryServiceRepository.findAll().stream()
                 .filter(service -> service.getQuantityInStock() == null || service.getQuantityInStock() > 0)
-                .map(service -> new PublicServiceOptionResponse(service.getId(), service.getName(), service.getPrice(), "INVENTORY", service.getQuantityInStock()))
+                .map(service -> new PublicServiceOptionResponse(service.getId(), service.getName(), service.getPrice(), "INVENTORY", service.getQuantityInStock(), service.getImageUrl()))
                 .toList();
         return java.util.stream.Stream.concat(facilities.stream(), inventories.stream())
                 .sorted(Comparator.comparing(PublicServiceOptionResponse::name, Comparator.nullsLast(String::compareToIgnoreCase)))

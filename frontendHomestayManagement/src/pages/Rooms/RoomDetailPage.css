@@ -552,6 +552,129 @@
   background: #1f4328;
 }
 
+.public-service-picker {
+  position: relative;
+  min-width: 0;
+}
+
+.public-service-add .public-service-picker-trigger,
+.public-service-add .public-service-options button {
+  width: 100%;
+  height: auto;
+  min-height: 42px;
+  color: #111827;
+  background: #ffffff;
+  border: 1px solid #cfd6df;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.public-service-picker-trigger {
+  padding: 6px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  text-align: left;
+}
+
+.public-service-picker-trigger > span:not(.public-service-avatar) {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+  flex: 1;
+}
+
+.public-service-picker-trigger strong,
+.public-service-options strong {
+  overflow: hidden;
+  color: #111827;
+  font-size: 14px;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.public-service-picker-trigger small,
+.public-service-options small,
+.public-service-selected-name small {
+  display: block;
+  margin-top: 2px;
+  color: #6b7280;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.public-service-picker-trigger b {
+  color: #6b7280;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.public-service-avatar {
+  width: 42px;
+  height: 42px;
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 42px;
+  overflow: hidden;
+  color: #1f4328;
+  background: #e8f6ee;
+  border: 1px solid #d5e5dc;
+  border-radius: 50%;
+  font-size: 15px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.public-service-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.public-service-options {
+  position: absolute;
+  z-index: 20;
+  inset: calc(100% + 6px) 0 auto 0;
+  max-height: 260px;
+  padding: 8px;
+  display: grid;
+  gap: 6px;
+  overflow: auto;
+  background: #ffffff;
+  border: 1px solid #d9dee5;
+  border-radius: 12px;
+  box-shadow: 0 14px 38px rgba(15, 23, 42, 0.14);
+}
+
+.public-service-add .public-service-options button {
+  padding: 8px;
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+}
+
+.public-service-add .public-service-options button:hover,
+.public-service-add .public-service-options button.selected {
+  border-color: #1f4328;
+  background: #f0fbf4;
+}
+
+.public-service-options em {
+  padding: 5px 8px;
+  color: #15573a;
+  background: #dcfce7;
+  border-radius: 999px;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
 .public-service-add button:disabled,
 .public-booking-actions button:disabled {
   opacity: 0.58;
@@ -579,6 +702,18 @@
 .public-service-list span {
   color: #111827;
   font-weight: 700;
+}
+
+.public-service-selected-name {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.public-service-selected-name > span:last-child {
+  min-width: 0;
+  display: block;
 }
 
 .public-service-list strong {
