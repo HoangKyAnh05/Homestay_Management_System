@@ -6,12 +6,32 @@
 SET @sample_password = '$2y$10$EvH9B1Gbc3TeokB1KdBCk.2YER5zQS7tRJjrGuCo3pk/JN0v2Lwim';
 SET @today = CURDATE();
 SET @yesterday = DATE_SUB(@today, INTERVAL 1 DAY);
+SET @two_days_ago = DATE_SUB(@today, INTERVAL 2 DAY);
+SET @three_days_ago = DATE_SUB(@today, INTERVAL 3 DAY);
 SET @tomorrow = DATE_ADD(@today, INTERVAL 1 DAY);
 SET @next_day = DATE_ADD(@today, INTERVAL 2 DAY);
 
+SET @three_days_0800 = TIMESTAMP(@three_days_ago, '08:00:00');
+SET @three_days_0900 = TIMESTAMP(@three_days_ago, '09:00:00');
+SET @three_days_1000 = TIMESTAMP(@three_days_ago, '10:00:00');
+SET @two_days_0800 = TIMESTAMP(@two_days_ago, '08:00:00');
+SET @two_days_0900 = TIMESTAMP(@two_days_ago, '09:00:00');
+SET @two_days_1000 = TIMESTAMP(@two_days_ago, '10:00:00');
+SET @two_days_1100 = TIMESTAMP(@two_days_ago, '11:00:00');
+SET @two_days_1200 = TIMESTAMP(@two_days_ago, '12:00:00');
+SET @two_days_1300 = TIMESTAMP(@two_days_ago, '13:00:00');
+SET @two_days_1400 = TIMESTAMP(@two_days_ago, '14:00:00');
+SET @two_days_1800 = TIMESTAMP(@two_days_ago, '18:00:00');
+SET @two_days_1900 = TIMESTAMP(@two_days_ago, '19:00:00');
 SET @yesterday_0800 = TIMESTAMP(@yesterday, '08:00:00');
 SET @yesterday_0900 = TIMESTAMP(@yesterday, '09:00:00');
 SET @yesterday_1000 = TIMESTAMP(@yesterday, '10:00:00');
+SET @yesterday_1100 = TIMESTAMP(@yesterday, '11:00:00');
+SET @yesterday_1200 = TIMESTAMP(@yesterday, '12:00:00');
+SET @yesterday_1300 = TIMESTAMP(@yesterday, '13:00:00');
+SET @yesterday_1500 = TIMESTAMP(@yesterday, '15:00:00');
+SET @yesterday_1800 = TIMESTAMP(@yesterday, '18:00:00');
+SET @yesterday_2000 = TIMESTAMP(@yesterday, '20:00:00');
 SET @today_0800 = TIMESTAMP(@today, '08:00:00');
 SET @today_0900 = TIMESTAMP(@today, '09:00:00');
 SET @today_1000 = TIMESTAMP(@today, '10:00:00');
@@ -196,11 +216,11 @@ ON DUPLICATE KEY UPDATE room_id = VALUES(room_id), image_url = VALUES(image_url)
 -- 9. room_schedules - 5 rows
 -- ============================================================
 INSERT INTO room_schedules (id, room_id, start_time, end_time, status, note) VALUES
-(1, 1, @today_1400, @tomorrow_1100, 'AVAILABLE', 'Booking detail 1 da hoan tat check-out'),
-(2, 2, @today_1400, @tomorrow_1100, 'AVAILABLE', 'Booking detail 2 da hoan tat check-out'),
-(3, 3, @today_1000, @tomorrow_1200, 'AVAILABLE', 'Booking detail 3 da hoan tat check-out'),
-(4, 4, @today_0800, @today_1200, 'AVAILABLE', 'Booking detail 4 da hoan tat check-out'),
-(5, 5, @today_1900, @next_day_1100, 'AVAILABLE', 'Booking detail 5 da hoan tat check-out')
+(1, 1, @two_days_1400, @yesterday_1100, 'AVAILABLE', 'Booking detail 1 da hoan tat check-out'),
+(2, 2, @two_days_1400, @yesterday_1100, 'AVAILABLE', 'Booking detail 2 da hoan tat check-out'),
+(3, 3, @two_days_1000, @yesterday_1200, 'AVAILABLE', 'Booking detail 3 da hoan tat check-out'),
+(4, 4, @two_days_0800, @two_days_1200, 'AVAILABLE', 'Booking detail 4 da hoan tat check-out'),
+(5, 5, @two_days_1900, @yesterday_1100, 'AVAILABLE', 'Booking detail 5 da hoan tat check-out')
 ON DUPLICATE KEY UPDATE room_id = VALUES(room_id), start_time = VALUES(start_time), end_time = VALUES(end_time), status = VALUES(status), note = VALUES(note);
 
 -- ============================================================
@@ -229,11 +249,11 @@ ON DUPLICATE KEY UPDATE room_type_id = VALUES(room_type_id), price_policy_id = V
 -- 12. bookings - 5 rows
 -- ============================================================
 INSERT INTO bookings (id, customer_id, deposit_policy_id, booking_date, status) VALUES
-(1, 3, 2, @yesterday_0900, 'COMPLETED'),
-(2, 6, 3, @yesterday_1000, 'COMPLETED'),
-(3, 7, 3, @today_0800, 'COMPLETED'),
-(4, 8, 4, @today_0900, 'COMPLETED'),
-(5, 9, 5, @today_1000, 'COMPLETED')
+(1, 3, 2, @three_days_0900, 'COMPLETED'),
+(2, 6, 3, @three_days_1000, 'COMPLETED'),
+(3, 7, 3, @three_days_0800, 'COMPLETED'),
+(4, 8, 4, @three_days_0900, 'COMPLETED'),
+(5, 9, 5, @three_days_1000, 'COMPLETED')
 ON DUPLICATE KEY UPDATE customer_id = VALUES(customer_id), deposit_policy_id = VALUES(deposit_policy_id), booking_date = VALUES(booking_date), status = VALUES(status);
 
 -- ============================================================
@@ -245,11 +265,11 @@ INSERT INTO booking_details (
     check_in_target, check_out_target, number_of_adults, number_of_children,
     price_at_booking, rent_type, room_assignment_status, assigned_at, status
 ) VALUES
-(1, 1, 1, 1, 2, @today_1400, @tomorrow_1100, 2, 0, 500000.00, 'DAILY', 'ASSIGNED', @today_1300, 'COMPLETED'),
-(2, 2, 2, 2, 2, @today_1400, @tomorrow_1100, 2, 1, 800000.00, 'DAILY', 'ASSIGNED', @today_1300, 'COMPLETED'),
-(3, 3, 3, 3, 3, @today_1000, @tomorrow_1200, 2, 2, 1200000.00, 'DAILY', 'ASSIGNED', @today_0900, 'COMPLETED'),
-(4, 4, 4, 4, 2, @today_0800, @today_1200, 2, 0, 700000.00, 'COMBO', 'ASSIGNED', @today_0800, 'COMPLETED'),
-(5, 5, 5, 5, 3, @today_1900, @next_day_1100, 4, 2, 1500000.00, 'OVERNIGHT', 'ASSIGNED', @today_1800, 'COMPLETED')
+(1, 1, 1, 1, 2, @two_days_1400, @yesterday_1100, 2, 0, 500000.00, 'DAILY', 'ASSIGNED', @two_days_1300, 'COMPLETED'),
+(2, 2, 2, 2, 2, @two_days_1400, @yesterday_1100, 2, 1, 800000.00, 'DAILY', 'ASSIGNED', @two_days_1300, 'COMPLETED'),
+(3, 3, 3, 3, 3, @two_days_1000, @yesterday_1200, 2, 2, 1200000.00, 'DAILY', 'ASSIGNED', @two_days_0900, 'COMPLETED'),
+(4, 4, 4, 4, 2, @two_days_0800, @two_days_1200, 2, 0, 700000.00, 'COMBO', 'ASSIGNED', @two_days_0800, 'COMPLETED'),
+(5, 5, 5, 5, 3, @two_days_1900, @yesterday_1100, 4, 2, 1500000.00, 'OVERNIGHT', 'ASSIGNED', @two_days_1800, 'COMPLETED')
 ON DUPLICATE KEY UPDATE booking_id = VALUES(booking_id), room_type_id = VALUES(room_type_id), room_id = VALUES(room_id), assigned_by_employee_id = VALUES(assigned_by_employee_id), check_in_target = VALUES(check_in_target), check_out_target = VALUES(check_out_target), number_of_adults = VALUES(number_of_adults), number_of_children = VALUES(number_of_children), price_at_booking = VALUES(price_at_booking), rent_type = VALUES(rent_type), room_assignment_status = VALUES(room_assignment_status), assigned_at = VALUES(assigned_at), status = VALUES(status);
 
 -- ============================================================
@@ -261,11 +281,11 @@ INSERT INTO booking_guests (
     identity_document_number, date_of_birth, gender, nationality, phone,
     address, is_primary_guest, verified_by_employee_id, verified_at, note
 ) VALUES
-(1, 1, 1, 'Nguyen Van An', 'CCCD', '079095000001', '1995-03-15', 'MALE', 'VIETNAM', '0900000001', 'Quan 1, TP Ho Chi Minh', TRUE, 2, @today_1300, 'Khach da hoan tat check-out'),
-(2, 2, 2, 'Nguyen Khanh Linh', 'CCCD', '068098000002', '1998-07-21', 'FEMALE', 'VIETNAM', '0900000002', 'Da Lat, Lam Dong', TRUE, 2, @today_1400, 'Khach da hoan tat check-out'),
-(3, 3, 3, 'Tran Duc Minh', 'CCCD', '056092000003', '1992-11-09', 'MALE', 'VIETNAM', '0900000003', 'Nha Trang, Khanh Hoa', TRUE, 3, @today_1000, 'Khach da hoan tat check-out'),
-(4, 4, 4, 'Pham Minh Thao', 'CCCD', '079099000004', '1999-02-24', 'FEMALE', 'VIETNAM', '0900000004', 'Thu Duc, TP Ho Chi Minh', TRUE, 2, @today_0800, 'Khach da hoan tat check-out'),
-(5, 5, 5, 'Le Anh Khoa', 'CCCD', '048090000005', '1990-10-02', 'MALE', 'VIETNAM', '0900000005', 'Hoi An, Quang Nam', TRUE, 3, @today_1800, 'Khach da hoan tat check-out')
+(1, 1, 1, 'Nguyen Van An', 'CCCD', '079095000001', '1995-03-15', 'MALE', 'VIETNAM', '0900000001', 'Quan 1, TP Ho Chi Minh', TRUE, 2, @two_days_1400, 'Khach da hoan tat check-out'),
+(2, 2, 2, 'Nguyen Khanh Linh', 'CCCD', '068098000002', '1998-07-21', 'FEMALE', 'VIETNAM', '0900000002', 'Da Lat, Lam Dong', TRUE, 2, @two_days_1400, 'Khach da hoan tat check-out'),
+(3, 3, 3, 'Tran Duc Minh', 'CCCD', '056092000003', '1992-11-09', 'MALE', 'VIETNAM', '0900000003', 'Nha Trang, Khanh Hoa', TRUE, 3, @two_days_1000, 'Khach da hoan tat check-out'),
+(4, 4, 4, 'Pham Minh Thao', 'CCCD', '079099000004', '1999-02-24', 'FEMALE', 'VIETNAM', '0900000004', 'Thu Duc, TP Ho Chi Minh', TRUE, 2, @two_days_0800, 'Khach da hoan tat check-out'),
+(5, 5, 5, 'Le Anh Khoa', 'CCCD', '048090000005', '1990-10-02', 'MALE', 'VIETNAM', '0900000005', 'Hoi An, Quang Nam', TRUE, 3, @two_days_1900, 'Khach da hoan tat check-out')
 ON DUPLICATE KEY UPDATE booking_id = VALUES(booking_id), booking_detail_id = VALUES(booking_detail_id), full_name = VALUES(full_name), identity_document_type = VALUES(identity_document_type), identity_document_number = VALUES(identity_document_number), date_of_birth = VALUES(date_of_birth), gender = VALUES(gender), nationality = VALUES(nationality), phone = VALUES(phone), address = VALUES(address), is_primary_guest = VALUES(is_primary_guest), verified_by_employee_id = VALUES(verified_by_employee_id), verified_at = VALUES(verified_at), note = VALUES(note);
 
 -- ============================================================
@@ -275,15 +295,74 @@ INSERT INTO check_in_records (
     id, booking_detail_id, customer_id, housekeeping_id, receptionist_id,
     actual_check_in, actual_check_out, early_check_in_fee, late_check_out_fee
 ) VALUES
-(1, 1, 3, 4, 2, @today_1400, @today_1800, 0.00, 0.00),
-(2, 2, 6, 4, 2, @today_1400, @today_1800, 0.00, 0.00),
-(3, 3, 7, 4, 3, @today_1000, @today_1200, 0.00, 0.00),
-(4, 4, 8, 4, 2, @today_0800, @today_1200, 0.00, 100000.00),
-(5, 5, 9, 4, 3, @today_1900, @today_2000, 0.00, 0.00)
+(1, 1, 3, 4, 2, @two_days_1400, @yesterday_1100, 0.00, 0.00),
+(2, 2, 6, 4, 2, @two_days_1400, @yesterday_1100, 0.00, 0.00),
+(3, 3, 7, 4, 3, @two_days_1000, @yesterday_1200, 0.00, 0.00),
+(4, 4, 8, 4, 2, @two_days_0800, @two_days_1200, 0.00, 100000.00),
+(5, 5, 9, 4, 3, @two_days_1900, @yesterday_1100, 0.00, 0.00)
 ON DUPLICATE KEY UPDATE booking_detail_id = VALUES(booking_detail_id), customer_id = VALUES(customer_id), housekeeping_id = VALUES(housekeeping_id), receptionist_id = VALUES(receptionist_id), actual_check_in = VALUES(actual_check_in), actual_check_out = VALUES(actual_check_out), early_check_in_fee = VALUES(early_check_in_fee), late_check_out_fee = VALUES(late_check_out_fee);
 
 -- ============================================================
--- 16. facility_services - 5 rows
+-- 16. housekeeping_tasks - 5 rows
+-- Inspection and cleaning are completed so every checked-out room is available.
+-- ============================================================
+INSERT INTO housekeeping_tasks (
+    id, check_in_record_id, room_id, requested_by_employee_id, assigned_housekeeping_id,
+    inspection_status, cleaning_status, note, requested_at, started_at,
+    inspection_completed_at, cleaning_completed_at, version, created_at, updated_at
+) VALUES
+(1, 1, 1, 2, 4, 'COMPLETED', 'COMPLETED', 'Phong 101 da kiem tra va don dep sau check-out', @yesterday_1000, @yesterday_1000, @yesterday_1100, @yesterday_1200, 0, @yesterday_1000, @yesterday_1200),
+(2, 2, 2, 2, 4, 'COMPLETED', 'COMPLETED', 'Phong 102 da kiem tra va don dep sau check-out', @yesterday_1000, @yesterday_1000, @yesterday_1100, @yesterday_1200, 0, @yesterday_1000, @yesterday_1200),
+(3, 3, 3, 3, 4, 'COMPLETED', 'COMPLETED', 'Phong 201 da kiem tra va don dep sau check-out', @yesterday_1100, @yesterday_1100, @yesterday_1200, @yesterday_1300, 0, @yesterday_1100, @yesterday_1300),
+(4, 4, 4, 2, 4, 'COMPLETED', 'COMPLETED', 'Phong 202 da kiem tra va don dep sau check-out', @two_days_1100, @two_days_1100, @two_days_1200, @two_days_1300, 0, @two_days_1100, @two_days_1300),
+(5, 5, 5, 3, 4, 'COMPLETED', 'COMPLETED', 'Phong 301 da kiem tra va don dep sau check-out', @yesterday_1000, @yesterday_1000, @yesterday_1100, @yesterday_1200, 0, @yesterday_1000, @yesterday_1200)
+ON DUPLICATE KEY UPDATE check_in_record_id = VALUES(check_in_record_id), room_id = VALUES(room_id), requested_by_employee_id = VALUES(requested_by_employee_id), assigned_housekeeping_id = VALUES(assigned_housekeeping_id), inspection_status = VALUES(inspection_status), cleaning_status = VALUES(cleaning_status), note = VALUES(note), requested_at = VALUES(requested_at), started_at = VALUES(started_at), inspection_completed_at = VALUES(inspection_completed_at), cleaning_completed_at = VALUES(cleaning_completed_at), version = VALUES(version), created_at = VALUES(created_at), updated_at = VALUES(updated_at);
+
+-- ============================================================
+-- 17. housekeeping_checklist_templates - 5 rows
+-- One default checklist for each room type.
+-- ============================================================
+INSERT INTO housekeeping_checklist_templates (
+    id, room_type_id, room_id, name, is_active, version, created_at, updated_at
+) VALUES
+(1, 1, NULL, 'Checklist ve sinh Studio', TRUE, 0, @three_days_0800, @three_days_0800),
+(2, 2, NULL, 'Checklist ve sinh Deluxe', TRUE, 0, @three_days_0800, @three_days_0800),
+(3, 3, NULL, 'Checklist ve sinh Family', TRUE, 0, @three_days_0800, @three_days_0800),
+(4, 4, NULL, 'Checklist ve sinh VIP Suite', TRUE, 0, @three_days_0800, @three_days_0800),
+(5, 5, NULL, 'Checklist ve sinh Connecting Room', TRUE, 0, @three_days_0800, @three_days_0800)
+ON DUPLICATE KEY UPDATE room_type_id = VALUES(room_type_id), room_id = VALUES(room_id), name = VALUES(name), is_active = VALUES(is_active), version = VALUES(version), created_at = VALUES(created_at), updated_at = VALUES(updated_at);
+
+-- ============================================================
+-- 18. housekeeping_checklist_items - 5 rows
+-- ============================================================
+INSERT INTO housekeeping_checklist_items (
+    id, template_id, title, description, is_required, is_active, display_order
+) VALUES
+(1, 1, 'Kiem tra va thay ga giuong', 'Thay ga, vo goi va kiem tra giuong sach se', TRUE, TRUE, 1),
+(2, 2, 'Ve sinh phong tam', 'Lam sach bon rua, guong va san phong tam', TRUE, TRUE, 1),
+(3, 3, 'Ve sinh san va khu sinh hoat', 'Hut bui, lau san va sap xep noi that', TRUE, TRUE, 1),
+(4, 4, 'Kiem tra tien nghi VIP', 'Kiem tra day du tien nghi va vat dung cao cap', TRUE, TRUE, 1),
+(5, 5, 'Kiem tra hai khu phong', 'Ve sinh va kiem tra cua ket noi giua hai phong', TRUE, TRUE, 1)
+ON DUPLICATE KEY UPDATE template_id = VALUES(template_id), title = VALUES(title), description = VALUES(description), is_required = VALUES(is_required), is_active = VALUES(is_active), display_order = VALUES(display_order);
+
+-- ============================================================
+-- 19. housekeeping_task_checklist_items - 5 rows
+-- Snapshot results prove that all required cleaning work was completed.
+-- ============================================================
+INSERT INTO housekeeping_task_checklist_items (
+    id, housekeeping_task_id, source_template_item_id, title_snapshot,
+    description_snapshot, is_required, display_order, is_completed,
+    completed_by_employee_id, completed_at
+) VALUES
+(1, 1, 1, 'Kiem tra va thay ga giuong', 'Thay ga, vo goi va kiem tra giuong sach se', TRUE, 1, TRUE, 4, @yesterday_1200),
+(2, 2, 2, 'Ve sinh phong tam', 'Lam sach bon rua, guong va san phong tam', TRUE, 1, TRUE, 4, @yesterday_1200),
+(3, 3, 3, 'Ve sinh san va khu sinh hoat', 'Hut bui, lau san va sap xep noi that', TRUE, 1, TRUE, 4, @yesterday_1300),
+(4, 4, 4, 'Kiem tra tien nghi VIP', 'Kiem tra day du tien nghi va vat dung cao cap', TRUE, 1, TRUE, 4, @two_days_1300),
+(5, 5, 5, 'Kiem tra hai khu phong', 'Ve sinh va kiem tra cua ket noi giua hai phong', TRUE, 1, TRUE, 4, @yesterday_1200)
+ON DUPLICATE KEY UPDATE housekeeping_task_id = VALUES(housekeeping_task_id), source_template_item_id = VALUES(source_template_item_id), title_snapshot = VALUES(title_snapshot), description_snapshot = VALUES(description_snapshot), is_required = VALUES(is_required), display_order = VALUES(display_order), is_completed = VALUES(is_completed), completed_by_employee_id = VALUES(completed_by_employee_id), completed_at = VALUES(completed_at);
+
+-- ============================================================
+-- 20. facility_services - 5 rows
 -- ============================================================
 INSERT INTO facility_services (id, name, price, is_active) VALUES
 (1, 'Ve be boi', 80000.00, TRUE),
@@ -294,7 +373,7 @@ INSERT INTO facility_services (id, name, price, is_active) VALUES
 ON DUPLICATE KEY UPDATE name = VALUES(name), price = VALUES(price), is_active = VALUES(is_active);
 
 -- ============================================================
--- 17. inventory_services - 5 rows
+-- 21. inventory_services - 5 rows
 -- ============================================================
 INSERT INTO inventory_services (id, name, price, quantity_in_stock) VALUES
 (1, 'Thue xe dap', 50000.00, 12),
@@ -305,7 +384,7 @@ INSERT INTO inventory_services (id, name, price, quantity_in_stock) VALUES
 ON DUPLICATE KEY UPDATE name = VALUES(name), price = VALUES(price), quantity_in_stock = VALUES(quantity_in_stock);
 
 -- ============================================================
--- 18. booking_service_items - 5 rows
+-- 22. booking_service_items - 5 rows
 -- ============================================================
 INSERT INTO booking_service_items (id, booking_detail_id, facility_service_id, inventory_service_id, quantity, price_at_booking) VALUES
 (1, 1, 4, NULL, 2, 120000.00),
@@ -316,7 +395,7 @@ INSERT INTO booking_service_items (id, booking_detail_id, facility_service_id, i
 ON DUPLICATE KEY UPDATE booking_detail_id = VALUES(booking_detail_id), facility_service_id = VALUES(facility_service_id), inventory_service_id = VALUES(inventory_service_id), quantity = VALUES(quantity), price_at_booking = VALUES(price_at_booking);
 
 -- ============================================================
--- 19. room_mini_bar_items - 5 rows
+-- 23. room_mini_bar_items - 5 rows
 -- ============================================================
 INSERT INTO room_mini_bar_items (id, name, price, quantity_in_stock) VALUES
 (1, 'Nuoc suoi', 10000.00, 200),
@@ -327,7 +406,7 @@ INSERT INTO room_mini_bar_items (id, name, price, quantity_in_stock) VALUES
 ON DUPLICATE KEY UPDATE name = VALUES(name), price = VALUES(price), quantity_in_stock = VALUES(quantity_in_stock);
 
 -- ============================================================
--- 20. service_usages - 5 rows
+-- 24. service_usages - 5 rows
 -- ============================================================
 INSERT INTO service_usages (id, check_in_record_id, facility_service_id, inventory_service_id, quantity, price_at_use) VALUES
 (1, 1, 4, NULL, 2, 120000.00),
@@ -338,7 +417,7 @@ INSERT INTO service_usages (id, check_in_record_id, facility_service_id, invento
 ON DUPLICATE KEY UPDATE check_in_record_id = VALUES(check_in_record_id), facility_service_id = VALUES(facility_service_id), inventory_service_id = VALUES(inventory_service_id), quantity = VALUES(quantity), price_at_use = VALUES(price_at_use);
 
 -- ============================================================
--- 21. room_amenities_usage - 5 rows
+-- 25. room_amenities_usage - 5 rows
 -- ============================================================
 INSERT INTO room_amenities_usage (id, check_in_record_id, item_id, quantity_used) VALUES
 (1, 1, 1, 2),
@@ -349,7 +428,7 @@ INSERT INTO room_amenities_usage (id, check_in_record_id, item_id, quantity_used
 ON DUPLICATE KEY UPDATE check_in_record_id = VALUES(check_in_record_id), item_id = VALUES(item_id), quantity_used = VALUES(quantity_used);
 
 -- ============================================================
--- 22. rules_penalties - 5 rows
+-- 26. rules_penalties - 5 rows
 -- ============================================================
 INSERT INTO rules_penalties (id, title, penalty_amount) VALUES
 (1, 'Hut thuoc trong phong', 500000.00),
@@ -360,7 +439,7 @@ INSERT INTO rules_penalties (id, title, penalty_amount) VALUES
 ON DUPLICATE KEY UPDATE title = VALUES(title), penalty_amount = VALUES(penalty_amount);
 
 -- ============================================================
--- 23. applied_penalties - 5 rows
+-- 27. applied_penalties - 5 rows
 -- ============================================================
 INSERT INTO applied_penalties (id, check_record_id, rules_penalty_id, actual_fine, description) VALUES
 (1, 1, 5, 0.00, 'Khach chua phat sinh phi'),
@@ -371,32 +450,32 @@ INSERT INTO applied_penalties (id, check_record_id, rules_penalty_id, actual_fin
 ON DUPLICATE KEY UPDATE check_record_id = VALUES(check_record_id), rules_penalty_id = VALUES(rules_penalty_id), actual_fine = VALUES(actual_fine), description = VALUES(description);
 
 -- ============================================================
--- 24. invoices - 5 rows
+-- 28. invoices - 5 rows
 -- ============================================================
 INSERT INTO invoices (id, booking_id, employee_id, room_charge, penalty_charge, service_charge, total_amount, created_at) VALUES
-(1, 1, 2, 500000.00, 0.00, 260000.00, 760000.00, @today_1500),
-(2, 2, 2, 800000.00, 0.00, 270000.00, 1070000.00, @today_1500),
-(3, 3, 3, 1200000.00, 500000.00, 225000.00, 1925000.00, @today_1100),
-(4, 4, 2, 700000.00, 300000.00, 70000.00, 1070000.00, @today_1300),
-(5, 5, 3, 1500000.00, 300000.00, 136000.00, 1936000.00, @today_2000)
+(1, 1, 2, 500000.00, 0.00, 260000.00, 760000.00, @yesterday_1500),
+(2, 2, 2, 800000.00, 0.00, 270000.00, 1070000.00, @yesterday_1500),
+(3, 3, 3, 1200000.00, 500000.00, 225000.00, 1925000.00, @yesterday_1300),
+(4, 4, 2, 700000.00, 300000.00, 70000.00, 1070000.00, @two_days_1300),
+(5, 5, 3, 1500000.00, 300000.00, 136000.00, 1936000.00, @yesterday_2000)
 ON DUPLICATE KEY UPDATE booking_id = VALUES(booking_id), employee_id = VALUES(employee_id), room_charge = VALUES(room_charge), penalty_charge = VALUES(penalty_charge), service_charge = VALUES(service_charge), total_amount = VALUES(total_amount), created_at = VALUES(created_at);
 
 -- ============================================================
--- 25. payments - 5 rows
+-- 29. payments - 5 rows
 -- ============================================================
 INSERT INTO payments (
     id, invoice_id, payment_method, transaction_no, payment_code,
     sepay_transaction_id, qr_code_url, payment_purpose, amount, status, payment_time
 ) VALUES
-(1, 1, 'BANK_TRANSFER', 'BANK-DEMO-0001', 'HMS000001', 100001, 'https://qr.sepay.vn/demo/HMS000001', 'CHECKOUT', 760000.00, 'SUCCESS', @today_1800),
-(2, 2, 'CASH', NULL, 'HMS000002', NULL, NULL, 'CHECKOUT', 1070000.00, 'SUCCESS', @today_1800),
-(3, 3, 'BANK_TRANSFER', 'BANK-DEMO-0003', 'HMS000003', 100003, 'https://qr.sepay.vn/demo/HMS000003', 'CHECKOUT', 1925000.00, 'SUCCESS', @today_1200),
-(4, 4, 'MOMO', 'MOMO-DEMO-0004', 'HMS000004', NULL, NULL, 'CHECKOUT', 1070000.00, 'SUCCESS', @today_1300),
-(5, 5, 'BANK_TRANSFER', 'BANK-DEMO-0005', 'HMS000005', 100005, 'https://qr.sepay.vn/demo/HMS000005', 'CHECKOUT', 1936000.00, 'SUCCESS', @today_2000)
+(1, 1, 'BANK_TRANSFER', 'BANK-DEMO-0001', 'HMS000001', 100001, 'https://qr.sepay.vn/demo/HMS000001', 'CHECKOUT', 760000.00, 'SUCCESS', @yesterday_1500),
+(2, 2, 'CASH', NULL, 'HMS000002', NULL, NULL, 'CHECKOUT', 1070000.00, 'SUCCESS', @yesterday_1500),
+(3, 3, 'BANK_TRANSFER', 'BANK-DEMO-0003', 'HMS000003', 100003, 'https://qr.sepay.vn/demo/HMS000003', 'CHECKOUT', 1925000.00, 'SUCCESS', @yesterday_1300),
+(4, 4, 'MOMO', 'MOMO-DEMO-0004', 'HMS000004', NULL, NULL, 'CHECKOUT', 1070000.00, 'SUCCESS', @two_days_1300),
+(5, 5, 'BANK_TRANSFER', 'BANK-DEMO-0005', 'HMS000005', 100005, 'https://qr.sepay.vn/demo/HMS000005', 'CHECKOUT', 1936000.00, 'SUCCESS', @yesterday_2000)
 ON DUPLICATE KEY UPDATE invoice_id = VALUES(invoice_id), payment_method = VALUES(payment_method), transaction_no = VALUES(transaction_no), payment_code = VALUES(payment_code), sepay_transaction_id = VALUES(sepay_transaction_id), qr_code_url = VALUES(qr_code_url), payment_purpose = VALUES(payment_purpose), amount = VALUES(amount), status = VALUES(status), payment_time = VALUES(payment_time);
 
 -- ============================================================
--- 26. vouchers - 5 rows
+-- 30. vouchers - 5 rows
 -- ============================================================
 INSERT INTO vouchers (id, code, discount_type, min_order_value, max_discount_amount, start_date, end_date, usage_limit, used_count, discount_value) VALUES
 (1, 'WELCOME10', 'PERCENT', 500000.00, 200000.00, TIMESTAMP(@yesterday, '00:00:00'), TIMESTAMP(DATE_ADD(@today, INTERVAL 180 DAY), '23:59:59'), 100, 5, 10.00),
@@ -407,7 +486,7 @@ INSERT INTO vouchers (id, code, discount_type, min_order_value, max_discount_amo
 ON DUPLICATE KEY UPDATE code = VALUES(code), discount_type = VALUES(discount_type), min_order_value = VALUES(min_order_value), max_discount_amount = VALUES(max_discount_amount), start_date = VALUES(start_date), end_date = VALUES(end_date), usage_limit = VALUES(usage_limit), used_count = VALUES(used_count), discount_value = VALUES(discount_value);
 
 -- ============================================================
--- 27. customer_loyalty - 5 rows
+-- 31. customer_loyalty - 5 rows
 -- ============================================================
 INSERT INTO customer_loyalty (id, customer_id, current_points, total_earned_points) VALUES
 (1, 3, 120, 500),
@@ -418,7 +497,7 @@ INSERT INTO customer_loyalty (id, customer_id, current_points, total_earned_poin
 ON DUPLICATE KEY UPDATE customer_id = VALUES(customer_id), current_points = VALUES(current_points), total_earned_points = VALUES(total_earned_points);
 
 -- ============================================================
--- 28. ai_agent_configs - 5 rows
+-- 32. ai_agent_configs - 5 rows
 -- ============================================================
 INSERT INTO ai_agent_configs (id, agent_name, system_prompt, posting_interval_hours, is_active) VALUES
 (1, 'Weekend Promo Agent', 'Viet bai quang ba phong cuoi tuan ngan gon va than thien.', 24, TRUE),
@@ -429,7 +508,7 @@ INSERT INTO ai_agent_configs (id, agent_name, system_prompt, posting_interval_ho
 ON DUPLICATE KEY UPDATE agent_name = VALUES(agent_name), system_prompt = VALUES(system_prompt), posting_interval_hours = VALUES(posting_interval_hours), is_active = VALUES(is_active);
 
 -- ============================================================
--- 29. marketing_posts - 5 rows
+-- 33. marketing_posts - 5 rows
 -- ============================================================
 INSERT INTO marketing_posts (id, platform, generated_content, media_url, scheduled_at, posted_at, status, external_post_id, creator_id, agent_config_id) VALUES
 (1, 'FACEBOOK', 'Cuoi tuan nay ghe homestay nghi duong voi phong Deluxe view vuon.', '/banner.png', @today_1800, NULL, 'SCHEDULED', NULL, 5, 1),

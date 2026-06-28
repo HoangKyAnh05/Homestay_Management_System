@@ -14,7 +14,6 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.DayOfWeek;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -364,19 +363,8 @@ public class PublicBookingServiceImpl implements PublicBookingService {
         }
     }
 
-    private void validatePolicyTime(PricePolicy policy, LocalDateTime checkInTarget, LocalDateTime checkOutTarget) {
+    void validatePolicyTime(PricePolicy policy, LocalDateTime checkInTarget, LocalDateTime checkOutTarget) {
         String rentType = normalize(policy.getRentType());
-        if (Set.of("OVERNIGHT", "NIGHTLY", "BY_NIGHT").contains(rentType)) {
-            LocalTime standardCheckIn = policy.getStandardCheckIn() != null ? policy.getStandardCheckIn() : LocalTime.of(19, 0);
-            LocalTime standardCheckOut = policy.getStandardCheckOut() != null ? policy.getStandardCheckOut() : LocalTime.of(11, 0);
-            boolean checkInTooEarly = checkInTarget.toLocalTime().isBefore(standardCheckIn);
-            boolean checkOutNotNextDay = !checkOutTarget.toLocalDate().equals(checkInTarget.toLocalDate().plusDays(1));
-            boolean checkOutTooLate = checkOutTarget.toLocalTime().isAfter(standardCheckOut);
-            if (checkInTooEarly || checkOutNotNextDay || checkOutTooLate) {
-                throw new IllegalArgumentException("Book qua Ä‘Ãªm nháº­n phÃ²ng tá»« 19h tá»‘i Ä‘áº¿n 11h sÃ¡ng hÃ´m sau");
-            }
-        }
-
         if (Set.of("HOURLY", "BY_HOUR", "COMBO").contains(rentType)) {
             int limitHours = policy.getLimitHours() != null && policy.getLimitHours() > 0 ? policy.getLimitHours() : 1;
             LocalDateTime expectedCheckOut = checkInTarget.plusHours(limitHours);
