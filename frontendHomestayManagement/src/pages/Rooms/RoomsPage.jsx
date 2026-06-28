@@ -40,6 +40,118 @@ function toDateTimeLocal(date = new Date()) {
   return `${year}-${month}-${day}T${hour}:${minute}`
 }
 
+function formatDateTimeLocalDisplay(value) {
+  if (!value) return 'dd/mm/yyyy --:-- AM/PM'
+  const [datePart, timePart = ''] = String(value).split('T')
+  const [year, month, day] = datePart.split('-')
+  const [hourText = '', minute = ''] = timePart.split(':')
+  if (!year || !month || !day || !hourText || !minute) return 'dd/mm/yyyy --:-- AM/PM'
+  const hour = Number(hourText)
+  const period = hour >= 12 ? 'PM' : 'AM'
+  const displayHour = String(hour % 12 || 12).padStart(2, '0')
+  return `${day}/${month}/${year} ${displayHour}:${minute} ${period}`
+}
+
+function parseDateTimeLocalDisplay(value) {
+  const match = String(value || '').trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})(?:\s*(AM|PM))?$/i)
+  if (!match) return ''
+  const [, dayText, monthText, yearText, hourText, minuteText, periodText] = match
+  const day = Number(dayText)
+  const month = Number(monthText)
+  const year = Number(yearText)
+  const enteredHour = Number(hourText)
+  const minute = Number(minuteText)
+  const period = periodText?.toUpperCase()
+  if (period && (enteredHour < 1 || enteredHour > 12)) return ''
+  if (!period && (enteredHour < 0 || enteredHour > 23)) return ''
+  const hour = period
+    ? (enteredHour % 12) + (period === 'PM' ? 12 : 0)
+    : enteredHour
+  const date = new Date(year, month - 1, day, hour, minute, 0, 0)
+  const isValid = date.getFullYear() === year
+    && date.getMonth() === month - 1
+    && date.getDate() === day
+    && date.getHours() === hour
+    && date.getMinutes() === minute
+  return isValid ? toDateTimeLocal(date) : ''
+}
+
+function LocalizedDateTimeInput({
+  value,
+  onChange,
+  min,
+  disabled = false,
+  required = false,
+  allowBeforeMin = false,
+  invalid = false,
+  ariaLabel,
+}) {
+  const pickerId = `picker-${ariaLabel.toLowerCase().replaceAll(' ', '-')}`
+  const isAllowed = (nextValue) => nextValue && (allowBeforeMin || !min || nextValue >= min)
+  const commitManualValue = (event) => {
+    const parsedValue = parseDateTimeLocalDisplay(event.currentTarget.value)
+    if (isAllowed(parsedValue)) {
+      onChange(parsedValue)
+      event.currentTarget.value = formatDateTimeLocalDisplay(parsedValue)
+      return
+    }
+    event.currentTarget.value = formatDateTimeLocalDisplay(value)
+  }
+
+  return (
+    <div className={`public-localized-datetime${disabled ? ' is-disabled' : ''}${invalid ? ' is-invalid' : ''}`}>
+      <input
+        key={value}
+        className="public-localized-datetime-text"
+        type="text"
+        aria-label={ariaLabel}
+        placeholder="dd/mm/yyyy hh:mm AM/PM"
+        defaultValue={formatDateTimeLocalDisplay(value)}
+        disabled={disabled}
+        required={required}
+        onChange={(event) => {
+          const parsedValue = parseDateTimeLocalDisplay(event.target.value)
+          if (isAllowed(parsedValue)) onChange(parsedValue)
+        }}
+        onBlur={commitManualValue}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter') {
+            event.preventDefault()
+            event.currentTarget.blur()
+          }
+        }}
+      />
+      <button
+        className="public-localized-datetime-button"
+        type="button"
+        disabled={disabled}
+        aria-label={`Mở lịch ${ariaLabel.toLowerCase()}`}
+        onClick={() => {
+          const picker = document.getElementById(pickerId)
+          if (picker?.showPicker) picker.showPicker()
+          else picker?.click()
+        }}
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M7 2v3M17 2v3M3.5 9h17M5.5 4h13a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z" />
+          <path d="M8 13h3v3H8z" />
+        </svg>
+      </button>
+      <input
+        id={pickerId}
+        className="public-localized-datetime-picker"
+        type="datetime-local"
+        lang="vi-VN"
+        aria-label={`${ariaLabel} bằng lịch`}
+        value={value}
+        min={min}
+        disabled={disabled}
+        onChange={(event) => onChange(event.target.value)}
+      />
+    </div>
+  )
+}
+
 function dateKeyToDateTimeLocal(dateKey, hour) {
   return dateKey ? `${dateKey}T${String(hour).padStart(2, '0')}:00` : ''
 }
@@ -173,12 +285,9 @@ function overnightCheckoutValue(checkInTarget) {
 function normalizeBookingTime(form, policy) {
   if (!policy || !form.checkInTarget) return form
   if (isOvernightPolicy(policy)) {
-    const date = new Date(form.checkInTarget)
-    date.setHours(19, 0, 0, 0)
     return {
       ...form,
-      checkInTarget: toDateTimeLocal(date),
-      checkOutTarget: overnightCheckoutValue(date),
+      checkOutTarget: overnightCheckoutValue(form.checkInTarget),
     }
   }
   if (isAutoCheckoutPolicy(policy)) {
@@ -190,22 +299,11 @@ function normalizeBookingTime(form, policy) {
   return form
 }
 
-function validateBookingTime(form, policy) {
+function validateBookingTime(form) {
   if (!form.checkInTarget || !form.checkOutTarget) return ''
   const checkIn = new Date(form.checkInTarget)
   const checkOut = new Date(form.checkOutTarget)
   if (checkOut <= checkIn) return 'Giờ trả phòng phải sau giờ nhận phòng.'
-
-  if (isOvernightPolicy(policy)) {
-    const validCheckIn = checkIn.getHours() === 19 && checkIn.getMinutes() === 0
-    const expectedCheckOut = new Date(checkIn)
-    expectedCheckOut.setDate(expectedCheckOut.getDate() + 1)
-    expectedCheckOut.setHours(11, 0, 0, 0)
-    const validCheckOut = checkOut.getTime() === expectedCheckOut.getTime()
-    if (!validCheckIn || !validCheckOut) {
-      return 'Book qua đêm nhận phòng từ 19h tối đến 11h sáng hôm sau.'
-    }
-  }
   return ''
 }
 
@@ -385,7 +483,7 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
   const [serviceOptions, setServiceOptions] = useState([])
   const [selectedServices, setSelectedServices] = useState([])
   const [serviceForm, setServiceForm] = useState({ optionKey: '', quantity: 1 })
-  const [servicePickerOpen, setServicePickerOpen] = useState(false)
+  const [serviceDialogOpen, setServiceDialogOpen] = useState(false)
   const [loadingMeta, setLoadingMeta] = useState(true)
   const [checkingSchedule, setCheckingSchedule] = useState(false)
   const [scheduleError, setScheduleError] = useState('')
@@ -395,6 +493,15 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
   const [paymentSummary, setPaymentSummary] = useState(null)
   const [sePayPayment, setSePayPayment] = useState(null)
   const [paymentLoading, setPaymentLoading] = useState(false)
+
+  useEffect(() => {
+    if (!serviceDialogOpen) return undefined
+    const closeOnEscape = (event) => {
+      if (event.key === 'Escape') setServiceDialogOpen(false)
+    }
+    window.addEventListener('keydown', closeOnEscape)
+    return () => window.removeEventListener('keydown', closeOnEscape)
+  }, [serviceDialogOpen])
 
   const startPayment = () => {
     const token = getStoredToken()
@@ -457,18 +564,23 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
         } catch {
           window.sessionStorage.removeItem('homeStayPendingAmenityService')
         }
-        setForm((current) => ({
-          ...current,
-          pricePolicyId: current.pricePolicyId || nextPolicies[0]?.id || '',
-          ...(profileData ? {
-            fullName: profileData.fullName || current.fullName,
-            phone: profileData.phone || current.phone,
-            email: profileData.email || current.email,
-            address: profileData.address || current.address,
-            dateOfBirth: profileData.dateOfBirth || current.dateOfBirth,
-            identityDocumentNumber: profileData.identityDocumentNumber || current.identityDocumentNumber,
-          } : {}),
-        }))
+        setForm((current) => {
+          const initialPolicy = nextPolicies.find((policy) => String(policy.id) === String(current.pricePolicyId))
+            || nextPolicies[0]
+          const nextForm = {
+            ...current,
+            pricePolicyId: initialPolicy?.id || '',
+            ...(profileData ? {
+              fullName: profileData.fullName || current.fullName,
+              phone: profileData.phone || current.phone,
+              email: profileData.email || current.email,
+              address: profileData.address || current.address,
+              dateOfBirth: profileData.dateOfBirth || current.dateOfBirth,
+              identityDocumentNumber: profileData.identityDocumentNumber || current.identityDocumentNumber,
+            } : {}),
+          }
+          return normalizeBookingTime(nextForm, initialPolicy)
+        })
       })
       .catch(() => setError('Không thể tải dữ liệu đặt phòng.'))
       .finally(() => setLoadingMeta(false))
@@ -481,7 +593,7 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
     )
   }, [policies, selectedDayType, selectedRooms])
   const selectedPolicy = availablePolicies.find((policy) => String(policy.id) === String(form.pricePolicyId)) || availablePolicies[0]
-  const timeError = validateBookingTime(form, selectedPolicy)
+  const timeError = validateBookingTime(form)
   const roomPriceItems = selectedRooms.map((room) => ({
     room,
     price: Number(findRoomPolicyPrice(room, selectedPolicy, selectedDayType)?.price || 0),
@@ -613,7 +725,6 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
   }
 
   const updateCheckOutTarget = (value) => {
-    if (value && form.checkInTarget && new Date(value) <= new Date(form.checkInTarget)) return
     setError('')
     setScheduleError('')
     setScheduleNotice('')
@@ -640,7 +751,10 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
   const addService = () => {
     const option = serviceOptions.find((item) => serviceKey(item) === serviceForm.optionKey)
     if (!option) return
-    const quantity = Number(serviceForm.quantity || 1)
+    const requestedQuantity = Math.max(1, Number(serviceForm.quantity || 1))
+    const quantity = String(option.type).toUpperCase() === 'INVENTORY'
+      ? Math.min(requestedQuantity, Number(option.quantityInStock || requestedQuantity))
+      : requestedQuantity
     setSelectedServices((current) => {
       const existing = current.find((item) => item.type === option.type && item.serviceId === option.id)
       if (existing) {
@@ -656,7 +770,7 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
       }]
     })
     setServiceForm({ optionKey: '', quantity: 1 })
-    setServicePickerOpen(false)
+    setServiceDialogOpen(false)
   }
 
   const submit = (event) => {
@@ -803,18 +917,39 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
 
           <section>
             <h3>Thời gian và gói thuê</h3>
-            {criteria && <p className="public-booking-search-note">Đã lấy từ tìm kiếm: {criteria.rooms} phòng · {criteria.adults} người lớn · {criteria.children} trẻ em</p>}
             <div className="public-booking-grid">
-              <label><span>Nhận phòng</span><input type="datetime-local" required value={form.checkInTarget} min={nowDateTimeLocalMin()} onChange={(e) => updateCheckInTarget(e.target.value)} /></label>
+              <label>
+                <span>Nhận phòng</span>
+                <LocalizedDateTimeInput
+                  ariaLabel="Ngày giờ nhận phòng"
+                  required
+                  value={form.checkInTarget}
+                  min={nowDateTimeLocalMin()}
+                  onChange={updateCheckInTarget}
+                />
+              </label>
               {isHourlyPolicy(selectedPolicy) ? (
                 <label><span>Trả phòng</span><input type="text" value="00:00" disabled readOnly /></label>
               ) : (
-                <label><span>Trả phòng</span><input type="datetime-local" required value={form.checkOutTarget} min={form.checkInTarget || nowDateTimeLocalMin()} disabled={isAutoCheckoutPolicy(selectedPolicy)} onChange={(e) => updateCheckOutTarget(e.target.value)} /></label>
+                <label>
+                  <span>Trả phòng</span>
+                  <LocalizedDateTimeInput
+                    ariaLabel="Ngày giờ trả phòng"
+                    required
+                    allowBeforeMin
+                    invalid={Boolean(timeError)}
+                    value={form.checkOutTarget}
+                    min={form.checkInTarget || nowDateTimeLocalMin()}
+                    disabled={isAutoCheckoutPolicy(selectedPolicy)}
+                    onChange={updateCheckOutTarget}
+                  />
+                </label>
               )}
               <label className="public-booking-wide"><span>Gói thuê</span><select required value={form.pricePolicyId} onChange={(e) => updatePolicy(e.target.value)}>{availablePolicies.map((policy) => <option key={policy.id} value={policy.id}>{policy.policyName}</option>)}</select></label>
             </div>
+            {timeError && <p className="public-booking-field-error">{timeError}</p>}
             {!availablePolicies.length && <p className="public-booking-search-note public-booking-search-note--warning">Chưa có gói thuê nào được cấu hình đủ giá cho tất cả phòng đã chọn.</p>}
-            {isOvernightPolicy(selectedPolicy) && <p className="public-booking-search-note">Book qua đêm nhận phòng từ 19h tối đến 11h sáng hôm sau.</p>}
+            {isOvernightPolicy(selectedPolicy) && <p className="public-booking-search-note">Khung giờ qua đêm tham khảo là 19h–11h hôm sau; bạn có thể chọn giờ nhận và trả phòng phù hợp.</p>}
             {isHourlyPolicy(selectedPolicy) && <p className="public-booking-search-note">Đặt theo giờ chỉ cần chọn giờ nhận phòng. Hệ thống tạm tính 1 giờ đầu tiên.</p>}
             {!isHourlyPolicy(selectedPolicy) && isAutoCheckoutPolicy(selectedPolicy) && <p className="public-booking-search-note">Giờ trả phòng được hệ thống tự tính theo gói thuê đã chọn.</p>}
           </section>
@@ -846,59 +981,12 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
 
           <section>
             <h3>Dịch vụ đi kèm</h3>
-            <div className="public-service-add">
-              <div className="public-service-picker">
-                <button
-                  type="button"
-                  className="public-service-picker-trigger"
-                  onClick={() => setServicePickerOpen((open) => !open)}
-                >
-                  {selectedServiceOption ? (
-                    <>
-                      <span className="public-service-avatar">
-                        {selectedServiceOption.imageUrl ? (
-                          <img src={resolveImageUrl(selectedServiceOption.imageUrl)} alt={selectedServiceOption.name} />
-                        ) : selectedServiceOption.name?.charAt(0)}
-                      </span>
-                      <span>
-                        <strong>{selectedServiceOption.name}</strong>
-                        <small>{formatPrice(selectedServiceOption.price)} / {serviceUnit(selectedServiceOption.type)}</small>
-                      </span>
-                    </>
-                  ) : <span>Chọn dịch vụ</span>}
-                  <b>⌄</b>
-                </button>
-                {servicePickerOpen && (
-                  <div className="public-service-options">
-                    {serviceOptions.map((service) => (
-                      <button
-                        key={serviceKey(service)}
-                        type="button"
-                        className={serviceForm.optionKey === serviceKey(service) ? 'selected' : ''}
-                        onClick={() => {
-                          setServiceForm({ ...serviceForm, optionKey: serviceKey(service) })
-                          setServicePickerOpen(false)
-                        }}
-                      >
-                        <span className="public-service-avatar">
-                          {service.imageUrl ? (
-                            <img src={resolveImageUrl(service.imageUrl)} alt={service.name} />
-                          ) : service.name?.charAt(0)}
-                        </span>
-                        <span>
-                          <strong>{service.name}</strong>
-                          <small>{serviceTypeLabel(service.type)} · {formatPrice(service.price)} / {serviceUnit(service.type)}</small>
-                        </span>
-                        {String(service.type).toUpperCase() === 'INVENTORY' && (
-                          <em>{service.quantityInStock} còn lại</em>
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                )}
+            <div className="public-service-launch">
+              <div>
+                <strong>Chọn tiện ích hoặc đồ dùng thuê thêm</strong>
+                <span>Dịch vụ đã chọn sẽ được cộng vào tổng tạm tính.</span>
               </div>
-              <input type="number" min="1" value={serviceForm.quantity} onChange={(e) => setServiceForm({ ...serviceForm, quantity: e.target.value })} />
-              <button type="button" onClick={addService} disabled={!serviceForm.optionKey}>Thêm</button>
+              <button type="button" onClick={() => setServiceDialogOpen(true)}>Chọn dịch vụ</button>
             </div>
             <div className="public-service-list">
               {selectedServices.length ? selectedServices.map((service) => (
@@ -917,10 +1005,68 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
               )) : <p>Chưa chọn dịch vụ đi kèm.</p>}
             </div>
           </section>
+
+          {serviceDialogOpen && (
+            <div
+              className="public-service-dialog-overlay"
+              role="presentation"
+              onClick={(event) => event.target === event.currentTarget && setServiceDialogOpen(false)}
+            >
+              <div className="public-service-dialog" role="dialog" aria-modal="true" aria-labelledby="service-dialog-title">
+                <div className="public-service-dialog-head">
+                  <div>
+                    <h3 id="service-dialog-title">Chọn dịch vụ đi kèm</h3>
+                    <p>Chọn một dịch vụ và số lượng muốn thêm vào booking.</p>
+                  </div>
+                  <button type="button" onClick={() => setServiceDialogOpen(false)} aria-label="Đóng">×</button>
+                </div>
+
+                <div className="public-service-dialog-list">
+                  {serviceOptions.length ? serviceOptions.map((service) => (
+                    <button
+                      key={serviceKey(service)}
+                      type="button"
+                      className={serviceForm.optionKey === serviceKey(service) ? 'selected' : ''}
+                      onClick={() => setServiceForm((current) => ({ ...current, optionKey: serviceKey(service) }))}
+                    >
+                      <span className="public-service-avatar">
+                        {service.imageUrl ? (
+                          <img src={resolveImageUrl(service.imageUrl)} alt={service.name} />
+                        ) : service.name?.charAt(0)}
+                      </span>
+                      <span>
+                        <strong>{service.name}</strong>
+                        <small>{serviceTypeLabel(service.type)} · {formatPrice(service.price)} / {serviceUnit(service.type)}</small>
+                      </span>
+                      {String(service.type).toUpperCase() === 'INVENTORY' && (
+                        <em>{service.quantityInStock} còn lại</em>
+                      )}
+                    </button>
+                  )) : <p>Hiện chưa có dịch vụ khả dụng.</p>}
+                </div>
+
+                <div className="public-service-dialog-footer">
+                  <label>
+                    <span>Số lượng</span>
+                    <input
+                      type="number"
+                      min="1"
+                      max={String(selectedServiceOption?.type).toUpperCase() === 'INVENTORY' ? selectedServiceOption?.quantityInStock : undefined}
+                      value={serviceForm.quantity}
+                      onChange={(e) => setServiceForm({ ...serviceForm, quantity: e.target.value })}
+                    />
+                  </label>
+                  <div>
+                    <button type="button" onClick={() => setServiceDialogOpen(false)}>Hủy</button>
+                    <button type="button" onClick={addService} disabled={!serviceForm.optionKey}>Thêm dịch vụ</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {error && <div className="public-booking-error">{error}</div>}
-        {timeError && <div className="public-booking-warning">{timeError}</div>}
         {checkingSchedule && <div className="public-booking-warning">Đang kiểm tra lịch phòng...</div>}
         {scheduleError && <div className="public-booking-warning">{scheduleError}</div>}
         {scheduleNotice && <div className="public-booking-search-note">{scheduleNotice}</div>}
