@@ -18,6 +18,10 @@ function serviceKey(service) {
   return `${service.type}-${service.id}`
 }
 
+function bookingDisplay(booking) {
+  return booking?.bookingCode || `#${booking?.bookingId || ''}`
+}
+
 function serviceUnit(type) {
   return String(type || '').toUpperCase() === 'INVENTORY' ? 'lượt' : 'người'
 }
@@ -843,7 +847,7 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
           <div className="public-booking-head">
             <div>
               <h2>Tóm tắt đơn đặt phòng</h2>
-              <p>Booking #{paymentSummary.bookingId} · {paymentSummary.rooms?.length || selectedRooms.length} phòng</p>
+              <p>Booking {bookingDisplay(paymentSummary)} · {paymentSummary.rooms?.length || selectedRooms.length} phòng</p>
             </div>
             <button type="button" onClick={onClose} aria-label="Đóng">×</button>
           </div>
@@ -1309,8 +1313,8 @@ function RoomsPage() {
         {createdBooking && (
           <div className={`room-created-toast${createdBooking.requiresDeposit ? ' room-created-toast--pending' : ''}`}>
             {createdBooking.requiresDeposit
-              ? `Đã lưu booking #${createdBooking.bookingId}. Đơn đang chờ thanh toán trước.`
-              : `Đã tạo booking #${createdBooking.bookingId}. Trạng thái: đặt phòng thành công.`}
+              ? `Đã lưu booking ${bookingDisplay(createdBooking)}. Đơn đang chờ thanh toán trước.`
+              : `Đã tạo booking ${bookingDisplay(createdBooking)}. Trạng thái: đặt phòng thành công.`}
           </div>
         )}
 

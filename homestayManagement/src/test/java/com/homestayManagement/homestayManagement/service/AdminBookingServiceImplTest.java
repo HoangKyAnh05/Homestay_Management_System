@@ -100,7 +100,8 @@ class AdminBookingServiceImplTest {
                 null,
                 null,
                 null,
-                housekeepingTaskRepository
+                housekeepingTaskRepository,
+                null
         );
     }
 

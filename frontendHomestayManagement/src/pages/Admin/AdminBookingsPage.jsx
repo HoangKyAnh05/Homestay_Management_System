@@ -11,6 +11,10 @@ const SCHEDULE_API = `${API_BASE}/schedule`
 const PAGE_SIZE_OPTIONS = [6, 8, 12]
 const ADMIN_SCHEDULE_STATUSES = new Set(['CONFIRMED', 'CHECKED_IN', 'COMPLETED'])
 
+function bookingDisplay(booking) {
+  return booking?.bookingCode || `#${booking?.bookingId || ''}`
+}
+
 function authHeaders() {
   return { 'Content-Type': 'application/json', Authorization: `Bearer ${getStoredToken()}` }
 }
@@ -146,7 +150,7 @@ function roomMatchesSearch(room, bookings, keyword) {
   if (roomText.includes(keyword)) return true
   return bookings.some(booking =>
     booking.roomId === room.id &&
-    `${booking.customerName || ''} ${booking.customerPhone || ''} ${booking.bookingId || ''}`.toLowerCase().includes(keyword)
+    `${booking.customerName || ''} ${booking.customerPhone || ''} ${booking.bookingId || ''} ${booking.bookingCode || ''}`.toLowerCase().includes(keyword)
   )
 }
 
@@ -169,7 +173,7 @@ function BookingCard({ booking, onOpenDetail }) {
     <article className={bookingStatusClass(booking.detailStatus || booking.bookingStatus)}>
       <div className="abk-booking-main">
         <strong>{booking.customerName || 'Khách hàng'}</strong>
-        <span>#{booking.bookingId} · {statusLabel(booking.detailStatus || booking.bookingStatus)}</span>
+        <span>{bookingDisplay(booking)} · {statusLabel(booking.detailStatus || booking.bookingStatus)}</span>
       </div>
       <div className="abk-booking-meta">
         <span>{formatBookingCardTime(booking)}</span>
@@ -422,7 +426,7 @@ function BookingDetailModal({ detail, loading, error, actionLoading, actionError
         <div className="abk-modal-head">
           <div>
             <h3>Chi tiết đơn đặt phòng</h3>
-            <p>{detail ? `Booking #${detail.bookingId} · ${detail.roomNumber ? `Phòng ${detail.roomNumber}` : 'Chưa gán phòng'}` : 'Đang tải thông tin...'}</p>
+            <p>{detail ? `Booking ${bookingDisplay(detail)} · ${detail.roomNumber ? `Phòng ${detail.roomNumber}` : 'Chưa gán phòng'}` : 'Đang tải thông tin...'}</p>
           </div>
           <button type="button" className="abk-modal-close" onClick={onClose}>×</button>
         </div>

@@ -7,9 +7,12 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 public interface BookingRepository extends JpaRepository<Booking, Long> {
+    long countByBookingDateGreaterThanEqualAndBookingDateLessThan(LocalDateTime startInclusive, LocalDateTime endExclusive);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
             select b from Booking b

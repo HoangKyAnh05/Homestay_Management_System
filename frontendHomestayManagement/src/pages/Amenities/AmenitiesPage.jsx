@@ -12,6 +12,10 @@ const amenityGroups = [
   { id: 'dining', label: 'Ẩm thực' },
 ]
 
+function bookingDisplay(booking) {
+  return booking?.bookingCode || `#${booking?.bookingId || ''}`
+}
+
 const amenities = [
   {
     id: 1,
@@ -350,7 +354,7 @@ function AmenitiesPage() {
             || Number(service.quantityInStock) > 0))
       }
       setSelectedService(null)
-      setSuccessMessage(`Đã thêm ${data.serviceName} vào booking #${data.bookingId}.`)
+      setSuccessMessage(`Đã thêm ${data.serviceName} vào booking ${bookingDisplay(data)}.`)
     } catch (error) {
       setModalError(error.message)
     } finally {
@@ -504,7 +508,7 @@ function AmenitiesPage() {
                   {eligibleBookings.map(booking => (
                     <label className={String(booking.bookingId) === selectedBookingId ? 'selected' : ''} key={booking.bookingId}>
                       <input type="radio" name="booking" value={booking.bookingId} checked={String(booking.bookingId) === selectedBookingId} onChange={event => setSelectedBookingId(event.target.value)} />
-                      <span><strong>Booking #{booking.bookingId} · {booking.roomTypeName}</strong><small>{formatDateTime(booking.checkInTarget)} → {formatDateTime(booking.checkOutTarget)} · {booking.roomCount} phòng</small></span>
+                      <span><strong>Booking {bookingDisplay(booking)} · {booking.roomTypeName}</strong><small>{formatDateTime(booking.checkInTarget)} → {formatDateTime(booking.checkOutTarget)} · {booking.roomCount} phòng</small></span>
                       <b>{booking.status}</b>
                     </label>
                   ))}

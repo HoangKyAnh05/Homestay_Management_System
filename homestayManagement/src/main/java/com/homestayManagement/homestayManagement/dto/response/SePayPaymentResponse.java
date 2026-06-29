@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 
 public record SePayPaymentResponse(
         Long bookingId,
+        String bookingCode,
         Long paymentId,
         BigDecimal amount,
         String paymentCode,

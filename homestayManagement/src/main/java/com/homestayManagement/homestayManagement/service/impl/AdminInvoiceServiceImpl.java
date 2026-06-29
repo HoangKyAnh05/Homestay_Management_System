@@ -98,6 +98,7 @@ public class AdminInvoiceServiceImpl implements AdminInvoiceService {
         return new AdminInvoiceResponse(
                 invoice.getId(),
                 invoice.getBooking().getId(),
+                invoice.getBooking().getBookingCode(),
                 invoice.getBooking().getStatus(),
                 customer.getId(),
                 customer.getFullName(),

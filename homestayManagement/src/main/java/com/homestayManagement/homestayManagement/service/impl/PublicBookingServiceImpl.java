@@ -7,8 +7,10 @@ import com.homestayManagement.homestayManagement.dto.response.*;
 import com.homestayManagement.homestayManagement.entity.*;
 import com.homestayManagement.homestayManagement.repository.*;
 import com.homestayManagement.homestayManagement.service.PublicBookingService;
+import com.homestayManagement.homestayManagement.service.support.BookingCodeGenerator;
 import com.homestayManagement.homestayManagement.service.support.BookingInventoryPolicy;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -38,6 +40,7 @@ public class PublicBookingServiceImpl implements PublicBookingService {
     private final RoomPriceConfigRepository roomPriceConfigRepository;
     private final FacilityServiceRepository facilityServiceRepository;
     private final InventoryServiceRepository inventoryServiceRepository;
+    private final BookingCodeGenerator bookingCodeGenerator;
 
     public PublicBookingServiceImpl(
             AccountRepository accountRepository,
@@ -51,7 +54,8 @@ public class PublicBookingServiceImpl implements PublicBookingService {
             PricePolicyRepository pricePolicyRepository,
             RoomPriceConfigRepository roomPriceConfigRepository,
             FacilityServiceRepository facilityServiceRepository,
-            InventoryServiceRepository inventoryServiceRepository
+            InventoryServiceRepository inventoryServiceRepository,
+            BookingCodeGenerator bookingCodeGenerator
     ) {
         this.accountRepository = accountRepository;
         this.customerRepository = customerRepository;
@@ -65,6 +69,7 @@ public class PublicBookingServiceImpl implements PublicBookingService {
         this.roomPriceConfigRepository = roomPriceConfigRepository;
         this.facilityServiceRepository = facilityServiceRepository;
         this.inventoryServiceRepository = inventoryServiceRepository;
+        this.bookingCodeGenerator = bookingCodeGenerator;
     }
 
     @Override
@@ -128,6 +133,7 @@ public class PublicBookingServiceImpl implements PublicBookingService {
 
         return new PublicBookingHistoryDetailResponse(
                 booking.getId(),
+                booking.getBookingCode(),
                 booking.getBookingDate(),
                 booking.getStatus(),
                 roomCharge,
@@ -144,7 +150,7 @@ public class PublicBookingServiceImpl implements PublicBookingService {
     }
 
     @Override
-    @Transactional
+    @Transactional(isolation = Isolation.SERIALIZABLE)
     public PublicBookingResponse createBooking(String email, PublicCreateBookingRequest request) {
         validateRange(request.checkInTarget(), request.checkOutTarget());
 
@@ -188,10 +194,12 @@ public class PublicBookingServiceImpl implements PublicBookingService {
         boolean requiresDeposit = hourlyPrepaymentRequired || depositPolicy != null;
         String bookingStatus = requiresDeposit ? "PENDING" : "CONFIRMED";
 
+        LocalDateTime bookingDate = LocalDateTime.now();
         Booking booking = bookingRepository.save(Booking.builder()
+                .bookingCode(bookingCodeGenerator.generate(bookingDate))
                 .customer(customer)
                 .depositPolicy(depositPolicy)
-                .bookingDate(LocalDateTime.now())
+                .bookingDate(bookingDate)
                 .status(bookingStatus)
                 .build());
 
@@ -230,6 +238,7 @@ public class PublicBookingServiceImpl implements PublicBookingService {
 
         return new PublicBookingResponse(
                 booking.getId(),
+                booking.getBookingCode(),
                 firstDetail.getId(),
                 null,
                 null,
@@ -423,6 +432,7 @@ public class PublicBookingServiceImpl implements PublicBookingService {
 
         return new PublicBookingHistoryResponse(
                 booking.getId(),
+                booking.getBookingCode(),
                 booking.getBookingDate(),
                 booking.getStatus(),
                 room != null ? room.getRoomNumber() : null,

@@ -6,6 +6,7 @@ import java.util.List;
 
 public record AdminCustomerHistoryBookingResponse(
         Long bookingId,
+        String bookingCode,
         LocalDateTime bookingDate,
         String status,
         int roomCount,

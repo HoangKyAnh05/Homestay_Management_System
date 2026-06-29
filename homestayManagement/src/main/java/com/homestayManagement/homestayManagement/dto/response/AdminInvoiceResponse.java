@@ -7,6 +7,7 @@ import java.util.List;
 public record AdminInvoiceResponse(
         Long id,
         Long bookingId,
+        String bookingCode,
         String bookingStatus,
         Long customerId,
         String customerName,

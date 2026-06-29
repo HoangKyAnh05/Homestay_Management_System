@@ -153,7 +153,7 @@ public class AdminHousekeepingCalendarServiceImpl implements AdminHousekeepingCa
                 int completed = (int) checklist.stream().filter(HousekeepingTaskChecklistItem::isCompleted).count();
                 Employee assigned = cleaningTask.getAssignedHousekeeping();
                 result.add(new AdminHousekeepingCalendarDayResponse(
-                        date, "CLEANING", null, null, null, null, null,
+                        date, "CLEANING", null, null, null, null, null, null,
                         cleaningTask.getId(), assigned == null ? null : assigned.getFullName(),
                         completed, checklist.size(), cleaningTask.getNote()
                 ));
@@ -167,7 +167,7 @@ public class AdminHousekeepingCalendarServiceImpl implements AdminHousekeepingCa
             if (booking != null) {
                 String status = "CHECKED_IN".equals(normalize(booking.getStatus())) ? "OCCUPIED" : "BOOKED";
                 result.add(new AdminHousekeepingCalendarDayResponse(
-                        date, status, booking.getBooking().getId(), booking.getId(),
+                        date, status, booking.getBooking().getId(), booking.getBooking().getBookingCode(), booking.getId(),
                         booking.getBooking().getCustomer().getFullName(), booking.getCheckInTarget(), booking.getCheckOutTarget(),
                         null, null, null, null, null
                 ));
@@ -181,7 +181,7 @@ public class AdminHousekeepingCalendarServiceImpl implements AdminHousekeepingCa
 
     private AdminHousekeepingCalendarDayResponse emptyDay(LocalDate date, String status, String note) {
         return new AdminHousekeepingCalendarDayResponse(
-                date, status, null, null, null, null, null, null, null, null, null, note
+                date, status, null, null, null, null, null, null, null, null, null, null, note
         );
     }
 

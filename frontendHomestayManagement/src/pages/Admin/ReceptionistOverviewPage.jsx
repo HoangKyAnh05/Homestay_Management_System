@@ -6,6 +6,10 @@ import './ReceptionistOverviewPage.css'
 
 const API_BASE = 'http://localhost:8080/api/admin/bookings'
 
+function bookingDisplay(booking) {
+  return booking?.bookingCode || `#${booking?.bookingId || ''}`
+}
+
 function authHeaders() {
   return { 'Content-Type': 'application/json', Authorization: `Bearer ${getStoredToken()}` }
 }
@@ -184,7 +188,7 @@ function ReceptionistOverviewPage() {
                 <tbody>
                   {activeBookings.map(booking => (
                     <tr key={booking.bookingId}>
-                      <td><strong>#{booking.bookingId}</strong></td>
+                      <td><strong>{bookingDisplay(booking)}</strong></td>
                       <td>
                         <strong>{booking.customer?.fullName || '—'}</strong>
                         <span>{booking.customer?.phone || ''}</span>

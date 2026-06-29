@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 
 public record PublicBookingHistoryResponse(
         Long bookingId,
+        String bookingCode,
         LocalDateTime bookingDate,
         String status,
         String firstRoomNumber,

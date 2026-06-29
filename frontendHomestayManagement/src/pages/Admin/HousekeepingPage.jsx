@@ -5,6 +5,10 @@ import './HousekeepingPage.css'
 
 const API = 'http://localhost:8080/api/housekeeping'
 
+function bookingDisplay(booking) {
+  return booking?.bookingCode || `#${booking?.bookingId || ''}`
+}
+
 const TABS = [
   { key: 'PENDING', label: 'Chờ kiểm tra' },
   { key: 'IN_PROGRESS', label: 'Đang thực hiện' },
@@ -54,7 +58,7 @@ function TaskCard({ task, active, onClick }) {
         <StatusBadge task={task} />
       </div>
       <h3>Phòng {task.roomNumber}</h3>
-      <p>{task.customerName || 'Khách lưu trú'} · Booking #{task.bookingId}</p>
+      <p>{task.customerName || 'Khách lưu trú'} · Booking {bookingDisplay(task)}</p>
       <div className="hk-task-meta">
         <span>Trả phòng {time(task.checkOutTarget)}</span>
         <strong>{money(task.totalMiniBarCharge)}</strong>
@@ -120,7 +124,7 @@ function TaskDetail({ task, busy, onStart, onSubmitInspection, onCompleteCleanin
     <section className="hk-detail">
       <div className="hk-detail__head">
         <div>
-          <span className="hk-eyebrow">Booking #{task.bookingId}</span>
+          <span className="hk-eyebrow">Booking {bookingDisplay(task)}</span>
           <h2>Phòng {task.roomNumber}</h2>
           <p>{task.customerName} {task.customerPhone ? `· ${task.customerPhone}` : ''}</p>
         </div>

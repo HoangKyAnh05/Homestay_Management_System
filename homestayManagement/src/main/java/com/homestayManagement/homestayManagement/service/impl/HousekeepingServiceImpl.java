@@ -417,7 +417,7 @@ public class HousekeepingServiceImpl implements HousekeepingService {
                 ))
                 .toList();
         return new HousekeepingTaskResponse(
-                task.getId(), task.getVersion(), booking.getId(), detail.getId(),
+                task.getId(), task.getVersion(), booking.getId(), booking.getBookingCode(), detail.getId(),
                 task.getRoom().getId(), task.getRoom().getRoomNumber(), task.getRoom().getStatus(),
                 customer.getFullName(), customer.getPhone(), detail.getCheckOutTarget(),
                 task.getInspectionStatus(), task.getCleaningStatus(),

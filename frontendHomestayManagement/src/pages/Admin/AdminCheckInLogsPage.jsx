@@ -7,6 +7,10 @@ import './AdminCheckInLogsPage.css'
 
 const API_BASE = 'http://localhost:8080/api/admin/bookings'
 
+function bookingDisplay(booking) {
+  return booking?.bookingCode || `#${booking?.bookingId || ''}`
+}
+
 function authHeaders() {
   return { 'Content-Type': 'application/json', Authorization: `Bearer ${getStoredToken()}` }
 }
@@ -84,6 +88,7 @@ function bookingMatches(booking, keyword) {
   const customer = booking.customer || {}
   const haystack = [
     booking.bookingId,
+    booking.bookingCode,
     booking.bookingStatus,
     customer.fullName,
     customer.phone,
@@ -112,7 +117,7 @@ function BookingListItem({ booking, active, onSelect }) {
   return (
     <button type="button" className={`acl-booking${active ? ' acl-booking--active' : ''}`} onClick={onSelect}>
       <span className="acl-booking-top">
-        <strong>Booking #{booking.bookingId}</strong>
+        <strong>Booking {bookingDisplay(booking)}</strong>
         <span className={`acl-pill acl-pill--${String(booking.bookingStatus || '').toLowerCase()}`}>
           {statusLabel(booking.bookingStatus)}
         </span>
@@ -286,7 +291,7 @@ function CheckOutModal({ bookingDetailId, onClose, onCompleted }) {
             <div className="aco-header-body">
               <div>
                 <h2 id="aco-title">
-                  {detail ? `Booking #${detail.bookingId}` : 'Đang tải...'}
+                  {detail ? `Booking ${bookingDisplay(detail)}` : 'Đang tải...'}
                 </h2>
                 <p>{detail ? `${detail.customer?.fullName || '—'} · ${detail.roomNumber ? `Phòng ${detail.roomNumber}` : 'Chưa gán phòng'} · ${detail.roomTypeName || ''}` : ''}</p>
               </div>
@@ -604,7 +609,7 @@ function CheckInModal({ bookingDetailId, onClose, onCompleted }) {
         <header className="acl-checkin-head">
           <div>
             <span>Tiếp nhận lưu trú</span>
-            <h2 id="acl-checkin-title">Check-in booking #{preparation?.bookingId || ''}</h2>
+            <h2 id="acl-checkin-title">Check-in booking {bookingDisplay(preparation)}</h2>
             <p>{preparation ? `${preparation.customer?.fullName} · ${preparation.roomTypeName}` : 'Đang tải thông tin...'}</p>
           </div>
           <button type="button" onClick={onClose} aria-label="Đóng">×</button>
@@ -869,7 +874,7 @@ function AdminCheckInLogsPage() {
             <>
               <div className="acl-selected-head">
                 <div>
-                  <span>Booking #{selectedBooking.bookingId}</span>
+                  <span>Booking {bookingDisplay(selectedBooking)}</span>
                   <h2>{selectedBooking.customer?.fullName || 'Khách chưa có tên'}</h2>
                   <p>
                     Đặt ngày {formatDate(selectedBooking.bookingDate)}

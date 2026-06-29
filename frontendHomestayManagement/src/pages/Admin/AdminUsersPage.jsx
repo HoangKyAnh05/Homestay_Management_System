@@ -6,6 +6,10 @@ import './AdminUsersPage.css'
 const API = 'http://localhost:8080/api/admin/users'
 const BACKEND = 'http://localhost:8080'
 
+function bookingDisplay(booking) {
+  return booking?.bookingCode || `#${booking?.bookingId || ''}`
+}
+
 function authHeaders() {
   return { 'Content-Type': 'application/json', Authorization: `Bearer ${getStoredToken()}` }
 }
@@ -348,7 +352,7 @@ function CustomerHistoryModal({ user, onClose }) {
                   onClick={() => setSelectedBookingId(booking.bookingId)}
                 >
                   <span className="aum-booking-item-top">
-                    <strong>#{booking.bookingId}</strong>
+                    <strong>{bookingDisplay(booking)}</strong>
                     <i className={`aum-history-status status--${String(booking.status).toLowerCase()}`}>
                       {BOOKING_STATUS_LABEL[booking.status] || booking.status}
                     </i>
@@ -363,7 +367,7 @@ function CustomerHistoryModal({ user, onClose }) {
             <main className="aum-booking-detail">
               <div className="aum-booking-summary">
                 <div>
-                  <span>Booking #{selectedBooking.bookingId}</span>
+                  <span>Booking {bookingDisplay(selectedBooking)}</span>
                   <h3>{formatMoney(selectedBooking.totalAmount)}</h3>
                   <p>Ngày đặt: {formatDateTime(selectedBooking.bookingDate)}</p>
                 </div>

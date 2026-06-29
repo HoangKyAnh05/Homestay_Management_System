@@ -147,7 +147,7 @@ public class SePayPaymentServiceImpl implements SePayPaymentService {
         payment.setAmount(amount);
         payment.setQrCodeUrl(buildQrCodeUrl(amount, transferContent));
         payment = paymentRepository.save(payment);
-        return toResponse(bookingId, payment, transferContent);
+        return toResponse(booking, payment, transferContent);
     }
 
     @Override
@@ -185,7 +185,7 @@ public class SePayPaymentServiceImpl implements SePayPaymentService {
         payment.setAmount(amount);
         payment.setQrCodeUrl(buildQrCodeUrl(amount, transferContent));
         payment = paymentRepository.save(payment);
-        return toResponse(bookingId, payment, transferContent);
+        return toResponse(booking, payment, transferContent);
     }
 
     @Override
@@ -399,9 +399,10 @@ public class SePayPaymentServiceImpl implements SePayPaymentService {
         }
     }
 
-    private SePayPaymentResponse toResponse(Long bookingId, Payment payment, String transferContent) {
+    private SePayPaymentResponse toResponse(Booking booking, Payment payment, String transferContent) {
         return new SePayPaymentResponse(
-                bookingId,
+                booking.getId(),
+                booking.getBookingCode(),
                 payment.getId(),
                 payment.getAmount(),
                 payment.getPaymentCode(),

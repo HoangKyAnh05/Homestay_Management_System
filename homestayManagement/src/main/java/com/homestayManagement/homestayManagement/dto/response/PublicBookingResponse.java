@@ -6,6 +6,7 @@ import java.util.List;
 
 public record PublicBookingResponse(
         Long bookingId,
+        String bookingCode,
         Long bookingDetailId,
         Long roomId,
         String roomNumber,

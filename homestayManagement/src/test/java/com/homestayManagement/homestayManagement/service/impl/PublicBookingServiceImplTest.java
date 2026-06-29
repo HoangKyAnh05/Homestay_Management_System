@@ -2,6 +2,7 @@ package com.homestayManagement.homestayManagement.service.impl;
 
 import com.homestayManagement.homestayManagement.entity.PricePolicy;
 import com.homestayManagement.homestayManagement.repository.*;
+import com.homestayManagement.homestayManagement.service.support.BookingCodeGenerator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -45,7 +46,8 @@ class PublicBookingServiceImplTest {
                 pricePolicyRepository,
                 roomPriceConfigRepository,
                 facilityServiceRepository,
-                inventoryServiceRepository
+                inventoryServiceRepository,
+                new BookingCodeGenerator(bookingRepository)
         );
     }
 

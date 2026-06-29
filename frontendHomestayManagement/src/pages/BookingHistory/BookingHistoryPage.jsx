@@ -7,6 +7,10 @@ import './BookingHistoryPage.css'
 
 const API_BASE_URL = 'http://localhost:8080/api'
 
+function bookingDisplay(booking) {
+  return booking?.bookingCode || `#${booking?.bookingId || ''}`
+}
+
 function formatMoney(value) {
   return new Intl.NumberFormat('vi-VN').format(Number(value || 0)) + 'đ'
 }
@@ -283,7 +287,7 @@ function BookingHistoryPage() {
                   role="button"
                 >
                   <div className="history-card-top">
-                    <strong>Booking #{booking.bookingId}</strong>
+                    <strong>Booking {bookingDisplay(booking)}</strong>
                     <span className={`history-status history-status--${String(booking.status || '').toLowerCase()}`}>
                       {statusLabel(booking.status)}
                     </span>
@@ -313,7 +317,7 @@ function BookingHistoryPage() {
                 <>
                   <div className="history-detail-head">
                     <div>
-                      <span>Booking #{detail.bookingId}</span>
+                      <span>Booking {bookingDisplay(detail)}</span>
                       <h2>{statusLabel(detail.status)}</h2>
                     </div>
                     <div className="history-detail-actions">
@@ -403,7 +407,7 @@ function BookingHistoryPage() {
               <div className="sepay-success">
                 <span>✓</span>
                 <h2 id="sepay-payment-title">Thanh toán thành công</h2>
-                <p>Booking #{paymentInfo.bookingId} đã được xác nhận và hóa đơn đã được lưu.</p>
+                <p>Booking {bookingDisplay(paymentInfo)} đã được xác nhận và hóa đơn đã được lưu.</p>
                 <button type="button" onClick={() => setPaymentInfo(null)}>Hoàn tất</button>
               </div>
             ) : (

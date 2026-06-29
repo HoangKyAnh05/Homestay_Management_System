@@ -25,6 +25,10 @@ function formatMoney(price) {
   return new Intl.NumberFormat('vi-VN').format(Number(price || 0)) + 'đ'
 }
 
+function bookingDisplay(booking) {
+  return booking?.bookingCode || `#${booking?.bookingId || ''}`
+}
+
 function depositText(room) {
   if (!room?.depositPolicyId) return 'Không cần thanh toán trước'
   if (String(room.depositCalculationType || '').toUpperCase() === 'PERCENTAGE') {
@@ -427,7 +431,7 @@ function BookingModal({ room, initialBookingData, onClose, onCreated }) {
           <div className="public-booking-head">
             <div>
               <h2>Tóm tắt đơn đặt phòng</h2>
-              <p>Booking #{paymentSummary.bookingId} · {room.roomTypeName}</p>
+              <p>Booking {bookingDisplay(paymentSummary)} · {room.roomTypeName}</p>
             </div>
             <button type="button" onClick={onClose} aria-label="Đóng">×</button>
           </div>
@@ -724,8 +728,8 @@ function RoomDetailPage({ roomId }) {
             {createdBooking && (
               <div className={`room-created-toast${createdBooking.requiresDeposit ? ' room-created-toast--pending' : ''}`}>
                 {createdBooking.requiresDeposit
-                  ? `Đã lưu đơn đặt phòng #${createdBooking.bookingId}. Đơn đang chờ thanh toán trước.`
-                  : `Đã tạo đơn đặt phòng #${createdBooking.bookingId}. Trạng thái: đặt phòng thành công.`}
+                  ? `Đã lưu đơn đặt phòng ${bookingDisplay(createdBooking)}. Đơn đang chờ thanh toán trước.`
+                  : `Đã tạo đơn đặt phòng ${bookingDisplay(createdBooking)}. Trạng thái: đặt phòng thành công.`}
               </div>
             )}
 

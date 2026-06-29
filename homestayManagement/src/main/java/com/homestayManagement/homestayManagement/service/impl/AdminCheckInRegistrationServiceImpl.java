@@ -71,6 +71,7 @@ public class AdminCheckInRegistrationServiceImpl implements AdminCheckInRegistra
         boolean preRegistered = hasCompletePreRegistration(detail, registeredGuests);
         return new AdminCheckInPreparationResponse(
                 detail.getBooking().getId(),
+                detail.getBooking().getBookingCode(),
                 detail.getId(),
                 roomType != null ? roomType.getName() : null,
                 detail.getCheckInTarget(),
@@ -134,7 +135,7 @@ public class AdminCheckInRegistrationServiceImpl implements AdminCheckInRegistra
         checkInRecordRepository.save(record);
 
         return new AdminCompleteCheckInResponse(
-                detail.getBooking().getId(), detail.getId(), room.getId(), room.getRoomNumber(),
+                detail.getBooking().getId(), detail.getBooking().getBookingCode(), detail.getId(), room.getId(), room.getRoomNumber(),
                 detail.getStatus(), now, guests.size()
         );
     }

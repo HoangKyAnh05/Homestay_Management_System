@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 
 public record AdminCompleteCheckInResponse(
         Long bookingId,
+        String bookingCode,
         Long bookingDetailId,
         Long roomId,
         String roomNumber,

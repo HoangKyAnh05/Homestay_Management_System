@@ -77,8 +77,10 @@ import com.homestayManagement.homestayManagement.repository.RulesPenaltyReposito
 import com.homestayManagement.homestayManagement.repository.ServiceUsageRepository;
 import com.homestayManagement.homestayManagement.service.AdminBookingService;
 import com.homestayManagement.homestayManagement.service.SePayPaymentService;
+import com.homestayManagement.homestayManagement.service.support.BookingCodeGenerator;
 import com.homestayManagement.homestayManagement.service.support.BookingInventoryPolicy;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -128,6 +130,7 @@ public class AdminBookingServiceImpl implements AdminBookingService {
     private final RoomPriceConfigRepository roomPriceConfigRepository;
     private final SePayPaymentService sePayPaymentService;
     private final HousekeepingTaskRepository housekeepingTaskRepository;
+    private final BookingCodeGenerator bookingCodeGenerator;
 
     public AdminBookingServiceImpl(
             BookingDetailRepository bookingDetailRepository,
@@ -153,7 +156,8 @@ public class AdminBookingServiceImpl implements AdminBookingService {
             PricePolicyRepository pricePolicyRepository,
             RoomPriceConfigRepository roomPriceConfigRepository,
             SePayPaymentService sePayPaymentService,
-            HousekeepingTaskRepository housekeepingTaskRepository
+            HousekeepingTaskRepository housekeepingTaskRepository,
+            BookingCodeGenerator bookingCodeGenerator
     ) {
         this.bookingDetailRepository = bookingDetailRepository;
         this.bookingGuestRepository = bookingGuestRepository;
@@ -179,6 +183,7 @@ public class AdminBookingServiceImpl implements AdminBookingService {
         this.roomPriceConfigRepository = roomPriceConfigRepository;
         this.sePayPaymentService = sePayPaymentService;
         this.housekeepingTaskRepository = housekeepingTaskRepository;
+        this.bookingCodeGenerator = bookingCodeGenerator;
     }
 
     @Override
@@ -287,6 +292,7 @@ public class AdminBookingServiceImpl implements AdminBookingService {
 
         return new AdminBookingDetailResponse(
                 booking.getId(),
+                booking.getBookingCode(),
                 detail.getId(),
                 booking.getBookingDate(),
                 booking.getStatus(),
@@ -339,7 +345,7 @@ public class AdminBookingServiceImpl implements AdminBookingService {
     }
 
     @Override
-    @Transactional
+    @Transactional(isolation = Isolation.SERIALIZABLE)
     public AdminDirectBookingResponse createDirectBooking(AdminDirectBookingRequest request) {
         validateBookingRange(request.checkInTarget(), request.checkOutTarget());
 
@@ -401,10 +407,12 @@ public class AdminBookingServiceImpl implements AdminBookingService {
                 || "BY_HOUR".equals(normalizedRentType);
         String initialStatus = requiresPayment ? "PENDING" : "CONFIRMED";
 
+        LocalDateTime bookingDate = LocalDateTime.now();
         Booking booking = bookingRepository.save(Booking.builder()
+                .bookingCode(bookingCodeGenerator.generate(bookingDate))
                 .customer(customer)
                 .depositPolicy(depositPolicy)
-                .bookingDate(LocalDateTime.now())
+                .bookingDate(bookingDate)
                 .status(initialStatus)
                 .build());
 
@@ -880,6 +888,7 @@ public class AdminBookingServiceImpl implements AdminBookingService {
         Customer customer = detail.getBooking().getCustomer();
         return new AdminDirectBookingBusySlotResponse(
                 detail.getBooking().getId(),
+                detail.getBooking().getBookingCode(),
                 detail.getId(),
                 customer != null ? customer.getFullName() : null,
                 customer != null ? customer.getPhone() : null,
@@ -912,6 +921,7 @@ public class AdminBookingServiceImpl implements AdminBookingService {
 
         return new AdminBookingScheduleItemResponse(
                 booking.getId(),
+                booking.getBookingCode(),
                 detail.getId(),
                 room != null ? room.getId() : null,
                 room != null ? room.getRoomNumber() : null,
@@ -958,6 +968,7 @@ public class AdminBookingServiceImpl implements AdminBookingService {
 
         return new AdminCheckInLogBookingResponse(
                 booking.getId(),
+                booking.getBookingCode(),
                 booking.getBookingDate(),
                 booking.getStatus(),
                 toCustomerResponse(customer),
