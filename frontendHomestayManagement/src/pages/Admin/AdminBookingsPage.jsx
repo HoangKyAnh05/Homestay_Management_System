@@ -840,7 +840,7 @@ function BookingDetailModal({ detail, loading, error, actionLoading, actionError
           headers={authHeaders()}
           statusField="bookingStatus"
           successStatus="COMPLETED"
-          title="Thanh toán chi phí phát sinh tại quầy"
+          title="Thanh toán số tiền còn lại tại quầy"
           onSuccess={(booking) => onAction('__refresh__', null, booking)}
           onClose={() => setCheckoutPayment(null)}
         />

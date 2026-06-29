@@ -50,6 +50,8 @@ public interface BookingDetailRepository extends JpaRepository<BookingDetail, Lo
             join fetch bd.roomType
             left join fetch bd.room r
             where c.account.id = :accountId
+              and b.status in ('CONFIRMED', 'CHECKED_IN', 'COMPLETED')
+              and bd.status in ('CONFIRMED', 'CHECKED_IN', 'COMPLETED')
             order by b.bookingDate desc, b.id desc, bd.checkInTarget asc
             """)
     List<BookingDetail> findByCustomerAccountIdForAdminHistory(@Param("accountId") Long accountId);

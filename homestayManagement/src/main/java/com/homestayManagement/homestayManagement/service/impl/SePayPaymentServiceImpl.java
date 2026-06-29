@@ -170,6 +170,11 @@ public class SePayPaymentServiceImpl implements SePayPaymentService {
                         invoice.getId(), "SEPAY", "CHECKOUT", "PENDING"
                 )
                 .orElse(null);
+        if (payment != null && !sameAmount(payment.getAmount(), amount)) {
+            payment.setStatus("FAILED");
+            paymentRepository.save(payment);
+            payment = null;
+        }
         if (payment == null) {
             payment = paymentRepository.save(Payment.builder()
                     .invoice(invoice)
@@ -186,6 +191,10 @@ public class SePayPaymentServiceImpl implements SePayPaymentService {
         payment.setQrCodeUrl(buildQrCodeUrl(amount, transferContent));
         payment = paymentRepository.save(payment);
         return toResponse(booking, payment, transferContent);
+    }
+
+    private boolean sameAmount(BigDecimal first, BigDecimal second) {
+        return first != null && second != null && first.compareTo(second) == 0;
     }
 
     @Override

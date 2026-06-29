@@ -37,6 +37,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -195,6 +196,42 @@ class SePayPaymentServiceImplTest {
         assertEquals("HMS30", response.transferContent());
         assertNull(booking.getPaymentHoldExpiresAt());
         assertNull(response.holdExpiresAt());
+    }
+
+    @Test
+    void createCheckoutPaymentReplacesStalePendingPaymentWhenAmountChanges() {
+        Booking booking = Booking.builder().id(10L).status("CHECKED_IN").build();
+        Invoice invoice = Invoice.builder().id(20L).booking(booking).build();
+        Payment stalePayment = Payment.builder()
+                .id(30L)
+                .invoice(invoice)
+                .paymentCode("HMS30")
+                .paymentPurpose("CHECKOUT")
+                .paymentMethod("SEPAY")
+                .amount(BigDecimal.valueOf(3_000))
+                .status("PENDING")
+                .build();
+
+        when(bookingRepository.findByIdForPaymentUpdate(10L)).thenReturn(Optional.of(booking));
+        when(invoiceRepository.findByBookingIdForAdmin(10L)).thenReturn(Optional.of(invoice));
+        when(paymentRepository.findFirstByInvoiceIdAndPaymentMethodAndPaymentPurposeAndStatusOrderByIdDesc(
+                20L, "SEPAY", "CHECKOUT", "PENDING"
+        )).thenReturn(Optional.of(stalePayment));
+        when(paymentRepository.save(any(Payment.class))).thenAnswer(invocation -> {
+            Payment payment = invocation.getArgument(0);
+            if (payment.getId() == null) {
+                payment.setId(31L);
+            }
+            return payment;
+        });
+
+        var response = service.createCheckoutPayment(10L, BigDecimal.valueOf(4_750));
+
+        assertEquals("FAILED", stalePayment.getStatus());
+        assertEquals(31L, response.paymentId());
+        assertEquals(BigDecimal.valueOf(4_750), response.amount());
+        assertEquals("HMS31", response.paymentCode());
+        assertEquals("HMS31", response.transferContent());
     }
 
     @Test

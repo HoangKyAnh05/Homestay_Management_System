@@ -6,6 +6,7 @@ import com.homestayManagement.homestayManagement.entity.BookingDetail;
 import com.homestayManagement.homestayManagement.entity.BookingServiceItem;
 import com.homestayManagement.homestayManagement.entity.Customer;
 import com.homestayManagement.homestayManagement.entity.CheckInRecord;
+import com.homestayManagement.homestayManagement.entity.Employee;
 import com.homestayManagement.homestayManagement.entity.FacilityService;
 import com.homestayManagement.homestayManagement.entity.HousekeepingTask;
 import com.homestayManagement.homestayManagement.entity.InventoryService;
@@ -20,6 +21,7 @@ import com.homestayManagement.homestayManagement.repository.BookingGuestReposito
 import com.homestayManagement.homestayManagement.repository.BookingRepository;
 import com.homestayManagement.homestayManagement.repository.BookingServiceItemRepository;
 import com.homestayManagement.homestayManagement.repository.CheckInRecordRepository;
+import com.homestayManagement.homestayManagement.repository.EmployeeRepository;
 import com.homestayManagement.homestayManagement.repository.FacilityServiceRepository;
 import com.homestayManagement.homestayManagement.repository.HousekeepingTaskRepository;
 import com.homestayManagement.homestayManagement.repository.InventoryServiceRepository;
@@ -30,12 +32,15 @@ import com.homestayManagement.homestayManagement.repository.RoomMiniBarItemRepos
 import com.homestayManagement.homestayManagement.repository.RoomRepository;
 import com.homestayManagement.homestayManagement.repository.RulesPenaltyRepository;
 import com.homestayManagement.homestayManagement.repository.ServiceUsageRepository;
+import com.homestayManagement.homestayManagement.dto.response.SePayPaymentResponse;
 import com.homestayManagement.homestayManagement.service.impl.AdminBookingServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -71,6 +76,8 @@ class AdminBookingServiceImplTest {
     @Mock private RoomMiniBarItemRepository roomMiniBarItemRepository;
     @Mock private RulesPenaltyRepository rulesPenaltyRepository;
     @Mock private HousekeepingTaskRepository housekeepingTaskRepository;
+    @Mock private EmployeeRepository employeeRepository;
+    @Mock private SePayPaymentService sePayPaymentService;
 
     private AdminBookingServiceImpl service;
 
@@ -95,11 +102,11 @@ class AdminBookingServiceImplTest {
                 inventoryServiceRepository,
                 roomMiniBarItemRepository,
                 rulesPenaltyRepository,
+                employeeRepository,
                 null,
                 null,
                 null,
-                null,
-                null,
+                sePayPaymentService,
                 housekeepingTaskRepository,
                 null
         );
@@ -296,10 +303,6 @@ class AdminBookingServiceImplTest {
         when(housekeepingTaskRepository.findByCheckInRecordId(7L)).thenReturn(Optional.of(task));
         when(bookingDetailRepository.findByBookingId(3L)).thenReturn(List.of(detail));
         when(bookingServiceItemRepository.findByBookingDetailIds(List.of(6L))).thenReturn(List.of(bookedRentalItem));
-        when(serviceUsageRepository.findByBookingIdForInvoice(3L)).thenReturn(List.of(stayRentalUsage));
-        when(roomAmenitiesUsageRepository.findByBookingIdForInvoice(3L)).thenReturn(List.of());
-        when(checkInRecordRepository.findByBookingIdForInvoice(3L)).thenReturn(List.of());
-        when(appliedPenaltyRepository.findByBookingIdForInvoice(3L)).thenReturn(List.of());
         when(invoiceRepository.findByBookingIdForAdmin(3L)).thenReturn(Optional.of(invoice));
         when(paymentRepository.findByInvoiceIdOrderByPaymentTimeDescIdDesc(13L)).thenReturn(List.of(checkoutPayment));
         when(checkInRecordRepository.findByBookingDetailIdForAdmin(6L)).thenReturn(List.of(record));
@@ -323,5 +326,76 @@ class AdminBookingServiceImplTest {
         verify(inventoryServiceRepository).save(stayRental);
         verify(bookingDetailRepository).save(detail);
         verify(bookingRepository).save(booking);
+    }
+
+    @Test
+    void prepareCheckOutChargesRemainingInvoiceBalanceAfterBookingDeposit() {
+        Account account = Account.builder().id(1L).email("customer@example.com").build();
+        Customer customer = Customer.builder().id(2L).account(account).fullName("Customer").build();
+        Booking booking = Booking.builder()
+                .id(3L).customer(customer).bookingDate(LocalDateTime.now()).status("CHECKED_IN").build();
+        RoomType roomType = RoomType.builder().id(4L).name("Studio").build();
+        Room room = Room.builder().id(5L).roomNumber("201").roomType(roomType).status("OCCUPIED").build();
+        BookingDetail detail = BookingDetail.builder()
+                .id(6L).booking(booking).roomType(roomType).room(room)
+                .checkInTarget(LocalDateTime.of(2026, 6, 30, 14, 0))
+                .checkOutTarget(LocalDateTime.of(2026, 7, 1, 12, 0))
+                .numberOfAdults(2).numberOfChildren(0)
+                .priceAtBooking(BigDecimal.valueOf(8_000))
+                .rentType("DAILY").status("CHECKED_IN").build();
+        CheckInRecord record = CheckInRecord.builder().id(7L).bookingDetail(detail).build();
+        HousekeepingTask task = HousekeepingTask.builder()
+                .id(8L).checkInRecord(record).room(room).inspectionStatus("COMPLETED").build();
+        FacilityService facility = FacilityService.builder()
+                .id(9L).name("Breakfast").price(BigDecimal.valueOf(4_000)).isActive(true).build();
+        BookingServiceItem bookedService = BookingServiceItem.builder()
+                .id(10L).bookingDetail(detail).facilityService(facility)
+                .quantity(1).priceAtBooking(BigDecimal.valueOf(4_000)).build();
+        Invoice invoice = Invoice.builder()
+                .id(11L).booking(booking).totalAmount(BigDecimal.valueOf(12_000)).build();
+        Payment bookingDeposit = Payment.builder()
+                .id(12L).invoice(invoice).paymentPurpose("BOOKING")
+                .amount(BigDecimal.valueOf(6_000)).status("SUCCESS").build();
+        Employee employee = Employee.builder().id(13L).fullName("Receptionist").build();
+        SePayPaymentResponse paymentResponse = new SePayPaymentResponse(
+                3L, booking.getBookingCode(), 14L, BigDecimal.valueOf(6_000), "HMS14",
+                "HMS14", "Vietcombank", "0123456789", "HOME STAY", "qr-url", null
+        );
+
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken("staff@example.com", "password")
+        );
+        try {
+            when(bookingDetailRepository.findByIdForAdminDetail(6L)).thenReturn(Optional.of(detail));
+            when(checkInRecordRepository.findByBookingDetailId(6L)).thenReturn(Optional.of(record));
+            when(housekeepingTaskRepository.findByCheckInRecordId(7L)).thenReturn(Optional.of(task));
+            when(checkInRecordRepository.findByBookingIdForInvoice(3L)).thenReturn(List.of(record));
+            when(bookingDetailRepository.findByBookingId(3L)).thenReturn(List.of(detail));
+            when(bookingServiceItemRepository.findByBookingDetailIds(List.of(6L))).thenReturn(List.of(bookedService));
+            when(serviceUsageRepository.findByBookingIdForInvoice(3L)).thenReturn(List.of());
+            when(roomAmenitiesUsageRepository.findByBookingIdForInvoice(3L)).thenReturn(List.of());
+            when(appliedPenaltyRepository.findByBookingIdForInvoice(3L)).thenReturn(List.of());
+            when(invoiceRepository.findByBookingIdForAdmin(3L)).thenReturn(Optional.of(invoice));
+            when(employeeRepository.findByAccountEmail("staff@example.com")).thenReturn(Optional.of(employee));
+            when(paymentRepository.findByInvoiceIdOrderByPaymentTimeDescIdDesc(11L)).thenReturn(List.of(bookingDeposit));
+            when(sePayPaymentService.createCheckoutPayment(3L, BigDecimal.valueOf(6_000))).thenReturn(paymentResponse);
+            when(checkInRecordRepository.findByBookingDetailIdForAdmin(6L)).thenReturn(List.of(record));
+            when(serviceUsageRepository.findByBookingDetailIdForAdmin(6L)).thenReturn(List.of());
+            when(roomAmenitiesUsageRepository.findByBookingDetailIdForAdmin(6L)).thenReturn(List.of());
+            when(appliedPenaltyRepository.findByBookingDetailIdForAdmin(6L)).thenReturn(List.of());
+            when(bookingGuestRepository.findByBookingDetailIds(List.of(6L))).thenReturn(List.of());
+            when(facilityServiceRepository.findAll()).thenReturn(List.of());
+            when(inventoryServiceRepository.findAll()).thenReturn(List.of());
+            when(roomMiniBarItemRepository.findAll()).thenReturn(List.of());
+            when(rulesPenaltyRepository.findAll()).thenReturn(List.of());
+
+            var response = service.prepareCheckOut(6L);
+
+            assertEquals(false, response.completed());
+            assertEquals(BigDecimal.valueOf(6_000), response.payment().amount());
+            verify(sePayPaymentService).createCheckoutPayment(3L, BigDecimal.valueOf(6_000));
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
     }
 }
