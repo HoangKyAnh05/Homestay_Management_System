@@ -21,6 +21,7 @@ import com.homestayManagement.homestayManagement.dto.response.AdminDirectBooking
 import com.homestayManagement.homestayManagement.dto.request.AdminBookingAddMiniBarRequest;
 import com.homestayManagement.homestayManagement.dto.request.AdminBookingAddPenaltyRequest;
 import com.homestayManagement.homestayManagement.dto.request.AdminBookingAddServiceRequest;
+import com.homestayManagement.homestayManagement.dto.request.AdminDirectBookingServiceRequest;
 import com.homestayManagement.homestayManagement.dto.response.FacilityServiceResponse;
 import com.homestayManagement.homestayManagement.dto.response.InventoryServiceResponse;
 import com.homestayManagement.homestayManagement.dto.request.AdminDirectBookingRoomRequest;
@@ -449,6 +450,7 @@ public class AdminBookingServiceImpl implements AdminBookingService {
                 firstDetail = detail;
             }
             saveDirectBookingGuests(booking, detail, selectedRoom.guests());
+            saveDirectBookingServices(detail, selectedRoom.services());
         }
 
         AdminBookingDetailResponse bookingResponse = getBookingDetail(firstDetail.getId());
@@ -851,6 +853,48 @@ public class AdminBookingServiceImpl implements AdminBookingService {
                     .address(guest.address() != null && !guest.address().isBlank() ? guest.address().trim() : null)
                     .primaryGuest(index == 0)
                     .build());
+        }
+    }
+
+    private void saveDirectBookingServices(
+            BookingDetail detail,
+            List<AdminDirectBookingServiceRequest> services
+    ) {
+        if (services == null || services.isEmpty()) {
+            return;
+        }
+        for (AdminDirectBookingServiceRequest request : services) {
+            String type = normalizeStatus(request.type());
+            int quantity = request.quantity();
+            if ("FACILITY".equals(type)) {
+                FacilityService service = facilityServiceRepository.findById(request.serviceId())
+                        .filter(FacilityService::isActive)
+                        .orElseThrow(() -> new IllegalArgumentException("Dịch vụ không hợp lệ hoặc đã ngừng hoạt động"));
+                bookingServiceItemRepository.save(BookingServiceItem.builder()
+                        .bookingDetail(detail)
+                        .facilityService(service)
+                        .quantity(quantity)
+                        .priceAtBooking(service.getPrice())
+                        .build());
+            } else if ("INVENTORY".equals(type)) {
+                InventoryService service = inventoryServiceRepository.findById(request.serviceId())
+                        .orElseThrow(() -> new IllegalArgumentException("Dịch vụ thuê đồ không hợp lệ"));
+                if (service.getQuantityInStock() != null && quantity > service.getQuantityInStock()) {
+                    throw new IllegalArgumentException("Số lượng dịch vụ vượt tồn kho");
+                }
+                bookingServiceItemRepository.save(BookingServiceItem.builder()
+                        .bookingDetail(detail)
+                        .inventoryService(service)
+                        .quantity(quantity)
+                        .priceAtBooking(service.getPrice())
+                        .build());
+                if (service.getQuantityInStock() != null) {
+                    service.setQuantityInStock(service.getQuantityInStock() - quantity);
+                    inventoryServiceRepository.save(service);
+                }
+            } else {
+                throw new IllegalArgumentException("Loại dịch vụ không hợp lệ");
+            }
         }
     }
 

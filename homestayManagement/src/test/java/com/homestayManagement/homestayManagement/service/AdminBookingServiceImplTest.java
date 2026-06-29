@@ -12,31 +12,45 @@ import com.homestayManagement.homestayManagement.entity.HousekeepingTask;
 import com.homestayManagement.homestayManagement.entity.InventoryService;
 import com.homestayManagement.homestayManagement.entity.Invoice;
 import com.homestayManagement.homestayManagement.entity.Payment;
+import com.homestayManagement.homestayManagement.entity.PricePolicy;
+import com.homestayManagement.homestayManagement.entity.Role;
 import com.homestayManagement.homestayManagement.entity.RoomType;
 import com.homestayManagement.homestayManagement.entity.Room;
+import com.homestayManagement.homestayManagement.entity.RoomPriceConfig;
 import com.homestayManagement.homestayManagement.entity.ServiceUsage;
+import com.homestayManagement.homestayManagement.repository.AccountRepository;
 import com.homestayManagement.homestayManagement.repository.AppliedPenaltyRepository;
 import com.homestayManagement.homestayManagement.repository.BookingDetailRepository;
 import com.homestayManagement.homestayManagement.repository.BookingGuestRepository;
 import com.homestayManagement.homestayManagement.repository.BookingRepository;
 import com.homestayManagement.homestayManagement.repository.BookingServiceItemRepository;
 import com.homestayManagement.homestayManagement.repository.CheckInRecordRepository;
+import com.homestayManagement.homestayManagement.repository.CustomerRepository;
 import com.homestayManagement.homestayManagement.repository.EmployeeRepository;
 import com.homestayManagement.homestayManagement.repository.FacilityServiceRepository;
 import com.homestayManagement.homestayManagement.repository.HousekeepingTaskRepository;
 import com.homestayManagement.homestayManagement.repository.InventoryServiceRepository;
 import com.homestayManagement.homestayManagement.repository.InvoiceRepository;
 import com.homestayManagement.homestayManagement.repository.PaymentRepository;
+import com.homestayManagement.homestayManagement.repository.PricePolicyRepository;
+import com.homestayManagement.homestayManagement.repository.RoleRepository;
 import com.homestayManagement.homestayManagement.repository.RoomAmenitiesUsageRepository;
 import com.homestayManagement.homestayManagement.repository.RoomMiniBarItemRepository;
+import com.homestayManagement.homestayManagement.repository.RoomPriceConfigRepository;
 import com.homestayManagement.homestayManagement.repository.RoomRepository;
 import com.homestayManagement.homestayManagement.repository.RulesPenaltyRepository;
 import com.homestayManagement.homestayManagement.repository.ServiceUsageRepository;
+import com.homestayManagement.homestayManagement.dto.request.AdminDirectBookingGuestRequest;
+import com.homestayManagement.homestayManagement.dto.request.AdminDirectBookingRequest;
+import com.homestayManagement.homestayManagement.dto.request.AdminDirectBookingRoomRequest;
+import com.homestayManagement.homestayManagement.dto.request.AdminDirectBookingServiceRequest;
 import com.homestayManagement.homestayManagement.dto.response.SePayPaymentResponse;
 import com.homestayManagement.homestayManagement.service.impl.AdminBookingServiceImpl;
+import com.homestayManagement.homestayManagement.service.support.BookingCodeGenerator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -53,9 +67,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.times;
 
 @ExtendWith(MockitoExtension.class)
 class AdminBookingServiceImplTest {
@@ -65,6 +81,9 @@ class AdminBookingServiceImplTest {
     @Mock private BookingRepository bookingRepository;
     @Mock private BookingServiceItemRepository bookingServiceItemRepository;
     @Mock private CheckInRecordRepository checkInRecordRepository;
+    @Mock private AccountRepository accountRepository;
+    @Mock private CustomerRepository customerRepository;
+    @Mock private RoleRepository roleRepository;
     @Mock private RoomRepository roomRepository;
     @Mock private ServiceUsageRepository serviceUsageRepository;
     @Mock private RoomAmenitiesUsageRepository roomAmenitiesUsageRepository;
@@ -77,7 +96,10 @@ class AdminBookingServiceImplTest {
     @Mock private RulesPenaltyRepository rulesPenaltyRepository;
     @Mock private HousekeepingTaskRepository housekeepingTaskRepository;
     @Mock private EmployeeRepository employeeRepository;
+    @Mock private PricePolicyRepository pricePolicyRepository;
+    @Mock private RoomPriceConfigRepository roomPriceConfigRepository;
     @Mock private SePayPaymentService sePayPaymentService;
+    @Mock private BookingCodeGenerator bookingCodeGenerator;
 
     private AdminBookingServiceImpl service;
 
@@ -88,9 +110,9 @@ class AdminBookingServiceImplTest {
                 bookingGuestRepository,
                 bookingRepository,
                 roomRepository,
-                null,
-                null,
-                null,
+                accountRepository,
+                customerRepository,
+                roleRepository,
                 checkInRecordRepository,
                 bookingServiceItemRepository,
                 serviceUsageRepository,
@@ -104,11 +126,11 @@ class AdminBookingServiceImplTest {
                 rulesPenaltyRepository,
                 employeeRepository,
                 null,
-                null,
-                null,
+                pricePolicyRepository,
+                roomPriceConfigRepository,
                 sePayPaymentService,
                 housekeepingTaskRepository,
-                null
+                bookingCodeGenerator
         );
     }
 
@@ -130,6 +152,90 @@ class AdminBookingServiceImplTest {
 
         assertEquals(1, result.size());
         assertEquals(true, result.getFirst().available());
+    }
+
+    @Test
+    void createDirectBookingSavesSelectedServicesPerRoom() {
+        LocalDateTime checkIn = LocalDateTime.of(2026, 6, 30, 14, 0);
+        LocalDateTime checkOut = LocalDateTime.of(2026, 7, 1, 12, 0);
+        Role customerRole = Role.builder().id(1L).name("ROLE_CUSTOMER").build();
+        Account account = Account.builder().id(2L).email("guest@example.com").role(customerRole).build();
+        Customer customer = Customer.builder().id(3L).account(account).fullName("Guest").build();
+        PricePolicy pricePolicy = PricePolicy.builder().id(4L).policyName("Daily").rentType("DAILY").build();
+        RoomType roomType = RoomType.builder().id(5L).name("Studio").maxAdults(2).maxChildren(1).build();
+        Room room = Room.builder().id(6L).roomNumber("101").roomType(roomType).build();
+        RoomPriceConfig priceConfig = RoomPriceConfig.builder()
+                .id(7L).roomType(roomType).pricePolicy(pricePolicy).dayType("WEEKDAY")
+                .price(BigDecimal.valueOf(8_000)).build();
+        FacilityService breakfast = FacilityService.builder()
+                .id(8L).name("Breakfast").price(BigDecimal.valueOf(2_000)).isActive(true).build();
+        InventoryService bike = InventoryService.builder()
+                .id(9L).name("Bike").price(BigDecimal.valueOf(1_500)).quantityInStock(5).build();
+        Booking booking = Booking.builder().id(10L).customer(customer).status("CONFIRMED").build();
+
+        when(accountRepository.findByEmail("guest@example.com")).thenReturn(Optional.of(account));
+        when(customerRepository.findByAccountId(2L)).thenReturn(Optional.of(customer));
+        when(accountRepository.save(account)).thenReturn(account);
+        when(customerRepository.save(customer)).thenReturn(customer);
+        when(roomRepository.findAllById(any())).thenReturn(List.of(room));
+        when(bookingDetailRepository.findOverlappingSchedule(checkIn, checkOut)).thenReturn(List.of());
+        when(pricePolicyRepository.findById(4L)).thenReturn(Optional.of(pricePolicy));
+        when(bookingCodeGenerator.generate(any())).thenReturn("BK_30062026_1");
+        when(bookingRepository.save(any(Booking.class))).thenAnswer(invocation -> {
+            Booking saved = invocation.getArgument(0);
+            saved.setId(10L);
+            return saved;
+        });
+        when(roomPriceConfigRepository.findByRoomTypeIdAndPricePolicyIdAndDayType(5L, 4L, "WEEKDAY"))
+                .thenReturn(Optional.of(priceConfig));
+        when(bookingDetailRepository.save(any(BookingDetail.class))).thenAnswer(invocation -> {
+            BookingDetail saved = invocation.getArgument(0);
+            saved.setId(11L);
+            return saved;
+        });
+        when(facilityServiceRepository.findById(8L)).thenReturn(Optional.of(breakfast));
+        when(inventoryServiceRepository.findById(9L)).thenReturn(Optional.of(bike));
+        when(bookingDetailRepository.findByIdForAdminDetail(11L)).thenReturn(Optional.of(
+                BookingDetail.builder().id(11L).booking(booking).room(room).roomType(roomType)
+                        .checkInTarget(checkIn).checkOutTarget(checkOut)
+                        .numberOfAdults(1).numberOfChildren(0).priceAtBooking(BigDecimal.valueOf(8_000))
+                        .rentType("DAILY").status("CONFIRMED").build()
+        ));
+        when(checkInRecordRepository.findByBookingDetailIdForAdmin(11L)).thenReturn(List.of());
+        when(bookingServiceItemRepository.findByBookingDetailIds(List.of(11L))).thenReturn(List.of());
+        when(serviceUsageRepository.findByBookingDetailIdForAdmin(11L)).thenReturn(List.of());
+        when(roomAmenitiesUsageRepository.findByBookingDetailIdForAdmin(11L)).thenReturn(List.of());
+        when(appliedPenaltyRepository.findByBookingDetailIdForAdmin(11L)).thenReturn(List.of());
+        when(invoiceRepository.findByBookingIdForAdmin(10L)).thenReturn(Optional.empty());
+        when(bookingGuestRepository.findByBookingDetailIds(List.of(11L))).thenReturn(List.of());
+        when(facilityServiceRepository.findAll()).thenReturn(List.of());
+        when(inventoryServiceRepository.findAll()).thenReturn(List.of());
+        when(roomMiniBarItemRepository.findAll()).thenReturn(List.of());
+        when(rulesPenaltyRepository.findAll()).thenReturn(List.of());
+
+        AdminDirectBookingRequest request = new AdminDirectBookingRequest(
+                "Guest", "0900000000", "guest@example.com", "Ha Noi", null, "0123456789",
+                List.of(new AdminDirectBookingRoomRequest(
+                        6L, 1, 0,
+                        List.of(new AdminDirectBookingGuestRequest("Guest", "0123456789", "0900000000", null, "guest@example.com", "Ha Noi")),
+                        List.of(
+                                new AdminDirectBookingServiceRequest("FACILITY", 8L, 2),
+                                new AdminDirectBookingServiceRequest("INVENTORY", 9L, 1)
+                        )
+                )),
+                checkIn, checkOut, "DAILY", 4L
+        );
+
+        service.createDirectBooking(request);
+
+        ArgumentCaptor<BookingServiceItem> itemCaptor = ArgumentCaptor.forClass(BookingServiceItem.class);
+        verify(bookingServiceItemRepository, times(2)).save(itemCaptor.capture());
+        assertEquals(2, itemCaptor.getAllValues().get(0).getQuantity());
+        assertEquals(breakfast, itemCaptor.getAllValues().get(0).getFacilityService());
+        assertEquals(1, itemCaptor.getAllValues().get(1).getQuantity());
+        assertEquals(bike, itemCaptor.getAllValues().get(1).getInventoryService());
+        assertEquals(4, bike.getQuantityInStock());
+        verify(inventoryServiceRepository).save(bike);
     }
 
     @Test
