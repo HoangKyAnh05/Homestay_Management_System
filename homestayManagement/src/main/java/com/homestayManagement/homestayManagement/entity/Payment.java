@@ -47,7 +47,7 @@ public class Payment {
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal amount;
 
-    // PENDING, SUCCESS, FAILED
+    // PENDING, SUCCESS, FAILED, REVIEW_REQUIRED
     @Builder.Default
     @Column(nullable = false, length = 20)
     private String status = "PENDING";

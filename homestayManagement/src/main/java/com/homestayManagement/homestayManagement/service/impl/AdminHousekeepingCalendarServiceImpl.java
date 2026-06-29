@@ -4,6 +4,7 @@ import com.homestayManagement.homestayManagement.dto.response.*;
 import com.homestayManagement.homestayManagement.entity.*;
 import com.homestayManagement.homestayManagement.repository.*;
 import com.homestayManagement.homestayManagement.service.AdminHousekeepingCalendarService;
+import com.homestayManagement.homestayManagement.service.support.BookingInventoryPolicy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,8 +16,6 @@ import java.util.stream.Collectors;
 
 @Service
 public class AdminHousekeepingCalendarServiceImpl implements AdminHousekeepingCalendarService {
-
-    private static final Set<String> ACTIVE_BOOKING_STATUSES = Set.of("PENDING", "CONFIRMED", "CHECKED_IN");
 
     private final RoomRepository roomRepository;
     private final BookingDetailRepository bookingDetailRepository;
@@ -55,8 +54,7 @@ public class AdminHousekeepingCalendarServiceImpl implements AdminHousekeepingCa
         Map<Long, List<BookingDetail>> bookingsByRoom = bookingDetailRepository
                 .findOverlappingSchedule(rangeStart, rangeEnd).stream()
                 .filter(detail -> detail.getRoom() != null && roomIds.contains(detail.getRoom().getId()))
-                .filter(detail -> ACTIVE_BOOKING_STATUSES.contains(normalize(detail.getStatus())))
-                .filter(detail -> ACTIVE_BOOKING_STATUSES.contains(normalize(detail.getBooking().getStatus())))
+                .filter(BookingInventoryPolicy::blocksInventory)
                 .collect(Collectors.groupingBy(detail -> detail.getRoom().getId()));
         Map<Long, List<RoomSchedule>> schedulesByRoom = roomScheduleRepository.findOverlapping(rangeStart, rangeEnd).stream()
                 .filter(schedule -> roomIds.contains(schedule.getRoom().getId()))

@@ -77,6 +77,7 @@ import com.homestayManagement.homestayManagement.repository.RulesPenaltyReposito
 import com.homestayManagement.homestayManagement.repository.ServiceUsageRepository;
 import com.homestayManagement.homestayManagement.service.AdminBookingService;
 import com.homestayManagement.homestayManagement.service.SePayPaymentService;
+import com.homestayManagement.homestayManagement.service.support.BookingInventoryPolicy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.security.core.Authentication;
@@ -816,12 +817,7 @@ public class AdminBookingServiceImpl implements AdminBookingService {
     }
 
     private boolean isActiveBookingDetail(BookingDetail detail) {
-        if (detail == null || detail.getBooking() == null) {
-            return false;
-        }
-        String detailStatus = detail.getStatus();
-        String bookingStatus = detail.getBooking().getStatus();
-        return !isClosedStatus(detailStatus) && !isClosedStatus(bookingStatus);
+        return BookingInventoryPolicy.blocksInventory(detail);
     }
 
     private boolean hasAssignedRoom(BookingDetail detail) {

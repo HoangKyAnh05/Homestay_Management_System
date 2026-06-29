@@ -128,8 +128,8 @@ public interface BookingDetailRepository extends JpaRepository<BookingDetail, Lo
             where r.id = :roomId
               and bd.checkInTarget < :endExclusive
               and bd.checkOutTarget > :startInclusive
-              and bd.status in ('PENDING', 'CONFIRMED', 'CHECKED_IN')
-              and b.status in ('PENDING', 'CONFIRMED', 'CHECKED_IN')
+              and bd.status in ('CONFIRMED', 'CHECKED_IN')
+              and b.status in ('CONFIRMED', 'CHECKED_IN')
             order by bd.checkInTarget asc
             """)
     List<BookingDetail> findPublicBusySlotsByRoom(

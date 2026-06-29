@@ -64,6 +64,32 @@ class AdminHousekeepingCalendarServiceImplTest {
     }
 
     @Test
+    void calendarKeepsRoomAvailableForPendingUnpaidBooking() {
+        LocalDate date = LocalDate.of(2026, 6, 20);
+        RoomType roomType = RoomType.builder().id(1L).name("Deluxe").build();
+        Room room = Room.builder().id(10L).roomNumber("101").roomType(roomType).status("AVAILABLE").build();
+        Customer customer = Customer.builder().id(2L).fullName("Nguyen An").build();
+        Booking booking = Booking.builder().id(3L).customer(customer).status("PENDING")
+                .paymentHoldExpiresAt(date.atTime(23, 59)).build();
+        BookingDetail detail = BookingDetail.builder()
+                .id(4L).booking(booking).roomType(roomType).room(room).status("PENDING")
+                .checkInTarget(date.atTime(14, 0))
+                .checkOutTarget(date.plusDays(1).atTime(11, 0))
+                .build();
+        when(roomRepository.findAllWithRoomType()).thenReturn(List.of(room));
+        when(bookingDetailRepository.findOverlappingSchedule(any(), any())).thenReturn(List.of(detail));
+        when(housekeepingTaskRepository.findAllForHousekeeping()).thenReturn(List.of());
+        when(taskChecklistItemRepository.findAll()).thenReturn(List.of());
+        when(roomScheduleRepository.findOverlapping(any(), any())).thenReturn(List.of());
+
+        var result = service.getCalendar(date, 1, null);
+
+        assertEquals("AVAILABLE", result.rooms().getFirst().days().getFirst().status());
+        assertEquals(1, result.summary().available());
+        assertEquals(0, result.summary().booked());
+    }
+
+    @Test
     void calendarShowsAvailableAfterCleaningTaskIsCompleted() {
         LocalDate date = LocalDate.of(2026, 6, 20);
         RoomType roomType = RoomType.builder().id(1L).name("Deluxe").build();

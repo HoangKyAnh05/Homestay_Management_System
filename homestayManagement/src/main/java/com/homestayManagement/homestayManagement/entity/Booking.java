@@ -33,6 +33,9 @@ public class Booking {
     @Column(nullable = false, length = 20)
     private String status = "PENDING";
 
+    @Column(name = "payment_hold_expires_at")
+    private LocalDateTime paymentHoldExpiresAt;
+
     @PrePersist
     protected void onCreate() {
         if (bookingDate == null) {

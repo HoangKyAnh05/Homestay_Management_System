@@ -7,6 +7,7 @@ import com.homestayManagement.homestayManagement.dto.response.*;
 import com.homestayManagement.homestayManagement.entity.*;
 import com.homestayManagement.homestayManagement.repository.*;
 import com.homestayManagement.homestayManagement.service.PublicBookingService;
+import com.homestayManagement.homestayManagement.service.support.BookingInventoryPolicy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,8 +25,6 @@ import java.util.stream.Collectors;
 
 @Service
 public class PublicBookingServiceImpl implements PublicBookingService {
-
-    private static final Set<String> ACTIVE_STATUSES = Set.of("PENDING", "CONFIRMED", "CHECKED_IN");
 
     private final AccountRepository accountRepository;
     private final CustomerRepository customerRepository;
@@ -163,7 +162,7 @@ public class PublicBookingServiceImpl implements PublicBookingService {
         Set<Long> selectedRoomTypeIds = selectedRooms.stream()
                 .map(this::resolveRoomTypeId)
                 .collect(Collectors.toCollection(HashSet::new));
-        Map<Long, RoomType> roomTypesById = roomTypeRepository.findAllById(selectedRoomTypeIds).stream()
+        Map<Long, RoomType> roomTypesById = roomTypeRepository.findAllByIdForInventoryUpdate(selectedRoomTypeIds).stream()
                 .collect(Collectors.toMap(RoomType::getId, roomType -> roomType));
         if (roomTypesById.size() != selectedRoomTypeIds.size()) {
             throw new IllegalArgumentException("Khong tim thay mot hoac nhieu loai phong da chon");
@@ -406,8 +405,7 @@ public class PublicBookingServiceImpl implements PublicBookingService {
     }
 
     private boolean isActive(BookingDetail detail) {
-        return ACTIVE_STATUSES.contains(normalize(detail.getStatus()))
-                && ACTIVE_STATUSES.contains(normalize(detail.getBooking().getStatus()));
+        return BookingInventoryPolicy.blocksInventory(detail);
     }
 
     private PublicBookingHistoryResponse toHistoryResponse(List<BookingDetail> details) {

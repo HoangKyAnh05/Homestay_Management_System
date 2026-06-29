@@ -14,6 +14,8 @@ import com.homestayManagement.homestayManagement.repository.BookingServiceItemRe
 import com.homestayManagement.homestayManagement.repository.InventoryServiceRepository;
 import com.homestayManagement.homestayManagement.repository.InvoiceRepository;
 import com.homestayManagement.homestayManagement.repository.PaymentRepository;
+import com.homestayManagement.homestayManagement.repository.RoomRepository;
+import com.homestayManagement.homestayManagement.repository.RoomTypeRepository;
 import com.homestayManagement.homestayManagement.repository.ServiceUsageRepository;
 import com.homestayManagement.homestayManagement.service.impl.SePayPaymentServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
@@ -32,6 +34,8 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -46,6 +50,10 @@ class SePayPaymentServiceImplTest {
     private BookingRepository bookingRepository;
     @Mock
     private BookingDetailRepository bookingDetailRepository;
+    @Mock
+    private RoomRepository roomRepository;
+    @Mock
+    private RoomTypeRepository roomTypeRepository;
     @Mock
     private BookingServiceItemRepository bookingServiceItemRepository;
     @Mock
@@ -66,6 +74,8 @@ class SePayPaymentServiceImplTest {
         service = new SePayPaymentServiceImpl(
                 bookingRepository,
                 bookingDetailRepository,
+                roomRepository,
+                roomTypeRepository,
                 bookingServiceItemRepository,
                 checkInRecordRepository,
                 invoiceRepository,
@@ -183,6 +193,8 @@ class SePayPaymentServiceImplTest {
         assertEquals(10L, response.bookingId());
         assertEquals(BigDecimal.valueOf(300_000), response.amount());
         assertEquals("HMS30", response.transferContent());
+        assertNull(booking.getPaymentHoldExpiresAt());
+        assertNull(response.holdExpiresAt());
     }
 
     @Test
