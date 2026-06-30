@@ -6,13 +6,13 @@ import AdminBookingsPage from './pages/Admin/AdminBookingsPage'
 import AdminCheckInLogsPage from './pages/Admin/AdminCheckInLogsPage'
 import AdminHousekeepingChecklistsPage from './pages/Admin/AdminHousekeepingChecklistsPage'
 import AdminHousekeepingCalendarPage from './pages/Admin/AdminHousekeepingCalendarPage'
-import AdminPlaceholderPage from './pages/Admin/AdminPlaceholderPage'
 import AdminRulesPenaltiesPage from './pages/Admin/AdminRulesPenaltiesPage'
 import AdminServiceCategoriesPage from './pages/Admin/AdminServiceCategoriesPage'
 import AdminSurchargesPage from './pages/Admin/AdminSurchargesPage'
 import AdminUsersPage from './pages/Admin/AdminUsersPage'
 import DashboardPage from './pages/Admin/DashboardPage'
 import HousekeepingPage from './pages/Admin/HousekeepingPage'
+import { MarketingAIAgentPage, MarketingPostLogsPage, MarketingVouchersPage } from './pages/Admin/MarketingPages'
 import ReceptionistOverviewPage from './pages/Admin/ReceptionistOverviewPage'
 import BookingHistoryPage from './pages/BookingHistory/BookingHistoryPage'
 import ForgotPasswordPage from './pages/ForgotPassword/ForgotPasswordPage'
@@ -153,9 +153,9 @@ function App() {
       return <AdminHousekeepingChecklistsPage />
     }
     if (currentPath === '/admin/receptionist') return <ReceptionistOverviewPage />
-    if (currentPath === '/admin/marketing/ai-agent') return <AdminPlaceholderPage activePage="ai-post-agent" title="AI Agent Đăng bài" />
-    if (currentPath === '/admin/marketing/post-logs') return <AdminPlaceholderPage activePage="post-logs" title="Nhật ký Bài đăng" />
-    if (currentPath === '/admin/marketing/vouchers') return <AdminPlaceholderPage activePage="vouchers" title="Mã giảm giá (Vouchers)" />
+    if (currentPath === '/admin/marketing/ai-agent') return <MarketingAIAgentPage />
+    if (currentPath === '/admin/marketing/post-logs') return <MarketingPostLogsPage />
+    if (currentPath === '/admin/marketing/vouchers') return <MarketingVouchersPage />
 
     return <DashboardPage />
   }
