@@ -317,7 +317,10 @@ function HousekeepingPage() {
       <div className="hk-page">
         <header className="hk-page-head">
           <div><span className="hk-eyebrow">Vận hành phòng</span><h1>Housekeeping</h1><p>Kiểm tra chi phí trước checkout và theo dõi tiến độ dọn phòng.</p></div>
-          <button type="button" className="hk-refresh" onClick={() => loadTasks()} disabled={loading}>↻ Làm mới</button>
+          <button type="button" className="hk-refresh" onClick={() => loadTasks()} disabled={loading} aria-label="Làm mới danh sách">
+            <span aria-hidden="true">↻</span>
+            <span>Làm mới</span>
+          </button>
         </header>
 
         <div className="hk-stats">
@@ -334,7 +337,7 @@ function HousekeepingPage() {
           {TABS.map(item => <button type="button" key={item.key} className={tab === item.key ? 'is-active' : ''} onClick={() => { setTab(item.key); setSelectedId(null) }}>{item.label}<b>{count(item.key)}</b></button>)}
         </div>
 
-        <div className="hk-workspace">
+        <div className={`hk-workspace${selected ? ' hk-workspace--detail-open' : ''}`}>
           <div className="hk-list">
             {loading ? <div className="hk-list-empty">Đang tải công việc...</div> : visibleTasks.length === 0 ? <div className="hk-list-empty"><b>Không có phòng trong nhóm này</b><span>Danh sách sẽ tự cập nhật khi có yêu cầu mới.</span></div> : visibleTasks.map(task => <TaskCard key={task.id} task={task} active={task.id === selectedId} onClick={() => setSelectedId(task.id)} />)}
           </div>

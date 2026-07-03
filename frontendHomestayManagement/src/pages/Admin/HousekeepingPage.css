@@ -6,3 +6,82 @@
 .hk-section-title--penalty{margin-top:24px}.hk-section-title--penalty>strong{font-size:18px}.hk-penalties{border:1px solid #ebebeb;border-radius:14px;display:grid;gap:0;overflow:hidden}.hk-penalty{align-items:center;background:#fff;cursor:pointer;display:grid;gap:12px;grid-template-columns:22px 1fr auto;padding:15px;position:relative}.hk-penalty+.hk-penalty{border-top:1px solid #ebebeb}.hk-penalty:hover{background:#f7f7f7}.hk-penalty--selected{background:#fff5f7}.hk-penalty input{height:1px;opacity:0;position:absolute;width:1px}.hk-penalty__check{align-items:center;border:1px solid #c1c1c1;border-radius:6px;color:transparent;display:flex;font-size:12px;height:20px;justify-content:center;width:20px}.hk-penalty--selected .hk-penalty__check{background:#ff385c;border-color:#ff385c;color:#fff}.hk-penalty>span:nth-of-type(2) strong,.hk-penalty>span:nth-of-type(2) small{display:block}.hk-penalty>span:nth-of-type(2) small{color:#6a6a6a;font-size:12px;margin-top:3px}.hk-penalty>b{font-size:14px}.hk-penalty:has(input:disabled){cursor:default}.hk-summary>.hk-summary-lines{display:block;margin-bottom:16px}.hk-summary-lines p{align-items:center;color:#6a6a6a;display:flex;font-size:14px;justify-content:space-between;margin:0;padding:5px 0}.hk-summary-lines p b{color:#222}.hk-summary-lines .hk-summary-total{border-top:1px solid #ebebeb;color:#222;margin-top:7px;padding-top:13px}.hk-summary-lines .hk-summary-total strong{font-size:22px}
 .hk-cleaning-checklist{background:#f7f7f7;border:1px solid #ddd;border-radius:14px;margin-top:24px;padding:20px}.hk-checklist-head{align-items:flex-start;display:flex;gap:20px;justify-content:space-between;margin-bottom:15px}.hk-checklist-head>div:first-child>span{color:#6a6a6a;font-size:12px;font-weight:700;letter-spacing:.06em}.hk-checklist-head h3{font-size:20px;margin:4px 0}.hk-checklist-head p{color:#6a6a6a;font-size:14px;line-height:1.45;margin:0}.hk-checklist-progress{background:#fff;border:1px solid #ebebeb;border-radius:12px;flex:0 0 auto;min-width:100px;padding:10px 13px;text-align:center}.hk-checklist-progress strong,.hk-checklist-progress span{display:block}.hk-checklist-progress strong{font-size:22px}.hk-checklist-progress span{color:#6a6a6a;font-size:11px;margin-top:2px}.hk-checklist-items{background:#fff;border:1px solid #ddd;border-radius:12px;overflow:hidden}.hk-checklist-item{align-items:center;cursor:pointer;display:grid;gap:12px;grid-template-columns:24px minmax(0,1fr) auto;padding:15px}.hk-checklist-item+.hk-checklist-item{border-top:1px solid #ebebeb}.hk-checklist-item:hover{background:#fafafa}.hk-checklist-item.is-completed{background:#f0faf4}.hk-checklist-item input{height:1px;opacity:0;position:absolute;width:1px}.hk-checklist-box{align-items:center;border:1.5px solid #c1c1c1;border-radius:7px;color:transparent;display:flex;font-size:13px;font-weight:700;height:22px;justify-content:center;width:22px}.hk-checklist-item.is-completed .hk-checklist-box{background:#16794b;border-color:#16794b;color:#fff}.hk-checklist-copy strong,.hk-checklist-copy small{display:block}.hk-checklist-copy strong{font-size:15px}.hk-checklist-copy small{color:#6a6a6a;font-size:13px;line-height:1.4;margin-top:4px}.hk-checklist-requirement{background:#f2f2f2;border-radius:999px;color:#6a6a6a;font-size:11px;font-weight:600;padding:5px 9px}.hk-checklist-requirement.is-required{background:#fff0f3;color:#c13515}.hk-checklist-item:has(input:disabled){cursor:default}.hk-checklist-empty{background:#fff;border:1px dashed #c1c1c1;border-radius:12px;color:#6a6a6a;font-size:14px;padding:22px;text-align:center}.hk-required-warning{color:#c13515;display:block;font-size:12px;margin-bottom:8px}.hk-cleaning-action{align-items:flex-end}.hk-cleaning-action>p{flex:1}
 @media(max-width:620px){.hk-checklist-head{align-items:stretch;flex-direction:column}.hk-checklist-progress{align-items:center;display:flex;gap:7px;justify-content:center}.hk-checklist-progress span{margin:0}.hk-checklist-item{grid-template-columns:24px minmax(0,1fr)}.hk-checklist-requirement{grid-column:2;justify-self:start}}
+
+/* Responsive shell is isolated to the signed-in Housekeeping role. */
+@media(max-width:760px){
+  .admin-shell--housekeeping-role{display:block;min-width:0}
+  .admin-shell--housekeeping-role .admin-sidebar{height:auto;overflow:visible;position:static;width:100%}
+  .admin-shell--housekeeping-role .admin-sidebar-logo,
+  .admin-shell--housekeeping-role .admin-nav-group-trigger{display:none}
+  .admin-shell--housekeeping-role .admin-nav{display:block;padding:8px 12px 0}
+  .admin-shell--housekeeping-role .admin-nav-submenu{background:transparent;border:0;display:flex;margin:0;padding:0}
+  .admin-shell--housekeeping-role .admin-nav-subitem{background:rgba(34,197,94,.16);box-shadow:inset 0 -2px 0 #34d399;color:#fff;min-height:42px;text-align:center}
+  .admin-shell--housekeeping-role .admin-sidebar-bottom{border-top:0;display:grid;gap:8px;grid-template-columns:1fr 1fr;padding:8px 12px 10px}
+  .admin-shell--housekeeping-role .admin-sidebar-bottom .admin-nav-item{justify-content:center;min-height:40px;padding:8px}
+  .admin-shell--housekeeping-role .admin-topbar{height:54px;padding:0 14px}
+  .admin-shell--housekeeping-role .admin-topbar-toggle{display:none}
+  .admin-shell--housekeeping-role .admin-topbar-time{font-size:12px}
+  .admin-shell--housekeeping-role .admin-topbar-right{gap:8px}
+  .admin-shell--housekeeping-role .admin-topbar-bell{height:34px;width:34px}
+  .admin-shell--housekeeping-role .admin-topbar-user>div{display:none}
+  .admin-shell--housekeeping-role .admin-topbar-avatar{height:34px;width:34px}
+  .admin-shell--housekeeping-role .admin-content{overflow:visible;padding:18px 14px 30px}
+}
+
+/* Housekeeping page responsive refinements. */
+.hk-refresh{align-items:center;display:inline-flex;gap:7px;justify-content:center;min-height:44px}
+.hk-task-card{box-sizing:border-box;width:100%}
+
+@media(max-width:760px){
+  .hk-page{min-width:0}
+  .hk-page-head{gap:12px;margin-bottom:18px}
+  .hk-page-head h1{font-size:25px}
+  .hk-page-head p{font-size:13px;line-height:1.45}
+  .hk-refresh{flex:0 0 auto;padding:9px 13px}
+  .hk-stats{gap:9px;margin-bottom:18px}
+  .hk-stats>div{min-width:0;padding:13px 14px}
+  .hk-stats span{font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .hk-tabs{gap:18px;margin:0 -14px 16px;padding:0 14px;scrollbar-width:none}
+  .hk-tabs::-webkit-scrollbar{display:none}
+  .hk-tabs button{min-height:44px}
+  .hk-list{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .hk-task-card{min-height:170px;padding:14px}
+  .hk-task-meta{align-items:flex-start;gap:8px}
+  .hk-task-meta span{line-height:1.35}
+  .hk-detail{margin-top:16px;padding:20px}
+  .hk-workspace--detail-open .hk-list{display:none}
+  .hk-workspace--detail-open .hk-detail{margin-top:0}
+  .hk-close{flex:0 0 auto;height:44px;width:44px}
+  .hk-primary{min-height:48px}
+  .hk-start-box{align-items:stretch;flex-direction:column;gap:16px;padding:18px}
+  .hk-stepper button{height:36px;width:36px}
+  .hk-penalty{min-height:48px}
+  .hk-note textarea{font-size:16px}
+}
+
+@media(max-width:520px){
+  .hk-page-head{align-items:center}
+  .hk-page-head p{display:none}
+  .hk-refresh{font-size:16px;height:44px;padding:0;width:44px}
+  .hk-refresh span:last-child{display:none}
+  .hk-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .hk-stats>div{padding:12px}
+  .hk-list{display:grid;grid-template-columns:1fr}
+  .hk-task-card{min-height:0}
+  .hk-detail{border-radius:12px;margin-left:-4px;margin-right:-4px;padding:16px}
+  .hk-detail__head{gap:10px}
+  .hk-detail__head h2{font-size:22px}
+  .hk-progress{margin:20px 0}
+  .hk-progress div{gap:4px}
+  .hk-progress div:not(:last-child):after{left:30px;right:5px}
+  .hk-progress span{display:block;font-size:10px}
+  .hk-section-title{align-items:flex-start;gap:10px}
+  .hk-section-title h3{font-size:16px}
+  .hk-item{gap:10px;grid-template-columns:34px minmax(0,1fr);padding:13px 12px}
+  .hk-stepper{grid-column:2;max-width:132px;width:100%}
+  .hk-penalty{gap:9px;grid-template-columns:22px minmax(0,1fr);padding:13px 12px}
+  .hk-penalty>b{grid-column:2}
+  .hk-cleaning-checklist{padding:14px}
+  .hk-checklist-item{padding:13px 12px}
+  .hk-summary{padding-bottom:max(4px,env(safe-area-inset-bottom))}
+}
