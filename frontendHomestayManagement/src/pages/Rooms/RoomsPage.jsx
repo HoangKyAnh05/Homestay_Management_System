@@ -1,4 +1,5 @@
 ﻿import { useEffect, useMemo, useState } from 'react'
+import { useRef } from 'react'
 import { getStoredToken, getStoredUser, logout } from '../../services/authService'
 import SePayQrPayment from '../../components/SePayQrPayment/SePayQrPayment'
 import { clearBookingCart, readBookingCart, writeBookingCart } from '../../utils/bookingCart'
@@ -344,6 +345,39 @@ function selectedQuantity(room) {
   return Math.max(1, Number(room.quantity || 1))
 }
 
+function roomUnitKey(room, unitIndex) {
+  return `${roomKey(room)}-unit-${unitIndex}`
+}
+
+function createRoomUnit(room, unitIndex, criteria, totalRoomCount, template = null) {
+  const defaultAdults = Math.max(
+    1,
+    Math.min(Number(room.maxAdults || 1), Math.ceil(Number(criteria?.adults || 1) / Math.max(1, totalRoomCount))),
+  )
+  const defaultChildren = Math.max(
+    0,
+    Math.min(Number(room.maxChildren || 0), Math.ceil(Number(criteria?.children || 0) / Math.max(1, totalRoomCount))),
+  )
+  return {
+    key: roomUnitKey(room, unitIndex),
+    typeKey: roomKey(room),
+    unitIndex,
+    room,
+    numberOfAdults: template?.numberOfAdults ?? defaultAdults,
+    numberOfChildren: template?.numberOfChildren ?? defaultChildren,
+    services: [],
+  }
+}
+
+function initialRoomUnits(selectedRooms, criteria) {
+  const totalRoomCount = selectedRooms.reduce((sum, room) => sum + selectedQuantity(room), 0)
+  return selectedRooms.flatMap((room) =>
+    Array.from(
+      { length: selectedQuantity(room) },
+      (_, index) => createRoomUnit(room, index + 1, criteria, totalRoomCount),
+    ))
+}
+
 function isRoomTypeSearchResult(room) {
   return !room.roomId && Boolean(room.roomTypeId || room.availableRooms !== undefined)
 }
@@ -472,22 +506,16 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
     checkOutTarget: criteria?.checkOutDate ? dateKeyToDateTimeLocal(criteria.checkOutDate, 12) : '',
     pricePolicyId: '',
   })
-  const [roomGuests, setRoomGuests] = useState(() => Object.fromEntries(selectedRooms.map((room) => [
-    roomKey(room),
-    {
-      numberOfAdults: Math.max(1, Math.min(Number(room.maxAdults || 1), Math.ceil(Number(criteria?.adults || 1) / Math.max(1, selectedRooms.length)))),
-      numberOfChildren: Math.max(0, Math.min(Number(room.maxChildren || 0), Math.ceil(Number(criteria?.children || 0) / Math.max(1, selectedRooms.length)))),
-    },
-  ])))
   const [roomQuantities, setRoomQuantities] = useState(() => Object.fromEntries(selectedRooms.map((room) => [
     roomKey(room),
     selectedQuantity(room),
   ])))
+  const [roomUnits, setRoomUnits] = useState(() => initialRoomUnits(selectedRooms, criteria))
+  const initialRoomUnitKeyRef = useRef(roomUnitKey(selectedRooms[0], 1))
   const [policies, setPolicies] = useState([])
   const [serviceOptions, setServiceOptions] = useState([])
-  const [selectedServices, setSelectedServices] = useState([])
   const [serviceForm, setServiceForm] = useState({ optionKey: '', quantity: 1 })
-  const [serviceDialogOpen, setServiceDialogOpen] = useState(false)
+  const [serviceDialogRoomKey, setServiceDialogRoomKey] = useState(null)
   const [loadingMeta, setLoadingMeta] = useState(true)
   const [checkingSchedule, setCheckingSchedule] = useState(false)
   const [scheduleError, setScheduleError] = useState('')
@@ -499,13 +527,13 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
   const [paymentLoading, setPaymentLoading] = useState(false)
 
   useEffect(() => {
-    if (!serviceDialogOpen) return undefined
+    if (!serviceDialogRoomKey) return undefined
     const closeOnEscape = (event) => {
-      if (event.key === 'Escape') setServiceDialogOpen(false)
+      if (event.key === 'Escape') setServiceDialogRoomKey(null)
     }
     window.addEventListener('keydown', closeOnEscape)
     return () => window.removeEventListener('keydown', closeOnEscape)
-  }, [serviceDialogOpen])
+  }, [serviceDialogRoomKey])
 
   const startPayment = () => {
     const token = getStoredToken()
@@ -562,7 +590,8 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
           const pending = JSON.parse(window.sessionStorage.getItem('homeStayPendingAmenityService') || 'null')
           const matched = nextServices.find(item => item.type === pending?.type && String(item.id) === String(pending?.serviceId))
           if (matched) {
-            setSelectedServices([{ type: matched.type, serviceId: matched.id, name: matched.name, price: matched.price, quantity: 1 }])
+            setServiceForm({ optionKey: serviceKey(matched), quantity: 1 })
+            setServiceDialogRoomKey(initialRoomUnitKeyRef.current)
             window.sessionStorage.removeItem('homeStayPendingAmenityService')
           }
         } catch {
@@ -604,8 +633,26 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
     quantity: roomQuantities[roomKey(room)] || selectedQuantity(room),
   }))
   const roomTotal = roomPriceItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
-  const serviceTotal = selectedServices.reduce((sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 0), 0)
+  const serviceTotal = roomUnits.reduce(
+    (total, unit) => total + unit.services.reduce(
+      (sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 0),
+      0,
+    ),
+    0,
+  )
   const selectedServiceOption = serviceOptions.find((item) => serviceKey(item) === serviceForm.optionKey)
+  const serviceDialogRoom = roomUnits.find((unit) => unit.key === serviceDialogRoomKey)
+  const selectedServiceQuantity = selectedServiceOption
+    ? roomUnits.reduce(
+        (total, unit) => total + unit.services
+          .filter((item) => item.type === selectedServiceOption.type && item.serviceId === selectedServiceOption.id)
+          .reduce((sum, item) => sum + Number(item.quantity || 0), 0),
+        0,
+      )
+    : 0
+  const selectedInventoryRemaining = String(selectedServiceOption?.type).toUpperCase() === 'INVENTORY'
+    ? Math.max(0, Number(selectedServiceOption?.quantityInStock || 0) - selectedServiceQuantity)
+    : undefined
 
   useEffect(() => {
     if (selectedRooms.some((room) => !room.roomId)) {
@@ -735,10 +782,14 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
     setForm((current) => ({ ...current, checkOutTarget: value }))
   }
 
-  const updateRoomGuest = (key, field, value) => {
-    setRoomGuests((current) => ({
-      ...current,
-      [key]: { ...current[key], [field]: Number(value) },
+  const updateRoomGuest = (unitKey, field, value) => {
+    setRoomUnits((current) => current.map((unit) => {
+      if (unit.key !== unitKey) return unit
+      const numericValue = Number(value)
+      const nextValue = field === 'numberOfAdults'
+        ? Math.max(1, Math.min(Number(unit.room.maxAdults || 1), numericValue || 1))
+        : Math.max(0, Math.min(Number(unit.room.maxChildren || 0), numericValue || 0))
+      return { ...unit, [field]: nextValue }
     }))
   }
 
@@ -750,31 +801,86 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
       ...current,
       [key]: quantity,
     }))
+    setRoomUnits((current) => {
+      const orderBySelectedRoom = (units) => selectedRooms.flatMap((selectedRoom) =>
+        units
+          .filter((unit) => unit.typeKey === roomKey(selectedRoom))
+          .sort((first, second) => first.unitIndex - second.unitIndex)
+      )
+      const sameTypeUnits = current
+        .filter((unit) => unit.typeKey === key)
+        .sort((first, second) => first.unitIndex - second.unitIndex)
+      const otherUnits = current.filter((unit) => unit.typeKey !== key)
+      if (quantity <= sameTypeUnits.length) {
+        return orderBySelectedRoom([...otherUnits, ...sameTypeUnits.slice(0, quantity)])
+      }
+      const totalRoomCount = Object.entries(roomQuantities).reduce(
+        (sum, [typeKey, currentQuantity]) => sum + (typeKey === key ? quantity : Number(currentQuantity || 0)),
+        0,
+      )
+      const template = sameTypeUnits[0]
+      const additions = Array.from(
+        { length: quantity - sameTypeUnits.length },
+        (_, index) => createRoomUnit(
+          room,
+          sameTypeUnits.length + index + 1,
+          criteria,
+          totalRoomCount,
+          template,
+        ),
+      )
+      return orderBySelectedRoom([...otherUnits, ...sameTypeUnits, ...additions])
+    })
   }
 
   const addService = () => {
     const option = serviceOptions.find((item) => serviceKey(item) === serviceForm.optionKey)
-    if (!option) return
+    if (!option || !serviceDialogRoomKey) return
     const requestedQuantity = Math.max(1, Number(serviceForm.quantity || 1))
-    const quantity = String(option.type).toUpperCase() === 'INVENTORY'
-      ? Math.min(requestedQuantity, Number(option.quantityInStock || requestedQuantity))
+    const alreadySelected = roomUnits.reduce(
+      (sum, unit) => sum + unit.services
+        .filter((item) => item.type === option.type && item.serviceId === option.id)
+        .reduce((itemTotal, item) => itemTotal + Number(item.quantity || 0), 0),
+      0,
+    )
+    const availableQuantity = String(option.type).toUpperCase() === 'INVENTORY'
+      ? Math.max(0, Number(option.quantityInStock || 0) - alreadySelected)
       : requestedQuantity
-    setSelectedServices((current) => {
-      const existing = current.find((item) => item.type === option.type && item.serviceId === option.id)
-      if (existing) {
-        return current.map((item) => item === existing ? { ...item, quantity: item.quantity + quantity } : item)
-      }
-      return [...current, {
-        type: option.type,
-        serviceId: option.id,
-        name: option.name,
-        price: option.price,
-        quantity,
-        imageUrl: option.imageUrl,
-      }]
-    })
+    const quantity = Math.min(requestedQuantity, availableQuantity)
+    if (quantity <= 0) {
+      setError(`Dịch vụ ${option.name} đã được chọn hết số lượng khả dụng.`)
+      return
+    }
+    setRoomUnits((current) => current.map((unit) => {
+      if (unit.key !== serviceDialogRoomKey) return unit
+      const existing = unit.services.find((item) => item.type === option.type && item.serviceId === option.id)
+      const services = existing
+        ? unit.services.map((item) => item === existing ? { ...item, quantity: item.quantity + quantity } : item)
+        : [...unit.services, {
+            type: option.type,
+            serviceId: option.id,
+            name: option.name,
+            price: option.price,
+            quantity,
+            imageUrl: option.imageUrl,
+          }]
+      return { ...unit, services }
+    }))
+    setError('')
     setServiceForm({ optionKey: '', quantity: 1 })
-    setServiceDialogOpen(false)
+    setServiceDialogRoomKey(null)
+  }
+
+  const removeRoomService = (unitKey, service) => {
+    setRoomUnits((current) => current.map((unit) => {
+      if (unit.key !== unitKey) return unit
+      return {
+        ...unit,
+        services: unit.services.filter((item) =>
+          !(item.type === service.type && item.serviceId === service.serviceId)
+        ),
+      }
+    }))
   }
 
   const submit = (event) => {
@@ -814,16 +920,21 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
         roomId: null,
         roomTypeId: roomTypeIdOf(selectedRooms[0]),
         pricePolicyId: Number(selectedPolicy.id),
-        numberOfAdults: roomGuests[roomKey(selectedRooms[0])]?.numberOfAdults || 1,
-        numberOfChildren: roomGuests[roomKey(selectedRooms[0])]?.numberOfChildren || 0,
-        rooms: selectedRooms.map((room) => ({
+        numberOfAdults: roomUnits[0]?.numberOfAdults || 1,
+        numberOfChildren: roomUnits[0]?.numberOfChildren || 0,
+        rooms: roomUnits.map((unit) => ({
           roomId: null,
-          roomTypeId: roomTypeIdOf(room),
-          quantity: Number(roomQuantities[roomKey(room)] || selectedQuantity(room)),
-          numberOfAdults: Number(roomGuests[roomKey(room)]?.numberOfAdults || 1),
-          numberOfChildren: Number(roomGuests[roomKey(room)]?.numberOfChildren || 0),
+          roomTypeId: roomTypeIdOf(unit.room),
+          quantity: 1,
+          numberOfAdults: Number(unit.numberOfAdults || 1),
+          numberOfChildren: Number(unit.numberOfChildren || 0),
+          services: unit.services.map((item) => ({
+            type: item.type,
+            serviceId: item.serviceId,
+            quantity: item.quantity,
+          })),
         })),
-        services: selectedServices.map((item) => ({ type: item.type, serviceId: item.serviceId, quantity: item.quantity })),
+        services: [],
       }),
     })
       .then(async (response) => {
@@ -847,7 +958,7 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
           <div className="public-booking-head">
             <div>
               <h2>Tóm tắt đơn đặt phòng</h2>
-              <p>Booking {bookingDisplay(paymentSummary)} · {paymentSummary.rooms?.length || selectedRooms.length} phòng</p>
+              <p>Booking {bookingDisplay(paymentSummary)} · {paymentSummary.rooms?.length || roomUnits.length} phòng</p>
             </div>
             <button type="button" onClick={onClose} aria-label="Đóng">×</button>
           </div>
@@ -858,12 +969,26 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
               <p>{paymentSummary.depositCalculationType === 'PERCENTAGE' ? `${Number(paymentSummary.depositPolicyValue || 0)}% tổng giá trị đơn` : paymentSummary.depositPolicyName}</p>
             </div>
             <div className="multi-payment-room-list">
-              {(paymentSummary.rooms || []).map((room) => (
-                <div key={room.bookingDetailId}>
-                  <span>{room.roomTypeName}</span>
-                  <strong>{formatPrice(room.priceAtBooking)}</strong>
-                </div>
-              ))}
+              {(paymentSummary.rooms || []).map((room, index) => {
+                const configuredRoom = roomUnits[index]
+                const configuredServiceTotal = configuredRoom?.services.reduce(
+                  (sum, service) => sum + Number(service.price || 0) * Number(service.quantity || 0),
+                  0,
+                ) || 0
+                return (
+                  <div key={room.bookingDetailId}>
+                    <span>
+                      {room.roomTypeName} · Phòng {configuredRoom?.unitIndex || index + 1}
+                      <small>
+                        {configuredRoom?.services.length
+                          ? configuredRoom.services.map((service) => `${service.name} × ${service.quantity}`).join(', ')
+                          : 'Không có dịch vụ đi kèm'}
+                      </small>
+                    </span>
+                    <strong>{formatPrice(Number(room.priceAtBooking || 0) + configuredServiceTotal)}</strong>
+                  </div>
+                )
+              })}
             </div>
             <div className="public-payment-grid">
               <div><span>Tiền phòng</span><strong>{formatPrice(paymentSummary.roomCharge)}</strong></div>
@@ -901,7 +1026,7 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
         <div className="public-booking-head">
           <div>
             <h2>Đặt nhiều phòng</h2>
-            <p>{selectedRooms.length} phòng trong cùng một booking</p>
+            <p>{roomUnits.length} phòng trong cùng một booking</p>
           </div>
           <button type="button" onClick={onClose} aria-label="Đóng">×</button>
         </div>
@@ -976,53 +1101,119 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
                       <button type="button" onClick={() => updateRoomQuantity(room, (roomQuantities[roomKey(room)] || 1) + 1)}>+</button>
                     </div>
                   </label>
-                  <label><span>Người lớn</span><input type="number" min="1" max={room.maxAdults || undefined} value={roomGuests[roomKey(room)]?.numberOfAdults || 1} onChange={(e) => updateRoomGuest(roomKey(room), 'numberOfAdults', e.target.value)} /></label>
-                  <label><span>Trẻ em</span><input type="number" min="0" max={room.maxChildren || undefined} value={roomGuests[roomKey(room)]?.numberOfChildren || 0} onChange={(e) => updateRoomGuest(roomKey(room), 'numberOfChildren', e.target.value)} /></label>
                 </article>
               ))}
             </div>
           </section>
 
-          <section>
-            <h3>Dịch vụ đi kèm</h3>
-            <div className="public-service-launch">
+          <section className="multi-room-config-section">
+            <div className="multi-room-config-heading">
               <div>
-                <strong>Chọn tiện ích hoặc đồ dùng thuê thêm</strong>
-                <span>Dịch vụ đã chọn sẽ được cộng vào tổng tạm tính.</span>
+                <h3>Cấu hình từng phòng</h3>
+                <p>Chọn số khách và dịch vụ riêng cho từng phòng trong booking.</p>
               </div>
-              <button type="button" onClick={() => setServiceDialogOpen(true)}>Chọn dịch vụ</button>
             </div>
-            <div className="public-service-list">
-              {selectedServices.length ? selectedServices.map((service) => (
-                <div key={`${service.type}-${service.serviceId}`}>
-                  <span className="public-service-selected-name">
-                    <span className="public-service-avatar">
-                      {service.imageUrl ? (
-                        <img src={resolveImageUrl(service.imageUrl)} alt={service.name} />
-                      ) : service.name?.charAt(0)}
-                    </span>
-                    <span>{service.name} × {service.quantity}<small>{formatPrice(service.price)} / {serviceUnit(service.type)}</small></span>
-                  </span>
-                  <strong>{formatPrice(Number(service.price) * service.quantity)}</strong>
-                  <button type="button" onClick={() => setSelectedServices((current) => current.filter((item) => item !== service))}>×</button>
-                </div>
-              )) : <p>Chưa chọn dịch vụ đi kèm.</p>}
+            <div className="multi-room-units">
+              {roomUnits.map((unit) => {
+                const unitServiceTotal = unit.services.reduce(
+                  (sum, service) => sum + Number(service.price || 0) * Number(service.quantity || 0),
+                  0,
+                )
+                return (
+                  <article className="multi-room-unit" key={unit.key}>
+                    <div className="multi-room-unit-head">
+                      <div>
+                        <span>Phòng {unit.unitIndex}</span>
+                        <strong>{unit.room.roomTypeName || unit.room.name || 'Loại phòng'}</strong>
+                      </div>
+                      <b>{formatPrice(roomPriceItems.find((item) => roomKey(item.room) === unit.typeKey)?.price || roomPrice(unit.room))}</b>
+                    </div>
+
+                    <div className="multi-room-unit-guests">
+                      <label>
+                        <span>Người lớn</span>
+                        <input
+                          type="number"
+                          min="1"
+                          max={unit.room.maxAdults || undefined}
+                          value={unit.numberOfAdults}
+                          onChange={(event) => updateRoomGuest(unit.key, 'numberOfAdults', event.target.value)}
+                        />
+                      </label>
+                      <label>
+                        <span>Trẻ em</span>
+                        <input
+                          type="number"
+                          min="0"
+                          max={unit.room.maxChildren || undefined}
+                          value={unit.numberOfChildren}
+                          onChange={(event) => updateRoomGuest(unit.key, 'numberOfChildren', event.target.value)}
+                        />
+                      </label>
+                    </div>
+
+                    <div className="multi-room-unit-services">
+                      <div className="multi-room-unit-service-head">
+                        <div>
+                          <strong>Dịch vụ của phòng này</strong>
+                          <span>{unit.services.length ? `${unit.services.length} dịch vụ đã chọn` : 'Chưa chọn dịch vụ'}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setServiceForm({ optionKey: '', quantity: 1 })
+                            setServiceDialogRoomKey(unit.key)
+                          }}
+                        >
+                          + Thêm dịch vụ
+                        </button>
+                      </div>
+
+                      {unit.services.length > 0 && (
+                        <div className="multi-room-service-list">
+                          {unit.services.map((service) => (
+                            <div key={`${service.type}-${service.serviceId}`}>
+                              <span>
+                                <b>{service.name}</b>
+                                <small>{formatPrice(service.price)} × {service.quantity}</small>
+                              </span>
+                              <strong>{formatPrice(Number(service.price) * service.quantity)}</strong>
+                              <button
+                                type="button"
+                                aria-label={`Xóa ${service.name} khỏi phòng ${unit.unitIndex}`}
+                                onClick={() => removeRoomService(unit.key, service)}
+                              >
+                                ×
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      <div className="multi-room-unit-subtotal">
+                        <span>Dịch vụ phòng</span>
+                        <strong>{formatPrice(unitServiceTotal)}</strong>
+                      </div>
+                    </div>
+                  </article>
+                )
+              })}
             </div>
           </section>
 
-          {serviceDialogOpen && (
+          {serviceDialogRoom && (
             <div
               className="public-service-dialog-overlay"
               role="presentation"
-              onClick={(event) => event.target === event.currentTarget && setServiceDialogOpen(false)}
+              onClick={(event) => event.target === event.currentTarget && setServiceDialogRoomKey(null)}
             >
               <div className="public-service-dialog" role="dialog" aria-modal="true" aria-labelledby="service-dialog-title">
                 <div className="public-service-dialog-head">
                   <div>
-                    <h3 id="service-dialog-title">Chọn dịch vụ đi kèm</h3>
-                    <p>Chọn một dịch vụ và số lượng muốn thêm vào booking.</p>
+                    <h3 id="service-dialog-title">Dịch vụ cho {serviceDialogRoom.room.roomTypeName || serviceDialogRoom.room.name} – Phòng {serviceDialogRoom.unitIndex}</h3>
+                    <p>Dịch vụ được ghi nhận và thanh toán riêng cho phòng này.</p>
                   </div>
-                  <button type="button" onClick={() => setServiceDialogOpen(false)} aria-label="Đóng">×</button>
+                  <button type="button" onClick={() => setServiceDialogRoomKey(null)} aria-label="Đóng">×</button>
                 </div>
 
                 <div className="public-service-dialog-list">
@@ -1055,14 +1246,20 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
                     <input
                       type="number"
                       min="1"
-                      max={String(selectedServiceOption?.type).toUpperCase() === 'INVENTORY' ? selectedServiceOption?.quantityInStock : undefined}
+                      max={selectedInventoryRemaining}
                       value={serviceForm.quantity}
                       onChange={(e) => setServiceForm({ ...serviceForm, quantity: e.target.value })}
                     />
                   </label>
                   <div>
-                    <button type="button" onClick={() => setServiceDialogOpen(false)}>Hủy</button>
-                    <button type="button" onClick={addService} disabled={!serviceForm.optionKey}>Thêm dịch vụ</button>
+                    <button type="button" onClick={() => setServiceDialogRoomKey(null)}>Hủy</button>
+                    <button
+                      type="button"
+                      onClick={addService}
+                      disabled={!serviceForm.optionKey || selectedInventoryRemaining === 0}
+                    >
+                      Thêm dịch vụ
+                    </button>
                   </div>
                 </div>
               </div>

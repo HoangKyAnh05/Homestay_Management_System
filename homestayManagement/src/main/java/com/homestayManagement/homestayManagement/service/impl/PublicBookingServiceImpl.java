@@ -173,6 +173,10 @@ public class PublicBookingServiceImpl implements PublicBookingService {
         updateCustomer(customer, request);
 
         List<PublicBookingRoomRequest> selectedRooms = requireSelectedRooms(request);
+        int requestedRoomCount = selectedRooms.stream().mapToInt(this::quantityOf).sum();
+        if (requestedRoomCount > 1 && request.services() != null && !request.services().isEmpty()) {
+            throw new IllegalArgumentException("Vui lòng chọn phòng áp dụng cho từng dịch vụ");
+        }
         Set<Long> selectedRoomTypeIds = selectedRooms.stream()
                 .map(this::resolveRoomTypeId)
                 .collect(Collectors.toCollection(HashSet::new));
@@ -212,6 +216,7 @@ public class PublicBookingServiceImpl implements PublicBookingService {
                 .build());
 
         List<BookingDetail> savedDetails = new ArrayList<>();
+        BigDecimal serviceCharge = BigDecimal.ZERO;
         for (PublicBookingRoomRequest selectedRoom : selectedRooms) {
             RoomType roomType = roomTypesById.get(resolveRoomTypeId(selectedRoom));
             BigDecimal currentRoomPrice = roomPriceConfigRepository
@@ -219,7 +224,7 @@ public class PublicBookingServiceImpl implements PublicBookingService {
                     .map(RoomPriceConfig::getPrice)
                     .orElseThrow(() -> new IllegalArgumentException("Chua cau hinh gia cho loai phong " + roomType.getName() + " va goi thue nay"));
             for (int index = 0; index < quantityOf(selectedRoom); index++) {
-                savedDetails.add(bookingDetailRepository.save(BookingDetail.builder()
+                BookingDetail savedDetail = bookingDetailRepository.save(BookingDetail.builder()
                         .booking(booking)
                         .roomType(roomType)
                         .room(null)
@@ -231,13 +236,17 @@ public class PublicBookingServiceImpl implements PublicBookingService {
                         .rentType(pricePolicy.getRentType())
                         .roomAssignmentStatus("UNASSIGNED")
                         .status(bookingStatus)
-                        .build()));
+                        .build());
+                savedDetails.add(savedDetail);
+                serviceCharge = serviceCharge.add(saveServices(savedDetail, selectedRoom.services()));
             }
         }
 
         BookingDetail firstDetail = savedDetails.get(0);
         BigDecimal roomCharge = calculateRoomCharge(savedDetails);
-        BigDecimal serviceCharge = saveServices(firstDetail, request.services());
+        if (request.services() != null && !request.services().isEmpty()) {
+            serviceCharge = serviceCharge.add(saveServices(firstDetail, request.services()));
+        }
         BigDecimal totalAmount = roomCharge.add(serviceCharge);
         BigDecimal depositAmount = hourlyPrepaymentRequired
                 ? roomCharge
@@ -274,7 +283,8 @@ public class PublicBookingServiceImpl implements PublicBookingService {
                     request.roomTypeId(),
                     1,
                     request.numberOfAdults(),
-                    request.numberOfChildren()
+                    request.numberOfChildren(),
+                    null
             ));
         }
         if (request.roomId() != null) {
@@ -285,7 +295,8 @@ public class PublicBookingServiceImpl implements PublicBookingService {
                     room.getRoomType().getId(),
                     1,
                     request.numberOfAdults(),
-                    request.numberOfChildren()
+                    request.numberOfChildren(),
+                    null
             ));
         }
         throw new IllegalArgumentException("Vui long chon it nhat mot loai phong");

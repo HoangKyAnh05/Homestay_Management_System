@@ -1,21 +1,30 @@
 package com.homestayManagement.homestayManagement.service.impl;
 
+import com.homestayManagement.homestayManagement.dto.request.PublicBookingRoomRequest;
+import com.homestayManagement.homestayManagement.dto.request.PublicBookingServiceRequest;
+import com.homestayManagement.homestayManagement.dto.request.PublicCreateBookingRequest;
 import com.homestayManagement.homestayManagement.entity.*;
 import com.homestayManagement.homestayManagement.repository.*;
 import com.homestayManagement.homestayManagement.service.support.BookingCodeGenerator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -125,5 +134,125 @@ class PublicBookingServiceImplTest {
         assertEquals(2, response.services().size());
         assertEquals("PRE_BOOKED", response.services().get(0).source());
         assertEquals("STAY", response.services().get(1).source());
+    }
+
+    @Test
+    void createMultiRoomBookingSavesServicesOnTheirSelectedRooms() {
+        Role customerRole = Role.builder().id(1L).name("ROLE_CUSTOMER").build();
+        Account account = Account.builder().id(2L).email("guest@example.com").role(customerRole).build();
+        Customer customer = Customer.builder().id(3L).account(account).fullName("Guest").build();
+        RoomType vipSuite = RoomType.builder().id(10L).name("VIP Suite").maxAdults(2).maxChildren(1).build();
+        RoomType connectingRoom = RoomType.builder().id(20L).name("Connecting Room").maxAdults(4).maxChildren(3).build();
+        PricePolicy dailyPolicy = PricePolicy.builder().id(30L).rentType("DAILY").build();
+        FacilityService bbq = FacilityService.builder()
+                .id(40L).name("BBQ").price(BigDecimal.valueOf(2_000)).isActive(true).build();
+        FacilityService breakfast = FacilityService.builder()
+                .id(50L).name("Breakfast").price(BigDecimal.valueOf(5_000)).isActive(true).build();
+        AtomicLong detailId = new AtomicLong(100L);
+
+        when(accountRepository.findByEmail("guest@example.com")).thenReturn(java.util.Optional.of(account));
+        when(customerRepository.findByAccountId(2L)).thenReturn(java.util.Optional.of(customer));
+        when(roomTypeRepository.findAllByIdForInventoryUpdate(Set.of(10L, 20L)))
+                .thenReturn(List.of(vipSuite, connectingRoom));
+        when(bookingDetailRepository.findOverlappingSchedule(any(), any())).thenReturn(List.of());
+        when(roomRepository.findByRoomTypeId(10L)).thenReturn(List.of(Room.builder().id(11L).roomType(vipSuite).build()));
+        when(roomRepository.findByRoomTypeId(20L)).thenReturn(List.of(Room.builder().id(21L).roomType(connectingRoom).build()));
+        when(pricePolicyRepository.findById(30L)).thenReturn(java.util.Optional.of(dailyPolicy));
+        when(roomPriceConfigRepository.findByRoomTypeIdAndPricePolicyIdAndDayType(10L, 30L, "WEEKDAY"))
+                .thenReturn(java.util.Optional.of(RoomPriceConfig.builder().price(BigDecimal.valueOf(7_000)).build()));
+        when(roomPriceConfigRepository.findByRoomTypeIdAndPricePolicyIdAndDayType(20L, 30L, "WEEKDAY"))
+                .thenReturn(java.util.Optional.of(RoomPriceConfig.builder().price(BigDecimal.valueOf(15_000)).build()));
+        when(bookingRepository.save(any(Booking.class))).thenAnswer(invocation -> {
+            Booking booking = invocation.getArgument(0);
+            booking.setId(60L);
+            return booking;
+        });
+        when(bookingDetailRepository.save(any(BookingDetail.class))).thenAnswer(invocation -> {
+            BookingDetail detail = invocation.getArgument(0);
+            detail.setId(detailId.getAndIncrement());
+            return detail;
+        });
+        when(facilityServiceRepository.findById(40L)).thenReturn(java.util.Optional.of(bbq));
+        when(facilityServiceRepository.findById(50L)).thenReturn(java.util.Optional.of(breakfast));
+        when(bookingServiceItemRepository.save(any(BookingServiceItem.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        PublicCreateBookingRequest request = new PublicCreateBookingRequest(
+                "Guest",
+                "0900000000",
+                "guest@example.com",
+                "Ha Noi",
+                null,
+                null,
+                null,
+                10L,
+                List.of(
+                        new PublicBookingRoomRequest(
+                                null, 10L, 1, 2, 0,
+                                List.of(new PublicBookingServiceRequest("FACILITY", 40L, 1))
+                        ),
+                        new PublicBookingRoomRequest(
+                                null, 20L, 1, 2, 0,
+                                List.of(new PublicBookingServiceRequest("FACILITY", 50L, 1))
+                        )
+                ),
+                LocalDateTime.of(2026, 7, 6, 14, 0),
+                LocalDateTime.of(2026, 7, 7, 12, 0),
+                30L,
+                2,
+                0,
+                List.of()
+        );
+
+        var response = service.createBooking("guest@example.com", request);
+
+        ArgumentCaptor<BookingServiceItem> serviceItemCaptor = ArgumentCaptor.forClass(BookingServiceItem.class);
+        verify(bookingServiceItemRepository, org.mockito.Mockito.times(2)).save(serviceItemCaptor.capture());
+        List<BookingServiceItem> savedServices = serviceItemCaptor.getAllValues();
+
+        assertEquals(BigDecimal.valueOf(7_000), response.serviceCharge());
+        assertEquals(2, response.rooms().size());
+        assertEquals(100L, savedServices.get(0).getBookingDetail().getId());
+        assertEquals("BBQ", savedServices.get(0).getFacilityService().getName());
+        assertEquals(101L, savedServices.get(1).getBookingDetail().getId());
+        assertEquals("Breakfast", savedServices.get(1).getFacilityService().getName());
+    }
+
+    @Test
+    void createMultiRoomBookingRejectsAmbiguousBookingLevelServices() {
+        Role customerRole = Role.builder().id(1L).name("ROLE_CUSTOMER").build();
+        Account account = Account.builder().id(2L).email("guest@example.com").role(customerRole).build();
+        Customer customer = Customer.builder().id(3L).account(account).fullName("Guest").build();
+        when(accountRepository.findByEmail("guest@example.com")).thenReturn(java.util.Optional.of(account));
+        when(customerRepository.findByAccountId(2L)).thenReturn(java.util.Optional.of(customer));
+
+        PublicCreateBookingRequest request = new PublicCreateBookingRequest(
+                "Guest",
+                "0900000000",
+                "guest@example.com",
+                null,
+                null,
+                null,
+                null,
+                10L,
+                List.of(
+                        new PublicBookingRoomRequest(null, 10L, 1, 1, 0, List.of()),
+                        new PublicBookingRoomRequest(null, 20L, 1, 1, 0, List.of())
+                ),
+                LocalDateTime.of(2026, 7, 6, 14, 0),
+                LocalDateTime.of(2026, 7, 7, 12, 0),
+                30L,
+                1,
+                0,
+                List.of(new PublicBookingServiceRequest("FACILITY", 40L, 1))
+        );
+
+        IllegalArgumentException error = assertThrows(
+                IllegalArgumentException.class,
+                () -> service.createBooking("guest@example.com", request)
+        );
+
+        assertEquals("Vui lòng chọn phòng áp dụng cho từng dịch vụ", error.getMessage());
+        verify(bookingRepository, never()).save(any(Booking.class));
     }
 }

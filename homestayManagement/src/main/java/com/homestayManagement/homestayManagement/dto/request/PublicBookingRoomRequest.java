@@ -1,7 +1,10 @@
 package com.homestayManagement.homestayManagement.dto.request;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
+
+import java.util.List;
 
 public record PublicBookingRoomRequest(
         Long roomId,
@@ -17,6 +20,8 @@ public record PublicBookingRoomRequest(
 
         @NotNull(message = "Vui long nhap so tre em")
         @Min(value = 0, message = "So tre em khong hop le")
-        Integer numberOfChildren
+        Integer numberOfChildren,
+
+        List<@Valid PublicBookingServiceRequest> services
 ) {
 }
