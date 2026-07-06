@@ -10,6 +10,7 @@ import AdminRulesPenaltiesPage from './pages/Admin/AdminRulesPenaltiesPage'
 import AdminServiceCategoriesPage from './pages/Admin/AdminServiceCategoriesPage'
 import AdminSurchargesPage from './pages/Admin/AdminSurchargesPage'
 import AdminUsersPage from './pages/Admin/AdminUsersPage'
+import CustomerAiChat from './components/CustomerAiChat/CustomerAiChat'
 import DashboardPage from './pages/Admin/DashboardPage'
 import HousekeepingPage from './pages/Admin/HousekeepingPage'
 import { MarketingAIAgentPage, MarketingPostLogsPage, MarketingVouchersPage } from './pages/Admin/MarketingPages'
@@ -29,6 +30,15 @@ import { getStoredUser } from './services/authService'
 import { STAFF_ROLES, roleCanAccess, roleDefaultPath } from './utils/roleUtils'
 
 const AUTH_STORAGE_KEYS = new Set(['homeStayAccessToken', 'homeStayUser'])
+
+function CustomerSurface({ children }) {
+  return (
+    <>
+      {children}
+      <CustomerAiChat />
+    </>
+  )
+}
 
 function normalizePath() {
   if (window.location.pathname === '/') {
@@ -94,15 +104,15 @@ function App() {
   if (currentPath === '/login') return <LoginPage />
   if (currentPath === '/register') return <RegisterPage />
   if (currentPath === '/forgot') return <ForgotPasswordPage />
-  if (currentPath === '/profile') return <ProfilePage />
-  if (currentPath === '/booking-history') return <BookingHistoryPage />
-  if (currentPath === '/amenities') return <AmenitiesPage />
+  if (currentPath === '/profile') return <CustomerSurface><ProfilePage /></CustomerSurface>
+  if (currentPath === '/booking-history') return <CustomerSurface><BookingHistoryPage /></CustomerSurface>
+  if (currentPath === '/amenities') return <CustomerSurface><AmenitiesPage /></CustomerSurface>
   if (currentPath === '/stay/activate') return <StayActivationPage />
-  if (currentPath === '/stay') return <StayPage />
-  if (currentPath === '/rooms') return <RoomsPage />
+  if (currentPath === '/stay') return <CustomerSurface><StayPage /></CustomerSurface>
+  if (currentPath === '/rooms') return <CustomerSurface><RoomsPage /></CustomerSurface>
   if (currentPath.startsWith('/rooms/')) {
     const roomId = currentPath.split('/').filter(Boolean).at(-1)
-    return <RoomDetailPage roomId={roomId} />
+    return <CustomerSurface><RoomDetailPage roomId={roomId} /></CustomerSurface>
   }
   if (currentPath === '/admin/login') {
     const user = getStoredUser()
@@ -164,7 +174,7 @@ function App() {
     return <DashboardPage />
   }
 
-  return <HomePage />
+  return <CustomerSurface><HomePage /></CustomerSurface>
 }
 
 export default App
