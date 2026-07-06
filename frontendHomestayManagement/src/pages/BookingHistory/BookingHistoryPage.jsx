@@ -30,6 +30,10 @@ function serviceTypeLabel(type) {
   return type === 'FACILITY' ? 'Dịch vụ' : 'Thuê đồ'
 }
 
+function serviceSourceLabel(source) {
+  return source === 'STAY' ? 'Gọi trong kỳ ở' : 'Đặt trước'
+}
+
 function canAddService(booking) {
   const status = String(booking?.status || '').toUpperCase()
   const checkoutValue = booking?.checkOutTarget || booking?.rooms
@@ -348,7 +352,7 @@ function BookingHistoryPage() {
                   <div className="history-summary-grid">
                     <div><span>Ngày đặt</span><strong>{formatAppDateTime(detail.bookingDate, { weekday: 'long' })}</strong></div>
                     <div><span>Tổng tiền phòng</span><strong>{formatMoney(detail.roomCharge)}</strong></div>
-                    <div><span>Dịch vụ đi kèm</span><strong>{formatMoney(detail.serviceCharge)}</strong></div>
+                    <div><span>Tổng dịch vụ</span><strong>{formatMoney(detail.serviceCharge)}</strong></div>
                     <div><span>Tổng thanh toán</span><strong>{formatMoney(detail.totalAmount)}</strong></div>
                   </div>
 
@@ -369,12 +373,12 @@ function BookingHistoryPage() {
                   </section>
 
                   <section className="history-detail-section">
-                    <h3>Dịch vụ đi kèm</h3>
+                    <h3>Dịch vụ và phát sinh</h3>
                     {detail.services.length ? (
                       <div className="history-service-list">
                         {detail.services.map((service) => (
-                          <div key={service.id}>
-                            <span>{service.name} · {serviceTypeLabel(service.type)} × {service.quantity}</span>
+                          <div key={`${service.source || 'PRE_BOOKED'}-${service.id}`}>
+                            <span>{service.name} · {serviceSourceLabel(service.source)} · {serviceTypeLabel(service.type)} × {service.quantity}</span>
                             <strong>{formatMoney(service.totalAmount)}</strong>
                           </div>
                         ))}

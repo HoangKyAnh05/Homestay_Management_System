@@ -582,6 +582,7 @@ function CheckInModal({ bookingDetailId, onClose, onCompleted }) {
         headers: authHeaders(),
         body: JSON.stringify({
           roomId: Number(roomId),
+          representativeEmail: guests[0]?.email?.trim() || '',
           guests: guests.map(guest => ({
             ...guest,
             dateOfBirth: guest.dateOfBirth || null,
@@ -667,7 +668,7 @@ function CheckInModal({ bookingDetailId, onClose, onCompleted }) {
                     <article className="acl-guest-form" key={index}>
                       <div className="acl-guest-form-title">
                         <strong>Người lưu trú {index + 1}</strong>
-                        <span>{index === 0 ? 'Người đặt · Đại diện' : isAdult ? 'Người lớn' : 'Trẻ em'}</span>
+                        <span>{index === 0 ? 'Người đại diện phòng' : isAdult ? 'Người lớn' : 'Trẻ em'}</span>
                       </div>
                       <div className="acl-guest-fields">
                         <label><span>Họ và tên *</span><input required maxLength="100" value={guest.fullName}
@@ -677,7 +678,8 @@ function CheckInModal({ bookingDetailId, onClose, onCompleted }) {
                           onChange={event => updateGuest(index, 'identityDocumentNumber', event.target.value.replace(/\D/g, ''))} /></label>
                         <label><span>Ngày sinh</span><input type="date" value={guest.dateOfBirth}
                           onChange={event => updateGuest(index, 'dateOfBirth', event.target.value)} /></label>
-                        <label><span>Email</span><input type="email" maxLength="100" title="Vui lòng nhập đúng định dạng email" value={guest.email}
+                        <label><span>Email {index === 0 ? '*' : ''}</span><input type="email" required={index === 0} maxLength={index === 0 ? 50 : 100}
+                          title={index === 0 ? 'Email này sẽ nhận link truy cập dịch vụ của phòng' : 'Vui lòng nhập đúng định dạng email'} value={guest.email}
                           onChange={event => updateGuest(index, 'email', event.target.value)} /></label>
                         <label><span>Số điện thoại</span><input inputMode="numeric" pattern="[0-9]{10}" maxLength="10"
                           title="Số điện thoại phải gồm đúng 10 chữ số" value={guest.phone}
@@ -720,7 +722,10 @@ function AdminCheckInLogsPage() {
   const [error, setError] = useState('')
   const [actionError, setActionError] = useState('')
   const [actionLoading, setActionLoading] = useState(null)
-  const [checkInTargetId, setCheckInTargetId] = useState(null)
+  const [checkInTargetId, setCheckInTargetId] = useState(() => {
+    const value = new URLSearchParams(window.location.search).get('bookingDetailId')
+    return value && /^\d+$/.test(value) ? Number(value) : null
+  })
   const [checkOutTargetId, setCheckOutTargetId] = useState(null)
   const [housekeepingRequestedIds, setHousekeepingRequestedIds] = useState(() => new Set())
 

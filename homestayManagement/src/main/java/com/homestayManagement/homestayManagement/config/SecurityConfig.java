@@ -40,6 +40,7 @@ public class SecurityConfig {
                         .requestMatchers("/uploads/**").permitAll()
                         .requestMatchers("/api/rooms/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/amenities").permitAll()
+                        .requestMatchers("/api/stays/**").hasAuthority("ROLE_CUSTOMER")
 
                         // Lễ tân/admin tạo và theo dõi; housekeeping/admin thực hiện công việc.
                         .requestMatchers(HttpMethod.GET, "/api/housekeeping/**")

@@ -31,8 +31,14 @@ public class Customer {
     @Column(length = 255)
     private String address;
 
-    @Column(name = "avatar_url", length = 255)
+    @Column(name = "avatar_url", length = 500)
     private String avatarUrl;
+
+    @Column(name = "google_avatar_url", length = 500)
+    private String googleAvatarUrl;
+
+    @Column(name = "avatar_source", length = 20)
+    private String avatarSource;
 
     @Column(name = "date_of_birth")
     private LocalDate dateOfBirth;

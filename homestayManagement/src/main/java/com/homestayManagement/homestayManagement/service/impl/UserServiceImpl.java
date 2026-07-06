@@ -97,6 +97,7 @@ public class UserServiceImpl implements UserService {
                 Customer customer = customerRepository.findByAccountId(account.getId())
                         .orElseGet(() -> Customer.builder().account(account).fullName(account.getEmail()).build());
                 customer.setAvatarUrl("/uploads/" + filename);
+                customer.setAvatarSource("USER_UPLOAD");
                 customerRepository.save(customer);
             } else {
                 Employee employee = employeeRepository.findByAccountId(account.getId())

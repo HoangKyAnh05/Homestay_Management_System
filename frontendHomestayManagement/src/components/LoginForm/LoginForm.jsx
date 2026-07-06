@@ -126,9 +126,11 @@ function LoginForm() {
       await login(email, password, remember)
 
       // Báo cho trình duyệt lưu credentials (trigger password manager)
-      if (window.PasswordCredential) {
+      if (window.PasswordCredential && navigator.credentials) {
         const credential = new window.PasswordCredential({ id: email, password })
-        await navigator.credentials.store(credential)
+        navigator.credentials.store(credential).catch(() => {
+          // Password manager là tiện ích tùy chọn, không được chặn đăng nhập thành công.
+        })
       }
 
       window.location.assign(nextPath)

@@ -1,20 +1,20 @@
 package com.homestayManagement.homestayManagement.dto.response;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
-public record AdminCompleteCheckInResponse(
+public record StaySummaryResponse(
+        Long accessId,
+        String accessStatus,
         Long bookingId,
         String bookingCode,
         Long bookingDetailId,
         Long roomId,
         String roomNumber,
-        String status,
+        String roomTypeName,
+        String representativeName,
         LocalDateTime actualCheckIn,
-        int guestCount,
-        Long stayAccessId,
-        String representativeEmail,
-        String accessStatus,
-        boolean activationRequired,
-        boolean emailQueued
+        LocalDateTime checkOutTarget,
+        List<StayServiceUsageResponse> services
 ) {
 }

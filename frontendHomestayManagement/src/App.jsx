@@ -23,6 +23,8 @@ import ProfilePage from './pages/Profile/ProfilePage'
 import RegisterPage from './pages/Register/RegisterPage'
 import RoomDetailPage from './pages/Rooms/RoomDetailPage'
 import RoomsPage from './pages/Rooms/RoomsPage'
+import StayPage from './pages/Stay/StayPage'
+import StayActivationPage from './pages/Stay/StayActivationPage'
 import { getStoredUser } from './services/authService'
 import { STAFF_ROLES, roleCanAccess, roleDefaultPath } from './utils/roleUtils'
 
@@ -95,6 +97,8 @@ function App() {
   if (currentPath === '/profile') return <ProfilePage />
   if (currentPath === '/booking-history') return <BookingHistoryPage />
   if (currentPath === '/amenities') return <AmenitiesPage />
+  if (currentPath === '/stay/activate') return <StayActivationPage />
+  if (currentPath === '/stay') return <StayPage />
   if (currentPath === '/rooms') return <RoomsPage />
   if (currentPath.startsWith('/rooms/')) {
     const roomId = currentPath.split('/').filter(Boolean).at(-1)

@@ -275,6 +275,26 @@ export async function resetPassword(email, otp, newPassword) {
   return data
 }
 
+export async function activateStayAccount(token, password) {
+  let response
+
+  try {
+    response = await fetch(`${API_BASE_URL}/auth/stay-activation`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, password }),
+    })
+  } catch {
+    throw connectionError()
+  }
+
+  const data = await parseJson(response)
+  if (!response.ok) throw new Error(data.message || 'Không thể kích hoạt tài khoản')
+
+  saveAuthSession(data)
+  return data
+}
+
 async function authorizedRequest(path, options = {}) {
   const token = getStoredToken()
 

@@ -100,6 +100,7 @@ class AdminBookingServiceImplTest {
     @Mock private RoomPriceConfigRepository roomPriceConfigRepository;
     @Mock private SePayPaymentService sePayPaymentService;
     @Mock private BookingCodeGenerator bookingCodeGenerator;
+    @Mock private StayAccessService stayAccessService;
 
     private AdminBookingServiceImpl service;
 
@@ -130,7 +131,8 @@ class AdminBookingServiceImplTest {
                 roomPriceConfigRepository,
                 sePayPaymentService,
                 housekeepingTaskRepository,
-                bookingCodeGenerator
+                bookingCodeGenerator,
+                stayAccessService
         );
     }
 
@@ -432,6 +434,7 @@ class AdminBookingServiceImplTest {
         verify(inventoryServiceRepository).save(stayRental);
         verify(bookingDetailRepository).save(detail);
         verify(bookingRepository).save(booking);
+        verify(stayAccessService).expireAccess(6L);
     }
 
     @Test

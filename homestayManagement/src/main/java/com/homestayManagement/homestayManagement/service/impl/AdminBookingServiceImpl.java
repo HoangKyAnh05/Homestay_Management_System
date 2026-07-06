@@ -78,6 +78,7 @@ import com.homestayManagement.homestayManagement.repository.RulesPenaltyReposito
 import com.homestayManagement.homestayManagement.repository.ServiceUsageRepository;
 import com.homestayManagement.homestayManagement.service.AdminBookingService;
 import com.homestayManagement.homestayManagement.service.SePayPaymentService;
+import com.homestayManagement.homestayManagement.service.StayAccessService;
 import com.homestayManagement.homestayManagement.service.support.BookingCodeGenerator;
 import com.homestayManagement.homestayManagement.service.support.BookingInventoryPolicy;
 import org.springframework.stereotype.Service;
@@ -132,6 +133,7 @@ public class AdminBookingServiceImpl implements AdminBookingService {
     private final SePayPaymentService sePayPaymentService;
     private final HousekeepingTaskRepository housekeepingTaskRepository;
     private final BookingCodeGenerator bookingCodeGenerator;
+    private final StayAccessService stayAccessService;
 
     public AdminBookingServiceImpl(
             BookingDetailRepository bookingDetailRepository,
@@ -158,7 +160,8 @@ public class AdminBookingServiceImpl implements AdminBookingService {
             RoomPriceConfigRepository roomPriceConfigRepository,
             SePayPaymentService sePayPaymentService,
             HousekeepingTaskRepository housekeepingTaskRepository,
-            BookingCodeGenerator bookingCodeGenerator
+            BookingCodeGenerator bookingCodeGenerator,
+            StayAccessService stayAccessService
     ) {
         this.bookingDetailRepository = bookingDetailRepository;
         this.bookingGuestRepository = bookingGuestRepository;
@@ -185,6 +188,7 @@ public class AdminBookingServiceImpl implements AdminBookingService {
         this.sePayPaymentService = sePayPaymentService;
         this.housekeepingTaskRepository = housekeepingTaskRepository;
         this.bookingCodeGenerator = bookingCodeGenerator;
+        this.stayAccessService = stayAccessService;
     }
 
     @Override
@@ -531,32 +535,10 @@ public class AdminBookingServiceImpl implements AdminBookingService {
     }
 
     @Override
-    @Transactional
     public AdminBookingDetailResponse checkIn(Long bookingDetailId) {
-        BookingDetail detail = bookingDetailRepository.findByIdForAdminDetail(bookingDetailId)
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đơn đặt phòng"));
-        if ("CANCELLED".equalsIgnoreCase(detail.getStatus()) || "CANCELLED".equalsIgnoreCase(detail.getBooking().getStatus())) {
-            throw new IllegalArgumentException("Không thể check-in đơn đã hủy");
-        }
-
-        checkInRecordRepository.findByBookingDetailId(bookingDetailId).orElseGet(() -> checkInRecordRepository.save(
-                CheckInRecord.builder()
-                        .bookingDetail(detail)
-                        .customer(detail.getBooking().getCustomer())
-                        .receptionist(getCurrentEmployee())
-                        .actualCheckIn(LocalDateTime.now())
-                        .earlyCheckInFee(BigDecimal.ZERO)
-                        .lateCheckOutFee(BigDecimal.ZERO)
-                        .build()
-        ));
-        detail.setStatus("CHECKED_IN");
-        detail.getBooking().setStatus("CHECKED_IN");
-        if (detail.getRoom() != null) {
-            detail.getRoom().setStatus("OCCUPIED");
-            roomRepository.save(detail.getRoom());
-        }
-        bookingDetailRepository.save(detail);
-        return getBookingDetail(bookingDetailId);
+        throw new IllegalArgumentException(
+                "Vui lòng hoàn tất check-in tại Nhật ký lưu trú để cấp quyền truy cập cho người đại diện phòng"
+        );
     }
 
     @Override
@@ -584,6 +566,7 @@ public class AdminBookingServiceImpl implements AdminBookingService {
         if (firstCheckout) {
             restoreInventoryServices(detail.getId());
         }
+        stayAccessService.expireAccess(detail.getId());
         bookingDetailRepository.save(detail);
         updateBookingCompletionStatus(detail.getBooking());
         return getBookingDetail(bookingDetailId);

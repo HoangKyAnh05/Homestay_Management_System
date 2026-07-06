@@ -2,14 +2,14 @@ package com.homestayManagement.homestayManagement.dto.response;
 
 import java.math.BigDecimal;
 
-public record PublicBookingHistoryServiceResponse(
+public record StayServiceUsageResponse(
         Long id,
         String source,
-        Long bookingDetailId,
-        String name,
         String type,
+        Long serviceId,
+        String serviceName,
         Integer quantity,
-        BigDecimal priceAtBooking,
+        BigDecimal unitPrice,
         BigDecimal totalAmount
 ) {
 }

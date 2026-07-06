@@ -451,7 +451,12 @@ function BookingDetailModal({ detail, loading, error, actionLoading, actionError
                 </span>
                 <div>
                   {canCheckIn && (
-                    <button type="button" className="abk-action-primary" disabled={actionLoading} onClick={() => onAction('check-in')}>
+                    <button
+                      type="button"
+                      className="abk-action-primary"
+                      disabled={actionLoading}
+                      onClick={() => window.location.assign(`/admin/check-in-logs?bookingDetailId=${detail.bookingDetailId}`)}
+                    >
                       Check in
                     </button>
                   )}
