@@ -403,8 +403,11 @@ class AdminBookingServiceImplTest {
                 .quantity(2).priceAtUse(BigDecimal.valueOf(10_000)).build();
         Invoice invoice = Invoice.builder().id(13L).booking(booking).build();
         Payment checkoutPayment = Payment.builder()
-                .id(14L).invoice(invoice).amount(BigDecimal.valueOf(30_000))
+                .id(14L).invoice(invoice).bookingDetail(detail).amount(BigDecimal.valueOf(30_000))
                 .paymentPurpose("CHECKOUT").status("SUCCESS").build();
+        Payment bookingPayment = Payment.builder()
+                .id(15L).invoice(invoice).amount(BigDecimal.valueOf(700_000))
+                .paymentPurpose("BOOKING").status("SUCCESS").build();
 
         when(bookingDetailRepository.findByIdForAdminDetail(6L)).thenReturn(Optional.of(detail));
         when(checkInRecordRepository.findByBookingDetailId(6L)).thenReturn(Optional.of(record));
@@ -412,7 +415,8 @@ class AdminBookingServiceImplTest {
         when(bookingDetailRepository.findByBookingId(3L)).thenReturn(List.of(detail));
         when(bookingServiceItemRepository.findByBookingDetailIds(List.of(6L))).thenReturn(List.of(bookedRentalItem));
         when(invoiceRepository.findByBookingIdForAdmin(3L)).thenReturn(Optional.of(invoice));
-        when(paymentRepository.findByInvoiceIdOrderByPaymentTimeDescIdDesc(13L)).thenReturn(List.of(checkoutPayment));
+        when(paymentRepository.findByInvoiceIdOrderByPaymentTimeDescIdDesc(13L))
+                .thenReturn(List.of(checkoutPayment, bookingPayment));
         when(checkInRecordRepository.findByBookingDetailIdForAdmin(6L)).thenReturn(List.of(record));
         when(serviceUsageRepository.findByBookingDetailIdForAdmin(6L)).thenReturn(List.of(stayRentalUsage));
         when(roomAmenitiesUsageRepository.findByBookingDetailIdForAdmin(6L)).thenReturn(List.of());
@@ -487,7 +491,7 @@ class AdminBookingServiceImplTest {
             when(invoiceRepository.findByBookingIdForAdmin(3L)).thenReturn(Optional.of(invoice));
             when(employeeRepository.findByAccountEmail("staff@example.com")).thenReturn(Optional.of(employee));
             when(paymentRepository.findByInvoiceIdOrderByPaymentTimeDescIdDesc(11L)).thenReturn(List.of(bookingDeposit));
-            when(sePayPaymentService.createCheckoutPayment(3L, BigDecimal.valueOf(6_000))).thenReturn(paymentResponse);
+            when(sePayPaymentService.createCheckoutPayment(3L, 6L, new BigDecimal("6000.00"))).thenReturn(paymentResponse);
             when(checkInRecordRepository.findByBookingDetailIdForAdmin(6L)).thenReturn(List.of(record));
             when(serviceUsageRepository.findByBookingDetailIdForAdmin(6L)).thenReturn(List.of());
             when(roomAmenitiesUsageRepository.findByBookingDetailIdForAdmin(6L)).thenReturn(List.of());
@@ -502,9 +506,80 @@ class AdminBookingServiceImplTest {
 
             assertEquals(false, response.completed());
             assertEquals(BigDecimal.valueOf(6_000), response.payment().amount());
-            verify(sePayPaymentService).createCheckoutPayment(3L, BigDecimal.valueOf(6_000));
+            verify(sePayPaymentService).createCheckoutPayment(3L, 6L, new BigDecimal("6000.00"));
         } finally {
             SecurityContextHolder.clearContext();
         }
+    }
+
+    @Test
+    void getBookingDetailSettlesEachRoomIndependentlyInMultiRoomBooking() {
+        Account account = Account.builder().id(1L).email("customer@example.com").build();
+        Customer customer = Customer.builder().id(2L).account(account).fullName("Customer").build();
+        Booking booking = Booking.builder()
+                .id(3L).customer(customer).bookingDate(LocalDateTime.now()).status("CHECKED_IN").build();
+        RoomType roomType = RoomType.builder().id(4L).name("Deluxe").build();
+        Room room102 = Room.builder().id(5L).roomNumber("102").roomType(roomType).build();
+        Room room201 = Room.builder().id(6L).roomNumber("201").roomType(roomType).build();
+        BookingDetail detail102 = BookingDetail.builder()
+                .id(7L).booking(booking).roomType(roomType).room(room102)
+                .priceAtBooking(BigDecimal.valueOf(20_000)).status("CHECKED_IN").build();
+        BookingDetail detail201 = BookingDetail.builder()
+                .id(8L).booking(booking).roomType(roomType).room(room201)
+                .priceAtBooking(BigDecimal.valueOf(20_000)).status("CHECKED_IN").build();
+        CheckInRecord record102 = CheckInRecord.builder().id(9L).bookingDetail(detail102).build();
+        CheckInRecord record201 = CheckInRecord.builder().id(10L).bookingDetail(detail201).build();
+        FacilityService bbq = FacilityService.builder()
+                .id(11L).name("BBQ").price(BigDecimal.valueOf(2_000)).build();
+        FacilityService bike = FacilityService.builder()
+                .id(12L).name("Bike").price(BigDecimal.valueOf(5_000)).build();
+        ServiceUsage bbqUsage = ServiceUsage.builder()
+                .id(13L).checkInRecord(record102).facilityService(bbq)
+                .quantity(1).priceAtUse(BigDecimal.valueOf(2_000)).build();
+        ServiceUsage bikeUsage = ServiceUsage.builder()
+                .id(14L).checkInRecord(record201).facilityService(bike)
+                .quantity(1).priceAtUse(BigDecimal.valueOf(5_000)).build();
+        Invoice invoice = Invoice.builder()
+                .id(15L).booking(booking)
+                .roomCharge(BigDecimal.valueOf(40_000))
+                .serviceCharge(BigDecimal.valueOf(7_000))
+                .penaltyCharge(BigDecimal.ZERO)
+                .totalAmount(BigDecimal.valueOf(47_000))
+                .build();
+        Payment bookingPayment = Payment.builder()
+                .id(16L).invoice(invoice).paymentPurpose("BOOKING")
+                .amount(BigDecimal.valueOf(40_000)).status("SUCCESS").build();
+
+        when(bookingDetailRepository.findByIdForAdminDetail(7L)).thenReturn(Optional.of(detail102));
+        when(bookingDetailRepository.findByIdForAdminDetail(8L)).thenReturn(Optional.of(detail201));
+        when(bookingDetailRepository.findByBookingId(3L)).thenReturn(List.of(detail102, detail201));
+        when(checkInRecordRepository.findByBookingDetailIdForAdmin(7L)).thenReturn(List.of(record102));
+        when(checkInRecordRepository.findByBookingDetailIdForAdmin(8L)).thenReturn(List.of(record201));
+        when(serviceUsageRepository.findByBookingDetailIdForAdmin(7L)).thenReturn(List.of(bbqUsage));
+        when(serviceUsageRepository.findByBookingDetailIdForAdmin(8L)).thenReturn(List.of(bikeUsage));
+        when(bookingServiceItemRepository.findByBookingDetailIds(List.of(7L))).thenReturn(List.of());
+        when(bookingServiceItemRepository.findByBookingDetailIds(List.of(8L))).thenReturn(List.of());
+        when(roomAmenitiesUsageRepository.findByBookingDetailIdForAdmin(7L)).thenReturn(List.of());
+        when(roomAmenitiesUsageRepository.findByBookingDetailIdForAdmin(8L)).thenReturn(List.of());
+        when(appliedPenaltyRepository.findByBookingDetailIdForAdmin(7L)).thenReturn(List.of());
+        when(appliedPenaltyRepository.findByBookingDetailIdForAdmin(8L)).thenReturn(List.of());
+        when(invoiceRepository.findByBookingIdForAdmin(3L)).thenReturn(Optional.of(invoice));
+        when(paymentRepository.findByInvoiceIdOrderByPaymentTimeDescIdDesc(15L)).thenReturn(List.of(bookingPayment));
+        when(bookingGuestRepository.findByBookingDetailIds(List.of(7L))).thenReturn(List.of());
+        when(bookingGuestRepository.findByBookingDetailIds(List.of(8L))).thenReturn(List.of());
+        when(facilityServiceRepository.findAll()).thenReturn(List.of());
+        when(inventoryServiceRepository.findAll()).thenReturn(List.of());
+        when(roomMiniBarItemRepository.findAll()).thenReturn(List.of());
+        when(rulesPenaltyRepository.findAll()).thenReturn(List.of());
+
+        var room102Settlement = service.getBookingDetail(7L);
+        var room201Settlement = service.getBookingDetail(8L);
+
+        assertEquals(0, BigDecimal.valueOf(2_000).compareTo(room102Settlement.invoice().serviceCharge()));
+        assertEquals(0, BigDecimal.valueOf(22_000).compareTo(room102Settlement.invoice().totalAmount()));
+        assertEquals(0, BigDecimal.valueOf(20_000).compareTo(room102Settlement.paidAmount()));
+        assertEquals(0, BigDecimal.valueOf(5_000).compareTo(room201Settlement.invoice().serviceCharge()));
+        assertEquals(0, BigDecimal.valueOf(25_000).compareTo(room201Settlement.invoice().totalAmount()));
+        assertEquals(0, BigDecimal.valueOf(20_000).compareTo(room201Settlement.paidAmount()));
     }
 }

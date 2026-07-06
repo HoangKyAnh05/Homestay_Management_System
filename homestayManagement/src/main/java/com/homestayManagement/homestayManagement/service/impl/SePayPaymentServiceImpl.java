@@ -6,6 +6,7 @@ import com.homestayManagement.homestayManagement.dto.response.SePayPaymentRespon
 import com.homestayManagement.homestayManagement.entity.*;
 import com.homestayManagement.homestayManagement.repository.*;
 import com.homestayManagement.homestayManagement.service.SePayPaymentService;
+import com.homestayManagement.homestayManagement.service.StayAccessService;
 import com.homestayManagement.homestayManagement.service.support.BookingInventoryPolicy;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -43,6 +44,7 @@ public class SePayPaymentServiceImpl implements SePayPaymentService {
     private final PaymentRepository paymentRepository;
     private final ServiceUsageRepository serviceUsageRepository;
     private final InventoryServiceRepository inventoryServiceRepository;
+    private final StayAccessService stayAccessService;
     private final ObjectMapper objectMapper;
     private final String bankName;
     private final String accountNumber;
@@ -61,6 +63,7 @@ public class SePayPaymentServiceImpl implements SePayPaymentService {
             PaymentRepository paymentRepository,
             ServiceUsageRepository serviceUsageRepository,
             InventoryServiceRepository inventoryServiceRepository,
+            StayAccessService stayAccessService,
             ObjectMapper objectMapper,
             @Value("${sepay.bank-name:}") String bankName,
             @Value("${sepay.account-number:}") String accountNumber,
@@ -79,6 +82,7 @@ public class SePayPaymentServiceImpl implements SePayPaymentService {
         this.paymentRepository = paymentRepository;
         this.serviceUsageRepository = serviceUsageRepository;
         this.inventoryServiceRepository = inventoryServiceRepository;
+        this.stayAccessService = stayAccessService;
         this.objectMapper = objectMapper;
         this.bankName = bankName;
         this.accountNumber = accountNumber;
@@ -152,7 +156,7 @@ public class SePayPaymentServiceImpl implements SePayPaymentService {
 
     @Override
     @Transactional
-    public SePayPaymentResponse createCheckoutPayment(Long bookingId, BigDecimal amount) {
+    public SePayPaymentResponse createCheckoutPayment(Long bookingId, Long bookingDetailId, BigDecimal amount) {
         validatePaymentConfiguration();
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("Chi phí phát sinh phải lớn hơn 0");
@@ -165,9 +169,13 @@ public class SePayPaymentServiceImpl implements SePayPaymentService {
         Invoice invoice = invoiceRepository.findByBookingIdForAdmin(bookingId)
                 .orElseThrow(() -> new IllegalArgumentException("Chưa tạo hóa đơn checkout"));
 
+        BookingDetail bookingDetail = bookingDetailRepository.findById(bookingDetailId)
+                .filter(detail -> detail.getBooking() != null && bookingId.equals(detail.getBooking().getId()))
+                .orElseThrow(() -> new IllegalArgumentException("Phòng checkout không thuộc booking"));
+
         Payment payment = paymentRepository
-                .findFirstByInvoiceIdAndPaymentMethodAndPaymentPurposeAndStatusOrderByIdDesc(
-                        invoice.getId(), "SEPAY", "CHECKOUT", "PENDING"
+                .findFirstByInvoiceIdAndBookingDetailIdAndPaymentMethodAndPaymentPurposeAndStatusOrderByIdDesc(
+                        invoice.getId(), bookingDetailId, "SEPAY", "CHECKOUT", "PENDING"
                 )
                 .orElse(null);
         if (payment != null && !sameAmount(payment.getAmount(), amount)) {
@@ -178,6 +186,7 @@ public class SePayPaymentServiceImpl implements SePayPaymentService {
         if (payment == null) {
             payment = paymentRepository.save(Payment.builder()
                     .invoice(invoice)
+                    .bookingDetail(bookingDetail)
                     .paymentMethod("SEPAY")
                     .paymentPurpose("CHECKOUT")
                     .amount(amount)
@@ -187,6 +196,7 @@ public class SePayPaymentServiceImpl implements SePayPaymentService {
         }
 
         String transferContent = transferPrefix.trim() + payment.getPaymentCode();
+        payment.setBookingDetail(bookingDetail);
         payment.setAmount(amount);
         payment.setQrCodeUrl(buildQrCodeUrl(amount, transferContent));
         payment = paymentRepository.save(payment);
@@ -245,7 +255,7 @@ public class SePayPaymentServiceImpl implements SePayPaymentService {
         paymentRepository.save(payment);
 
         if ("CHECKOUT".equalsIgnoreCase(payment.getPaymentPurpose())) {
-            completeCheckout(booking);
+            completeCheckout(booking, payment.getBookingDetail());
         } else {
             booking.setStatus("CONFIRMED");
             booking.setPaymentHoldExpiresAt(null);
@@ -276,7 +286,38 @@ public class SePayPaymentServiceImpl implements SePayPaymentService {
                 });
     }
 
-    private void completeCheckout(Booking booking) {
+    private void completeCheckout(Booking booking, BookingDetail paidDetail) {
+        // Historical checkout payments have no room reference, so retain their old behavior.
+        if (paidDetail == null) {
+            completeLegacyCheckout(booking);
+            return;
+        }
+
+        checkInRecordRepository.findByBookingDetailId(paidDetail.getId()).ifPresent(record -> {
+            if (record.getActualCheckOut() == null) {
+                record.setActualCheckOut(LocalDateTime.now());
+                checkInRecordRepository.save(record);
+            }
+        });
+
+        restoreInventoryServices(List.of(paidDetail));
+        paidDetail.setStatus("COMPLETED");
+        bookingDetailRepository.save(paidDetail);
+        stayAccessService.expireAccess(paidDetail.getId());
+        if (paidDetail.getRoom() != null) {
+            paidDetail.getRoom().setStatus("AVAILABLE");
+            roomRepository.save(paidDetail.getRoom());
+        }
+
+        List<BookingDetail> details = bookingDetailRepository.findByBookingId(booking.getId());
+        boolean allClosed = details.stream()
+                .allMatch(detail -> "COMPLETED".equalsIgnoreCase(detail.getStatus())
+                        || "CANCELLED".equalsIgnoreCase(detail.getStatus()));
+        booking.setStatus(allClosed ? "COMPLETED" : "CHECKED_IN");
+        bookingRepository.save(booking);
+    }
+
+    private void completeLegacyCheckout(Booking booking) {
         List<CheckInRecord> records = checkInRecordRepository.findByBookingIdForInvoice(booking.getId());
         LocalDateTime now = LocalDateTime.now();
         records.stream()
@@ -286,7 +327,14 @@ public class SePayPaymentServiceImpl implements SePayPaymentService {
 
         List<BookingDetail> details = bookingDetailRepository.findByBookingId(booking.getId());
         restoreInventoryServices(details);
-        details.forEach(detail -> detail.setStatus("COMPLETED"));
+        details.forEach(detail -> {
+            detail.setStatus("COMPLETED");
+            stayAccessService.expireAccess(detail.getId());
+            if (detail.getRoom() != null) {
+                detail.getRoom().setStatus("AVAILABLE");
+                roomRepository.save(detail.getRoom());
+            }
+        });
         bookingDetailRepository.saveAll(details);
         booking.setStatus("COMPLETED");
         bookingRepository.save(booking);

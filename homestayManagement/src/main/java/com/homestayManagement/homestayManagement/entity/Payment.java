@@ -23,6 +23,10 @@ public class Payment {
     @JoinColumn(name = "invoice_id", nullable = false)
     private Invoice invoice;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "booking_detail_id")
+    private BookingDetail bookingDetail;
+
     // CASH, VNPAY, MOMO, BANK_TRANSFER
     @Column(name = "payment_method", nullable = false, length = 20)
     private String paymentMethod;

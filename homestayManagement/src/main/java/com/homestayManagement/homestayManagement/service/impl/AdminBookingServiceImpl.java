@@ -93,6 +93,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.TemporalAdjusters;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -288,12 +289,15 @@ public class AdminBookingServiceImpl implements AdminBookingService {
         List<AdminPaymentResponse> payments = invoice == null
                 ? List.of()
                 : paymentRepository.findByInvoiceIdOrderByPaymentTimeDescIdDesc(invoice.getId()).stream()
+                        .filter(payment -> !"CHECKOUT".equalsIgnoreCase(payment.getPaymentPurpose())
+                                || payment.getBookingDetail() != null
+                                && detail.getId().equals(payment.getBookingDetail().getId()))
                         .map(this::toPaymentResponse)
                         .toList();
-        BigDecimal paidAmount = payments.stream()
-                .filter(payment -> "SUCCESS".equalsIgnoreCase(payment.status()))
-                .map(AdminPaymentResponse::amount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal paidAmount = calculateDetailPaidAmount(detail, invoice);
+        AdminBookingInvoiceSummaryResponse detailInvoice = invoice == null
+                ? null
+                : toDetailInvoiceSummaryResponse(detail, invoice, serviceItems, penaltyItems, checkInRecords);
 
         return new AdminBookingDetailResponse(
                 booking.getId(),
@@ -319,7 +323,7 @@ public class AdminBookingServiceImpl implements AdminBookingService {
                 checkInRecords.stream().anyMatch(this::isInspectionComplete),
                 serviceItems,
                 penaltyItems,
-                invoice != null ? toInvoiceSummaryResponse(invoice) : null,
+                detailInvoice,
                 paidAmount,
                 payments,
                 facilityServiceRepository.findAll().stream().map(this::toFacilityServiceResponse).toList(),
@@ -549,7 +553,7 @@ public class AdminBookingServiceImpl implements AdminBookingService {
         CheckInRecord record = checkInRecordRepository.findByBookingDetailId(bookingDetailId)
                 .orElseThrow(() -> new IllegalArgumentException("Phòng này chưa check-in"));
         requireInspectionComplete(record);
-        BigDecimal outstandingBalance = calculateOutstandingBalance(detail.getBooking().getId());
+        BigDecimal outstandingBalance = calculateDetailOutstandingBalance(detail);
         if (outstandingBalance.compareTo(BigDecimal.ZERO) > 0) {
             throw new IllegalArgumentException("Vui lòng thanh toán số tiền còn lại trước khi checkout");
         }
@@ -587,7 +591,7 @@ public class AdminBookingServiceImpl implements AdminBookingService {
         generateInvoice(bookingDetailId);
         Invoice invoice = invoiceRepository.findByBookingIdForAdmin(detail.getBooking().getId())
                 .orElseThrow(() -> new IllegalArgumentException("Không thể tạo hóa đơn checkout"));
-        BigDecimal remainingBalance = calculateOutstandingBalance(detail.getBooking().getId());
+        BigDecimal remainingBalance = calculateDetailOutstandingBalance(detail);
 
         if (remainingBalance.compareTo(BigDecimal.ZERO) == 0) {
             return new AdminCheckoutResponse(true, checkOut(bookingDetailId), null);
@@ -595,6 +599,7 @@ public class AdminBookingServiceImpl implements AdminBookingService {
 
         SePayPaymentResponse payment = sePayPaymentService.createCheckoutPayment(
                 detail.getBooking().getId(),
+                detail.getId(),
                 remainingBalance
         );
         return new AdminCheckoutResponse(false, getBookingDetail(bookingDetailId), payment);
@@ -1133,13 +1138,34 @@ public class AdminBookingServiceImpl implements AdminBookingService {
         );
     }
 
-    private AdminBookingInvoiceSummaryResponse toInvoiceSummaryResponse(Invoice invoice) {
+    private AdminBookingInvoiceSummaryResponse toDetailInvoiceSummaryResponse(
+            BookingDetail detail,
+            Invoice invoice,
+            List<AdminInvoiceServiceItemResponse> serviceItems,
+            List<AdminInvoicePenaltyItemResponse> penaltyItems,
+            List<CheckInRecord> checkInRecords
+    ) {
+        BigDecimal roomCharge = "CANCELLED".equalsIgnoreCase(detail.getStatus())
+                ? BigDecimal.ZERO
+                : safeAmount(detail.getPriceAtBooking());
+        BigDecimal serviceCharge = serviceItems.stream()
+                .map(AdminInvoiceServiceItemResponse::totalPrice)
+                .map(this::safeAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal timePenalty = checkInRecords.stream()
+                .map(record -> safeAmount(record.getEarlyCheckInFee()).add(safeAmount(record.getLateCheckOutFee())))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal rulePenalty = penaltyItems.stream()
+                .map(AdminInvoicePenaltyItemResponse::amount)
+                .map(this::safeAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal penaltyCharge = timePenalty.add(rulePenalty);
         return new AdminBookingInvoiceSummaryResponse(
                 invoice.getId(),
-                invoice.getRoomCharge(),
-                invoice.getServiceCharge(),
-                invoice.getPenaltyCharge(),
-                invoice.getTotalAmount(),
+                roomCharge,
+                serviceCharge,
+                penaltyCharge,
+                roomCharge.add(serviceCharge).add(penaltyCharge),
                 invoice.getCreatedAt(),
                 invoice.getEmployee() != null ? invoice.getEmployee().getFullName() : null
         );
@@ -1226,16 +1252,68 @@ public class AdminBookingServiceImpl implements AdminBookingService {
         return timePenalty.add(rulePenalty);
     }
 
-    private BigDecimal calculateOutstandingBalance(Long bookingId) {
-        Invoice invoice = invoiceRepository.findByBookingIdForAdmin(bookingId).orElse(null);
+    private BigDecimal calculateDetailOutstandingBalance(BookingDetail detail) {
+        Invoice invoice = invoiceRepository.findByBookingIdForAdmin(detail.getBooking().getId()).orElse(null);
+        return calculateDetailTotalCharge(detail)
+                .subtract(calculateDetailPaidAmount(detail, invoice))
+                .max(BigDecimal.ZERO);
+    }
+
+    private BigDecimal calculateDetailPaidAmount(BookingDetail detail, Invoice invoice) {
         if (invoice == null) {
-            return calculateTotalCharge(bookingId);
+            return BigDecimal.ZERO;
         }
-        BigDecimal paidAmount = paymentRepository.findByInvoiceIdOrderByPaymentTimeDescIdDesc(invoice.getId()).stream()
+        List<Payment> successfulPayments = paymentRepository
+                .findByInvoiceIdOrderByPaymentTimeDescIdDesc(invoice.getId()).stream()
                 .filter(payment -> "SUCCESS".equalsIgnoreCase(payment.getStatus()))
+                .toList();
+        BigDecimal bookingPaid = successfulPayments.stream()
+                .filter(payment -> !"CHECKOUT".equalsIgnoreCase(payment.getPaymentPurpose()))
                 .map(Payment::getAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-        return safeAmount(invoice.getTotalAmount()).subtract(paidAmount).max(BigDecimal.ZERO);
+        BigDecimal checkoutPaid = successfulPayments.stream()
+                .filter(payment -> "CHECKOUT".equalsIgnoreCase(payment.getPaymentPurpose()))
+                .filter(payment -> payment.getBookingDetail() != null
+                        && detail.getId().equals(payment.getBookingDetail().getId()))
+                .map(Payment::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        List<BookingDetail> bookingDetails = bookingDetailRepository.findByBookingId(detail.getBooking().getId()).stream()
+                .filter(item -> !"CANCELLED".equalsIgnoreCase(item.getStatus()))
+                .toList();
+        BigDecimal bookingBaseTotal = bookingDetails.stream()
+                .map(this::calculateDetailBookingBaseCharge)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal detailBase = calculateDetailBookingBaseCharge(detail);
+        BigDecimal allocatedBookingPaid = bookingBaseTotal.compareTo(BigDecimal.ZERO) == 0
+                ? BigDecimal.ZERO
+                : bookingPaid.multiply(detailBase)
+                        .divide(bookingBaseTotal, 2, RoundingMode.HALF_UP)
+                        .min(detailBase);
+        return allocatedBookingPaid.add(checkoutPaid);
+    }
+
+    private BigDecimal calculateDetailBookingBaseCharge(BookingDetail detail) {
+        BigDecimal bookedServices = bookingServiceItemRepository.findByBookingDetailIds(List.of(detail.getId())).stream()
+                .map(item -> safeAmount(item.getPriceAtBooking())
+                        .multiply(BigDecimal.valueOf(item.getQuantity())))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        return safeAmount(detail.getPriceAtBooking()).add(bookedServices);
+    }
+
+    private BigDecimal calculateDetailTotalCharge(BookingDetail detail) {
+        BigDecimal serviceCharge = buildServiceItems(detail.getId()).stream()
+                .map(AdminInvoiceServiceItemResponse::totalPrice)
+                .map(this::safeAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal timePenalty = checkInRecordRepository.findByBookingDetailIdForAdmin(detail.getId()).stream()
+                .map(record -> safeAmount(record.getEarlyCheckInFee()).add(safeAmount(record.getLateCheckOutFee())))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal rulePenalty = appliedPenaltyRepository.findByBookingDetailIdForAdmin(detail.getId()).stream()
+                .map(AppliedPenalty::getActualFine)
+                .map(this::safeAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        return safeAmount(detail.getPriceAtBooking()).add(serviceCharge).add(timePenalty).add(rulePenalty);
     }
 
     private BigDecimal calculateTotalCharge(Long bookingId) {
