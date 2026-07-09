@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { getStoredUser, logout } from '../../services/authService'
+import StaffAiChat from '../../components/StaffAiChat/StaffAiChat'
 import { NAV_KEYS_BY_ROLE } from '../../utils/roleUtils'
 import './AdminLayout.css'
 
@@ -291,6 +292,7 @@ function AdminLayout({ activePage, children }) {
           {children}
         </main>
       </div>
+      {['ROLE_ADMIN', 'ROLE_RECEPTIONIST'].includes(role) && <StaffAiChat />}
     </div>
   )
 }

@@ -57,6 +57,7 @@ public class OpenChatBiCustomerClient implements CustomerAiClient {
             body.put("message", request.message());
             body.put("session_id", request.sessionId());
             body.put("page_path", request.pagePath());
+            body.put("audience", request.audience());
             body.put("authenticated", request.authenticated());
             body.put("public_context", request.publicContext());
             body.put("customer_context", request.customerContext());

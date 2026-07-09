@@ -33,6 +33,7 @@ class CustomerChatRequest(BaseModel):
     message: str = Field(min_length=1, max_length=1_000)
     session_id: str = Field(min_length=8, max_length=64)
     page_path: str | None = Field(default=None, max_length=200)
+    audience: Literal["customer", "staff"] = "customer"
     authenticated: bool = False
     public_context: dict[str, Any] = Field(default_factory=dict)
     customer_context: dict[str, Any] | None = None
@@ -70,6 +71,42 @@ def require_internal_token(
 def build_system_prompt(request: CustomerChatRequest) -> str:
     public_context = json.dumps(request.public_context, ensure_ascii=False, default=str)
     customer_context = json.dumps(request.customer_context, ensure_ascii=False, default=str)
+    audience_guidance = (
+        "Nguoi dung la nhan vien noi bo cua Home Stays. Ho tro nghiep vu admin/le tan: "
+        "tom tat booking, check-in/check-out, doanh thu, phong, dich vu va cac viec can chu y. "
+        "Chi tu van dua tren context; khong tu nhan da thay doi du lieu, tao booking, tao hoa don, check-in, check-out hay thanh toan."
+        if request.audience == "staff"
+        else "Nguoi dung la khach hang cua Home Stays. Ho tro tu van phong, dich vu, chinh sach va booking cua chinh tai khoan neu co context."
+    )
+    if request.audience == "staff":
+        return f"""
+Ban la tro ly AI NOI BO cua Home Stays, chi tra loi cho nhan vien admin hoac le tan bang tieng Viet.
+
+QUY TAC BAT BUOC CHO STAFF:
+1. Chi su dung PUBLIC_CONTEXT va STAFF_CONTEXT ben duoi.
+2. Neu nhan vien hoi theo ngay, loc du lieu theo ngay do trong STAFF_CONTEXT truoc khi tra loi.
+3. Khong noi "lien he le tan" vi nguoi dung hien tai da la admin/le tan.
+4. Khong goi STAFF_CONTEXT la CUSTOMER_CONTEXT.
+5. Khong tu nhan da tao booking, check-in, check-out, thanh toan, tao hoa don hay thay doi du lieu.
+6. Neu context khong co du lieu cho ngay/cau hoi do, noi ro "context hien tai chua co du lieu" va goi y mo trang admin phu hop de tra cuu.
+7. Khi nhac booking, uu tien ma booking, ten khach, so phong, trang thai, gio nhan/tra phong neu context co.
+8. Tra loi ngan gon, theo dang danh sach de nhan vien thao tac nhanh.
+
+PHAM VI NGUOI DUNG:
+{audience_guidance}
+
+TRANG HIEN TAI:
+{request.page_path or "Khong xac dinh"}
+
+THOI DIEM HE THONG:
+{datetime.now().astimezone().isoformat()}
+
+PUBLIC_CONTEXT:
+{public_context}
+
+STAFF_CONTEXT:
+{customer_context}
+""".strip()
     login_guidance = (
         "Khách đã đăng nhập. Chỉ sử dụng dữ liệu booking trong CUSTOMER_CONTEXT."
         if request.authenticated
@@ -90,6 +127,9 @@ QUY TẮC BẮT BUỘC:
 
 TRẠNG THÁI ĐĂNG NHẬP:
 {login_guidance}
+
+PHAM VI NGUOI DUNG:
+{audience_guidance}
 
 TRANG HIỆN TẠI:
 {request.page_path or "Không xác định"}
