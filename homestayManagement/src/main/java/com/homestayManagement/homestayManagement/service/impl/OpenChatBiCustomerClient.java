@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.homestayManagement.homestayManagement.service.CustomerAiClient;
 import com.homestayManagement.homestayManagement.service.CustomerAiUnavailableException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -17,6 +19,8 @@ import java.util.Map;
 
 @Component
 public class OpenChatBiCustomerClient implements CustomerAiClient {
+
+    private static final Logger log = LoggerFactory.getLogger(OpenChatBiCustomerClient.class);
 
     private final ObjectMapper objectMapper;
     private final HttpClient httpClient;
@@ -35,6 +39,7 @@ public class OpenChatBiCustomerClient implements CustomerAiClient {
         this.requestTimeout = Duration.ofSeconds(Math.max(5, timeoutSeconds));
         this.chatUri = URI.create(serviceUrl.replaceAll("/+$", "") + "/customer/chat");
         this.httpClient = HttpClient.newBuilder()
+                .version(HttpClient.Version.HTTP_1_1)
                 .connectTimeout(Duration.ofSeconds(5))
                 .build();
     }
@@ -58,6 +63,7 @@ public class OpenChatBiCustomerClient implements CustomerAiClient {
             body.put("history", request.history());
 
             HttpRequest httpRequest = HttpRequest.newBuilder(chatUri)
+                    .version(HttpClient.Version.HTTP_1_1)
                     .timeout(requestTimeout)
                     .header("Content-Type", "application/json")
                     .header("X-Internal-Token", internalToken)
@@ -69,6 +75,12 @@ public class OpenChatBiCustomerClient implements CustomerAiClient {
             );
 
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
+                log.error(
+                        "Customer AI sidecar returned HTTP {} from {}. Body: {}",
+                        response.statusCode(),
+                        chatUri,
+                        response.body()
+                );
                 throw new CustomerAiUnavailableException(resolveErrorMessage(response.body()));
             }
             JsonNode responseBody = objectMapper.readTree(response.body());
@@ -81,11 +93,26 @@ public class OpenChatBiCustomerClient implements CustomerAiClient {
                     responseBody.path("model").asText("")
             );
         } catch (CustomerAiUnavailableException exception) {
+            log.error("Customer AI unavailable: {}", exception.getMessage(), exception);
             throw exception;
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
+            log.error(
+                    "Customer AI request was interrupted while calling {}. ErrorType={} ErrorMessage={}",
+                    chatUri,
+                    exception.getClass().getName(),
+                    exception.getMessage(),
+                    exception
+            );
             throw new CustomerAiUnavailableException("Yêu cầu AI đã bị gián đoạn.", exception);
         } catch (Exception exception) {
+            log.error(
+                    "Customer AI request failed while calling {}. ErrorType={} ErrorMessage={}",
+                    chatUri,
+                    exception.getClass().getName(),
+                    exception.getMessage(),
+                    exception
+            );
             throw new CustomerAiUnavailableException(
                     "AI chat đang tạm thời không khả dụng. Vui lòng thử lại sau.",
                     exception

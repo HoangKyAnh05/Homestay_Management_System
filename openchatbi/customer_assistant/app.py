@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hmac
 import json
+import logging
 import os
 from datetime import datetime
 from typing import Any, Literal
@@ -17,6 +18,10 @@ from fastapi import Depends, FastAPI, Header, HTTPException, status
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, Field
+
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("customer_assistant")
 
 
 class HistoryMessage(BaseModel):
@@ -101,22 +106,46 @@ CUSTOMER_CONTEXT:
 
 
 def get_model() -> tuple[ChatOpenAI, str]:
-    api_key = os.getenv("OPENAI_API_KEY", "").strip()
+    api_key = (
+        os.getenv("OPENAI_API_KEY", "").strip()
+        or os.getenv("OPENROUTER_API_KEY", "").strip()
+    )
     if not api_key:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="OPENAI_API_KEY is not configured",
+            detail="OPENAI_API_KEY or OPENROUTER_API_KEY is not configured",
         )
+    base_url = os.getenv("OPENAI_BASE_URL", "").strip() or None
     model_name = os.getenv("OPENAI_MODEL", "gpt-5.5").strip() or "gpt-5.5"
+    default_headers = {}
+    referer = os.getenv("OPENROUTER_REFERER", "").strip()
+    title = os.getenv("OPENROUTER_TITLE", "").strip()
+    if referer:
+        default_headers["HTTP-Referer"] = referer
+    if title:
+        default_headers["X-OpenRouter-Title"] = title
+
+    model_kwargs: dict[str, Any] = {
+        "api_key": api_key,
+        "model": model_name,
+        "temperature": 0.1,
+        "max_tokens": 800,
+        "timeout": 45,
+        "max_retries": 2,
+    }
+    if base_url:
+        model_kwargs["base_url"] = base_url
+    if default_headers:
+        model_kwargs["default_headers"] = default_headers
+
+    logger.info(
+        "Customer AI model configured: model=%s base_url=%s openrouter_headers=%s",
+        model_name,
+        base_url or "https://api.openai.com/v1",
+        sorted(default_headers.keys()),
+    )
     return (
-        ChatOpenAI(
-            api_key=api_key,
-            model=model_name,
-            temperature=0.1,
-            max_tokens=800,
-            timeout=45,
-            max_retries=2,
-        ),
+        ChatOpenAI(**model_kwargs),
         model_name,
     )
 
@@ -125,9 +154,13 @@ def get_model() -> tuple[ChatOpenAI, str]:
 async def health() -> dict[str, Any]:
     return {
         "status": "UP",
-        "api_key_configured": bool(os.getenv("OPENAI_API_KEY", "").strip()),
+        "api_key_configured": bool(
+            os.getenv("OPENAI_API_KEY", "").strip()
+            or os.getenv("OPENROUTER_API_KEY", "").strip()
+        ),
         "internal_token_configured": bool(os.getenv("AI_INTERNAL_TOKEN", "").strip()),
         "model": os.getenv("OPENAI_MODEL", "gpt-5.5"),
+        "base_url": os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1"),
     }
 
 
@@ -138,6 +171,13 @@ async def health() -> dict[str, Any]:
 )
 async def customer_chat(request: CustomerChatRequest) -> CustomerChatResponse:
     model, model_name = get_model()
+    logger.info(
+        "Customer AI request received: session_id=%s authenticated=%s page_path=%s model=%s",
+        request.session_id,
+        request.authenticated,
+        request.page_path,
+        model_name,
+    )
     messages = [SystemMessage(content=build_system_prompt(request))]
     for item in request.history[-10:]:
         if item.role == "assistant":
@@ -149,6 +189,13 @@ async def customer_chat(request: CustomerChatRequest) -> CustomerChatResponse:
     try:
         response = await model.ainvoke(messages)
     except Exception as exc:
+        logger.exception(
+            "Customer AI model call failed: model=%s base_url=%s session_id=%s error=%s",
+            model_name,
+            os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1"),
+            request.session_id,
+            exc,
+        )
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="Không thể kết nối mô hình AI",

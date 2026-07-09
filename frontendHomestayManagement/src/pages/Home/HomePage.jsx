@@ -1,5 +1,4 @@
 ﻿import { useEffect, useMemo, useState } from 'react'
-import AIChatWidget from '../../components/AIChatWidget/AIChatWidget'
 import HomeSearch from '../../components/HomeSearch/HomeSearch'
 import { getStoredUser, logout } from '../../services/authService'
 import { resolveImageUrl } from '../../utils/imageUrl'
@@ -534,7 +533,6 @@ function HomePage() {
       <ReviewsSection />
       <GallerySection rooms={rooms} />
       <HomeFooter />
-      <AIChatWidget userName={currentUser?.fullName?.split(' ').pop()} />
     </div>
   )
 }
