@@ -187,6 +187,10 @@
   gap: 14px;
 }
 
+.mkt-form-row > .mkt-field + .mkt-field {
+  margin-top: 0;
+}
+
 .mkt-channel-options {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -418,6 +422,26 @@
   display: grid;
   grid-template-columns: 140px 1.2fr 1fr 1.2fr;
   gap: 8px;
+}
+
+.mkt-auth-row select {
+  min-width: 0;
+  height: 42px;
+  padding: 0 12px;
+  border: 1px solid #d8dee8;
+  border-radius: 10px;
+  outline: none;
+  background: #fff;
+  color: #101828;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  transition: border-color .16s, box-shadow .16s;
+}
+
+.mkt-auth-row select:focus {
+  border-color: #5284ed;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, .09);
 }
 
 .mkt-auth-message {
