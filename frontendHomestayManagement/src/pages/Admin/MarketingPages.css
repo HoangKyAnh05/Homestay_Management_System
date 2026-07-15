@@ -695,6 +695,37 @@
   overflow: hidden;
   background: #0f172a;
 }
+.mkt-preview-media-grid figure > button {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, .72);
+  color: #fff;
+  cursor: pointer;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, .24);
+  backdrop-filter: blur(4px);
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(.92);
+  transition: opacity .16s ease, transform .16s ease, background .16s ease;
+}
+.mkt-preview-media-grid figure:hover > button,
+.mkt-preview-media-grid figure:focus-within > button {
+  opacity: 1;
+  pointer-events: auto;
+  transform: scale(1);
+}
+.mkt-preview-media-grid figure > button:hover {
+  transform: scale(1.06);
+  background: rgba(220, 38, 38, .9);
+}
 .mkt-preview-media-grid--2 { grid-template-columns: repeat(2, 1fr); }
 .mkt-preview-media-grid--3,
 .mkt-preview-media-grid--4 { grid-template-columns: repeat(2, 1fr); }
@@ -708,6 +739,7 @@
   color: #fff;
   font-size: 28px;
   font-weight: 900;
+  pointer-events: none;
 }
 .mkt-social-stats { display: flex; justify-content: space-between; padding: 9px 12px; color: #667085; font-size: 9.5px; }
 .mkt-preview-actions { display: grid; grid-template-columns: 1fr 1.3fr; gap: 9px; margin-top: 13px; }

@@ -300,6 +300,29 @@ public class AdminMarketingServiceImpl implements AdminMarketingService {
 
     @Override
     @Transactional
+    public MarketingPostResponse updatePostMedia(Long postId, List<MarketingMediaRequest> media) {
+        MarketingPost post = postRepository.findById(postId)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy bài đăng."));
+        mediaRepository.deleteByPostId(postId);
+        if (media != null) {
+            int index = 1;
+            for (MarketingMediaRequest mediaRequest : media) {
+                mediaRepository.save(MarketingPostMedia.builder()
+                        .post(post)
+                        .mediaUrl(mediaRequest.mediaUrl())
+                        .mediaType(normalize(mediaRequest.mediaType()))
+                        .displayOrder(mediaRequest.displayOrder() == null ? index : mediaRequest.displayOrder())
+                        .altText(mediaRequest.altText())
+                        .source(mediaRequest.source())
+                        .build());
+                index++;
+            }
+        }
+        return getPost(postId);
+    }
+
+    @Override
+    @Transactional
     public MarketingPostResponse regenerateChannelContent(Long channelId, MarketingRegenerateContentRequest request) {
         MarketingPostChannel channel = channelRepository.findById(channelId)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy kênh đăng bài."));

@@ -2,6 +2,7 @@ package com.homestayManagement.homestayManagement.controller;
 
 import com.homestayManagement.homestayManagement.dto.request.MarketingOptionRequest;
 import com.homestayManagement.homestayManagement.dto.request.MarketingChannelContentRequest;
+import com.homestayManagement.homestayManagement.dto.request.MarketingMediaRequest;
 import com.homestayManagement.homestayManagement.dto.request.MarketingPostRequest;
 import com.homestayManagement.homestayManagement.dto.request.MarketingRegenerateContentRequest;
 import com.homestayManagement.homestayManagement.dto.request.MarketingSocialAuthStartRequest;
@@ -105,6 +106,14 @@ public class AdminMarketingController {
     @GetMapping("/posts/{id}")
     public MarketingPostResponse getPost(@PathVariable Long id) {
         return adminMarketingService.getPost(id);
+    }
+
+    @PatchMapping("/posts/{id}/media")
+    public MarketingPostResponse updatePostMedia(
+            @PathVariable Long id,
+            @Valid @RequestBody List<MarketingMediaRequest> media
+    ) {
+        return adminMarketingService.updatePostMedia(id, media);
     }
 
     @PatchMapping("/channels/{id}/content")

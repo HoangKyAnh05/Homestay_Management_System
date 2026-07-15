@@ -2,6 +2,7 @@ package com.homestayManagement.homestayManagement.service;
 
 import com.homestayManagement.homestayManagement.dto.request.MarketingOptionRequest;
 import com.homestayManagement.homestayManagement.dto.request.MarketingChannelContentRequest;
+import com.homestayManagement.homestayManagement.dto.request.MarketingMediaRequest;
 import com.homestayManagement.homestayManagement.dto.request.MarketingPostRequest;
 import com.homestayManagement.homestayManagement.dto.request.MarketingRegenerateContentRequest;
 import com.homestayManagement.homestayManagement.dto.request.MarketingSocialAuthStartRequest;
@@ -34,6 +35,7 @@ public interface AdminMarketingService {
     MarketingPostResponse scheduleChannel(Long channelId, ScheduleMarketingChannelRequest request);
     MarketingPostResponse publishChannel(Long channelId);
     MarketingPostResponse getPost(Long postId);
+    MarketingPostResponse updatePostMedia(Long postId, List<MarketingMediaRequest> media);
     MarketingSocialAuthStartResponse startSocialAuth(MarketingSocialAuthStartRequest request);
     MarketingSocialAuthStatusResponse getSocialAuthStatus(String platform, String sessionId);
     List<MarketingConnectedAccountResponse> listConnectedSocialAccounts(String platform);

@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
-import AdminLayout from './AdminLayout'
+import AdminLayout, { navigate } from './AdminLayout'
 import { getStoredToken, getStoredUser } from '../../services/authService'
 import './MarketingPages.css'
 
 const API = 'http://localhost:8080/api/admin/marketing'
 const API_ORIGIN = API.replace('/api/admin/marketing', '')
 const TOKEN_KEY = 'homeStayAccessToken'
+const MARKETING_EDIT_DRAFT_KEY = 'marketingEditDraftPost'
 
 const CHANNELS = {
   FACEBOOK: { label: 'Facebook', short: 'f', color: '#1877f2' },
@@ -237,7 +238,7 @@ export function MarketingAIAgentPage() {
   const tones = optionValues(dashboard?.tones, FALLBACK_TONES)
   const socialAccounts = useMemo(() => dashboard?.socialAccounts || [], [dashboard?.socialAccounts])
   const previewChannel = generatedPost?.channels?.[0]
-  const previewMediaItems = generatedPost?.media?.length ? generatedPost.media : form.mediaItems
+  const previewMediaItems = generatedPost?.id ? (generatedPost.media || []) : form.mediaItems
   const scheduledItems = useMemo(() => {
     const items = (dashboard?.recentPosts || []).flatMap((post) => (post.channels || [])
       .filter((channel) => channel.scheduledAt || channel.status === 'SCHEDULED')
@@ -350,16 +351,23 @@ export function MarketingAIAgentPage() {
     setTargets((current) => current.length === 1 ? current : current.filter((target) => target.id !== id))
   }
 
-  const loadPostIntoEditor = (post) => {
+  const loadPostIntoEditor = (post, preferredChannelId = null) => {
     if (!post) return
+    const orderedChannels = [...(post.channels || [])].sort((first, second) => {
+      if (!preferredChannelId) return 0
+      if (String(first.id) === String(preferredChannelId)) return -1
+      if (String(second.id) === String(preferredChannelId)) return 1
+      return 0
+    })
+    const editablePost = { ...post, channels: orderedChannels }
     setForm((current) => ({
       ...current,
-      title: post.title || current.title,
-      goal: post.goal || current.goal,
-      tone: post.tone || current.tone,
-      brief: post.brief || '',
+      title: editablePost.title || current.title,
+      goal: editablePost.goal || current.goal,
+      tone: editablePost.tone || current.tone,
+      brief: editablePost.brief || '',
       mediaUrl: '',
-      mediaItems: (post.media || []).map((media, index) => ({
+      mediaItems: (editablePost.media || []).map((media, index) => ({
         id: media.id || `${media.mediaUrl}-${index}`,
         mediaUrl: media.mediaUrl,
         mediaType: media.mediaType || 'IMAGE',
@@ -369,20 +377,71 @@ export function MarketingAIAgentPage() {
         name: media.altText || media.mediaUrl,
       })),
     }))
-    setTargets((post.channels?.length ? post.channels : []).map((channel) => ({
+    setTargets((orderedChannels.length ? orderedChannels : []).map((channel) => ({
       id: crypto.randomUUID(),
       platform: channel.platform || 'FACEBOOK',
       socialAccountId: channel.socialAccountId ? String(channel.socialAccountId) : '',
       pageName: channel.pageName || '',
       pageUrl: channel.pageUrl || '',
     })))
-    if (!post.channels?.length) {
+    if (!orderedChannels.length) {
       setTargets([{ id: crypto.randomUUID(), platform: 'FACEBOOK', socialAccountId: '', pageName: '', pageUrl: '' }])
     }
-    setGeneratedPost(post)
+    setGeneratedPost(editablePost)
     setCalendarOpen(false)
     setError('')
   }
+
+  const normalizeDraftPayload = (payload) => {
+    const post = payload?.post || payload
+    if (!post) return null
+    const selectedChannel = payload?.channel
+    if (!selectedChannel?.id) {
+      return { post, preferredChannelId: payload?.channelId || null }
+    }
+    const channels = post.channels?.length ? post.channels : []
+    const found = channels.some((channel) => String(channel.id) === String(selectedChannel.id))
+    const mergedChannels = found
+      ? channels.map((channel) => String(channel.id) === String(selectedChannel.id) ? { ...channel, ...selectedChannel } : channel)
+      : [selectedChannel, ...channels]
+    return {
+      post: { ...post, channels: mergedChannels },
+      preferredChannelId: selectedChannel.id,
+    }
+  }
+
+  useEffect(() => {
+    const rawDraft = sessionStorage.getItem(MARKETING_EDIT_DRAFT_KEY)
+    const params = new URLSearchParams(window.location.search)
+    const queryPostId = params.get('editPostId')
+    const queryChannelId = params.get('channelId')
+    if (!rawDraft && !queryPostId) return
+    sessionStorage.removeItem(MARKETING_EDIT_DRAFT_KEY)
+    const timer = window.setTimeout(() => {
+      ;(async () => {
+        try {
+          const stored = rawDraft ? JSON.parse(rawDraft) : {}
+          const postId = stored?.postId || stored?.post?.id || stored?.id || queryPostId
+          const channelId = stored?.channelId || stored?.channel?.id || queryChannelId || null
+          if (postId) {
+            const freshPost = await request(`/posts/${postId}`)
+            loadPostIntoEditor(freshPost, channelId)
+            if (queryPostId) {
+              window.history.replaceState(null, '', '/admin/marketing/ai-agent')
+            }
+            return
+          }
+          const draft = normalizeDraftPayload(stored)
+          if (draft?.post) {
+            loadPostIntoEditor(draft.post, draft.preferredChannelId)
+          }
+        } catch {
+          setError('Không thể mở lại bản nháp từ Nhật ký bài đăng.')
+        }
+      })()
+    }, 0)
+    return () => window.clearTimeout(timer)
+  }, [])
 
   const addOption = async (optionType) => {
     const label = newOption[optionType].trim()
@@ -526,10 +585,13 @@ export function MarketingAIAgentPage() {
           name: uploaded.originalFilename || file.name,
         })
       }
-      setForm((current) => ({
-        ...current,
-        mediaItems: [...current.mediaItems, ...uploadedItems].map((item, index) => ({ ...item, displayOrder: index + 1 })),
-      }))
+      const baseItems = generatedPost?.id ? (generatedPost.media || []) : form.mediaItems
+      const nextItems = [...baseItems, ...uploadedItems].map((item, index) => ({ ...item, displayOrder: index + 1 }))
+      setForm((current) => ({ ...current, mediaItems: nextItems }))
+      if (generatedPost?.id) {
+        setGeneratedPost((current) => current ? { ...current, media: nextItems } : current)
+        await persistPostMedia(generatedPost.id, nextItems)
+      }
     } catch (err) {
       setError(err.message)
     } finally {
@@ -541,31 +603,85 @@ export function MarketingAIAgentPage() {
     const mediaUrl = form.mediaUrl.trim()
     if (!mediaUrl) return
     const mediaType = /\.(mp4|mov|webm|m4v)(\?|#|$)/i.test(mediaUrl) ? 'VIDEO' : 'IMAGE'
-    setForm((current) => ({
-      ...current,
-      mediaUrl: '',
-      mediaItems: [
-        ...current.mediaItems,
-        {
-          id: crypto.randomUUID(),
-          mediaUrl,
-          mediaType,
-          displayOrder: current.mediaItems.length + 1,
-          altText: '',
-          source: 'URL',
-          name: mediaUrl,
-        },
-      ],
-    }))
+    const baseItems = generatedPost?.id ? (generatedPost.media || []) : form.mediaItems
+    const nextItems = [
+      ...baseItems,
+      {
+        id: crypto.randomUUID(),
+        mediaUrl,
+        mediaType,
+        displayOrder: baseItems.length + 1,
+        altText: '',
+        source: 'URL',
+        name: mediaUrl,
+      },
+    ]
+    setForm((current) => ({ ...current, mediaUrl: '', mediaItems: nextItems }))
+    if (generatedPost?.id) {
+      setGeneratedPost((current) => current ? { ...current, media: nextItems } : current)
+      persistPostMedia(generatedPost.id, nextItems).catch((err) => setError(err.message))
+    }
   }
 
   const removeMediaItem = (id) => {
+    const baseItems = generatedPost?.id ? (generatedPost.media || []) : form.mediaItems
+    const nextItems = baseItems
+      .filter((item) => item.id !== id)
+      .map((item, index) => ({ ...item, displayOrder: index + 1 }))
     setForm((current) => ({
       ...current,
-      mediaItems: current.mediaItems
-        .filter((item) => item.id !== id)
-        .map((item, index) => ({ ...item, displayOrder: index + 1 })),
+      mediaItems: nextItems,
     }))
+    if (generatedPost?.id) {
+      setGeneratedPost((current) => current ? { ...current, media: nextItems } : current)
+      persistPostMedia(generatedPost.id, nextItems).catch((err) => setError(err.message))
+    }
+  }
+
+  const removePreviewMedia = (media) => {
+    const sameMedia = (item) => {
+      if (media.id && item.id && String(item.id) === String(media.id)) return true
+      return item.mediaUrl === media.mediaUrl
+    }
+    const baseItems = generatedPost?.id ? (generatedPost.media || []) : form.mediaItems
+    const nextItems = baseItems
+      .filter((item) => !sameMedia(item))
+      .map((item, index) => ({ ...item, displayOrder: index + 1 }))
+    setForm((current) => ({ ...current, mediaItems: nextItems }))
+    if (generatedPost?.id) {
+      setGeneratedPost((current) => current ? { ...current, media: nextItems } : current)
+      persistPostMedia(generatedPost.id, nextItems).catch((err) => setError(err.message))
+    }
+  }
+
+  const mediaPayload = (items) => items.map((media, index) => ({
+    mediaUrl: media.mediaUrl,
+    mediaType: media.mediaType || 'IMAGE',
+    displayOrder: index + 1,
+    altText: media.altText || media.name || '',
+    source: media.source || 'UPLOADED',
+  }))
+
+  const persistPostMedia = async (postId, items) => {
+    const post = await request(`/posts/${postId}/media`, {
+      method: 'PATCH',
+      body: JSON.stringify(mediaPayload(items)),
+    })
+    setGeneratedPost(post)
+    setForm((current) => ({
+      ...current,
+      mediaItems: (post.media || []).map((media, index) => ({
+        id: media.id || `${media.mediaUrl}-${index}`,
+        mediaUrl: media.mediaUrl,
+        mediaType: media.mediaType || 'IMAGE',
+        displayOrder: media.displayOrder || index + 1,
+        altText: media.altText || '',
+        source: media.source || 'UPLOADED',
+        name: media.altText || media.mediaUrl,
+      })),
+    }))
+    await refreshDashboard()
+    return post
   }
 
   const generate = async () => {
@@ -591,13 +707,7 @@ export function MarketingAIAgentPage() {
           pageName: target.pageName,
           pageUrl: target.pageUrl,
         })),
-        media: form.mediaItems.map((media, index) => ({
-          mediaUrl: media.mediaUrl,
-          mediaType: media.mediaType || 'IMAGE',
-          displayOrder: index + 1,
-          altText: media.altText || media.name || '',
-          source: media.source || 'UPLOADED',
-        })),
+        media: mediaPayload(form.mediaItems),
       }
       const post = await request('/posts/generate', { method: 'POST', body: JSON.stringify(payload) })
       setGeneratedPost(post)
@@ -942,6 +1052,9 @@ export function MarketingAIAgentPage() {
                         ) : (
                           <img src={resolveMediaUrl(media.mediaUrl)} alt={media.altText || 'Media bài đăng'} />
                         )}
+                        <button type="button" onClick={() => removePreviewMedia(media)} title="Xóa ảnh/video này" aria-label="Xóa ảnh/video này">
+                          <Icon name="close" size={14} />
+                        </button>
                         {index === 3 && previewMediaItems.length > 4 ? <figcaption>+{previewMediaItems.length - 4}</figcaption> : null}
                       </figure>
                     ))}
@@ -1071,10 +1184,10 @@ export function MarketingAIAgentPage() {
               {scheduledItems.length ? (
                 <div className="mkt-calendar-list">
                   {scheduledItems.map((channel) => (
-                    <article className="mkt-calendar-item" key={`${channel.post.id}-${channel.id}`} onClick={() => loadPostIntoEditor(channel.post)} role="button" tabIndex={0} onKeyDown={(event) => {
+                    <article className="mkt-calendar-item" key={`${channel.post.id}-${channel.id}`} onClick={() => loadPostIntoEditor(channel.post, channel.id)} role="button" tabIndex={0} onKeyDown={(event) => {
                       if (event.key === 'Enter' || event.key === ' ') {
                         event.preventDefault()
-                        loadPostIntoEditor(channel.post)
+                        loadPostIntoEditor(channel.post, channel.id)
                       }
                     }}>
                       <time>
@@ -1146,6 +1259,17 @@ export function MarketingPostLogsPage() {
   const paginated = filtered.slice(pageStart, pageStart + pageSize)
   const pageNumbers = Array.from({ length: totalPages }, (_, index) => index + 1)
   const selectedMedia = selectedChannel?.post?.media || []
+  const selectedIsDraft = selectedChannel?.status === 'DRAFT' || selectedChannel?.post?.status === 'DRAFT'
+
+  const continueEditingDraft = () => {
+    if (!selectedChannel?.post) return
+    sessionStorage.setItem(MARKETING_EDIT_DRAFT_KEY, JSON.stringify({
+      postId: selectedChannel.post.id,
+      channelId: selectedChannel.id,
+    }))
+    setSelectedChannel(null)
+    navigate(`/admin/marketing/ai-agent?editPostId=${encodeURIComponent(selectedChannel.post.id)}&channelId=${encodeURIComponent(selectedChannel.id)}`)
+  }
 
   return (
     <AdminLayout activePage="post-logs">
@@ -1300,6 +1424,11 @@ export function MarketingPostLogsPage() {
               </div>
 
               <footer>
+                {selectedIsDraft ? (
+                  <button className="mkt-btn mkt-btn--primary" type="button" onClick={continueEditingDraft}>
+                    <Icon name="wand" />Tiếp tục chỉnh sửa
+                  </button>
+                ) : null}
                 {selectedChannel.externalUrl ? (
                   <a className="mkt-btn mkt-btn--primary" href={selectedChannel.externalUrl} target="_blank" rel="noreferrer"><Icon name="link" />Mở bài đăng</a>
                 ) : null}

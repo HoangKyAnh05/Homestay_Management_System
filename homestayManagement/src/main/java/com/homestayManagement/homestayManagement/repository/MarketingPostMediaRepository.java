@@ -7,4 +7,5 @@ import java.util.List;
 
 public interface MarketingPostMediaRepository extends JpaRepository<MarketingPostMedia, Long> {
     List<MarketingPostMedia> findByPostIdOrderByDisplayOrderAsc(Long postId);
+    void deleteByPostId(Long postId);
 }
