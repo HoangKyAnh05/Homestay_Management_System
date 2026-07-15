@@ -519,32 +519,237 @@ Diem tich luy customer.
 
 ### `ai_agent_configs`
 
-Cau hinh AI Agent marketing.
+Cau hinh AI Agent marketing. Bang nay khong luu API key plain text; key cua provider nen nam trong bien moi truong hoac secret manager.
 
 | Column | Type | Note |
 |---|---|---|
 | `id` | bigint | PK |
 | `agent_name` | varchar(50) | Ten agent |
 | `system_prompt` | text | Prompt he thong |
-| `posting_interval_hours` | int | Chu ky dang bai |
+| `provider` | varchar(50) | OpenAI, local sidecar, MCP, ... |
+| `model_name` | varchar(100) | Model dang dung |
+| `default_tone` | varchar(100) | Giong dieu mac dinh |
+| `brand_voice` | text | Huong dan brand voice |
+| `hashtag_rules` | text | Quy tac hashtag |
+| `cta_rules` | text | Quy tac CTA |
+| `posting_interval_hours` | int | Chu ky dang bai tu dong |
 | `is_active` | boolean | Trang thai |
 
-### `marketing_posts`
+### `marketing_options`
 
-Bai viet marketing do nhan vien hoac AI Agent tao.
+Danh muc dong cho UI AI Agent, hien dung cho muc tieu bai viet va giong dieu. Admin/Marketing co the them hoac an option.
 
 | Column | Type | Note |
 |---|---|---|
 | `id` | bigint | PK |
-| `platform` | varchar(20) | Kenh dang |
-| `generated_content` | text | Noi dung |
-| `media_url` | varchar(255) | Media |
-| `scheduled_at` | datetime | Lich dang |
-| `posted_at` | datetime | Thoi gian da dang |
-| `status` | varchar(20) | Trang thai |
-| `external_post_id` | varchar(100) | ID tren nen tang ngoai |
+| `option_type` | varchar(30) | `GOAL` hoac `TONE` |
+| `label` | varchar(120) | Noi dung hien thi |
+| `is_active` | boolean | Dang su dung hay khong |
+| `created_at` | datetime | Thoi gian tao |
+
+Unique constraint: `option_type`, `label`.
+
+### `marketing_campaigns`
+
+Nhom cac bai dang theo chien dich marketing.
+
+| Column | Type | Note |
+|---|---|---|
+| `id` | bigint | PK |
+| `name` | varchar(140) | Ten chien dich |
+| `description` | text | Mo ta |
+| `goal` | varchar(100) | Muc tieu chien dich |
+| `start_date` | date | Ngay bat dau |
+| `end_date` | date | Ngay ket thuc |
+| `status` | varchar(30) | `DRAFT`, `ACTIVE`, `PAUSED`, `COMPLETED` |
+| `created_by` | bigint | FK -> `employees.id`, nullable |
+| `created_at` | datetime | Thoi gian tao |
+| `updated_at` | datetime | Thoi gian cap nhat |
+
+### `marketing_posts`
+
+Bai viet cha/brief marketing do nhan vien hoac AI Agent tao. Mot bai cha co the sinh nhieu noi dung rieng cho tung page/kienh trong `marketing_post_channels`.
+
+| Column | Type | Note |
+|---|---|---|
+| `id` | bigint | PK |
+| `campaign_id` | bigint | FK -> `marketing_campaigns.id`, nullable |
+| `title` | varchar(160) | Tieu de noi bo |
+| `brief` | text | Mo ta/yeu cau nguoi dung nhap |
+| `goal` | varchar(100) | Muc tieu bai viet tai thoi diem tao |
+| `tone` | varchar(100) | Giong dieu tai thoi diem tao |
+| `content_length` | varchar(30) | Do dai mong muon: `STANDARD`, `LONGER`, `SHORTER`, `CONCISE` |
+| `source_type` | varchar(30) | `MANUAL`, `AI_GENERATED`, `SUGGESTION` |
+| `approval_status` | varchar(30) | `PENDING`, `APPROVED`, `REJECTED` |
+| `status` | varchar(30) | `DRAFT`, `SCHEDULED`, `PUBLISHED`, `FAILED` |
 | `creator_id` | bigint | FK -> `employees.id`, nullable |
+| `approved_by` | bigint | FK -> `employees.id`, nullable |
 | `agent_config_id` | bigint | FK -> `ai_agent_configs.id`, nullable |
+| `created_at` | datetime | Thoi gian tao |
+| `updated_at` | datetime | Thoi gian cap nhat |
+
+### `social_accounts`
+
+Luu cac page/tai khoan social ma he thong duoc phep dang bai. Mot kenh nhu Facebook co the co nhieu page. Token duoc luu trong MySQL de Spring Boot dang bai truc tiep, khong phu thuoc MongoDB/AiToEarn runtime.
+
+| Column | Type | Note |
+|---|---|---|
+| `id` | bigint | PK |
+| `platform` | varchar(30) | `FACEBOOK`, `INSTAGRAM`, `TIKTOK`, ... |
+| `account_name` | varchar(120) | Ten page/tai khoan |
+| `page_url` | varchar(500) | Link page can dang bai |
+| `external_account_id` | varchar(160) | ID page/tai khoan tren nen tang ngoai |
+| `access_token_encrypted` | text | Access token da ma hoa |
+| `refresh_token_encrypted` | text | Refresh token da ma hoa, nullable |
+| `token_expires_at` | datetime | Han token |
+| `is_active` | boolean | Con su dung hay khong |
+| `connected_by` | bigint | FK -> `employees.id`, nullable |
+| `created_at` | datetime | Thoi gian ket noi |
+| `updated_at` | datetime | Thoi gian cap nhat |
+
+### `social_oauth_apps`
+
+Luu cau hinh OAuth app theo tung nen tang social. Co the seed tu bien moi truong khi Spring Boot khoi dong, vi du Facebook App ID/App Secret.
+
+| Column | Type | Note |
+|---|---|---|
+| `id` | bigint | PK |
+| `platform` | varchar(30) | Unique, vi du `FACEBOOK`, `INSTAGRAM`, `TIKTOK`, `LINKEDIN` |
+| `client_id` | varchar(255) | App ID / Client ID |
+| `client_secret` | text | App Secret / Client Secret |
+| `auth_url` | varchar(500) | OAuth authorize URL |
+| `token_url` | varchar(500) | OAuth token exchange URL |
+| `redirect_uri` | varchar(500) | Callback ve Spring Boot, vi du `/api/marketing/social/oauth/callback` |
+| `scopes` | text | Scope xin quyen, vi du `pages_show_list,pages_manage_posts` |
+| `is_active` | boolean | App OAuth con su dung hay khong |
+| `created_at` | datetime | Thoi gian tao |
+| `updated_at` | datetime | Thoi gian cap nhat |
+
+### `social_oauth_sessions`
+
+Luu phien ket noi social khi nhan vien bam `Ket noi qua AiToEarn` tren UI. Ten nut co the giu de quen thao tac, nhung runtime thuc te la Spring Boot + MySQL.
+
+| Column | Type | Note |
+|---|---|---|
+| `id` | bigint | PK |
+| `session_id` | varchar(80) | Ma phien UI dung de kiem tra trang thai |
+| `state_token` | varchar(120) | OAuth state chong CSRF |
+| `platform` | varchar(30) | Nen tang social |
+| `status` | varchar(30) | `PENDING`, `COMPLETED`, `FAILED`, `EXPIRED` |
+| `auth_url` | text | URL xac thuc da tao |
+| `connected_account_id` | bigint | FK -> `social_accounts.id`, nullable |
+| `error_message` | text | Loi ket noi gan nhat |
+| `expires_at` | datetime | Han phien |
+| `created_at` | datetime | Thoi gian tao |
+| `updated_at` | datetime | Thoi gian cap nhat |
+
+### `marketing_post_channels`
+
+Noi dung va trang thai dang rieng cho tung page/kienh. Day la bang trung tam cho chuc nang tu dong dang social.
+
+| Column | Type | Note |
+|---|---|---|
+| `id` | bigint | PK |
+| `post_id` | bigint | FK -> `marketing_posts.id` |
+| `social_account_id` | bigint | FK -> `social_accounts.id`, nullable |
+| `platform` | varchar(30) | Kenh dang |
+| `page_name` | varchar(120) | Snapshot ten page luc tao bai |
+| `page_url` | varchar(500) | Snapshot link page luc tao bai |
+| `content` | text | Caption/noi dung rieng cho kenh |
+| `hashtags` | text | Hashtag rieng cho kenh |
+| `platform_option_json` | text | Du phong option ky thuat theo nen tang, mac dinh UI khong hien thi |
+| `relay_flow_id` | varchar(160) | Ma flow/job neu sau nay dung queue noi bo, nullable |
+| `relay_task_id` | varchar(160) | Ma task neu sau nay dung queue noi bo, nullable |
+| `scheduled_at` | datetime | Lich dang |
+| `posted_at` | datetime | Thoi gian dang thanh cong |
+| `status` | varchar(30) | `DRAFT`, `SCHEDULED`, `PUBLISHING`, `PUBLISHED`, `FAILED` |
+| `external_post_id` | varchar(160) | ID bai tren nen tang ngoai |
+| `external_url` | varchar(500) | Link bai da dang |
+| `error_message` | text | Loi dang bai gan nhat |
+
+### `marketing_post_media`
+
+Anh/video gan voi bai dang. Cho phep nhieu media va co the gan chung cho bai cha hoac rieng mot channel.
+
+| Column | Type | Note |
+|---|---|---|
+| `id` | bigint | PK |
+| `post_id` | bigint | FK -> `marketing_posts.id` |
+| `channel_id` | bigint | FK -> `marketing_post_channels.id`, nullable |
+| `media_url` | varchar(500) | Link media |
+| `media_type` | varchar(20) | `IMAGE`, `VIDEO` |
+| `display_order` | int | Thu tu hien thi |
+| `alt_text` | varchar(255) | Mo ta anh |
+| `source` | varchar(30) | `UPLOADED`, `ROOM_GALLERY`, `AI_GENERATED` |
+
+### `ai_generation_logs`
+
+Nhat ky moi lan goi AI tao noi dung, dung de debug, audit va toi uu prompt.
+
+| Column | Type | Note |
+|---|---|---|
+| `id` | bigint | PK |
+| `post_id` | bigint | FK -> `marketing_posts.id`, nullable |
+| `agent_config_id` | bigint | FK -> `ai_agent_configs.id`, nullable |
+| `input_brief` | text | Brief dau vao |
+| `input_goal` | varchar(100) | Muc tieu dau vao |
+| `input_tone` | varchar(100) | Tone dau vao |
+| `output_json` | text | Ket qua AI tra ve |
+| `model_name` | varchar(100) | Model da dung |
+| `provider` | varchar(50) | Provider da dung |
+| `prompt_tokens` | int | Token dau vao |
+| `completion_tokens` | int | Token dau ra |
+| `status` | varchar(30) | `SUCCESS`, `FAILED` |
+| `error_message` | text | Loi neu co |
+| `created_by` | bigint | FK -> `employees.id`, nullable |
+| `created_at` | datetime | Thoi gian goi AI |
+
+### `marketing_publish_attempts`
+
+Moi lan he thong thu dang bai len social se tao mot dong attempt. Bang nay giup retry/debug khi Facebook/Instagram/TikTok tra loi.
+
+| Column | Type | Note |
+|---|---|---|
+| `id` | bigint | PK |
+| `channel_id` | bigint | FK -> `marketing_post_channels.id` |
+| `attempt_no` | int | Lan thu thu may |
+| `request_payload` | text | Payload gui den social API |
+| `response_payload` | text | Response tu social API |
+| `status` | varchar(30) | `SUCCESS`, `FAILED` |
+| `error_code` | varchar(100) | Ma loi |
+| `error_message` | text | Noi dung loi |
+| `attempted_at` | datetime | Thoi gian thu dang |
+
+### `marketing_post_metrics`
+
+Snapshot chi so hieu qua cua bai dang theo tung channel/page.
+
+| Column | Type | Note |
+|---|---|---|
+| `id` | bigint | PK |
+| `channel_id` | bigint | FK -> `marketing_post_channels.id` |
+| `reach` | bigint | Luot tiep can |
+| `impressions` | bigint | Luot hien thi |
+| `likes` | bigint | Luot thich |
+| `comments` | bigint | Binh luan |
+| `shares` | bigint | Chia se |
+| `saves` | bigint | Luu bai |
+| `engagement_rate` | decimal(7,4) | Ty le tuong tac |
+| `collected_at` | datetime | Thoi diem dong bo |
+
+### `marketing_content_suggestions`
+
+Goi y noi dung duoc tao tu du lieu phong trong, voucher, review hoac xu huong.
+
+| Column | Type | Note |
+|---|---|---|
+| `id` | bigint | PK |
+| `title` | varchar(160) | Tieu de goi y |
+| `description` | varchar(500) | Mo ta |
+| `suggestion_type` | varchar(50) | `VOUCHER`, `ROOM_EMPTY`, `REVIEW`, `TREND`, ... |
+| `source_data_json` | text | Du lieu nguon tao goi y |
+| `status` | varchar(30) | `NEW`, `USED`, `DISMISSED` |
+| `created_at` | datetime | Thoi gian tao |
 
 ## 10. Quan He ERD Chinh
 
@@ -607,6 +812,19 @@ employees.id              1 - N  invoices.employee_id
 invoices.id               1 - N  payments.invoice_id
 
 customers.id              1 - 1  customer_loyalty.customer_id
+employees.id              1 - N  marketing_campaigns.created_by
+marketing_campaigns.id    1 - N  marketing_posts.campaign_id
 ai_agent_configs.id       1 - N  marketing_posts.agent_config_id
 employees.id              1 - N  marketing_posts.creator_id
+employees.id              1 - N  marketing_posts.approved_by
+employees.id              1 - N  social_accounts.connected_by
+marketing_posts.id        1 - N  marketing_post_channels.post_id
+social_accounts.id        1 - N  marketing_post_channels.social_account_id
+marketing_posts.id        1 - N  marketing_post_media.post_id
+marketing_post_channels.id 1 - N marketing_post_media.channel_id
+marketing_posts.id        1 - N  ai_generation_logs.post_id
+ai_agent_configs.id       1 - N  ai_generation_logs.agent_config_id
+employees.id              1 - N  ai_generation_logs.created_by
+marketing_post_channels.id 1 - N marketing_publish_attempts.channel_id
+marketing_post_channels.id 1 - N marketing_post_metrics.channel_id
 ```

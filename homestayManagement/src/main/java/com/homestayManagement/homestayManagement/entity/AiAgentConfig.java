@@ -22,6 +22,24 @@ public class AiAgentConfig {
     @Column(name = "system_prompt", columnDefinition = "TEXT")
     private String systemPrompt;
 
+    @Column(length = 50)
+    private String provider;
+
+    @Column(name = "model_name", length = 100)
+    private String modelName;
+
+    @Column(name = "default_tone", length = 100)
+    private String defaultTone;
+
+    @Column(name = "brand_voice", columnDefinition = "TEXT")
+    private String brandVoice;
+
+    @Column(name = "hashtag_rules", columnDefinition = "TEXT")
+    private String hashtagRules;
+
+    @Column(name = "cta_rules", columnDefinition = "TEXT")
+    private String ctaRules;
+
     @Column(name = "posting_interval_hours")
     private Integer postingIntervalHours;
 

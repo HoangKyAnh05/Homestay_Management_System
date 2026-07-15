@@ -1,58 +1,143 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import AdminLayout from './AdminLayout'
+import { getStoredToken, getStoredUser } from '../../services/authService'
 import './MarketingPages.css'
 
+const API = 'http://localhost:8080/api/admin/marketing'
+const API_ORIGIN = API.replace('/api/admin/marketing', '')
+const TOKEN_KEY = 'homeStayAccessToken'
+
 const CHANNELS = {
-  facebook: { label: 'Facebook', short: 'f', color: '#1877f2' },
-  instagram: { label: 'Instagram', short: '◎', color: '#d946ef' },
-  tiktok: { label: 'TikTok', short: '♪', color: '#111827' },
+  FACEBOOK: { label: 'Facebook', short: 'f', color: '#1877f2' },
+  INSTAGRAM: { label: 'Instagram', short: '◎', color: '#d946ef' },
+  TIKTOK: { label: 'TikTok', short: '♪', color: '#111827' },
+  ZALO: { label: 'Zalo', short: 'Z', color: '#0068ff' },
+  LINKEDIN: { label: 'LinkedIn', short: 'in', color: '#0a66c2' },
 }
 
-const LOGS = [
-  { id: 'POST-1028', title: 'Chạm vào bình yên giữa lòng Đà Lạt', channel: 'facebook', campaign: 'Mùa hè chữa lành', date: '30/06/2026 · 19:30', status: 'scheduled', reach: '—', engagement: '—' },
-  { id: 'POST-1027', title: 'Một sáng thức dậy giữa rừng thông', channel: 'instagram', campaign: 'Mùa hè chữa lành', date: '29/06/2026 · 20:15', status: 'published', reach: '12.8K', engagement: '8,4%' },
-  { id: 'POST-1026', title: 'Room tour: Pine View Studio', channel: 'tiktok', campaign: 'Khám phá phòng', date: '28/06/2026 · 18:00', status: 'published', reach: '31.2K', engagement: '12,1%' },
-  { id: 'POST-1025', title: 'Ưu đãi giữa tuần — nghỉ 3 trả 2', channel: 'facebook', campaign: 'Stay longer', date: '27/06/2026 · 11:45', status: 'failed', reach: '—', engagement: '—' },
-  { id: 'POST-1024', title: 'Góc ban công dành cho hai người', channel: 'instagram', campaign: 'Khoảnh khắc tại nhà', date: '26/06/2026 · 20:00', status: 'draft', reach: '—', engagement: '—' },
-  { id: 'POST-1023', title: 'Bữa sáng địa phương tại Home Stays', channel: 'facebook', campaign: 'Ẩm thực bản địa', date: '25/06/2026 · 07:30', status: 'published', reach: '9.6K', engagement: '6,7%' },
+const FALLBACK_GOALS = [
+  { id: 'goal-1', label: 'Tăng nhận diện thương hiệu' },
+  { id: 'goal-2', label: 'Thu hút lượt đặt phòng' },
+  { id: 'goal-3', label: 'Quảng bá ưu đãi' },
+  { id: 'goal-4', label: 'Tăng tương tác cộng đồng' },
 ]
 
-const INITIAL_VOUCHERS = [
+const FALLBACK_TONES = [
+  { id: 'tone-1', label: 'Ấm áp & truyền cảm hứng' },
+  { id: 'tone-2', label: 'Trẻ trung & gần gũi' },
+  { id: 'tone-3', label: 'Sang trọng & tinh tế' },
+  { id: 'tone-4', label: 'Hài hước & bắt trend' },
+]
+
+const CONTENT_LENGTHS = [
+  { value: 'STANDARD', label: 'Vừa phải', description: 'Độ dài cân bằng cho bài đăng thông thường.' },
+  { value: 'LONGER', label: 'Dài hơn trước', description: 'Viết chi tiết hơn, nhiều cảm xúc và ngữ cảnh hơn.' },
+  { value: 'SHORTER', label: 'Ngắn hơn trước', description: 'Rút gọn còn vài đoạn dễ đọc.' },
+  { value: 'CONCISE', label: 'Cô đọng hơn', description: 'Đi thẳng vào ý chính, ít câu phụ.' },
+]
+
+const VOUCHERS = [
   { code: 'HELLOJULY', name: 'Chào tháng 7', type: 'percent', value: 15, min: '1.500.000đ', used: 38, limit: 100, period: '01/07 – 15/07/2026', status: 'scheduled' },
   { code: 'STAY3PAY2', name: 'Ở 3 đêm, ưu đãi 1 đêm', type: 'amount', value: 600000, min: '3.000.000đ', used: 67, limit: 80, period: '10/06 – 31/07/2026', status: 'active' },
   { code: 'WEEKDAY10', name: 'Giảm giá giữa tuần', type: 'percent', value: 10, min: '1.000.000đ', used: 124, limit: 200, period: '01/06 – 31/08/2026', status: 'active' },
-  { code: 'WELCOME200', name: 'Chào khách hàng mới', type: 'amount', value: 200000, min: '1.200.000đ', used: 200, limit: 200, period: '01/04 – 30/06/2026', status: 'expired' },
 ]
 
 const STATUS = {
-  published: ['Đã đăng', 'success'],
-  scheduled: ['Đã lên lịch', 'info'],
-  draft: ['Bản nháp', 'neutral'],
-  failed: ['Đăng lỗi', 'danger'],
+  PUBLISHED: ['Đã đăng', 'success'],
+  SCHEDULED: ['Đã lên lịch', 'info'],
+  PUBLISHING: ['Đang đăng', 'info'],
+  QUEUED: ['Đang xếp hàng', 'warning'],
+  WAITING_FOR_USER_ACTION: ['Chờ thao tác', 'warning'],
+  DRAFT: ['Bản nháp', 'neutral'],
+  FAILED: ['Đăng lỗi', 'danger'],
   active: ['Đang hoạt động', 'success'],
+  scheduled: ['Đã lên lịch', 'info'],
   expired: ['Đã kết thúc', 'neutral'],
-  paused: ['Tạm dừng', 'warning'],
+}
+
+function authHeaders() {
+  const token = getStoredToken() || localStorage.getItem(TOKEN_KEY) || localStorage.getItem('token') || localStorage.getItem('adminToken')
+  return {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  }
+}
+
+async function request(path, options = {}) {
+  let response
+  try {
+    response = await fetch(`${API}${path}`, {
+      ...options,
+      headers: { ...authHeaders(), ...options.headers },
+    })
+  } catch {
+    throw new Error('Không thể kết nối máy chủ marketing. Hãy kiểm tra Spring Boot đang chạy ở cổng 8080.')
+  }
+  if (!response.ok) {
+    const rawMessage = await response.text()
+    let message
+    try {
+      const parsed = JSON.parse(rawMessage)
+      message = parsed.message || parsed.errorMessage || parsed.error || rawMessage
+    } catch {
+      message = rawMessage
+    }
+    if (response.status === 401 || response.status === 403) {
+      throw new Error(message || 'Phiên đăng nhập không có quyền truy cập Marketing. Hãy đăng nhập bằng tài khoản ADMIN hoặc MARKETING.')
+    }
+    throw new Error(message || 'Không thể kết nối máy chủ marketing.')
+  }
+  if (response.status === 204) return null
+  return response.json()
+}
+
+async function uploadRequest(path, file) {
+  const formData = new FormData()
+  formData.append('file', file)
+  const token = getStoredToken() || localStorage.getItem(TOKEN_KEY) || localStorage.getItem('token') || localStorage.getItem('adminToken')
+  let response
+  try {
+    response = await fetch(`${API}${path}`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
+    })
+  } catch {
+    throw new Error('Không thể tải file lên máy chủ marketing.')
+  }
+  if (!response.ok) {
+    const rawMessage = await response.text()
+    let message
+    try {
+      const parsed = JSON.parse(rawMessage)
+      message = parsed.message || parsed.errorMessage || parsed.error || rawMessage
+    } catch {
+      message = rawMessage
+    }
+    throw new Error(message || 'Không thể tải file lên.')
+  }
+  return response.json()
 }
 
 function Icon({ name, size = 18 }) {
   const paths = {
-    sparkles: <><path d="m12 3-1.2 3.3L7.5 7.5l3.3 1.2L12 12l1.2-3.3 3.3-1.2-3.3-1.2L12 3Z"/><path d="m5 13-.8 2.2L2 16l2.2.8L5 19l.8-2.2L8 16l-2.2-.8L5 13Z"/><path d="m18 13-1 2.7-2.7 1 2.7 1 1 2.7 1-2.7 2.7-1-2.7-1L18 13Z"/></>,
+    sparkles: <><path d="m12 3-1.2 3.3L7.5 7.5l3.3 1.2L12 12l1.2-3.3 3.3-1.2-3.3-1.2L12 3Z"/><path d="m5 13-.8 2.2L2 16l2.2.8L5 19l.8-2.2L8 16l-2.2-.8L5 13Z"/></>,
     calendar: <><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></>,
     image: <><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9" r="1.5"/><path d="m21 15-5-5L5 20"/></>,
     send: <><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></>,
     plus: <path d="M12 5v14M5 12h14"/>,
     search: <><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></>,
-    filter: <path d="M4 6h16M7 12h10M10 18h4"/>,
-    more: <><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></>,
     copy: <><rect x="8" y="8" width="11" height="11" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></>,
-    ticket: <><path d="M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v3a2 2 0 0 0 0 4v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-3a2 2 0 0 0 0-4V7Z"/><path d="M13 5v2M13 10v4M13 17v2"/></>,
+    ticket: <><path d="M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v3a2 2 0 0 0 0 4v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-3a2 2 0 0 0 0-4V7Z"/><path d="M13 5v14"/></>,
     arrow: <path d="m9 18 6-6-6-6"/>,
     close: <path d="M18 6 6 18M6 6l12 12"/>,
     check: <path d="m5 12 4 4L19 6"/>,
     clock: <><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></>,
     eye: <><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="2.5"/></>,
     trend: <><path d="m3 17 6-6 4 4 8-9"/><path d="M15 6h6v6"/></>,
-    wand: <><path d="m15 4 5 5L8 21H3v-5Z"/><path d="m6 14 5 5M6 3v4M4 5h4M18 14v4M16 16h4"/></>,
+    wand: <><path d="m15 4 5 5L8 21H3v-5Z"/><path d="m6 14 5 5M6 3v4M4 5h4"/></>,
+    trash: <><path d="M3 6h18"/><path d="M8 6V4h8v2M9 10v8M15 10v8"/><path d="M5 6l1 15h12l1-15"/></>,
+    link: <><path d="M10 13a5 5 0 0 0 7.1 0l2-2a5 5 0 0 0-7.1-7.1l-1.1 1.1"/><path d="M14 11a5 5 0 0 0-7.1 0l-2 2A5 5 0 0 0 12 20.1l1.1-1.1"/></>,
   }
   return <svg className="mkt-icon" width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">{paths[name]}</svg>
 }
@@ -63,7 +148,7 @@ function StatusBadge({ value }) {
 }
 
 function Channel({ value, label = true }) {
-  const channel = CHANNELS[value]
+  const channel = CHANNELS[value] || { label: value, short: value?.slice(0, 1) || '?', color: '#667085' }
   return (
     <span className="mkt-channel">
       <i style={{ background: channel.color }}>{channel.short}</i>
@@ -94,37 +179,464 @@ function MetricCard({ icon, label, value, detail, tone = 'blue' }) {
   )
 }
 
-export function MarketingAIAgentPage() {
-  const [channels, setChannels] = useState(['facebook', 'instagram'])
-  const [tone, setTone] = useState('Ấm áp & truyền cảm hứng')
-  const [goal, setGoal] = useState('Tăng nhận diện thương hiệu')
-  const [brief, setBrief] = useState('Giới thiệu không gian nghỉ dưỡng yên tĩnh giữa rừng thông, phù hợp cho cặp đôi muốn “chữa lành” cuối tuần.')
-  const [generated, setGenerated] = useState(false)
-  const [copied, setCopied] = useState(false)
-  const [message, setMessage] = useState('')
+function optionValues(options, fallback) {
+  return options?.length ? options : fallback
+}
 
-  const toggleChannel = (value) => {
-    setChannels(current => current.includes(value)
-      ? current.filter(item => item !== value)
-      : [...current, value])
+function resolveMediaUrl(value) {
+  if (!value) return ''
+  if (/^https?:\/\//i.test(value)) return value
+  if (value.startsWith('/')) return `${API_ORIGIN}${value}`
+  return `${API_ORIGIN}/${value}`
+}
+
+function toDateInputValue(value = new Date()) {
+  const date = value instanceof Date ? value : new Date(value)
+  return date.toISOString().slice(0, 10)
+}
+
+function toTimeInputValue(value = new Date()) {
+  const date = value instanceof Date ? value : new Date(value)
+  return date.toTimeString().slice(0, 5)
+}
+
+function formatScheduleTime(value) {
+  if (!value) return 'Chưa chọn thời gian'
+  return new Intl.DateTimeFormat('vi-VN', {
+    weekday: 'short',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(value))
+}
+
+export function MarketingAIAgentPage() {
+  const [dashboard, setDashboard] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [mediaUploading, setMediaUploading] = useState(false)
+  const [publishingChannels, setPublishingChannels] = useState({})
+  const [scheduleModal, setScheduleModal] = useState({ open: false, channel: null, date: '', time: '' })
+  const [scheduleSaving, setScheduleSaving] = useState(false)
+  const [calendarOpen, setCalendarOpen] = useState(false)
+  const [error, setError] = useState('')
+  const [generatedPost, setGeneratedPost] = useState(null)
+  const [copied, setCopied] = useState(false)
+  const [newOption, setNewOption] = useState({ GOAL: '', TONE: '' })
+  const [socialAuth, setSocialAuth] = useState({ platform: 'FACEBOOK', sessionId: '', url: '', status: '', accounts: [], loading: false, message: '' })
+  const [form, setForm] = useState({
+    title: 'Bài đăng nghỉ dưỡng cuối tuần',
+    goal: FALLBACK_GOALS[0].label,
+    tone: FALLBACK_TONES[0].label,
+    brief: 'Giới thiệu không gian nghỉ dưỡng yên tĩnh giữa rừng thông, phù hợp cho cặp đôi muốn chữa lành cuối tuần.',
+    contentLength: 'STANDARD',
+    mediaUrl: '',
+    mediaType: 'IMAGE',
+    mediaName: '',
+  })
+  const [targets, setTargets] = useState([
+    { id: crypto.randomUUID(), platform: 'FACEBOOK', socialAccountId: '', pageName: '', pageUrl: '' },
+  ])
+
+  const goals = optionValues(dashboard?.goals, FALLBACK_GOALS)
+  const tones = optionValues(dashboard?.tones, FALLBACK_TONES)
+  const socialAccounts = useMemo(() => dashboard?.socialAccounts || [], [dashboard?.socialAccounts])
+  const previewChannel = generatedPost?.channels?.[0]
+  const previewMedia = generatedPost?.media?.[0] || (form.mediaUrl ? { mediaUrl: form.mediaUrl, mediaType: form.mediaType } : null)
+  const scheduledItems = useMemo(() => {
+    const items = (dashboard?.recentPosts || []).flatMap((post) => (post.channels || [])
+      .filter((channel) => channel.scheduledAt || channel.status === 'SCHEDULED')
+      .map((channel) => ({ ...channel, post })))
+    return items.sort((a, b) => new Date(a.scheduledAt || 0) - new Date(b.scheduledAt || 0))
+  }, [dashboard?.recentPosts])
+  const savedAccountLookup = useMemo(() => {
+    const map = new Map()
+    socialAccounts.forEach((account) => {
+      if (account.externalAccountId) {
+        map.set(`${account.platform || ''}:${account.externalAccountId}`, account)
+      }
+    })
+    return map
+  }, [socialAccounts])
+  const connectedAccounts = useMemo(() => {
+    const map = new Map()
+    socialAuth.accounts.forEach((account) => {
+      const platform = account.platform || socialAuth.platform
+      const key = `${platform || ''}:${account.accountId || account.platformUid || account.displayName || ''}`
+      if (!map.has(key)) {
+        const saved = account.accountId ? savedAccountLookup.get(`${platform}:${account.accountId}`) : null
+        map.set(key, saved ? {
+          ...account,
+          localSocialAccountId: account.localSocialAccountId || saved.id,
+          displayName: account.displayName || saved.accountName,
+          pageUrl: account.pageUrl || saved.pageUrl,
+        } : account)
+      }
+    })
+    return Array.from(map.values())
+  }, [savedAccountLookup, socialAuth.accounts, socialAuth.platform])
+
+  useEffect(() => {
+    let active = true
+    request('/dashboard')
+      .then((data) => {
+        if (!active) return
+        setDashboard(data)
+        setForm((current) => ({
+          ...current,
+          goal: data.goals?.[0]?.label || current.goal,
+          tone: data.tones?.[0]?.label || current.tone,
+        }))
+      })
+      .catch((err) => active && setError(err.message))
+      .finally(() => active && setLoading(false))
+    return () => { active = false }
+  }, [])
+
+  const accountsByPlatform = useMemo(() => {
+    const map = new Map()
+    socialAccounts.forEach((account) => {
+      const list = map.get(account.platform) || []
+      list.push(account)
+      map.set(account.platform, list)
+    })
+    return map
+  }, [socialAccounts])
+
+  const refreshDashboard = async () => {
+    const data = await request('/dashboard')
+    setDashboard(data)
+    return data
   }
 
-  const generate = () => {
-    if (!brief.trim()) {
-      setMessage('Hãy nhập mô tả ngắn để AI có chất liệu sáng tạo.')
+  const updateTarget = (id, patch) => {
+    setTargets((current) => current.map((target) => {
+      if (target.id !== id) return target
+      const next = { ...target, ...patch }
+      if (patch.socialAccountId) {
+        const account = socialAccounts.find((item) => String(item.id) === String(patch.socialAccountId))
+        if (account) {
+          next.platform = account.platform
+          next.pageName = account.accountName
+          next.pageUrl = account.pageUrl || ''
+        }
+      }
+      return next
+    }))
+    if (patch.socialAccountId && generatedPost?.channels?.length) {
+      const account = socialAccounts.find((item) => String(item.id) === String(patch.socialAccountId))
+      if (account) {
+        setGeneratedPost((current) => {
+          if (!current?.channels?.length) return current
+          const targetIndex = targets.findIndex((target) => target.id === id)
+          const nextChannels = current.channels.map((channel, index) => {
+            const sameRow = targetIndex >= 0 ? index === targetIndex : false
+            const samePlatform = channel.platform === account.platform
+            if (!sameRow && !samePlatform) return channel
+            return {
+              ...channel,
+              socialAccountId: account.id,
+              platform: account.platform,
+              pageName: account.accountName,
+              pageUrl: account.pageUrl || '',
+            }
+          })
+          return { ...current, channels: nextChannels }
+        })
+      }
+    }
+  }
+
+  const addTarget = () => {
+    setTargets((current) => [...current, { id: crypto.randomUUID(), platform: 'FACEBOOK', socialAccountId: '', pageName: '', pageUrl: '' }])
+  }
+
+  const removeTarget = (id) => {
+    setTargets((current) => current.length === 1 ? current : current.filter((target) => target.id !== id))
+  }
+
+  const loadPostIntoEditor = (post) => {
+    if (!post) return
+    const firstMedia = post.media?.[0]
+    setForm((current) => ({
+      ...current,
+      title: post.title || current.title,
+      goal: post.goal || current.goal,
+      tone: post.tone || current.tone,
+      brief: post.brief || '',
+      contentLength: post.contentLength || current.contentLength || 'STANDARD',
+      mediaUrl: firstMedia?.mediaUrl || '',
+      mediaType: firstMedia?.mediaType || 'IMAGE',
+      mediaName: firstMedia?.mediaUrl ? 'Media đã được gắn từ bài đã chọn' : '',
+    }))
+    setTargets((post.channels?.length ? post.channels : []).map((channel) => ({
+      id: crypto.randomUUID(),
+      platform: channel.platform || 'FACEBOOK',
+      socialAccountId: channel.socialAccountId ? String(channel.socialAccountId) : '',
+      pageName: channel.pageName || '',
+      pageUrl: channel.pageUrl || '',
+    })))
+    if (!post.channels?.length) {
+      setTargets([{ id: crypto.randomUUID(), platform: 'FACEBOOK', socialAccountId: '', pageName: '', pageUrl: '' }])
+    }
+    setGeneratedPost(post)
+    setCalendarOpen(false)
+    setError('')
+  }
+
+  const addOption = async (optionType) => {
+    const label = newOption[optionType].trim()
+    if (!label) return
+    await request('/options', { method: 'POST', body: JSON.stringify({ optionType, label }) })
+    setNewOption((current) => ({ ...current, [optionType]: '' }))
+    await refreshDashboard()
+  }
+
+  const deleteOption = async (id) => {
+    if (typeof id === 'string') return
+    await request(`/options/${id}`, { method: 'DELETE' })
+    await refreshDashboard()
+  }
+
+  const updateSocialAuth = (patch) => {
+    setSocialAuth((current) => ({ ...current, ...patch }))
+  }
+
+  const startSocialAuth = async () => {
+    const user = getStoredUser()
+    if (!['ROLE_ADMIN', 'ROLE_MARKETING'].includes(user?.role)) {
+      updateSocialAuth({ message: 'Bạn cần đăng nhập bằng tài khoản ADMIN hoặc MARKETING để kết nối social.' })
       return
     }
-    if (!channels.length) {
-      setMessage('Chọn ít nhất một kênh đăng bài.')
+    updateSocialAuth({ loading: true, message: '', accounts: [] })
+    try {
+      const data = await request('/social-auth/start', {
+        method: 'POST',
+        body: JSON.stringify({ platform: socialAuth.platform }),
+      })
+      updateSocialAuth({
+        sessionId: data.sessionId || '',
+        url: data.url || '',
+        status: 'PENDING',
+        message: data.url ? 'Đã mở cửa sổ xác thực. Sau khi cấp quyền, bấm “Kiểm tra kết nối”.' : 'Backend chưa trả URL xác thực.',
+      })
+      if (data.url) {
+        window.open(data.url, '_blank', 'noopener,noreferrer')
+      }
+    } catch (err) {
+      updateSocialAuth({ message: err.message })
+    } finally {
+      updateSocialAuth({ loading: false })
+    }
+  }
+
+  const checkSocialAuth = async () => {
+    if (!socialAuth.sessionId) {
+      updateSocialAuth({ message: 'Chưa có phiên kết nối. Hãy bấm “Kết nối social” trước.' })
       return
     }
-    setMessage('')
-    setGenerated(true)
+    updateSocialAuth({ loading: true, message: '' })
+    try {
+      const data = await request(`/social-auth/status?platform=${encodeURIComponent(socialAuth.platform)}&sessionId=${encodeURIComponent(socialAuth.sessionId)}`)
+      const accounts = [
+        ...(data.accounts || []),
+        ...(data.selectableAccounts || []),
+      ]
+      const normalizedAccounts = accounts.length
+        ? accounts
+        : data.accountId ? [{ accountId: data.accountId, platform: socialAuth.platform, displayName: data.accountId }] : []
+      updateSocialAuth({
+        status: data.status || 'UNKNOWN',
+        accounts: normalizedAccounts,
+        message: normalizedAccounts.length ? 'Đã tìm thấy tài khoản. Hãy bấm “Lưu vào thư viện”.' : `Trạng thái hiện tại: ${data.status || 'UNKNOWN'}`,
+      })
+    } catch (err) {
+      updateSocialAuth({ message: err.message })
+    } finally {
+      updateSocialAuth({ loading: false })
+    }
+  }
+
+  const loadConnectedAccounts = async () => {
+    updateSocialAuth({ loading: true, message: '' })
+    try {
+      const accounts = await request(`/social-auth/accounts?platform=${encodeURIComponent(socialAuth.platform)}`)
+      updateSocialAuth({
+        accounts: accounts || [],
+        message: accounts?.length ? 'Đã tải tài khoản đã kết nối từ MySQL.' : 'Chưa có tài khoản nào đã kết nối trong MySQL.',
+      })
+    } catch (err) {
+      updateSocialAuth({ message: err.message })
+    } finally {
+      updateSocialAuth({ loading: false })
+    }
+  }
+
+  const saveConnectedAccount = async (account) => {
+    if (!account.accountId) return
+    const saved = await request('/social-accounts', {
+      method: 'POST',
+      body: JSON.stringify({
+        platform: account.platform || socialAuth.platform,
+        accountName: account.displayName || account.platformUid || account.accountId,
+        pageUrl: account.pageUrl || '',
+        externalAccountId: account.accountId,
+      }),
+    })
+    setSocialAuth((current) => ({
+      ...current,
+      accounts: current.accounts.map((item) => item.accountId === account.accountId
+        ? { ...item, localSocialAccountId: saved.id, displayName: saved.accountName, pageUrl: saved.pageUrl }
+        : item),
+    }))
+    updateSocialAuth({ message: 'Đã lưu page vào thư viện đăng bài.' })
+    await refreshDashboard()
+  }
+
+  const deleteConnectedAccount = async (account) => {
+    const localId = account.localSocialAccountId || socialAccounts.find((item) => item.platform === (account.platform || socialAuth.platform) && item.externalAccountId === account.accountId)?.id
+    if (localId) {
+      await request(`/social-accounts/${localId}`, { method: 'DELETE' })
+      await refreshDashboard()
+    }
+    setSocialAuth((current) => ({
+      ...current,
+      accounts: current.accounts.filter((item) => item.accountId !== account.accountId),
+      message: localId ? 'Đã xóa tài khoản khỏi thư viện.' : 'Đã xóa tài khoản khỏi danh sách hiển thị.',
+    }))
+  }
+
+  const uploadMarketingMedia = async (event) => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) return
+    setMediaUploading(true)
+    setError('')
+    try {
+      const uploaded = await uploadRequest('/media/upload', file)
+      setForm((current) => ({
+        ...current,
+        mediaUrl: uploaded.mediaUrl,
+        mediaType: uploaded.mediaType || (file.type.startsWith('video/') ? 'VIDEO' : 'IMAGE'),
+        mediaName: uploaded.originalFilename || file.name,
+      }))
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setMediaUploading(false)
+    }
+  }
+
+  const generate = async () => {
+    if (!form.brief.trim()) {
+      setError('Hãy nhập mô tả ngắn để AI có chất liệu sáng tạo.')
+      return
+    }
+    if (!targets.length) {
+      setError('Chọn ít nhất một page/kênh đăng bài.')
+      return
+    }
+    setSaving(true)
+    setError('')
+    try {
+      const payload = {
+        title: form.title,
+        brief: form.brief,
+        goal: form.goal,
+        tone: form.tone,
+        contentLength: form.contentLength,
+        channels: targets.map((target) => ({
+          socialAccountId: target.socialAccountId ? Number(target.socialAccountId) : null,
+          platform: target.platform,
+          pageName: target.pageName,
+          pageUrl: target.pageUrl,
+        })),
+        media: form.mediaUrl ? [{ mediaUrl: form.mediaUrl, mediaType: form.mediaType || 'IMAGE', displayOrder: 1, source: 'UPLOADED' }] : [],
+      }
+      const post = await request('/posts/generate', { method: 'POST', body: JSON.stringify(payload) })
+      setGeneratedPost(post)
+      await refreshDashboard()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setSaving(false)
+    }
   }
 
   const copyPost = async () => {
+    if (!previewChannel?.content) return
+    await navigator.clipboard?.writeText(previewChannel.content)
     setCopied(true)
-    window.setTimeout(() => setCopied(false), 1600)
+    window.setTimeout(() => setCopied(false), 1400)
+  }
+
+  const publish = async (channelId) => {
+    const channel = generatedPost?.channels?.find((item) => item.id === channelId)
+    if (!channel?.socialAccountId) {
+      setError('Kênh này chưa gán page/tài khoản social đã kết nối. Hãy chọn page trong danh sách thay vì “Nhập link thủ công”, rồi tạo lại bài.')
+      return
+    }
+    if (channel.status === 'PUBLISHED' || publishingChannels[channelId]) {
+      return
+    }
+    setPublishingChannels((current) => ({ ...current, [channelId]: true }))
+    setError('')
+    try {
+      const post = await request(`/channels/${channelId}/publish`, { method: 'POST' })
+      setGeneratedPost(post)
+      await refreshDashboard()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setPublishingChannels((current) => ({ ...current, [channelId]: false }))
+    }
+  }
+
+  const schedule = (channelId) => {
+    const channel = generatedPost?.channels?.find((item) => item.id === channelId)
+    const defaultDate = channel?.scheduledAt ? new Date(channel.scheduledAt) : new Date()
+    if (!channel?.scheduledAt) {
+      defaultDate.setHours(defaultDate.getHours() + 1)
+    }
+    setScheduleModal({
+      open: true,
+      channel,
+      date: toDateInputValue(defaultDate),
+      time: toTimeInputValue(defaultDate),
+    })
+  }
+
+  const closeScheduleModal = () => {
+    if (scheduleSaving) return
+    setScheduleModal({ open: false, channel: null, date: '', time: '' })
+  }
+
+  const submitSchedule = async () => {
+    if (!scheduleModal.channel?.id) return
+    if (!scheduleModal.date || !scheduleModal.time) {
+      setError('Vui lòng chọn đủ ngày và giờ đăng.')
+      return
+    }
+    const scheduledAt = `${scheduleModal.date}T${scheduleModal.time}:00`
+    if (new Date(scheduledAt) <= new Date()) {
+      setError('Thời gian đăng phải lớn hơn thời điểm hiện tại.')
+      return
+    }
+    setScheduleSaving(true)
+    setError('')
+    try {
+      const post = await request(`/channels/${scheduleModal.channel.id}/schedule`, { method: 'POST', body: JSON.stringify({ scheduledAt }) })
+      setGeneratedPost(post)
+      await refreshDashboard()
+      closeScheduleModal()
+      setCalendarOpen(true)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setScheduleSaving(false)
+    }
   }
 
   return (
@@ -133,61 +645,143 @@ export function MarketingAIAgentPage() {
         <PageHeader
           eyebrow="Trợ lý nội dung"
           title="AI Agent Đăng bài"
-          description="Biến ý tưởng thành nội dung phù hợp từng kênh và lên lịch trong vài phút."
-          action={<button className="mkt-btn mkt-btn--secondary" type="button"><Icon name="clock" />Xem lịch nội dung</button>}
+          description="Tạo nội dung bằng AI, gán nhiều page cho từng kênh, lên lịch hoặc đăng social có kiểm soát log."
+          action={<button className="mkt-btn mkt-btn--secondary" type="button" onClick={() => setCalendarOpen(true)} disabled={loading}><Icon name="clock" />{loading ? 'Đang tải...' : 'Lịch nội dung'}</button>}
         />
+
+        {error && <p className="mkt-alert">{error}</p>}
 
         <div className="mkt-ai-grid">
           <section className="mkt-card mkt-compose">
             <div className="mkt-section-title">
               <span className="mkt-section-number">01</span>
-              <div><h2>Thiết lập bài đăng</h2><p>Cho AI biết mục tiêu và câu chuyện bạn muốn kể.</p></div>
+              <div><h2>Thiết lập bài đăng</h2><p>Cho AI biết mục tiêu, giọng điệu và nơi cần đăng.</p></div>
             </div>
 
-            <div className="mkt-field">
-              <label>Kênh đăng bài <em>*</em></label>
-              <div className="mkt-channel-options">
-                {Object.keys(CHANNELS).map((key) => (
-                  <button key={key} type="button" className={channels.includes(key) ? 'is-selected' : ''} onClick={() => toggleChannel(key)}>
-                    <Channel value={key} />{channels.includes(key) && <Icon name="check" size={15} />}
-                  </button>
-                ))}
-              </div>
-            </div>
+            <label className="mkt-field">Tiêu đề nội bộ
+              <input value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} />
+            </label>
 
             <div className="mkt-form-row">
               <label className="mkt-field">Mục tiêu bài viết
-                <select value={goal} onChange={event => setGoal(event.target.value)}>
-                  <option>Tăng nhận diện thương hiệu</option>
-                  <option>Thu hút lượt đặt phòng</option>
-                  <option>Quảng bá ưu đãi</option>
-                  <option>Tăng tương tác cộng đồng</option>
+                <select value={form.goal} onChange={(event) => setForm({ ...form, goal: event.target.value })}>
+                  {goals.map((goal) => <option key={goal.id} value={goal.label}>{goal.label}</option>)}
                 </select>
               </label>
               <label className="mkt-field">Giọng điệu
-                <select value={tone} onChange={event => setTone(event.target.value)}>
-                  <option>Ấm áp & truyền cảm hứng</option>
-                  <option>Trẻ trung & gần gũi</option>
-                  <option>Sang trọng & tinh tế</option>
-                  <option>Hài hước & bắt trend</option>
+                <select value={form.tone} onChange={(event) => setForm({ ...form, tone: event.target.value })}>
+                  {tones.map((tone) => <option key={tone.id} value={tone.label}>{tone.label}</option>)}
                 </select>
               </label>
             </div>
 
+            <div className="mkt-option-manager">
+              <OptionEditor title="Mục tiêu" type="GOAL" options={goals} value={newOption.GOAL} onChange={(value) => setNewOption({ ...newOption, GOAL: value })} onAdd={addOption} onDelete={deleteOption} />
+              <OptionEditor title="Giọng điệu" type="TONE" options={tones} value={newOption.TONE} onChange={(value) => setNewOption({ ...newOption, TONE: value })} onAdd={addOption} onDelete={deleteOption} />
+            </div>
+
+            <label className="mkt-field">Độ dài đoạn văn
+              <select value={form.contentLength} onChange={(event) => setForm({ ...form, contentLength: event.target.value })}>
+                {CONTENT_LENGTHS.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+              </select>
+              <small>{CONTENT_LENGTHS.find((item) => item.value === form.contentLength)?.description}</small>
+            </label>
+
             <label className="mkt-field">
-              <span>Ý tưởng hoặc mô tả ngắn <em>*</em><small>{brief.length}/500</small></span>
-              <textarea maxLength="500" rows="5" value={brief} onChange={event => setBrief(event.target.value)} placeholder="Ví dụ: Quảng bá phòng Pine View cho kỳ nghỉ cuối tuần..." />
+              <span>Ý tưởng hoặc mô tả ngắn <em>*</em><small>{form.brief.length}/2000</small></span>
+              <textarea maxLength="2000" rows="5" value={form.brief} onChange={(event) => setForm({ ...form, brief: event.target.value })} />
+            </label>
+
+            <div className="mkt-targets">
+              <div className="mkt-subhead">
+                <div><strong>Kênh & page đăng bài</strong><small>Có thể thêm nhiều page cho cùng một kênh.</small></div>
+                <button className="mkt-mini-btn" type="button" onClick={addTarget}><Icon name="plus" size={15} />Thêm kênh/page</button>
+              </div>
+              {targets.map((target) => (
+                <div className="mkt-target-row mkt-post-target-row" key={target.id}>
+                  <select value={target.platform} onChange={(event) => updateTarget(target.id, { platform: event.target.value, socialAccountId: '' })}>
+                    {Object.entries(CHANNELS).map(([value, config]) => <option key={value} value={value}>{config.label}</option>)}
+                  </select>
+                  <select value={target.socialAccountId} onChange={(event) => updateTarget(target.id, { socialAccountId: event.target.value })}>
+                    <option value="">Nhập link thủ công</option>
+                    {(accountsByPlatform.get(target.platform) || []).map((account) => <option key={account.id} value={account.id}>{account.accountName}</option>)}
+                  </select>
+                  <input value={target.pageName} onChange={(event) => updateTarget(target.id, { pageName: event.target.value })} placeholder="Tên page" />
+                  <input value={target.pageUrl} onChange={(event) => updateTarget(target.id, { pageUrl: event.target.value })} placeholder="Link page cần đăng" />
+                  <button type="button" onClick={() => removeTarget(target.id)} title="Xóa"><Icon name="trash" size={15} /></button>
+                </div>
+              ))}
+            </div>
+
+            <section className="mkt-social-form mkt-auth-panel">
+              <div className="mkt-subhead">
+                <div>
+                  <strong>Kết nối page social vào thư viện</strong>
+                  <small>Không cần nhập External Account ID. Backend lấy page/accountId qua OAuth và lưu vào MySQL.</small>
+                </div>
+              </div>
+              <div className="mkt-auth-row">
+                <select value={socialAuth.platform} onChange={(event) => updateSocialAuth({ platform: event.target.value, sessionId: '', url: '', status: '', accounts: [], message: '' })}>
+                  {Object.entries(CHANNELS).map(([value, config]) => <option key={value} value={value}>{config.label}</option>)}
+                </select>
+                <button className="mkt-btn mkt-btn--primary" type="button" onClick={startSocialAuth} disabled={socialAuth.loading}>
+                  <Icon name="link" />Kết nối social
+                </button>
+                <button className="mkt-btn mkt-btn--secondary" type="button" onClick={checkSocialAuth} disabled={socialAuth.loading || !socialAuth.sessionId}>
+                  Kiểm tra kết nối
+                </button>
+                <button className="mkt-btn mkt-btn--secondary" type="button" onClick={loadConnectedAccounts} disabled={socialAuth.loading}>
+                  Tải tài khoản đã kết nối
+                </button>
+              </div>
+              {socialAuth.message && <p className="mkt-auth-message">{socialAuth.message}</p>}
+              {socialAuth.url && (
+                <a className="mkt-auth-link" href={socialAuth.url} target="_blank" rel="noreferrer">Mở lại cửa sổ xác thực</a>
+              )}
+              {connectedAccounts.length > 0 && (
+                <div className="mkt-connected-list">
+                  {connectedAccounts.map((account) => (
+                    <article className="mkt-connected-account" key={account.accountId}>
+                      <div>
+                        <strong>{account.displayName || account.platformUid || account.accountId}</strong>
+                        <small>{account.platform || socialAuth.platform} · {account.accountId}</small>
+                      </div>
+                      <div className="mkt-connected-actions">
+                        {account.localSocialAccountId ? (
+                          <span className="mkt-saved-pill"><Icon name="check" size={14} />Đã lưu</span>
+                        ) : (
+                          <button className="mkt-mini-btn" type="button" onClick={() => saveConnectedAccount(account)}>
+                            <Icon name="plus" size={15} />Lưu vào thư viện
+                          </button>
+                        )}
+                        <button className="mkt-mini-btn mkt-mini-btn--danger" type="button" onClick={() => deleteConnectedAccount(account)}>
+                          <Icon name="trash" size={15} />Xóa
+                        </button>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              )}
+            </section>
+
+            <label className="mkt-field">Link ảnh/video
+              <input value={form.mediaUrl} onChange={(event) => setForm({ ...form, mediaUrl: event.target.value, mediaName: '', mediaType: 'IMAGE' })} placeholder="https://... hoặc /uploads/marketing/..." />
             </label>
 
             <div className="mkt-upload">
-              <span><Icon name="image" size={22} /></span>
-              <div><strong>Thêm ảnh hoặc video</strong><p>Kéo thả tệp vào đây hoặc chọn từ thư viện phòng</p></div>
-              <button type="button">Chọn tệp</button>
+              <span><Icon name="image" /></span>
+              <div>
+                <strong>{form.mediaName || (form.mediaUrl ? 'Media đã được gắn' : 'Tải ảnh/video từ máy tính')}</strong>
+                <p>{form.mediaUrl || 'Hỗ trợ ảnh hoặc video, tối đa theo cấu hình backend hiện tại.'}</p>
+              </div>
+              <label className="mkt-upload-btn">
+                {mediaUploading ? 'Đang tải...' : 'Chọn file'}
+                <input type="file" accept="image/*,video/*" onChange={uploadMarketingMedia} disabled={mediaUploading} hidden />
+              </label>
             </div>
 
-            {message && <p className="mkt-inline-error">{message}</p>}
-            <button className="mkt-btn mkt-btn--primary mkt-generate" type="button" onClick={generate}>
-              <Icon name="wand" />Tạo nội dung với AI <span>⌘ Enter</span>
+            <button className="mkt-btn mkt-btn--primary mkt-generate" type="button" onClick={generate} disabled={saving}>
+              <Icon name="wand" />{saving ? 'AI đang tạo...' : 'Tạo nội dung với AI'}
             </button>
           </section>
 
@@ -198,279 +792,256 @@ export function MarketingAIAgentPage() {
             </div>
 
             <div className="mkt-preview-tabs">
-              {(channels.length ? channels : ['facebook']).map((channel, index) => (
-                <button className={index === 0 ? 'is-active' : ''} type="button" key={channel}><Channel value={channel} /></button>
+              {(generatedPost?.channels?.length ? generatedPost.channels : targets).map((channel, index) => (
+                <button className={index === 0 ? 'is-active' : ''} type="button" key={channel.id}><Channel value={channel.platform} /></button>
               ))}
             </div>
 
             <div className="mkt-social-card">
               <div className="mkt-social-author">
                 <span className="mkt-brand-avatar">H</span>
-                <div><strong>Home Stays</strong><small>Được tài trợ · 🌐</small></div>
-                <Icon name="more" />
+                <div><strong>{previewChannel?.pageName || 'Home Stays'}</strong><small>Được hỗ trợ bởi AI · 🌐</small></div>
               </div>
               <div className="mkt-social-copy">
-                {generated ? (
-                  <>
-                    <p><strong>Đôi khi, điều ta cần chỉ là một cuối tuần thật chậm. 🌲</strong></p>
-                    <p>Thức giấc giữa mùi thông dịu nhẹ, nhâm nhi tách cà phê bên ô cửa và để thành phố ở lại phía sau.</p>
-                    <p>Home Stays đang chờ bạn viết nên một kỳ nghỉ thật riêng. Đặt phòng hôm nay để nhận ưu đãi 15% cho hành trình tháng 7.</p>
-                    <p className="mkt-hashtags">#HomeStays #DaLatGetaway #ChuaLanh #WeekendEscape</p>
-                  </>
+                {previewChannel?.content ? (
+                  <p style={{ whiteSpace: 'pre-wrap' }}>{previewChannel.content}</p>
                 ) : (
-                  <div className="mkt-empty-preview"><Icon name="sparkles" size={28} /><strong>Nội dung của bạn sẽ xuất hiện tại đây</strong><span>Điền thông tin và chọn “Tạo nội dung với AI”.</span></div>
+                  <div className="mkt-empty-preview"><Icon name="sparkles" size={28} /><strong>Nội dung sẽ xuất hiện tại đây</strong><span>Điền thông tin và chọn “Tạo nội dung với AI”.</span></div>
                 )}
               </div>
-              <div className="mkt-social-image"><div><Icon name="image" size={28} /><span>Ảnh phòng Pine View</span></div></div>
-              <div className="mkt-social-stats"><span>❤️ 2,4K</span><span>128 bình luận · 46 lượt chia sẻ</span></div>
+              <div className={`mkt-social-image ${previewMedia?.mediaUrl ? 'has-media' : ''}`}>
+                {previewMedia?.mediaUrl ? (
+                  String(previewMedia.mediaType).toUpperCase() === 'VIDEO' ? (
+                    <video src={resolveMediaUrl(previewMedia.mediaUrl)} controls muted />
+                  ) : (
+                    <img src={resolveMediaUrl(previewMedia.mediaUrl)} alt={previewMedia.altText || 'Media bài đăng'} />
+                  )
+                ) : (
+                  <div><Icon name="image" size={28} /><span>Ảnh/video bài đăng</span></div>
+                )}
+              </div>
             </div>
 
-            <div className="mkt-preview-actions">
-              <button className="mkt-btn mkt-btn--secondary" type="button"><Icon name="calendar" />Lên lịch</button>
-              <button className="mkt-btn mkt-btn--primary" type="button"><Icon name="send" />Đăng ngay</button>
-            </div>
+            {generatedPost?.channels?.length > 0 && (
+              <div className="mkt-channel-actions">
+                {generatedPost.channels.map((channel) => (
+                  <article key={channel.id}>
+                    {(() => {
+                      const isPublishing = Boolean(publishingChannels[channel.id])
+                      const isPublished = channel.status === 'PUBLISHED'
+                      const disablePublish = !channel.socialAccountId || isPublishing || isPublished
+                      return (
+                        <>
+                    <div><Channel value={channel.platform} /><small>{channel.pageName || channel.pageUrl || 'Chưa gán page'}</small></div>
+                    <StatusBadge value={channel.status} />
+                    {channel.errorMessage && <p>{channel.errorMessage}</p>}
+                    <div>
+                      <button className="mkt-btn mkt-btn--secondary" type="button" onClick={() => schedule(channel.id)}><Icon name="calendar" />Lên lịch</button>
+                      <button className="mkt-btn mkt-btn--primary" type="button" onClick={() => publish(channel.id)} disabled={disablePublish} title={!channel.socialAccountId ? 'Cần chọn page/tài khoản social đã kết nối trước khi đăng thật.' : isPublished ? 'Bài này đã đăng thành công.' : undefined}>{isPublishing ? <span className="mkt-spinner" /> : <Icon name="send" />}{isPublishing ? 'Đang đăng...' : isPublished ? 'Đã đăng' : 'Đăng ngay'}</button>
+                    </div>
+                        </>
+                      )
+                    })()}
+                  </article>
+                ))}
+              </div>
+            )}
           </aside>
         </div>
 
         <section className="mkt-card mkt-suggestions">
-          <div className="mkt-suggestions-title"><span><Icon name="sparkles" /></span><div><h2>Gợi ý nội dung hôm nay</h2><p>Dựa trên lịch đặt phòng và xu hướng tương tác gần đây.</p></div></div>
+          <div className="mkt-suggestions-title"><span><Icon name="sparkles" /></span><div><h2>Gợi ý nội dung hôm nay</h2><p>Dựa trên lịch đặt phòng, ưu đãi và tương tác gần đây.</p></div></div>
           <div className="mkt-suggestion-list">
-            {[
-              ['Ưu đãi lấp đầy ngày thường', 'Còn 6 phòng trống từ Thứ 2 – Thứ 5', 'Ưu đãi'],
-              ['Một ngày tại Home Stays', 'Video hậu trường đang có tương tác tốt', 'Reels'],
-              ['Review từ khách hàng', 'Bạn có 8 đánh giá 5 sao mới trong tuần', 'Cộng đồng'],
-            ].map(item => <button type="button" key={item[0]}><span>{item[2]}</span><strong>{item[0]}</strong><small>{item[1]}</small><Icon name="arrow" /></button>)}
+            {(dashboard?.suggestions || []).slice(0, 3).map((item) => (
+              <button type="button" key={`${item.id}-${item.title}`} onClick={() => setForm({ ...form, title: item.title, brief: item.description || form.brief })}>
+                <span>{item.suggestionType}</span><strong>{item.title}</strong><small>{item.description}</small><Icon name="arrow" />
+              </button>
+            ))}
           </div>
         </section>
-      </div>
-    </AdminLayout>
-  )
-}
 
-export function MarketingPostLogsPage() {
-  const [query, setQuery] = useState('')
-  const [status, setStatus] = useState('all')
-  const [selected, setSelected] = useState(LOGS[1])
+        {scheduleModal.open && (
+          <div className="mkt-modal-backdrop" role="presentation" onMouseDown={closeScheduleModal}>
+            <section className="mkt-modal mkt-schedule-modal" role="dialog" aria-modal="true" aria-label="Lên lịch đăng bài" onMouseDown={(event) => event.stopPropagation()}>
+              <div className="mkt-modal-head">
+                <div>
+                  <span>LÊN LỊCH ĐĂNG</span>
+                  <h2>Chọn ngày và giờ đăng</h2>
+                  <p>{scheduleModal.channel?.pageName || scheduleModal.channel?.pageUrl || 'Kênh đăng bài'}</p>
+                </div>
+                <button className="mkt-icon-btn" type="button" onClick={closeScheduleModal}><Icon name="close" /></button>
+              </div>
 
-  const filteredLogs = useMemo(() => LOGS.filter(log => {
-    const matchesQuery = `${log.title} ${log.id} ${log.campaign}`.toLowerCase().includes(query.toLowerCase())
-    return matchesQuery && (status === 'all' || log.status === status)
-  }), [query, status])
+              <div className="mkt-schedule-form">
+                <label className="mkt-field">Ngày đăng
+                  <input type="date" value={scheduleModal.date} min={toDateInputValue(new Date())} onChange={(event) => setScheduleModal((current) => ({ ...current, date: event.target.value }))} />
+                </label>
+                <label className="mkt-field">Giờ đăng
+                  <input type="time" value={scheduleModal.time} onChange={(event) => setScheduleModal((current) => ({ ...current, time: event.target.value }))} />
+                </label>
+              </div>
 
-  return (
-    <AdminLayout activePage="post-logs">
-      <div className="mkt-page">
-        <PageHeader
-          eyebrow="Theo dõi chiến dịch"
-          title="Nhật ký bài đăng"
-          description="Theo dõi trạng thái xuất bản và hiệu quả nội dung trên mọi kênh."
-          action={<button className="mkt-btn mkt-btn--primary" type="button"><Icon name="plus" />Tạo bài đăng</button>}
-        />
+              <div className="mkt-schedule-summary">
+                <Icon name="calendar" />
+                <div>
+                  <strong>{formatScheduleTime(`${scheduleModal.date || toDateInputValue()}T${scheduleModal.time || '00:00'}:00`)}</strong>
+                  <span>{scheduleModal.channel?.content?.slice(0, 120) || 'Nội dung sẽ được đăng theo lịch đã chọn.'}</span>
+                </div>
+              </div>
 
-        <section className="mkt-metrics">
-          <MetricCard icon="send" label="Bài đã đăng" value="42" detail="+8 trong tháng này" tone="blue" />
-          <MetricCard icon="calendar" label="Đã lên lịch" value="7" detail="Trong 14 ngày tới" tone="violet" />
-          <MetricCard icon="eye" label="Tổng tiếp cận" value="184.2K" detail="+18,6% so với tháng trước" tone="green" />
-          <MetricCard icon="trend" label="Tương tác TB" value="8,7%" detail="Cao hơn 2,1% ngành lưu trú" tone="orange" />
-        </section>
-
-        <section className="mkt-card mkt-table-card">
-          <div className="mkt-toolbar">
-            <div className="mkt-search"><Icon name="search" /><input value={query} onChange={event => setQuery(event.target.value)} placeholder="Tìm theo nội dung, mã bài..." /></div>
-            <div className="mkt-filter-tabs">
-              {[['all', 'Tất cả'], ['published', 'Đã đăng'], ['scheduled', 'Đã lên lịch'], ['draft', 'Bản nháp'], ['failed', 'Đăng lỗi']].map(([value, label]) => (
-                <button className={status === value ? 'is-active' : ''} type="button" key={value} onClick={() => setStatus(value)}>{label}</button>
-              ))}
-            </div>
-            <button className="mkt-icon-btn" type="button" title="Bộ lọc nâng cao"><Icon name="filter" /></button>
+              <div className="mkt-modal-actions">
+                <button className="mkt-btn mkt-btn--secondary" type="button" onClick={closeScheduleModal} disabled={scheduleSaving}>Hủy</button>
+                <button className="mkt-btn mkt-btn--primary" type="button" onClick={submitSchedule} disabled={scheduleSaving}>{scheduleSaving ? <span className="mkt-spinner" /> : <Icon name="calendar" />}{scheduleSaving ? 'Đang lưu...' : 'Lưu lịch đăng'}</button>
+              </div>
+            </section>
           </div>
+        )}
 
-          <div className="mkt-table-wrap">
-            <table className="mkt-table">
-              <thead><tr><th>Nội dung</th><th>Kênh</th><th>Thời gian</th><th>Trạng thái</th><th>Tiếp cận</th><th>Tương tác</th><th /></tr></thead>
-              <tbody>
-                {filteredLogs.map(log => (
-                  <tr key={log.id} onClick={() => setSelected(log)} className={selected?.id === log.id ? 'is-selected' : ''}>
-                    <td><strong>{log.title}</strong><small>{log.id} · {log.campaign}</small></td>
-                    <td><Channel value={log.channel} /></td>
-                    <td>{log.date}</td>
-                    <td><StatusBadge value={log.status} /></td>
-                    <td><strong>{log.reach}</strong></td>
-                    <td>{log.engagement}</td>
-                    <td><button className="mkt-row-more" type="button"><Icon name="more" /></button></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        {calendarOpen && (
+          <div className="mkt-modal-backdrop" role="presentation" onMouseDown={() => setCalendarOpen(false)}>
+            <section className="mkt-modal mkt-calendar-modal" role="dialog" aria-modal="true" aria-label="Lịch nội dung" onMouseDown={(event) => event.stopPropagation()}>
+              <div className="mkt-modal-head">
+                <div>
+                  <span>LỊCH NỘI DUNG</span>
+                  <h2>Các bài đã set lịch</h2>
+                  <p>{scheduledItems.length ? `${scheduledItems.length} nội dung đang chờ đăng` : 'Chưa có nội dung nào được lên lịch.'}</p>
+                </div>
+                <button className="mkt-icon-btn" type="button" onClick={() => setCalendarOpen(false)}><Icon name="close" /></button>
+              </div>
+
+              {scheduledItems.length ? (
+                <div className="mkt-calendar-list">
+                  {scheduledItems.map((channel) => (
+                    <article className="mkt-calendar-item" key={`${channel.post.id}-${channel.id}`} onClick={() => loadPostIntoEditor(channel.post)} role="button" tabIndex={0} onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault()
+                        loadPostIntoEditor(channel.post)
+                      }
+                    }}>
+                      <time>
+                        <strong>{new Date(channel.scheduledAt).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })}</strong>
+                        <span>{new Date(channel.scheduledAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</span>
+                      </time>
+                      <div>
+                        <div className="mkt-calendar-title">
+                          <Channel value={channel.platform} />
+                          <strong>{channel.post.title}</strong>
+                        </div>
+                        <p>{channel.content?.slice(0, 170) || channel.post.brief}</p>
+                        <small>{channel.pageName || channel.pageUrl || 'Chưa gán page'} · {formatScheduleTime(channel.scheduledAt)} · Nhấn để chỉnh sửa</small>
+                      </div>
+                      <StatusBadge value={channel.status} />
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <div className="mkt-empty-calendar">
+                  <Icon name="calendar" size={32} />
+                  <strong>Chưa có lịch đăng nào</strong>
+                  <span>Hãy tạo nội dung, chọn page rồi bấm “Lên lịch”.</span>
+                </div>
+              )}
+            </section>
           </div>
-          {!filteredLogs.length && <div className="mkt-empty-table"><Icon name="search" size={26} /><strong>Không tìm thấy bài đăng</strong><span>Thử thay đổi từ khóa hoặc trạng thái lọc.</span></div>}
-          <footer className="mkt-table-footer"><span>Hiển thị {filteredLogs.length} / {LOGS.length} bài đăng</span><div><button type="button" disabled>‹</button><button type="button" className="is-active">1</button><button type="button">2</button><button type="button">›</button></div></footer>
-        </section>
-
-        {selected && (
-          <section className="mkt-card mkt-log-detail">
-            <div className="mkt-log-detail-copy">
-              <span>CHI TIẾT BÀI ĐĂNG</span>
-              <h2>{selected.title}</h2>
-              <p>{selected.id} · Chiến dịch {selected.campaign}</p>
-            </div>
-            <div><small>Kênh</small><Channel value={selected.channel} /></div>
-            <div><small>Thời gian</small><strong>{selected.date}</strong></div>
-            <div><small>Trạng thái</small><StatusBadge value={selected.status} /></div>
-            <button className="mkt-btn mkt-btn--secondary" type="button">Xem nội dung <Icon name="arrow" /></button>
-          </section>
         )}
       </div>
     </AdminLayout>
   )
 }
 
-export function MarketingVouchersPage() {
-  const [vouchers, setVouchers] = useState(INITIAL_VOUCHERS)
+function OptionEditor({ title, type, options, value, onChange, onAdd, onDelete }) {
+  return (
+    <div className="mkt-option-box">
+      <div><strong>{title}</strong><button type="button" onClick={() => onAdd(type)}><Icon name="plus" size={14} /></button></div>
+      <input value={value} onChange={(event) => onChange(event.target.value)} placeholder={`Thêm ${title.toLowerCase()}`} />
+      <div className="mkt-option-chips">
+        {options.map((option) => (
+          <span key={option.id}>{option.label}<button type="button" onClick={() => onDelete(option.id)}><Icon name="close" size={12} /></button></span>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+export function MarketingPostLogsPage() {
+  const [dashboard, setDashboard] = useState(null)
   const [query, setQuery] = useState('')
-  const [status, setStatus] = useState('all')
-  const [modalOpen, setModalOpen] = useState(false)
-  const [copiedCode, setCopiedCode] = useState('')
-  const [form, setForm] = useState({ name: '', code: '', type: 'percent', value: '', min: '', limit: '', start: '', end: '' })
-  const [errors, setErrors] = useState({})
+  const [status, setStatus] = useState('ALL')
 
-  const filtered = useMemo(() => vouchers.filter(voucher => {
-    const matches = `${voucher.code} ${voucher.name}`.toLowerCase().includes(query.toLowerCase())
-    return matches && (status === 'all' || voucher.status === status)
-  }), [query, status, vouchers])
+  useEffect(() => {
+    request('/dashboard').then(setDashboard).catch(() => setDashboard({ recentPosts: [] }))
+  }, [])
 
-  const copyCode = (code) => {
-    setCopiedCode(code)
-    window.setTimeout(() => setCopiedCode(''), 1400)
-  }
+  const posts = dashboard?.recentPosts || []
+  const channels = posts.flatMap((post) => post.channels.map((channel) => ({ ...channel, post })))
+  const filtered = channels.filter((channel) => {
+    const text = `${channel.post.title} ${channel.platform} ${channel.pageName || ''}`.toLowerCase()
+    return text.includes(query.toLowerCase()) && (status === 'ALL' || channel.status === status)
+  })
 
-  const saveVoucher = (event) => {
-    event.preventDefault()
-    const nextErrors = {}
-    if (!form.name.trim()) nextErrors.name = 'Vui lòng nhập tên chương trình.'
-    if (!form.code.trim()) nextErrors.code = 'Vui lòng nhập mã voucher.'
-    if (!form.value || Number(form.value) <= 0) nextErrors.value = 'Giá trị phải lớn hơn 0.'
-    if (!form.start || !form.end) nextErrors.period = 'Vui lòng chọn thời gian áp dụng.'
-    if (form.start && form.end && form.start > form.end) nextErrors.period = 'Ngày kết thúc phải sau ngày bắt đầu.'
-    setErrors(nextErrors)
-    if (Object.keys(nextErrors).length) return
+  return (
+    <AdminLayout activePage="post-logs">
+      <div className="mkt-page">
+        <PageHeader eyebrow="Theo dõi chiến dịch" title="Nhật ký bài đăng" description="Theo dõi trạng thái xuất bản và hiệu quả nội dung trên mọi kênh." />
+        <section className="mkt-metrics">
+          <MetricCard icon="send" label="Đã đăng" value={dashboard?.publishedChannels || 0} detail="Tổng kênh/page đã publish" tone="blue" />
+          <MetricCard icon="calendar" label="Đã lên lịch" value={dashboard?.scheduledChannels || 0} detail="Đang chờ đăng" tone="violet" />
+          <MetricCard icon="eye" label="Tổng tiếp cận" value={dashboard?.totalReach || 0} detail="Từ social metrics" tone="green" />
+          <MetricCard icon="trend" label="Tương tác TB" value={`${dashboard?.averageEngagementRate || 0}%`} detail="Snapshot mới nhất" tone="orange" />
+        </section>
+        <section className="mkt-card mkt-table-card">
+          <div className="mkt-toolbar">
+            <div className="mkt-search"><Icon name="search" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Tìm theo nội dung, page..." /></div>
+            <div className="mkt-filter-tabs">
+              {['ALL', 'PUBLISHED', 'SCHEDULED', 'DRAFT', 'FAILED'].map((item) => <button className={status === item ? 'is-active' : ''} type="button" key={item} onClick={() => setStatus(item)}>{item}</button>)}
+            </div>
+          </div>
+          <div className="mkt-table-wrap">
+            <table className="mkt-table">
+              <thead><tr><th>Nội dung</th><th>Kênh</th><th>Page</th><th>Thời gian</th><th>Trạng thái</th><th /></tr></thead>
+              <tbody>
+                {filtered.map((channel) => (
+                  <tr key={channel.id}>
+                    <td><strong>{channel.post.title}</strong><small>{channel.post.goal}</small></td>
+                    <td><Channel value={channel.platform} /></td>
+                    <td>{channel.pageName || channel.pageUrl || '—'}</td>
+                    <td>{channel.postedAt || channel.scheduledAt || '—'}</td>
+                    <td><StatusBadge value={channel.status} /></td>
+                    <td><button className="mkt-row-more" type="button"><Icon name="arrow" /></button></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {!filtered.length && <div className="mkt-empty-table"><Icon name="search" size={26} /><strong>Chưa có bài đăng</strong><span>Hãy tạo bài từ AI Agent để nhật ký có dữ liệu.</span></div>}
+        </section>
+      </div>
+    </AdminLayout>
+  )
+}
 
-    setVouchers(current => [{
-      code: form.code.toUpperCase(),
-      name: form.name,
-      type: form.type,
-      value: Number(form.value),
-      min: form.min ? `${Number(form.min).toLocaleString('vi-VN')}đ` : '0đ',
-      used: 0,
-      limit: Number(form.limit) || 100,
-      period: `${form.start.split('-').reverse().join('/')} – ${form.end.split('-').reverse().join('/')}`,
-      status: 'scheduled',
-    }, ...current])
-    setModalOpen(false)
-    setForm({ name: '', code: '', type: 'percent', value: '', min: '', limit: '', start: '', end: '' })
-    setErrors({})
-  }
-
+export function MarketingVouchersPage() {
+  const [query, setQuery] = useState('')
+  const filtered = VOUCHERS.filter((voucher) => `${voucher.code} ${voucher.name}`.toLowerCase().includes(query.toLowerCase()))
   return (
     <AdminLayout activePage="vouchers">
       <div className="mkt-page">
-        <PageHeader
-          eyebrow="Khuyến mãi"
-          title="Mã giảm giá"
-          description="Tạo và quản lý ưu đãi giúp tăng tỷ lệ lấp đầy và giữ chân khách hàng."
-          action={<button className="mkt-btn mkt-btn--primary" type="button" onClick={() => setModalOpen(true)}><Icon name="plus" />Tạo voucher</button>}
-        />
-
-        <section className="mkt-metrics">
-          <MetricCard icon="ticket" label="Đang hoạt động" value="2" detail="1 chương trình sắp bắt đầu" tone="green" />
-          <MetricCard icon="trend" label="Lượt sử dụng" value="229" detail="+24% trong tháng này" tone="blue" />
-          <MetricCard icon="sparkles" label="Doanh thu từ voucher" value="86,4tr" detail="32% doanh thu tháng 6" tone="violet" />
-          <MetricCard icon="eye" label="Tỷ lệ chuyển đổi" value="14,8%" detail="+3,2% so với không ưu đãi" tone="orange" />
-        </section>
-
+        <PageHeader eyebrow="Khuyến mãi" title="Mã giảm giá" description="Tạo và quản lý ưu đãi giúp tăng tỷ lệ lấp đầy và giữ chân khách hàng." action={<button className="mkt-btn mkt-btn--primary" type="button"><Icon name="plus" />Tạo voucher</button>} />
         <section className="mkt-card mkt-voucher-panel">
-          <div className="mkt-toolbar">
-            <div className="mkt-search"><Icon name="search" /><input value={query} onChange={event => setQuery(event.target.value)} placeholder="Tìm mã hoặc tên voucher..." /></div>
-            <div className="mkt-filter-tabs">
-              {[['all', 'Tất cả'], ['active', 'Đang chạy'], ['scheduled', 'Sắp diễn ra'], ['expired', 'Đã kết thúc']].map(([value, label]) => (
-                <button className={status === value ? 'is-active' : ''} type="button" key={value} onClick={() => setStatus(value)}>{label}</button>
-              ))}
-            </div>
-          </div>
-
+          <div className="mkt-toolbar"><div className="mkt-search"><Icon name="search" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Tìm mã hoặc tên voucher..." /></div></div>
           <div className="mkt-voucher-grid">
-            {filtered.map(voucher => {
-              const percentage = Math.min(100, (voucher.used / voucher.limit) * 100)
-              return (
-                <article className="mkt-voucher" key={voucher.code}>
-                  <div className={`mkt-voucher-accent mkt-voucher-accent--${STATUS[voucher.status]?.[1] || 'neutral'}`} />
-                  <div className="mkt-voucher-head">
-                    <div><StatusBadge value={voucher.status} /><h2>{voucher.name}</h2></div>
-                    <button className="mkt-row-more" type="button"><Icon name="more" /></button>
-                  </div>
-                  <div className="mkt-voucher-value">
-                    <strong>{voucher.type === 'percent' ? `${voucher.value}%` : `${(voucher.value / 1000).toLocaleString('vi-VN')}K`}</strong>
-                    <span>GIẢM<br />TỐI ĐA</span>
-                  </div>
-                  <button className="mkt-code" type="button" onClick={() => copyCode(voucher.code)}>
-                    <span>{voucher.code}</span><Icon name={copiedCode === voucher.code ? 'check' : 'copy'} />{copiedCode === voucher.code && <small>Đã chép</small>}
-                  </button>
-                  <dl>
-                    <div><dt>Đơn tối thiểu</dt><dd>{voucher.min}</dd></div>
-                    <div><dt>Thời gian</dt><dd>{voucher.period}</dd></div>
-                  </dl>
-                  <div className="mkt-usage">
-                    <div><span>Đã sử dụng</span><strong>{voucher.used}/{voucher.limit}</strong></div>
-                    <i><b style={{ width: `${percentage}%` }} /></i>
-                  </div>
-                </article>
-              )
-            })}
+            {filtered.map((voucher) => (
+              <article className="mkt-voucher" key={voucher.code}>
+                <div className="mkt-voucher-head"><div><StatusBadge value={voucher.status} /><h2>{voucher.name}</h2></div></div>
+                <div className="mkt-voucher-value"><strong>{voucher.type === 'percent' ? `${voucher.value}%` : `${(voucher.value / 1000).toLocaleString('vi-VN')}K`}</strong><span>GIẢM<br />TỐI ĐA</span></div>
+                <button className="mkt-code" type="button"><span>{voucher.code}</span><Icon name="copy" /></button>
+                <dl><div><dt>Đơn tối thiểu</dt><dd>{voucher.min}</dd></div><div><dt>Thời gian</dt><dd>{voucher.period}</dd></div></dl>
+                <div className="mkt-usage"><div><span>Đã sử dụng</span><strong>{voucher.used}/{voucher.limit}</strong></div><i><b style={{ width: `${Math.min(100, (voucher.used / voucher.limit) * 100)}%` }} /></i></div>
+              </article>
+            ))}
           </div>
-          {!filtered.length && <div className="mkt-empty-table"><Icon name="ticket" size={27} /><strong>Không tìm thấy voucher</strong><span>Thử thay đổi từ khóa hoặc bộ lọc.</span></div>}
         </section>
       </div>
-
-      {modalOpen && (
-        <div className="mkt-modal-backdrop" role="presentation" onMouseDown={event => event.target === event.currentTarget && setModalOpen(false)}>
-          <form className="mkt-modal" onSubmit={saveVoucher}>
-            <header><div><span className="mkt-eyebrow"><Icon name="ticket" size={14} />Ưu đãi mới</span><h2>Tạo voucher</h2><p>Thiết lập điều kiện áp dụng cho chương trình khuyến mãi.</p></div><button type="button" onClick={() => setModalOpen(false)}><Icon name="close" /></button></header>
-            <div className="mkt-modal-body">
-              <label className="mkt-field">Tên chương trình <em>*</em>
-                <input value={form.name} onChange={event => setForm({ ...form, name: event.target.value })} placeholder="Ví dụ: Chào tháng 7" />
-                {errors.name && <small className="mkt-error">{errors.name}</small>}
-              </label>
-              <div className="mkt-form-row">
-                <label className="mkt-field">Mã voucher <em>*</em>
-                  <input className="is-uppercase" value={form.code} maxLength="20" onChange={event => setForm({ ...form, code: event.target.value.replace(/\s/g, '') })} placeholder="HELLOJULY" />
-                  {errors.code && <small className="mkt-error">{errors.code}</small>}
-                </label>
-                <label className="mkt-field">Loại giảm giá
-                  <select value={form.type} onChange={event => setForm({ ...form, type: event.target.value })}><option value="percent">Theo phần trăm (%)</option><option value="amount">Số tiền cố định (đ)</option></select>
-                </label>
-              </div>
-              <div className="mkt-form-row">
-                <label className="mkt-field">Giá trị giảm <em>*</em>
-                  <div className="mkt-input-suffix"><input type="number" value={form.value} onChange={event => setForm({ ...form, value: event.target.value })} placeholder="15" /><span>{form.type === 'percent' ? '%' : 'đ'}</span></div>
-                  {errors.value && <small className="mkt-error">{errors.value}</small>}
-                </label>
-                <label className="mkt-field">Đơn hàng tối thiểu
-                  <div className="mkt-input-suffix"><input type="number" value={form.min} onChange={event => setForm({ ...form, min: event.target.value })} placeholder="1500000" /><span>đ</span></div>
-                </label>
-              </div>
-              <div className="mkt-form-row">
-                <label className="mkt-field">Ngày bắt đầu <em>*</em><input type="date" value={form.start} onChange={event => setForm({ ...form, start: event.target.value })} /></label>
-                <label className="mkt-field">Ngày kết thúc <em>*</em><input type="date" value={form.end} onChange={event => setForm({ ...form, end: event.target.value })} /></label>
-              </div>
-              {errors.period && <small className="mkt-error mkt-error--block">{errors.period}</small>}
-              <label className="mkt-field">Giới hạn lượt sử dụng
-                <input type="number" value={form.limit} onChange={event => setForm({ ...form, limit: event.target.value })} placeholder="100" />
-              </label>
-            </div>
-            <footer><button className="mkt-btn mkt-btn--secondary" type="button" onClick={() => setModalOpen(false)}>Hủy</button><button className="mkt-btn mkt-btn--primary" type="submit"><Icon name="check" />Tạo voucher</button></footer>
-          </form>
-        </div>
-      )}
     </AdminLayout>
   )
 }
