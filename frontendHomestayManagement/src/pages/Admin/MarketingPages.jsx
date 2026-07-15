@@ -227,8 +227,7 @@ export function MarketingAIAgentPage() {
     tone: FALLBACK_TONES[0].label,
     brief: 'Giới thiệu không gian nghỉ dưỡng yên tĩnh giữa rừng thông, phù hợp cho cặp đôi muốn chữa lành cuối tuần.',
     mediaUrl: '',
-    mediaType: 'IMAGE',
-    mediaName: '',
+    mediaItems: [],
   })
   const [targets, setTargets] = useState([
     { id: crypto.randomUUID(), platform: 'FACEBOOK', socialAccountId: '', pageName: '', pageUrl: '' },
@@ -238,7 +237,7 @@ export function MarketingAIAgentPage() {
   const tones = optionValues(dashboard?.tones, FALLBACK_TONES)
   const socialAccounts = useMemo(() => dashboard?.socialAccounts || [], [dashboard?.socialAccounts])
   const previewChannel = generatedPost?.channels?.[0]
-  const previewMedia = generatedPost?.media?.[0] || (form.mediaUrl ? { mediaUrl: form.mediaUrl, mediaType: form.mediaType } : null)
+  const previewMediaItems = generatedPost?.media?.length ? generatedPost.media : form.mediaItems
   const scheduledItems = useMemo(() => {
     const items = (dashboard?.recentPosts || []).flatMap((post) => (post.channels || [])
       .filter((channel) => channel.scheduledAt || channel.status === 'SCHEDULED')
@@ -353,16 +352,22 @@ export function MarketingAIAgentPage() {
 
   const loadPostIntoEditor = (post) => {
     if (!post) return
-    const firstMedia = post.media?.[0]
     setForm((current) => ({
       ...current,
       title: post.title || current.title,
       goal: post.goal || current.goal,
       tone: post.tone || current.tone,
       brief: post.brief || '',
-      mediaUrl: firstMedia?.mediaUrl || '',
-      mediaType: firstMedia?.mediaType || 'IMAGE',
-      mediaName: firstMedia?.mediaUrl ? 'Media đã được gắn từ bài đã chọn' : '',
+      mediaUrl: '',
+      mediaItems: (post.media || []).map((media, index) => ({
+        id: media.id || `${media.mediaUrl}-${index}`,
+        mediaUrl: media.mediaUrl,
+        mediaType: media.mediaType || 'IMAGE',
+        displayOrder: media.displayOrder || index + 1,
+        altText: media.altText || '',
+        source: media.source || 'UPLOADED',
+        name: media.altText || media.mediaUrl,
+      })),
     }))
     setTargets((post.channels?.length ? post.channels : []).map((channel) => ({
       id: crypto.randomUUID(),
@@ -502,24 +507,65 @@ export function MarketingAIAgentPage() {
   }
 
   const uploadMarketingMedia = async (event) => {
-    const file = event.target.files?.[0]
+    const files = Array.from(event.target.files || [])
     event.target.value = ''
-    if (!file) return
+    if (!files.length) return
     setMediaUploading(true)
     setError('')
     try {
-      const uploaded = await uploadRequest('/media/upload', file)
+      const uploadedItems = []
+      for (const file of files) {
+        const uploaded = await uploadRequest('/media/upload', file)
+        uploadedItems.push({
+          id: crypto.randomUUID(),
+          mediaUrl: uploaded.mediaUrl,
+          mediaType: uploaded.mediaType || (file.type.startsWith('video/') ? 'VIDEO' : 'IMAGE'),
+          displayOrder: 0,
+          altText: uploaded.originalFilename || file.name,
+          source: 'UPLOADED',
+          name: uploaded.originalFilename || file.name,
+        })
+      }
       setForm((current) => ({
         ...current,
-        mediaUrl: uploaded.mediaUrl,
-        mediaType: uploaded.mediaType || (file.type.startsWith('video/') ? 'VIDEO' : 'IMAGE'),
-        mediaName: uploaded.originalFilename || file.name,
+        mediaItems: [...current.mediaItems, ...uploadedItems].map((item, index) => ({ ...item, displayOrder: index + 1 })),
       }))
     } catch (err) {
       setError(err.message)
     } finally {
       setMediaUploading(false)
     }
+  }
+
+  const addManualMedia = () => {
+    const mediaUrl = form.mediaUrl.trim()
+    if (!mediaUrl) return
+    const mediaType = /\.(mp4|mov|webm|m4v)(\?|#|$)/i.test(mediaUrl) ? 'VIDEO' : 'IMAGE'
+    setForm((current) => ({
+      ...current,
+      mediaUrl: '',
+      mediaItems: [
+        ...current.mediaItems,
+        {
+          id: crypto.randomUUID(),
+          mediaUrl,
+          mediaType,
+          displayOrder: current.mediaItems.length + 1,
+          altText: '',
+          source: 'URL',
+          name: mediaUrl,
+        },
+      ],
+    }))
+  }
+
+  const removeMediaItem = (id) => {
+    setForm((current) => ({
+      ...current,
+      mediaItems: current.mediaItems
+        .filter((item) => item.id !== id)
+        .map((item, index) => ({ ...item, displayOrder: index + 1 })),
+    }))
   }
 
   const generate = async () => {
@@ -545,7 +591,13 @@ export function MarketingAIAgentPage() {
           pageName: target.pageName,
           pageUrl: target.pageUrl,
         })),
-        media: form.mediaUrl ? [{ mediaUrl: form.mediaUrl, mediaType: form.mediaType || 'IMAGE', displayOrder: 1, source: 'UPLOADED' }] : [],
+        media: form.mediaItems.map((media, index) => ({
+          mediaUrl: media.mediaUrl,
+          mediaType: media.mediaType || 'IMAGE',
+          displayOrder: index + 1,
+          altText: media.altText || media.name || '',
+          source: media.source || 'UPLOADED',
+        })),
       }
       const post = await request('/posts/generate', { method: 'POST', body: JSON.stringify(payload) })
       setGeneratedPost(post)
@@ -807,20 +859,38 @@ export function MarketingAIAgentPage() {
             </section>
 
             <label className="mkt-field">Link ảnh/video
-              <input value={form.mediaUrl} onChange={(event) => setForm({ ...form, mediaUrl: event.target.value, mediaName: '', mediaType: 'IMAGE' })} placeholder="https://... hoặc /uploads/marketing/..." />
+              <span>
+                <input value={form.mediaUrl} onChange={(event) => setForm({ ...form, mediaUrl: event.target.value })} placeholder="https://... hoặc /uploads/marketing/..." />
+                <button className="mkt-mini-btn" type="button" onClick={addManualMedia} disabled={!form.mediaUrl.trim()}><Icon name="plus" size={14} />Thêm link</button>
+              </span>
             </label>
 
             <div className="mkt-upload">
               <span><Icon name="image" /></span>
               <div>
-                <strong>{form.mediaName || (form.mediaUrl ? 'Media đã được gắn' : 'Tải ảnh/video từ máy tính')}</strong>
-                <p>{form.mediaUrl || 'Hỗ trợ ảnh hoặc video, tối đa theo cấu hình backend hiện tại.'}</p>
+                <strong>{form.mediaItems.length ? `Đã gắn ${form.mediaItems.length} ảnh/video` : 'Tải nhiều ảnh/video từ máy tính'}</strong>
+                <p>Hỗ trợ chọn nhiều file cùng lúc. Với Facebook, nhiều ảnh sẽ được đăng cùng một bài viết.</p>
               </div>
               <label className="mkt-upload-btn">
                 {mediaUploading ? 'Đang tải...' : 'Chọn file'}
-                <input type="file" accept="image/*,video/*" onChange={uploadMarketingMedia} disabled={mediaUploading} hidden />
+                <input type="file" accept="image/*,video/*" onChange={uploadMarketingMedia} disabled={mediaUploading} multiple hidden />
               </label>
             </div>
+
+            {form.mediaItems.length > 0 && (
+              <div className="mkt-media-list">
+                {form.mediaItems.map((media, index) => (
+                  <article key={media.id}>
+                    <span>{String(media.mediaType || '').toUpperCase() === 'VIDEO' ? <Icon name="send" size={16} /> : <Icon name="image" size={16} />}</span>
+                    <div>
+                      <strong>{index + 1}. {media.name || media.altText || media.mediaUrl}</strong>
+                      <small>{media.mediaType || 'IMAGE'} · {media.mediaUrl}</small>
+                    </div>
+                    <button type="button" onClick={() => removeMediaItem(media.id)} title="Xóa media"><Icon name="trash" size={14} /></button>
+                  </article>
+                ))}
+              </div>
+            )}
 
             <button className="mkt-btn mkt-btn--primary mkt-generate" type="button" onClick={generate} disabled={saving}>
               <Icon name="wand" />{saving ? 'AI đang tạo...' : 'Tạo nội dung với AI'}
@@ -862,13 +932,20 @@ export function MarketingAIAgentPage() {
                   <div className="mkt-empty-preview"><Icon name="sparkles" size={28} /><strong>Nội dung sẽ xuất hiện tại đây</strong><span>Điền thông tin và chọn “Tạo nội dung với AI”.</span></div>
                 )}
               </div>
-              <div className={`mkt-social-image ${previewMedia?.mediaUrl ? 'has-media' : ''}`}>
-                {previewMedia?.mediaUrl ? (
-                  String(previewMedia.mediaType).toUpperCase() === 'VIDEO' ? (
-                    <video src={resolveMediaUrl(previewMedia.mediaUrl)} controls muted />
-                  ) : (
-                    <img src={resolveMediaUrl(previewMedia.mediaUrl)} alt={previewMedia.altText || 'Media bài đăng'} />
-                  )
+              <div className={`mkt-social-image ${previewMediaItems.length ? 'has-media' : ''}`}>
+                {previewMediaItems.length ? (
+                  <div className={`mkt-preview-media-grid mkt-preview-media-grid--${Math.min(previewMediaItems.length, 4)}`}>
+                    {previewMediaItems.slice(0, 4).map((media, index) => (
+                      <figure key={media.id || media.mediaUrl || index}>
+                        {String(media.mediaType || '').toUpperCase() === 'VIDEO' ? (
+                          <video src={resolveMediaUrl(media.mediaUrl)} controls muted />
+                        ) : (
+                          <img src={resolveMediaUrl(media.mediaUrl)} alt={media.altText || 'Media bài đăng'} />
+                        )}
+                        {index === 3 && previewMediaItems.length > 4 ? <figcaption>+{previewMediaItems.length - 4}</figcaption> : null}
+                      </figure>
+                    ))}
+                  </div>
                 ) : (
                   <div><Icon name="image" size={28} /><span>Ảnh/video bài đăng</span></div>
                 )}
