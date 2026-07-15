@@ -23,25 +23,40 @@ import java.util.UUID;
 public class MarketingAiTextGeneratorImpl implements MarketingAiTextGenerator {
 
     private final boolean enabled;
+    private final String provider;
     private final String apiKey;
     private final String baseUrl;
+    private final String chatPath;
     private final String model;
+    private final String compatibilityMode;
+    private final String authHeaderName;
+    private final String authHeaderPrefix;
     private final Duration timeout;
     private final ObjectMapper objectMapper;
     private final HttpClient httpClient;
 
     public MarketingAiTextGeneratorImpl(
             @Value("${marketing.ai.enabled:true}") boolean enabled,
+            @Value("${marketing.ai.provider:openai}") String provider,
             @Value("${marketing.ai.api-key:}") String apiKey,
             @Value("${marketing.ai.base-url:https://api.openai.com/v1}") String baseUrl,
+            @Value("${marketing.ai.chat-path:/chat/completions}") String chatPath,
             @Value("${marketing.ai.model:gpt-5.5}") String model,
+            @Value("${marketing.ai.compatibility-mode:openai}") String compatibilityMode,
+            @Value("${marketing.ai.auth-header-name:Authorization}") String authHeaderName,
+            @Value("${marketing.ai.auth-header-prefix:Bearer}") String authHeaderPrefix,
             @Value("${marketing.ai.timeout-seconds:60}") long timeoutSeconds,
             ObjectMapper objectMapper
     ) {
         this.enabled = enabled;
+        this.provider = normalize(provider, "openai");
         this.apiKey = apiKey;
         this.baseUrl = trimTrailingSlash(baseUrl);
+        this.chatPath = normalizeChatPath(chatPath);
         this.model = model;
+        this.compatibilityMode = normalize(compatibilityMode, "openai");
+        this.authHeaderName = normalize(authHeaderName, "Authorization");
+        this.authHeaderPrefix = authHeaderPrefix == null ? "" : authHeaderPrefix.trim();
         this.timeout = Duration.ofSeconds(Math.max(5, timeoutSeconds));
         this.objectMapper = objectMapper;
         this.httpClient = HttpClient.newBuilder().connectTimeout(this.timeout).build();
@@ -76,21 +91,25 @@ public class MarketingAiTextGeneratorImpl implements MarketingAiTextGenerator {
                     Map.of("role", "system", "content", "You are a creative Vietnamese social media marketing copywriter. Return valid JSON only. Avoid repeating prior wording."),
                     Map.of("role", "user", "content", prompt)
             ));
-            payload.put("seed", Math.abs(variationSeed.hashCode()));
-            if (!isGpt55OrNewer(model)) {
+            if (isGenericCompatible()) {
                 payload.put("temperature", 0.95);
-                payload.put("presence_penalty", 0.35);
-                payload.put("frequency_penalty", 0.25);
             } else {
-                payload.put("reasoning_effort", "low");
+                payload.put("seed", Math.abs(variationSeed.hashCode()));
+                if (!isGpt55OrNewer(model)) {
+                    payload.put("temperature", 0.95);
+                    payload.put("presence_penalty", 0.35);
+                    payload.put("frequency_penalty", 0.25);
+                } else {
+                    payload.put("reasoning_effort", "low");
+                }
             }
-            HttpRequest httpRequest = HttpRequest.newBuilder()
-                    .uri(URI.create(baseUrl + "/chat/completions"))
+            HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
+                    .uri(URI.create(baseUrl + chatPath))
                     .timeout(timeout)
                     .header("Content-Type", "application/json")
-                    .header("Authorization", "Bearer " + apiKey)
-                    .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(payload)))
-                    .build();
+                    .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(payload)));
+            requestBuilder.header(authHeaderName, authHeaderValue());
+            HttpRequest httpRequest = requestBuilder.build();
             HttpResponse<String> response = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
                 return new GenerationResult(false, null, null, providerName(), model, response.body(), "MARKETING_AI_HTTP_" + response.statusCode(), "Marketing AI trả về HTTP " + response.statusCode());
@@ -164,12 +183,27 @@ public class MarketingAiTextGeneratorImpl implements MarketingAiTextGenerator {
         return value == null ? "" : value.replaceAll("/+$", "");
     }
 
+    private static String normalizeChatPath(String value) {
+        if (value == null || value.isBlank()) {
+            return "/chat/completions";
+        }
+        String trimmed = value.trim();
+        return trimmed.startsWith("/") ? trimmed : "/" + trimmed;
+    }
+
+    private static String normalize(String value, String fallback) {
+        return value == null || value.isBlank() ? fallback : value.trim();
+    }
+
     private boolean isGpt55OrNewer(String value) {
         String normalized = value == null ? "" : value.toLowerCase();
         return normalized.contains("gpt-5.5") || normalized.contains("gpt-5.6");
     }
 
     private String providerName() {
+        if (hasText(provider)) {
+            return provider;
+        }
         if (baseUrl.contains("api.openai.com")) {
             return "openai";
         }
@@ -177,6 +211,19 @@ public class MarketingAiTextGeneratorImpl implements MarketingAiTextGenerator {
             return "openrouter";
         }
         return "custom-openai-compatible";
+    }
+
+    private boolean isGenericCompatible() {
+        return "generic".equalsIgnoreCase(compatibilityMode)
+                || "fpt".equalsIgnoreCase(provider)
+                || baseUrl.toLowerCase().contains("fpt");
+    }
+
+    private String authHeaderValue() {
+        if (!hasText(authHeaderPrefix)) {
+            return apiKey;
+        }
+        return authHeaderPrefix + " " + apiKey;
     }
 
     private String lengthInstruction(String value) {

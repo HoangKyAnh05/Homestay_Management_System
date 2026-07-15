@@ -6,7 +6,7 @@ Tài liệu này áp dụng cho thiết kế mới:
 Frontend Homestay
   → Backend Spring Boot
   → MySQL
-  → OpenAI API để viết nội dung
+  → AI Provider để viết nội dung: OpenAI hoặc FPT Marketplace GLM-5.2
   → Social API thật để đăng bài
 ```
 
@@ -47,9 +47,14 @@ Trong `.env` của backend:
 
 ```env
 MARKETING_AI_ENABLED=true
-MARKETING_AI_API_KEY=sk-proj-your-openai-api-key
-MARKETING_AI_BASE_URL=https://api.openai.com/v1
-MARKETING_AI_MODEL=gpt-5.5
+MARKETING_AI_PROVIDER=fpt
+MARKETING_AI_API_KEY=your_fpt_marketplace_api_key
+MARKETING_AI_BASE_URL=https://your-fpt-marketplace-endpoint/v1
+MARKETING_AI_CHAT_PATH=/chat/completions
+MARKETING_AI_MODEL=GLM-5.2
+MARKETING_AI_COMPATIBILITY_MODE=generic
+MARKETING_AI_AUTH_HEADER_NAME=Authorization
+MARKETING_AI_AUTH_HEADER_PREFIX=Bearer
 
 MARKETING_OPENROUTER_ENABLED=false
 
@@ -63,11 +68,28 @@ MARKETING_AIAGENT_SIDECAR_AUTO_START=false
 MARKETING_AITOEARN_LOCAL_AUTO_START=false
 ```
 
-`MARKETING_AI_API_KEY` là API key lấy từ OpenAI Platform, dùng để AI viết bài. Không dùng `MARKETING_OPENROUTER_API_KEY` nữa khi chạy theo phương án OpenAI trực tiếp.
+`MARKETING_AI_API_KEY` là API key của provider đang dùng để AI viết bài. Nếu test FPT Marketplace, lấy key trong trang sản phẩm/API key của FPT Marketplace.
 
-`MARKETING_AI_BASE_URL` giữ nguyên là `https://api.openai.com/v1`.
+`MARKETING_AI_BASE_URL` là base URL do provider cấp. Với FPT Marketplace, hãy copy endpoint được FPT cấp cho GLM-5.2. Nếu endpoint FPT đã bao gồm `/v1`, giữ nguyên như FPT cung cấp; nếu không có `/v1` thì không tự thêm bừa, hãy dùng đúng URL trong tài liệu/API detail của FPT.
 
-`MARKETING_AI_MODEL` có thể để `gpt-5.5` nếu tài khoản OpenAI của bạn có quyền dùng model này. Nếu OpenAI trả lỗi model/permission, hãy đổi sang model đang có trong tài khoản của bạn.
+`MARKETING_AI_CHAT_PATH` mặc định là `/chat/completions`. Nếu FPT Marketplace cấp path khác, đổi biến này theo đúng tài liệu FPT.
+
+`MARKETING_AI_MODEL` đặt là `GLM-5.2` khi test GLM-5.2. Nếu FPT yêu cầu model id viết thường hoặc có tiền tố khác, hãy sửa đúng theo model id FPT hiển thị.
+
+`MARKETING_AI_COMPATIBILITY_MODE=generic` giúp backend chỉ gửi payload cơ bản `model/messages/temperature`, tránh gửi các tham số riêng của OpenAI như `reasoning_effort`, `seed`, `presence_penalty`, `frequency_penalty`.
+
+Nếu quay lại OpenAI trực tiếp, dùng:
+
+```env
+MARKETING_AI_PROVIDER=openai
+MARKETING_AI_API_KEY=sk-proj-your-openai-api-key
+MARKETING_AI_BASE_URL=https://api.openai.com/v1
+MARKETING_AI_CHAT_PATH=/chat/completions
+MARKETING_AI_MODEL=gpt-5.5
+MARKETING_AI_COMPATIBILITY_MODE=openai
+MARKETING_AI_AUTH_HEADER_NAME=Authorization
+MARKETING_AI_AUTH_HEADER_PREFIX=Bearer
+```
 
 Social token không nhập tay trong giao diện; backend lấy qua OAuth và lưu vào MySQL.
 
@@ -107,7 +129,7 @@ Trên giao diện:
 
 ```text
 Nhân viên nhập brief
-→ Backend gọi OpenAI API
+→ Backend gọi AI Provider đang cấu hình
 → Backend lưu bài vào MySQL
 → Nhân viên bấm Đăng ngay
 → Backend lấy token page trong MySQL
