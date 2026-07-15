@@ -6,7 +6,7 @@ Tài liệu này áp dụng cho thiết kế mới:
 Frontend Homestay
   → Backend Spring Boot
   → MySQL
-  → OpenRouter để viết nội dung
+  → OpenAI API để viết nội dung
   → Social API thật để đăng bài
 ```
 
@@ -46,10 +46,12 @@ aiagent/homestay-marketing-agent
 Trong `.env` của backend:
 
 ```env
-MARKETING_OPENROUTER_ENABLED=true
-MARKETING_OPENROUTER_API_KEY=sk-or-your-openrouter-key
-MARKETING_OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
-MARKETING_OPENROUTER_MODEL=openai/gpt-4o-mini
+MARKETING_AI_ENABLED=true
+MARKETING_AI_API_KEY=sk-proj-your-openai-api-key
+MARKETING_AI_BASE_URL=https://api.openai.com/v1
+MARKETING_AI_MODEL=gpt-5.5
+
+MARKETING_OPENROUTER_ENABLED=false
 
 MARKETING_SOCIAL_FACEBOOK_CLIENT_ID=your_facebook_app_id
 MARKETING_SOCIAL_FACEBOOK_CLIENT_SECRET=your_facebook_app_secret
@@ -61,7 +63,13 @@ MARKETING_AIAGENT_SIDECAR_AUTO_START=false
 MARKETING_AITOEARN_LOCAL_AUTO_START=false
 ```
 
-`MARKETING_OPENROUTER_API_KEY` dùng để AI viết bài. Social token không nhập tay trong giao diện; backend lấy qua OAuth và lưu vào MySQL.
+`MARKETING_AI_API_KEY` là API key lấy từ OpenAI Platform, dùng để AI viết bài. Không dùng `MARKETING_OPENROUTER_API_KEY` nữa khi chạy theo phương án OpenAI trực tiếp.
+
+`MARKETING_AI_BASE_URL` giữ nguyên là `https://api.openai.com/v1`.
+
+`MARKETING_AI_MODEL` có thể để `gpt-5.5` nếu tài khoản OpenAI của bạn có quyền dùng model này. Nếu OpenAI trả lỗi model/permission, hãy đổi sang model đang có trong tài khoản của bạn.
+
+Social token không nhập tay trong giao diện; backend lấy qua OAuth và lưu vào MySQL.
 
 ## 4. Cấu hình Facebook Developer
 
@@ -99,7 +107,7 @@ Trên giao diện:
 
 ```text
 Nhân viên nhập brief
-→ Backend gọi OpenRouter
+→ Backend gọi OpenAI API
 → Backend lưu bài vào MySQL
 → Nhân viên bấm Đăng ngay
 → Backend lấy token page trong MySQL

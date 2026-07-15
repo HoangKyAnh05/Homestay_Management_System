@@ -29,13 +29,6 @@ const FALLBACK_TONES = [
   { id: 'tone-4', label: 'Hài hước & bắt trend' },
 ]
 
-const CONTENT_LENGTHS = [
-  { value: 'STANDARD', label: 'Vừa phải', description: 'Độ dài cân bằng cho bài đăng thông thường.' },
-  { value: 'LONGER', label: 'Dài hơn trước', description: 'Viết chi tiết hơn, nhiều cảm xúc và ngữ cảnh hơn.' },
-  { value: 'SHORTER', label: 'Ngắn hơn trước', description: 'Rút gọn còn vài đoạn dễ đọc.' },
-  { value: 'CONCISE', label: 'Cô đọng hơn', description: 'Đi thẳng vào ý chính, ít câu phụ.' },
-]
-
 const VOUCHERS = [
   { code: 'HELLOJULY', name: 'Chào tháng 7', type: 'percent', value: 15, min: '1.500.000đ', used: 38, limit: 100, period: '01/07 – 15/07/2026', status: 'scheduled' },
   { code: 'STAY3PAY2', name: 'Ở 3 đêm, ưu đãi 1 đêm', type: 'amount', value: 600000, min: '3.000.000đ', used: 67, limit: 80, period: '10/06 – 31/07/2026', status: 'active' },
@@ -221,6 +214,8 @@ export function MarketingAIAgentPage() {
   const [scheduleModal, setScheduleModal] = useState({ open: false, channel: null, date: '', time: '' })
   const [scheduleSaving, setScheduleSaving] = useState(false)
   const [calendarOpen, setCalendarOpen] = useState(false)
+  const [reloadModal, setReloadModal] = useState({ open: false, instruction: '' })
+  const [reloadingContent, setReloadingContent] = useState(false)
   const [error, setError] = useState('')
   const [generatedPost, setGeneratedPost] = useState(null)
   const [copied, setCopied] = useState(false)
@@ -231,7 +226,6 @@ export function MarketingAIAgentPage() {
     goal: FALLBACK_GOALS[0].label,
     tone: FALLBACK_TONES[0].label,
     brief: 'Giới thiệu không gian nghỉ dưỡng yên tĩnh giữa rừng thông, phù hợp cho cặp đôi muốn chữa lành cuối tuần.',
-    contentLength: 'STANDARD',
     mediaUrl: '',
     mediaType: 'IMAGE',
     mediaName: '',
@@ -366,7 +360,6 @@ export function MarketingAIAgentPage() {
       goal: post.goal || current.goal,
       tone: post.tone || current.tone,
       brief: post.brief || '',
-      contentLength: post.contentLength || current.contentLength || 'STANDARD',
       mediaUrl: firstMedia?.mediaUrl || '',
       mediaType: firstMedia?.mediaType || 'IMAGE',
       mediaName: firstMedia?.mediaUrl ? 'Media đã được gắn từ bài đã chọn' : '',
@@ -546,7 +539,6 @@ export function MarketingAIAgentPage() {
         brief: form.brief,
         goal: form.goal,
         tone: form.tone,
-        contentLength: form.contentLength,
         channels: targets.map((target) => ({
           socialAccountId: target.socialAccountId ? Number(target.socialAccountId) : null,
           platform: target.platform,
@@ -599,6 +591,29 @@ export function MarketingAIAgentPage() {
     } catch (err) {
       setError(err.message)
       return false
+    }
+  }
+
+  const submitReloadContent = async () => {
+    if (!previewChannel?.id) return
+    if (!reloadModal.instruction.trim()) {
+      setError('Vui lòng nhập yêu cầu cho đoạn văn mới.')
+      return
+    }
+    setReloadingContent(true)
+    setError('')
+    try {
+      const post = await request(`/channels/${previewChannel.id}/regenerate-content`, {
+        method: 'POST',
+        body: JSON.stringify({ instruction: reloadModal.instruction.trim() }),
+      })
+      setGeneratedPost(post)
+      await refreshDashboard()
+      setReloadModal({ open: false, instruction: '' })
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setReloadingContent(false)
     }
   }
 
@@ -714,13 +729,6 @@ export function MarketingAIAgentPage() {
               <OptionEditor title="Giọng điệu" type="TONE" options={tones} value={newOption.TONE} onChange={(value) => setNewOption({ ...newOption, TONE: value })} onAdd={addOption} onDelete={deleteOption} />
             </div>
 
-            <label className="mkt-field">Độ dài đoạn văn
-              <select value={form.contentLength} onChange={(event) => setForm({ ...form, contentLength: event.target.value })}>
-                {CONTENT_LENGTHS.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
-              </select>
-              <small>{CONTENT_LENGTHS.find((item) => item.value === form.contentLength)?.description}</small>
-            </label>
-
             <label className="mkt-field">
               <span>Ý tưởng hoặc mô tả ngắn <em>*</em><small>{form.brief.length}/2000</small></span>
               <textarea maxLength="2000" rows="5" value={form.brief} onChange={(event) => setForm({ ...form, brief: event.target.value })} />
@@ -822,7 +830,10 @@ export function MarketingAIAgentPage() {
           <aside className="mkt-card mkt-preview">
             <div className="mkt-preview-head">
               <div><span>XEM TRƯỚC</span><h2>Nội dung đề xuất</h2></div>
-              <button type="button" onClick={copyPost}><Icon name={copied ? 'check' : 'copy'} />{copied ? 'Đã sao chép' : 'Sao chép'}</button>
+              <div className="mkt-preview-tools">
+                <button type="button" onClick={() => setReloadModal({ open: true, instruction: '' })} disabled={!previewChannel?.id || reloadingContent}><Icon name="sparkles" />Tạo lại</button>
+                <button type="button" onClick={copyPost}><Icon name={copied ? 'check' : 'copy'} />{copied ? 'Đã sao chép' : 'Sao chép'}</button>
+              </div>
             </div>
 
             <div className="mkt-preview-tabs">
@@ -939,6 +950,35 @@ export function MarketingAIAgentPage() {
           </div>
         )}
 
+        {reloadModal.open && (
+          <div className="mkt-modal-backdrop" role="presentation" onMouseDown={() => !reloadingContent && setReloadModal({ open: false, instruction: '' })}>
+            <section className="mkt-modal mkt-reload-modal" role="dialog" aria-modal="true" aria-label="Tạo lại nội dung đề xuất" onMouseDown={(event) => event.stopPropagation()}>
+              <div className="mkt-modal-head">
+                <div>
+                  <span>TẠO LẠI NỘI DUNG</span>
+                  <h2>Bạn muốn đoạn văn mới như thế nào?</h2>
+                  <p>AI sẽ dựa trên bài hiện tại và yêu cầu của bạn để viết một phiên bản mới.</p>
+                </div>
+                <button className="mkt-icon-btn" type="button" onClick={() => setReloadModal({ open: false, instruction: '' })} disabled={reloadingContent}><Icon name="close" /></button>
+              </div>
+              <div className="mkt-modal-body">
+                <label className="mkt-field">Yêu cầu cho AI
+                  <textarea
+                    rows="6"
+                    value={reloadModal.instruction}
+                    onChange={(event) => setReloadModal((current) => ({ ...current, instruction: event.target.value }))}
+                    placeholder="Ví dụ: viết ngắn gọn hơn, mở đầu khác đi, nhấn mạnh ưu đãi cuối tuần, giọng hài hước hơn..."
+                  />
+                </label>
+              </div>
+              <div className="mkt-modal-actions">
+                <button className="mkt-btn mkt-btn--secondary" type="button" onClick={() => setReloadModal({ open: false, instruction: '' })} disabled={reloadingContent}>Hủy</button>
+                <button className="mkt-btn mkt-btn--primary" type="button" onClick={submitReloadContent} disabled={reloadingContent}>{reloadingContent ? <span className="mkt-spinner" /> : <Icon name="sparkles" />}{reloadingContent ? 'AI đang tạo...' : 'Tạo đoạn văn mới'}</button>
+              </div>
+            </section>
+          </div>
+        )}
+
         {calendarOpen && (
           <div className="mkt-modal-backdrop" role="presentation" onMouseDown={() => setCalendarOpen(false)}>
             <section className="mkt-modal mkt-calendar-modal" role="dialog" aria-modal="true" aria-label="Lịch nội dung" onMouseDown={(event) => event.stopPropagation()}>
@@ -1006,9 +1046,12 @@ function OptionEditor({ title, type, options, value, onChange, onAdd, onDelete }
 }
 
 export function MarketingPostLogsPage() {
+  const pageSize = 10
   const [dashboard, setDashboard] = useState(null)
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState('ALL')
+  const [page, setPage] = useState(1)
+  const [selectedChannel, setSelectedChannel] = useState(null)
 
   useEffect(() => {
     request('/dashboard').then(setDashboard).catch(() => setDashboard({ recentPosts: [] }))
@@ -1020,6 +1063,12 @@ export function MarketingPostLogsPage() {
     const text = `${channel.post.title} ${channel.platform} ${channel.pageName || ''}`.toLowerCase()
     return text.includes(query.toLowerCase()) && (status === 'ALL' || channel.status === status)
   })
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize))
+  const currentPage = Math.min(page, totalPages)
+  const pageStart = (currentPage - 1) * pageSize
+  const paginated = filtered.slice(pageStart, pageStart + pageSize)
+  const pageNumbers = Array.from({ length: totalPages }, (_, index) => index + 1)
+  const selectedMedia = selectedChannel?.post?.media || []
 
   return (
     <AdminLayout activePage="post-logs">
@@ -1033,30 +1082,155 @@ export function MarketingPostLogsPage() {
         </section>
         <section className="mkt-card mkt-table-card">
           <div className="mkt-toolbar">
-            <div className="mkt-search"><Icon name="search" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Tìm theo nội dung, page..." /></div>
+            <div className="mkt-search"><Icon name="search" /><input value={query} onChange={(event) => { setQuery(event.target.value); setPage(1) }} placeholder="Tìm theo nội dung, page..." /></div>
             <div className="mkt-filter-tabs">
-              {['ALL', 'PUBLISHED', 'SCHEDULED', 'DRAFT', 'FAILED'].map((item) => <button className={status === item ? 'is-active' : ''} type="button" key={item} onClick={() => setStatus(item)}>{item}</button>)}
+              {['ALL', 'PUBLISHED', 'SCHEDULED', 'DRAFT', 'FAILED'].map((item) => (
+                <button
+                  className={status === item ? 'is-active' : ''}
+                  type="button"
+                  key={item}
+                  onClick={() => {
+                    setStatus(item)
+                    setPage(1)
+                  }}
+                >
+                  {item}
+                </button>
+              ))}
             </div>
           </div>
           <div className="mkt-table-wrap">
             <table className="mkt-table">
               <thead><tr><th>Nội dung</th><th>Kênh</th><th>Page</th><th>Thời gian</th><th>Trạng thái</th><th /></tr></thead>
               <tbody>
-                {filtered.map((channel) => (
-                  <tr key={channel.id}>
+                {paginated.map((channel) => (
+                  <tr
+                    key={channel.id}
+                    className={selectedChannel?.id === channel.id ? 'is-selected' : ''}
+                    onClick={() => setSelectedChannel(channel)}
+                    tabIndex={0}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault()
+                        setSelectedChannel(channel)
+                      }
+                    }}
+                    title="Nhấn để xem chi tiết bài đăng"
+                  >
                     <td><strong>{channel.post.title}</strong><small>{channel.post.goal}</small></td>
                     <td><Channel value={channel.platform} /></td>
                     <td>{channel.pageName || channel.pageUrl || '—'}</td>
-                    <td>{channel.postedAt || channel.scheduledAt || '—'}</td>
+                    <td>{channel.postedAt || channel.scheduledAt ? formatScheduleTime(channel.postedAt || channel.scheduledAt) : '—'}</td>
                     <td><StatusBadge value={channel.status} /></td>
-                    <td><button className="mkt-row-more" type="button"><Icon name="arrow" /></button></td>
+                    <td>
+                      <button
+                        className="mkt-row-more"
+                        type="button"
+                        title="Xem chi tiết"
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          setSelectedChannel(channel)
+                        }}
+                      >
+                        <Icon name="arrow" />
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
           {!filtered.length && <div className="mkt-empty-table"><Icon name="search" size={26} /><strong>Chưa có bài đăng</strong><span>Hãy tạo bài từ AI Agent để nhật ký có dữ liệu.</span></div>}
+          {filtered.length > 0 && (
+            <div className="mkt-table-footer">
+              <span>
+                Hiển thị {pageStart + 1}-{Math.min(pageStart + pageSize, filtered.length)} / {filtered.length} dòng
+              </span>
+              <div>
+                <button type="button" onClick={() => setPage((current) => Math.max(1, current - 1))} disabled={currentPage === 1}>‹</button>
+                {pageNumbers.map((item) => (
+                  <button className={currentPage === item ? 'is-active' : ''} type="button" key={item} onClick={() => setPage(item)}>{item}</button>
+                ))}
+                <button type="button" onClick={() => setPage((current) => Math.min(totalPages, current + 1))} disabled={currentPage === totalPages}>›</button>
+              </div>
+            </div>
+          )}
         </section>
+
+        {selectedChannel && (
+          <div className="mkt-modal-backdrop" onMouseDown={() => setSelectedChannel(null)}>
+            <section className="mkt-modal mkt-post-log-modal" role="dialog" aria-modal="true" aria-labelledby="post-log-detail-title" onMouseDown={(event) => event.stopPropagation()}>
+              <header>
+                <div>
+                  <span className="mkt-modal-eyebrow">Chi tiết bài đăng</span>
+                  <h2 id="post-log-detail-title">{selectedChannel.post.title}</h2>
+                  <p>{selectedChannel.pageName || selectedChannel.pageUrl || 'Chưa gán page'} · {CHANNELS[selectedChannel.platform]?.label || selectedChannel.platform}</p>
+                </div>
+                <button type="button" onClick={() => setSelectedChannel(null)} aria-label="Đóng"><Icon name="close" /></button>
+              </header>
+
+              <div className="mkt-modal-body">
+                <div className="mkt-post-log-summary">
+                  <div><small>Trạng thái</small><StatusBadge value={selectedChannel.status} /></div>
+                  <div><small>Thời gian đăng/lên lịch</small><strong>{selectedChannel.postedAt || selectedChannel.scheduledAt ? formatScheduleTime(selectedChannel.postedAt || selectedChannel.scheduledAt) : 'Chưa có'}</strong></div>
+                  <div><small>Mục tiêu</small><strong>{selectedChannel.post.goal || '—'}</strong></div>
+                  <div><small>Giọng điệu</small><strong>{selectedChannel.post.tone || '—'}</strong></div>
+                </div>
+
+                <section className="mkt-post-log-section">
+                  <h3>Nội dung đã tạo/đăng</h3>
+                  <div className="mkt-post-log-content">
+                    {selectedChannel.content || 'Chưa có nội dung.'}
+                    {selectedChannel.hashtags ? <p className="mkt-post-log-hashtags">{selectedChannel.hashtags}</p> : null}
+                  </div>
+                </section>
+
+                <section className="mkt-post-log-section">
+                  <h3>Brief ban đầu</h3>
+                  <p className="mkt-post-log-brief">{selectedChannel.post.brief || '—'}</p>
+                </section>
+
+                <section className="mkt-post-log-section">
+                  <h3>Media đính kèm</h3>
+                  {selectedMedia.length ? (
+                    <div className="mkt-post-log-media-grid">
+                      {selectedMedia.map((media) => (
+                        <div className="mkt-post-log-media" key={media.id || media.mediaUrl}>
+                          {String(media.mediaType || '').toUpperCase() === 'VIDEO' ? (
+                            <video src={resolveMediaUrl(media.mediaUrl)} controls />
+                          ) : (
+                            <img src={resolveMediaUrl(media.mediaUrl)} alt={media.altText || 'Media bài đăng'} />
+                          )}
+                          <span>{media.source || media.mediaType || 'MEDIA'}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="mkt-post-log-muted">Bài đăng này chưa gắn ảnh/video.</p>
+                  )}
+                </section>
+
+                {(selectedChannel.errorMessage || selectedChannel.externalPostId || selectedChannel.externalUrl) && (
+                  <section className="mkt-post-log-section">
+                    <h3>Kết quả đăng bài</h3>
+                    <div className="mkt-post-log-result">
+                      {selectedChannel.externalPostId ? <div><small>ID bài đăng ngoài</small><strong>{selectedChannel.externalPostId}</strong></div> : null}
+                      {selectedChannel.externalUrl ? <div><small>Link bài đăng</small><a href={selectedChannel.externalUrl} target="_blank" rel="noreferrer">{selectedChannel.externalUrl}</a></div> : null}
+                      {selectedChannel.errorMessage ? <div className="is-error"><small>Lỗi</small><strong>{selectedChannel.errorMessage}</strong></div> : null}
+                    </div>
+                  </section>
+                )}
+              </div>
+
+              <footer>
+                {selectedChannel.externalUrl ? (
+                  <a className="mkt-btn mkt-btn--primary" href={selectedChannel.externalUrl} target="_blank" rel="noreferrer"><Icon name="link" />Mở bài đăng</a>
+                ) : null}
+                <button className="mkt-btn" type="button" onClick={() => setSelectedChannel(null)}>Đóng</button>
+              </footer>
+            </section>
+          </div>
+        )}
       </div>
     </AdminLayout>
   )

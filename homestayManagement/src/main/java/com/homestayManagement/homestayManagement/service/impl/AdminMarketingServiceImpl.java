@@ -300,6 +300,55 @@ public class AdminMarketingServiceImpl implements AdminMarketingService {
 
     @Override
     @Transactional
+    public MarketingPostResponse regenerateChannelContent(Long channelId, MarketingRegenerateContentRequest request) {
+        MarketingPostChannel channel = channelRepository.findById(channelId)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy kênh đăng bài."));
+        MarketingPost post = channel.getPost();
+        String instruction = request.instruction().trim();
+        MarketingPostRequest aiRequest = new MarketingPostRequest(
+                post.getCampaign() == null ? null : post.getCampaign().getId(),
+                post.getTitle(),
+                """
+                %s
+
+                Yêu cầu tạo lại từ người dùng: %s
+                Hãy viết một phiên bản hoàn toàn mới, tránh lặp lại nội dung cũ sau đây:
+                %s
+                """.formatted(post.getBrief(), instruction, channel.getContent() == null ? "" : channel.getContent()).trim(),
+                post.getGoal(),
+                post.getTone(),
+                null,
+                List.of(new MarketingChannelRequest(
+                        channel.getSocialAccount() == null ? null : channel.getSocialAccount().getId(),
+                        channel.getPlatform(),
+                        channel.getPageName(),
+                        channel.getPageUrl(),
+                        null,
+                        null,
+                        channel.getPlatformOptionJson(),
+                        channel.getScheduledAt()
+                )),
+                List.of()
+        );
+        String aiOutput = generateWithAi(aiRequest, post.getAgentConfig());
+        channel.setContent(channelCopy(aiOutput, aiRequest, channel.getPlatform(), channel.getSocialAccount()));
+        channel.setErrorMessage(null);
+        generationLogRepository.save(AiGenerationLog.builder()
+                .post(post)
+                .agentConfig(post.getAgentConfig())
+                .inputBrief(aiRequest.brief())
+                .inputGoal(post.getGoal())
+                .inputTone(post.getTone())
+                .outputJson(aiOutput)
+                .provider(post.getAgentConfig() == null ? "openai" : post.getAgentConfig().getProvider())
+                .modelName(post.getAgentConfig() == null ? null : post.getAgentConfig().getModelName())
+                .status("SUCCESS")
+                .build());
+        return getPost(post.getId());
+    }
+
+    @Override
+    @Transactional
     public MarketingPostResponse scheduleChannel(Long channelId, ScheduleMarketingChannelRequest request) {
         MarketingPostChannel channel = channelRepository.findById(channelId)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy kênh đăng bài."));
@@ -422,7 +471,9 @@ public class AdminMarketingServiceImpl implements AdminMarketingService {
         if (result.success() && hasText(result.content())) {
             return result.content();
         }
-        return fallbackCopy(request);
+        throw new IllegalStateException(hasText(result.errorMessage())
+                ? result.errorMessage()
+                : "AI không tạo được nội dung. Hãy kiểm tra cấu hình OpenAI API key/model.");
         /*
         String prompt = """
                 Bạn là AI marketing cho homestay. Hãy viết nội dung đăng mạng xã hội bằng tiếng Việt.

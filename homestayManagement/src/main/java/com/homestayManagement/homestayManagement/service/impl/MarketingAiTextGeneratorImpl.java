@@ -14,6 +14,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -30,11 +31,11 @@ public class MarketingAiTextGeneratorImpl implements MarketingAiTextGenerator {
     private final HttpClient httpClient;
 
     public MarketingAiTextGeneratorImpl(
-            @Value("${marketing.openrouter.enabled:true}") boolean enabled,
-            @Value("${marketing.openrouter.api-key:}") String apiKey,
-            @Value("${marketing.openrouter.base-url:https://openrouter.ai/api/v1}") String baseUrl,
-            @Value("${marketing.openrouter.model:openai/gpt-4o-mini}") String model,
-            @Value("${marketing.openrouter.timeout-seconds:60}") long timeoutSeconds,
+            @Value("${marketing.ai.enabled:true}") boolean enabled,
+            @Value("${marketing.ai.api-key:}") String apiKey,
+            @Value("${marketing.ai.base-url:https://api.openai.com/v1}") String baseUrl,
+            @Value("${marketing.ai.model:gpt-5.5}") String model,
+            @Value("${marketing.ai.timeout-seconds:60}") long timeoutSeconds,
             ObjectMapper objectMapper
     ) {
         this.enabled = enabled;
@@ -49,10 +50,10 @@ public class MarketingAiTextGeneratorImpl implements MarketingAiTextGenerator {
     @Override
     public GenerationResult generate(MarketingPostRequest request) {
         if (!enabled) {
-            return failed("OPENROUTER_DISABLED", "Chưa bật OpenRouter cho Marketing AI.");
+            return failed("MARKETING_AI_DISABLED", "Chưa bật Marketing AI.");
         }
         if (!hasText(apiKey)) {
-            return failed("OPENROUTER_KEY_MISSING", "Thiếu MARKETING_OPENROUTER_API_KEY.");
+            return failed("MARKETING_AI_KEY_MISSING", "Thiếu MARKETING_AI_API_KEY.");
         }
 
         try {
@@ -69,16 +70,20 @@ public class MarketingAiTextGeneratorImpl implements MarketingAiTextGenerator {
                     Giọng điệu: %s
                     Brief: %s
                     """.formatted(variationSeed, lengthInstruction(request.contentLength()), request.title(), request.goal(), request.tone(), request.brief());
-            Map<String, Object> payload = Map.of(
-                    "model", model,
-                    "messages", List.of(
-                            Map.of("role", "system", "content", "You are a creative Vietnamese social media marketing copywriter. Return valid JSON only. Avoid repeating prior wording."),
-                            Map.of("role", "user", "content", prompt)
-                    ),
-                    "temperature", 0.95,
-                    "presence_penalty", 0.35,
-                    "frequency_penalty", 0.25
-            );
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("model", model);
+            payload.put("messages", List.of(
+                    Map.of("role", "system", "content", "You are a creative Vietnamese social media marketing copywriter. Return valid JSON only. Avoid repeating prior wording."),
+                    Map.of("role", "user", "content", prompt)
+            ));
+            payload.put("seed", Math.abs(variationSeed.hashCode()));
+            if (!isGpt55OrNewer(model)) {
+                payload.put("temperature", 0.95);
+                payload.put("presence_penalty", 0.35);
+                payload.put("frequency_penalty", 0.25);
+            } else {
+                payload.put("reasoning_effort", "low");
+            }
             HttpRequest httpRequest = HttpRequest.newBuilder()
                     .uri(URI.create(baseUrl + "/chat/completions"))
                     .timeout(timeout)
@@ -88,16 +93,16 @@ public class MarketingAiTextGeneratorImpl implements MarketingAiTextGenerator {
                     .build();
             HttpResponse<String> response = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
-                return new GenerationResult(false, null, null, "openrouter", model, response.body(), "OPENROUTER_HTTP_" + response.statusCode(), "OpenRouter trả về HTTP " + response.statusCode());
+                return new GenerationResult(false, null, null, providerName(), model, response.body(), "MARKETING_AI_HTTP_" + response.statusCode(), "Marketing AI trả về HTTP " + response.statusCode());
             }
             return toGenerationResult(response.body(), request);
         } catch (IOException exception) {
-            return failed("OPENROUTER_IO_ERROR", "Không thể gọi OpenRouter: " + exception.getMessage());
+            return failed("MARKETING_AI_IO_ERROR", "Không thể gọi Marketing AI: " + exception.getMessage());
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
-            return failed("OPENROUTER_INTERRUPTED", "Tác vụ sinh nội dung bị gián đoạn.");
+            return failed("MARKETING_AI_INTERRUPTED", "Tác vụ sinh nội dung bị gián đoạn.");
         } catch (RuntimeException exception) {
-            return failed("OPENROUTER_CLIENT_ERROR", "Không thể tạo yêu cầu OpenRouter: " + exception.getMessage());
+            return failed("MARKETING_AI_CLIENT_ERROR", "Không thể tạo yêu cầu Marketing AI: " + exception.getMessage());
         }
     }
 
@@ -111,7 +116,7 @@ public class MarketingAiTextGeneratorImpl implements MarketingAiTextGenerator {
                 hasText(content) || hasText(text),
                 hasText(content) ? content : text,
                 hasText(hashtags) ? hashtags : "#HomeStays #HomestayVietNam #DuLichNghiDuong",
-                "openrouter",
+                providerName(),
                 model,
                 responseBody,
                 null,
@@ -142,7 +147,7 @@ public class MarketingAiTextGeneratorImpl implements MarketingAiTextGenerator {
     }
 
     private GenerationResult failed(String code, String message) {
-        return new GenerationResult(false, null, null, "openrouter", model, null, code, message);
+        return new GenerationResult(false, null, null, providerName(), model, null, code, message);
     }
 
     private String firstText(JsonNode node, String... fields) {
@@ -157,6 +162,21 @@ public class MarketingAiTextGeneratorImpl implements MarketingAiTextGenerator {
 
     private static String trimTrailingSlash(String value) {
         return value == null ? "" : value.replaceAll("/+$", "");
+    }
+
+    private boolean isGpt55OrNewer(String value) {
+        String normalized = value == null ? "" : value.toLowerCase();
+        return normalized.contains("gpt-5.5") || normalized.contains("gpt-5.6");
+    }
+
+    private String providerName() {
+        if (baseUrl.contains("api.openai.com")) {
+            return "openai";
+        }
+        if (baseUrl.contains("openrouter.ai")) {
+            return "openrouter";
+        }
+        return "custom-openai-compatible";
     }
 
     private String lengthInstruction(String value) {

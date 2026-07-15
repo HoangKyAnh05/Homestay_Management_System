@@ -3,6 +3,7 @@ package com.homestayManagement.homestayManagement.controller;
 import com.homestayManagement.homestayManagement.dto.request.MarketingOptionRequest;
 import com.homestayManagement.homestayManagement.dto.request.MarketingChannelContentRequest;
 import com.homestayManagement.homestayManagement.dto.request.MarketingPostRequest;
+import com.homestayManagement.homestayManagement.dto.request.MarketingRegenerateContentRequest;
 import com.homestayManagement.homestayManagement.dto.request.MarketingSocialAuthStartRequest;
 import com.homestayManagement.homestayManagement.dto.request.ScheduleMarketingChannelRequest;
 import com.homestayManagement.homestayManagement.dto.request.SocialAccountRequest;
@@ -112,6 +113,14 @@ public class AdminMarketingController {
             @Valid @RequestBody MarketingChannelContentRequest request
     ) {
         return adminMarketingService.updateChannelContent(id, request);
+    }
+
+    @PostMapping("/channels/{id}/regenerate-content")
+    public MarketingPostResponse regenerateChannelContent(
+            @PathVariable Long id,
+            @Valid @RequestBody MarketingRegenerateContentRequest request
+    ) {
+        return adminMarketingService.regenerateChannelContent(id, request);
     }
 
     @PostMapping("/channels/{id}/schedule")

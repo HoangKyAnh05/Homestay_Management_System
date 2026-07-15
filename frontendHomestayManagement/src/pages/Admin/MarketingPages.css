@@ -552,6 +552,9 @@
 
 .mkt-preview-head > div > span, .mkt-log-detail-copy > span { display: block; margin-bottom: 4px; color: #98a2b3; font-size: 9px; font-weight: 900; letter-spacing: .12em; }
 .mkt-preview-head button { display: inline-flex; align-items: center; gap: 6px; padding: 7px 9px; border: 0; border-radius: 7px; background: #f2f4f7; color: #475467; font-size: 11px; font-weight: 700; cursor: pointer; }
+.mkt-preview-tools { display: flex; align-items: center; gap: 7px; }
+.mkt-preview-tools button:first-child { background: #eff6ff; color: #2563eb; }
+.mkt-preview-tools button:disabled { opacity: .55; cursor: not-allowed; }
 
 .mkt-preview-tabs { display: flex; gap: 4px; padding: 4px; border-radius: 9px; background: #f2f4f7; }
 .mkt-preview-tabs button { flex: 1; display: flex; justify-content: center; padding: 7px; border: 0; border-radius: 7px; background: transparent; color: #667085; cursor: pointer; }
@@ -727,6 +730,32 @@
 .mkt-empty-table strong { color: #475467; font-size: 13px; }
 .mkt-empty-table span { font-size: 11px; }
 
+.mkt-post-log-modal { width: min(820px, 100%); }
+.mkt-modal-eyebrow { display: block; margin-bottom: 4px; color: #98a2b3; font-size: 10px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
+.mkt-post-log-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.mkt-post-log-summary > div { min-width: 0; padding: 12px; border: 1px solid #edf0f4; border-radius: 11px; background: #f8fafc; }
+.mkt-post-log-summary small,
+.mkt-post-log-result small { display: block; margin-bottom: 6px; color: #98a2b3; font-size: 9px; font-weight: 850; letter-spacing: .04em; text-transform: uppercase; }
+.mkt-post-log-summary strong { display: block; color: #344054; font-size: 11px; line-height: 1.45; }
+.mkt-post-log-section { margin-top: 16px; }
+.mkt-post-log-section h3 { margin: 0 0 9px; color: #101828; font-size: 13px; }
+.mkt-post-log-content { white-space: pre-wrap; padding: 14px; border: 1px solid #e4e9f2; border-radius: 12px; background: #fff; color: #344054; font-size: 13px; line-height: 1.65; }
+.mkt-post-log-hashtags { margin: 12px 0 0; color: #2563eb; font-weight: 700; }
+.mkt-post-log-brief,
+.mkt-post-log-muted { margin: 0; padding: 12px 14px; border-radius: 11px; background: #f8fafc; color: #667085; font-size: 12px; line-height: 1.55; }
+.mkt-post-log-media-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; }
+.mkt-post-log-media { overflow: hidden; border: 1px solid #e4e9f2; border-radius: 12px; background: #fff; }
+.mkt-post-log-media img,
+.mkt-post-log-media video { width: 100%; height: 180px; display: block; object-fit: cover; background: #e5edf3; }
+.mkt-post-log-media span { display: block; padding: 8px 10px; color: #667085; font-size: 10px; font-weight: 800; }
+.mkt-post-log-result { display: grid; gap: 8px; }
+.mkt-post-log-result > div { min-width: 0; padding: 11px 12px; border: 1px solid #edf0f4; border-radius: 11px; background: #fff; }
+.mkt-post-log-result strong,
+.mkt-post-log-result a { display: block; overflow-wrap: anywhere; color: #344054; font-size: 12px; line-height: 1.45; }
+.mkt-post-log-result a { color: #2563eb; font-weight: 700; text-decoration: none; }
+.mkt-post-log-result .is-error { border-color: #fecdd3; background: #fff5f6; }
+.mkt-post-log-result .is-error strong { color: #b91c1c; }
+
 .mkt-log-detail { display: grid; grid-template-columns: minmax(250px, 1fr) auto auto auto auto; align-items: center; gap: 25px; margin-top: 15px; padding: 16px 18px; }
 .mkt-log-detail h2 { margin: 0 0 4px; font-size: 14px; }
 .mkt-log-detail p { margin: 0; color: #98a2b3; font-size: 10.5px; }
@@ -789,6 +818,7 @@
   .mkt-voucher-grid { grid-template-columns: 1fr; }
   .mkt-log-detail { grid-template-columns: 1fr 1fr; }
   .mkt-log-detail-copy { grid-column: 1 / -1; }
+  .mkt-post-log-summary { grid-template-columns: 1fr 1fr; }
 }
 
 @media (max-width: 680px) {
@@ -802,4 +832,5 @@
   .mkt-voucher dl div + div { padding: 0; border: 0; }
   .mkt-modal-backdrop { padding: 10px; }
   .mkt-modal-body, .mkt-modal header, .mkt-modal footer { padding-left: 16px; padding-right: 16px; }
+  .mkt-post-log-summary { grid-template-columns: 1fr; }
 }

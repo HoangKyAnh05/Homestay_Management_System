@@ -3,6 +3,7 @@ package com.homestayManagement.homestayManagement.service;
 import com.homestayManagement.homestayManagement.dto.request.MarketingOptionRequest;
 import com.homestayManagement.homestayManagement.dto.request.MarketingChannelContentRequest;
 import com.homestayManagement.homestayManagement.dto.request.MarketingPostRequest;
+import com.homestayManagement.homestayManagement.dto.request.MarketingRegenerateContentRequest;
 import com.homestayManagement.homestayManagement.dto.request.MarketingSocialAuthStartRequest;
 import com.homestayManagement.homestayManagement.dto.request.ScheduleMarketingChannelRequest;
 import com.homestayManagement.homestayManagement.dto.request.SocialAccountRequest;
@@ -29,6 +30,7 @@ public interface AdminMarketingService {
     void deleteOption(Long id);
     MarketingPostResponse generatePost(MarketingPostRequest request, Authentication authentication);
     MarketingPostResponse updateChannelContent(Long channelId, MarketingChannelContentRequest request);
+    MarketingPostResponse regenerateChannelContent(Long channelId, MarketingRegenerateContentRequest request);
     MarketingPostResponse scheduleChannel(Long channelId, ScheduleMarketingChannelRequest request);
     MarketingPostResponse publishChannel(Long channelId);
     MarketingPostResponse getPost(Long postId);
