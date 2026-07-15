@@ -566,6 +566,26 @@
 .mkt-social-author small { margin-top: 2px; color: #98a2b3; font-size: 9.5px; }
 .mkt-social-copy { min-height: 185px; padding: 0 13px 12px; color: #344054; font-size: 11.5px; line-height: 1.55; }
 .mkt-social-copy p { margin: 0 0 8px; }
+.mkt-editable-copy { display: grid; gap: 7px; }
+.mkt-editable-copy span { color: #667085; font-size: 10.5px; font-weight: 800; }
+.mkt-editable-copy textarea {
+  width: 100%;
+  min-height: 210px;
+  resize: vertical;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  outline: none;
+  background: #fbfdff;
+  color: #344054;
+  font: inherit;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+.mkt-editable-copy textarea:focus {
+  border-color: #bdd3ff;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, .09);
+}
 .mkt-hashtags { color: #2563eb; }
 .mkt-empty-preview { min-height: 170px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; color: #98a2b3; text-align: center; }
 .mkt-empty-preview strong { color: #667085; font-size: 12px; }

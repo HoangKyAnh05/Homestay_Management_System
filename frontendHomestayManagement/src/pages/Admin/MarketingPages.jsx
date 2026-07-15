@@ -572,6 +572,36 @@ export function MarketingAIAgentPage() {
     window.setTimeout(() => setCopied(false), 1400)
   }
 
+  const updatePreviewContent = (channelId, value) => {
+    setGeneratedPost((current) => {
+      if (!current?.channels?.length) return current
+      return {
+        ...current,
+        channels: current.channels.map((channel) => channel.id === channelId ? { ...channel, content: value } : channel),
+      }
+    })
+  }
+
+  const saveChannelContent = async (channelId) => {
+    const channel = generatedPost?.channels?.find((item) => item.id === channelId)
+    if (!channel?.content?.trim()) {
+      setError('Nội dung bài đăng không được để trống.')
+      return false
+    }
+    try {
+      const post = await request(`/channels/${channelId}/content`, {
+        method: 'PATCH',
+        body: JSON.stringify({ content: channel.content, hashtags: channel.hashtags || '' }),
+      })
+      setGeneratedPost(post)
+      await refreshDashboard()
+      return true
+    } catch (err) {
+      setError(err.message)
+      return false
+    }
+  }
+
   const publish = async (channelId) => {
     const channel = generatedPost?.channels?.find((item) => item.id === channelId)
     if (!channel?.socialAccountId) {
@@ -584,6 +614,8 @@ export function MarketingAIAgentPage() {
     setPublishingChannels((current) => ({ ...current, [channelId]: true }))
     setError('')
     try {
+      const saved = await saveChannelContent(channelId)
+      if (!saved) return
       const post = await request(`/channels/${channelId}/publish`, { method: 'POST' })
       setGeneratedPost(post)
       await refreshDashboard()
@@ -627,6 +659,8 @@ export function MarketingAIAgentPage() {
     setScheduleSaving(true)
     setError('')
     try {
+      const saved = await saveChannelContent(scheduleModal.channel.id)
+      if (!saved) return
       const post = await request(`/channels/${scheduleModal.channel.id}/schedule`, { method: 'POST', body: JSON.stringify({ scheduledAt }) })
       setGeneratedPost(post)
       await refreshDashboard()
@@ -804,7 +838,15 @@ export function MarketingAIAgentPage() {
               </div>
               <div className="mkt-social-copy">
                 {previewChannel?.content ? (
-                  <p style={{ whiteSpace: 'pre-wrap' }}>{previewChannel.content}</p>
+                  <label className="mkt-editable-copy">
+                    <span>Nội dung đề xuất — có thể chỉnh sửa trước khi đăng</span>
+                    <textarea
+                      value={previewChannel.content}
+                      onChange={(event) => updatePreviewContent(previewChannel.id, event.target.value)}
+                      onBlur={() => saveChannelContent(previewChannel.id)}
+                      rows={10}
+                    />
+                  </label>
                 ) : (
                   <div className="mkt-empty-preview"><Icon name="sparkles" size={28} /><strong>Nội dung sẽ xuất hiện tại đây</strong><span>Điền thông tin và chọn “Tạo nội dung với AI”.</span></div>
                 )}

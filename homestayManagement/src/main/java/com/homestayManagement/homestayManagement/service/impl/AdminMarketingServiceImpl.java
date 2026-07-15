@@ -290,6 +290,16 @@ public class AdminMarketingServiceImpl implements AdminMarketingService {
 
     @Override
     @Transactional
+    public MarketingPostResponse updateChannelContent(Long channelId, MarketingChannelContentRequest request) {
+        MarketingPostChannel channel = channelRepository.findById(channelId)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy kênh đăng bài."));
+        channel.setContent(request.content().trim());
+        channel.setHashtags(clean(request.hashtags()));
+        return getPost(channel.getPost().getId());
+    }
+
+    @Override
+    @Transactional
     public MarketingPostResponse scheduleChannel(Long channelId, ScheduleMarketingChannelRequest request) {
         MarketingPostChannel channel = channelRepository.findById(channelId)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy kênh đăng bài."));
