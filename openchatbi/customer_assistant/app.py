@@ -146,43 +146,31 @@ CUSTOMER_CONTEXT:
 
 
 def get_model() -> tuple[ChatOpenAI, str]:
-    api_key = (
-        os.getenv("OPENAI_API_KEY", "").strip()
-        or os.getenv("OPENROUTER_API_KEY", "").strip()
-    )
-    if not api_key:
+    # FPT AI Factory configuration for Customer AI Assistant
+    fpt_api_key = os.getenv("FPT_AI_API_KEY", "").strip()
+    if not fpt_api_key:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="OPENAI_API_KEY or OPENROUTER_API_KEY is not configured",
+            detail="FPT_AI_API_KEY is not configured",
         )
-    base_url = os.getenv("OPENAI_BASE_URL", "").strip() or None
-    model_name = os.getenv("OPENAI_MODEL", "gpt-5.5").strip() or "gpt-5.5"
-    default_headers = {}
-    referer = os.getenv("OPENROUTER_REFERER", "").strip()
-    title = os.getenv("OPENROUTER_TITLE", "").strip()
-    if referer:
-        default_headers["HTTP-Referer"] = referer
-    if title:
-        default_headers["X-OpenRouter-Title"] = title
-
+    
+    base_url = os.getenv("FPT_AI_BASE_URL", "https://mkp-api.fptcloud.com/v1").strip()
+    model_name = os.getenv("FPT_AI_MODEL", "GLM-5.2").strip()
+    
     model_kwargs: dict[str, Any] = {
-        "api_key": api_key,
+        "api_key": fpt_api_key,
         "model": model_name,
         "temperature": 0.1,
         "max_tokens": 800,
         "timeout": 45,
         "max_retries": 2,
+        "base_url": base_url,
     }
-    if base_url:
-        model_kwargs["base_url"] = base_url
-    if default_headers:
-        model_kwargs["default_headers"] = default_headers
 
     logger.info(
-        "Customer AI model configured: model=%s base_url=%s openrouter_headers=%s",
+        "Customer AI model configured: model=%s base_url=%s provider=FPT AI Factory",
         model_name,
-        base_url or "https://api.openai.com/v1",
-        sorted(default_headers.keys()),
+        base_url,
     )
     return (
         ChatOpenAI(**model_kwargs),
@@ -192,15 +180,17 @@ def get_model() -> tuple[ChatOpenAI, str]:
 
 @app.get("/health")
 async def health() -> dict[str, Any]:
+    fpt_api_key = os.getenv("FPT_AI_API_KEY", "").strip()
+    fpt_model = os.getenv("FPT_AI_MODEL", "GLM-5.2").strip()
+    fpt_base_url = os.getenv("FPT_AI_BASE_URL", "https://mkp-api.fptcloud.com/v1").strip()
+    
     return {
         "status": "UP",
-        "api_key_configured": bool(
-            os.getenv("OPENAI_API_KEY", "").strip()
-            or os.getenv("OPENROUTER_API_KEY", "").strip()
-        ),
+        "api_key_configured": bool(fpt_api_key),
+        "api_key_provider": "FPT AI Factory",
         "internal_token_configured": bool(os.getenv("AI_INTERNAL_TOKEN", "").strip()),
-        "model": os.getenv("OPENAI_MODEL", "gpt-5.5"),
-        "base_url": os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1"),
+        "model": fpt_model,
+        "base_url": fpt_base_url,
     }
 
 
@@ -232,7 +222,7 @@ async def customer_chat(request: CustomerChatRequest) -> CustomerChatResponse:
         logger.exception(
             "Customer AI model call failed: model=%s base_url=%s session_id=%s error=%s",
             model_name,
-            os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1"),
+            os.getenv("FPT_AI_BASE_URL", "https://mkp-api.fptcloud.com/v1"),
             request.session_id,
             exc,
         )
