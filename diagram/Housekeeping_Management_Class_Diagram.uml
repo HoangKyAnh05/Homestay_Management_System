@@ -1,0 +1,135 @@
+@startuml
+title Housekeeping & Maintenance Management Class Diagram
+skinparam classAttributeIconSize 0
+
+package "controller" {
+  class HousekeepingController {
+    + getTasks(status: String): List<HousekeepingTaskResponse>
+    + getTask(taskId: Long): HousekeepingTaskResponse
+    + getTaskByBookingDetail(bookingDetailId: Long): HousekeepingTaskResponse
+    + requestInspection(bookingDetailId: Long): HousekeepingTaskResponse
+    + startTask(taskId: Long): HousekeepingTaskResponse
+    + submitInspection(taskId: Long, request: HousekeepingInspectionRequest): HousekeepingTaskResponse
+    + completeCleaning(taskId: Long, request: HousekeepingCleaningCompletionRequest): HousekeepingTaskResponse
+  }
+  class AdminHousekeepingCalendarController {
+    + getCalendar(month: String, year: String): List<HousekeepingCalendarResponse>
+    + assignTask(taskId: Long, housekeepingId: Long): HousekeepingTaskResponse
+  }
+  class AdminHousekeepingChecklistController {
+    + getOverview(): List<AdminHousekeepingRoomTypeChecklistResponse>
+    + saveRoomTypeChecklist(roomTypeId: Long, request: AdminHousekeepingChecklistRequest): AdminHousekeepingChecklistTemplateResponse
+    + saveRoomChecklist(roomId: Long, request: AdminHousekeepingChecklistRequest): AdminHousekeepingChecklistTemplateResponse
+    + resetRoomChecklist(roomId: Long): ResponseEntity<Void>
+  }
+}
+
+package "service" {
+  interface HousekeepingService {
+    + getTasks(status: String): List<HousekeepingTaskResponse>
+    + getTask(taskId: Long): HousekeepingTaskResponse
+    + getTaskByBookingDetail(bookingDetailId: Long): HousekeepingTaskResponse
+    + requestInspection(bookingDetailId: Long): HousekeepingTaskResponse
+    + startTask(taskId: Long): HousekeepingTaskResponse
+    + submitInspection(taskId: Long, request: HousekeepingInspectionRequest): HousekeepingTaskResponse
+    + completeCleaning(taskId: Long, request: HousekeepingCleaningCompletionRequest): HousekeepingTaskResponse
+  }
+  class HousekeepingServiceImpl {
+    - housekeepingTaskRepository: HousekeepingTaskRepository
+    - checkInRecordRepository: CheckInRecordRepository
+    - roomRepository: RoomRepository
+    - employeeRepository: EmployeeRepository
+    - taskChecklistItemRepository: HousekeepingTaskChecklistItemRepository
+    - checklistTemplateRepository: HousekeepingChecklistTemplateRepository
+    - minibarUsageRepository: RoomAmenitiesUsageRepository
+    - minibarItemRepository: RoomMiniBarItemRepository
+  }
+
+  interface AdminHousekeepingCalendarService {
+    + assignTask(taskId: Long, housekeepingId: Long): HousekeepingTaskResponse
+  }
+  class AdminHousekeepingCalendarServiceImpl {
+    - housekeepingTaskRepository: HousekeepingTaskRepository
+    - employeeRepository: EmployeeRepository
+  }
+
+  interface AdminHousekeepingChecklistService {
+    + getOverview(): List<AdminHousekeepingRoomTypeChecklistResponse>
+    + saveRoomTypeChecklist(roomTypeId: Long, request: AdminHousekeepingChecklistRequest): AdminHousekeepingChecklistTemplateResponse
+    + saveRoomChecklist(roomId: Long, request: AdminHousekeepingChecklistRequest): AdminHousekeepingChecklistTemplateResponse
+    + resetRoomChecklist(roomId: Long): void
+  }
+  class AdminHousekeepingChecklistServiceImpl {
+    - templateRepository: HousekeepingChecklistTemplateRepository
+    - itemRepository: HousekeepingChecklistItemRepository
+    - roomTypeRepository: RoomTypeRepository
+    - roomRepository: RoomRepository
+  }
+}
+
+package "repository" {
+  interface HousekeepingTaskRepository
+  interface HousekeepingChecklistTemplateRepository
+  interface HousekeepingTaskChecklistItemRepository
+  interface HousekeepingChecklistItemRepository
+}
+
+package "entity" {
+  class HousekeepingTask {
+    - id: Long
+    - inspectionStatus: String
+    - cleaningStatus: String
+    - note: String
+    - requestedAt: LocalDateTime
+    - startedAt: LocalDateTime
+    - inspectionCompletedAt: LocalDateTime
+    - cleaningCompletedAt: LocalDateTime
+  }
+  class HousekeepingChecklistTemplate {
+    - id: Long
+    - name: String
+    - isActive: boolean
+  }
+  class HousekeepingChecklistItem {
+    - id: Long
+    - title: String
+    - description: String
+    - isRequired: boolean
+    - displayOrder: int
+  }
+  class HousekeepingTaskChecklistItem {
+    - id: Long
+    - titleSnapshot: String
+    - descriptionSnapshot: String
+    - isRequired: boolean
+    - isCompleted: boolean
+    - completedAt: LocalDateTime
+  }
+  class Room {
+    - id: Long
+    - roomNumber: String
+    - status: String
+  }
+}
+
+HousekeepingController --> HousekeepingService
+AdminHousekeepingCalendarController --> AdminHousekeepingCalendarService
+AdminHousekeepingChecklistController --> AdminHousekeepingChecklistService
+
+HousekeepingServiceImpl ..|> HousekeepingService
+AdminHousekeepingCalendarServiceImpl ..|> AdminHousekeepingCalendarService
+AdminHousekeepingChecklistServiceImpl ..|> AdminHousekeepingChecklistService
+
+HousekeepingServiceImpl --> HousekeepingTaskRepository
+AdminHousekeepingCalendarServiceImpl --> HousekeepingTaskRepository
+AdminHousekeepingChecklistServiceImpl --> HousekeepingChecklistTemplateRepository
+
+HousekeepingTaskRepository ..> HousekeepingTask
+HousekeepingChecklistTemplateRepository ..> HousekeepingChecklistTemplate
+HousekeepingTaskChecklistItemRepository ..> HousekeepingTaskChecklistItem
+HousekeepingChecklistItemRepository ..> HousekeepingChecklistItem
+HousekeepingTask "1" *-- "many" HousekeepingTaskChecklistItem
+HousekeepingChecklistTemplate "1" *-- "many" HousekeepingChecklistItem
+HousekeepingTask --> Room
+HousekeepingChecklistTemplate --> Room
+@enduml

@@ -1,0 +1,108 @@
+.stay-activation-page {
+  min-height: 100svh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  color: #18352a;
+  background:
+    radial-gradient(circle at top right, rgba(218, 178, 91, 0.3), transparent 34rem),
+    linear-gradient(160deg, #f4f1e9, #e9f1eb);
+}
+
+.stay-activation-card {
+  width: min(440px, 100%);
+  padding: 36px 30px;
+  border: 1px solid rgba(35, 82, 62, 0.12);
+  border-radius: 26px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 24px 70px rgba(24, 53, 42, 0.14);
+}
+
+.stay-activation-brand {
+  color: #1d513d;
+  font-family: Georgia, serif;
+  font-size: 24px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.stay-activation-kicker {
+  display: block;
+  margin-top: 32px;
+  color: #9a6a13;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+}
+
+.stay-activation-card h1 {
+  margin: 10px 0;
+  color: #142d24;
+  font-family: Georgia, serif;
+  font-size: 34px;
+  line-height: 1.04;
+}
+
+.stay-activation-card > p {
+  margin: 0 0 26px;
+  color: #65716a;
+  line-height: 1.6;
+}
+
+.stay-activation-card form {
+  display: grid;
+  gap: 16px;
+}
+
+.stay-activation-card label {
+  display: grid;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.stay-activation-card input {
+  min-height: 52px;
+  padding: 0 14px;
+  border: 1px solid #d8ded9;
+  border-radius: 12px;
+  background: #fbfcfb;
+  font: inherit;
+  outline: none;
+}
+
+.stay-activation-card input:focus {
+  border-color: #2c7458;
+  box-shadow: 0 0 0 3px rgba(44, 116, 88, 0.12);
+}
+
+.stay-activation-card button {
+  min-height: 54px;
+  border: 0;
+  border-radius: 14px;
+  color: white;
+  background: #1d513d;
+  font: inherit;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.stay-activation-card button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.stay-activation-error {
+  padding: 11px 13px;
+  border-radius: 10px;
+  color: #9d2525;
+  background: #fff0f0;
+  font-size: 13px;
+}
+
+.stay-activation-card small {
+  display: block;
+  margin-top: 20px;
+  color: #858e88;
+  text-align: center;
+}

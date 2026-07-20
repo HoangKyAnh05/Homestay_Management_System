@@ -6,36 +6,55 @@ import com.homestayManagement.homestayManagement.entity.BookingDetail;
 import com.homestayManagement.homestayManagement.entity.BookingServiceItem;
 import com.homestayManagement.homestayManagement.entity.Customer;
 import com.homestayManagement.homestayManagement.entity.CheckInRecord;
+import com.homestayManagement.homestayManagement.entity.Employee;
 import com.homestayManagement.homestayManagement.entity.FacilityService;
 import com.homestayManagement.homestayManagement.entity.HousekeepingTask;
 import com.homestayManagement.homestayManagement.entity.InventoryService;
 import com.homestayManagement.homestayManagement.entity.Invoice;
 import com.homestayManagement.homestayManagement.entity.Payment;
+import com.homestayManagement.homestayManagement.entity.PricePolicy;
+import com.homestayManagement.homestayManagement.entity.Role;
 import com.homestayManagement.homestayManagement.entity.RoomType;
 import com.homestayManagement.homestayManagement.entity.Room;
+import com.homestayManagement.homestayManagement.entity.RoomPriceConfig;
 import com.homestayManagement.homestayManagement.entity.ServiceUsage;
+import com.homestayManagement.homestayManagement.repository.AccountRepository;
 import com.homestayManagement.homestayManagement.repository.AppliedPenaltyRepository;
 import com.homestayManagement.homestayManagement.repository.BookingDetailRepository;
 import com.homestayManagement.homestayManagement.repository.BookingGuestRepository;
 import com.homestayManagement.homestayManagement.repository.BookingRepository;
 import com.homestayManagement.homestayManagement.repository.BookingServiceItemRepository;
 import com.homestayManagement.homestayManagement.repository.CheckInRecordRepository;
+import com.homestayManagement.homestayManagement.repository.CustomerRepository;
+import com.homestayManagement.homestayManagement.repository.EmployeeRepository;
 import com.homestayManagement.homestayManagement.repository.FacilityServiceRepository;
 import com.homestayManagement.homestayManagement.repository.HousekeepingTaskRepository;
 import com.homestayManagement.homestayManagement.repository.InventoryServiceRepository;
 import com.homestayManagement.homestayManagement.repository.InvoiceRepository;
 import com.homestayManagement.homestayManagement.repository.PaymentRepository;
+import com.homestayManagement.homestayManagement.repository.PricePolicyRepository;
+import com.homestayManagement.homestayManagement.repository.RoleRepository;
 import com.homestayManagement.homestayManagement.repository.RoomAmenitiesUsageRepository;
 import com.homestayManagement.homestayManagement.repository.RoomMiniBarItemRepository;
+import com.homestayManagement.homestayManagement.repository.RoomPriceConfigRepository;
 import com.homestayManagement.homestayManagement.repository.RoomRepository;
 import com.homestayManagement.homestayManagement.repository.RulesPenaltyRepository;
 import com.homestayManagement.homestayManagement.repository.ServiceUsageRepository;
+import com.homestayManagement.homestayManagement.dto.request.AdminDirectBookingGuestRequest;
+import com.homestayManagement.homestayManagement.dto.request.AdminDirectBookingRequest;
+import com.homestayManagement.homestayManagement.dto.request.AdminDirectBookingRoomRequest;
+import com.homestayManagement.homestayManagement.dto.request.AdminDirectBookingServiceRequest;
+import com.homestayManagement.homestayManagement.dto.response.SePayPaymentResponse;
 import com.homestayManagement.homestayManagement.service.impl.AdminBookingServiceImpl;
+import com.homestayManagement.homestayManagement.service.support.BookingCodeGenerator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -48,9 +67,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.times;
 
 @ExtendWith(MockitoExtension.class)
 class AdminBookingServiceImplTest {
@@ -60,6 +81,9 @@ class AdminBookingServiceImplTest {
     @Mock private BookingRepository bookingRepository;
     @Mock private BookingServiceItemRepository bookingServiceItemRepository;
     @Mock private CheckInRecordRepository checkInRecordRepository;
+    @Mock private AccountRepository accountRepository;
+    @Mock private CustomerRepository customerRepository;
+    @Mock private RoleRepository roleRepository;
     @Mock private RoomRepository roomRepository;
     @Mock private ServiceUsageRepository serviceUsageRepository;
     @Mock private RoomAmenitiesUsageRepository roomAmenitiesUsageRepository;
@@ -71,6 +95,12 @@ class AdminBookingServiceImplTest {
     @Mock private RoomMiniBarItemRepository roomMiniBarItemRepository;
     @Mock private RulesPenaltyRepository rulesPenaltyRepository;
     @Mock private HousekeepingTaskRepository housekeepingTaskRepository;
+    @Mock private EmployeeRepository employeeRepository;
+    @Mock private PricePolicyRepository pricePolicyRepository;
+    @Mock private RoomPriceConfigRepository roomPriceConfigRepository;
+    @Mock private SePayPaymentService sePayPaymentService;
+    @Mock private BookingCodeGenerator bookingCodeGenerator;
+    @Mock private StayAccessService stayAccessService;
 
     private AdminBookingServiceImpl service;
 
@@ -81,9 +111,9 @@ class AdminBookingServiceImplTest {
                 bookingGuestRepository,
                 bookingRepository,
                 roomRepository,
-                null,
-                null,
-                null,
+                accountRepository,
+                customerRepository,
+                roleRepository,
                 checkInRecordRepository,
                 bookingServiceItemRepository,
                 serviceUsageRepository,
@@ -95,12 +125,14 @@ class AdminBookingServiceImplTest {
                 inventoryServiceRepository,
                 roomMiniBarItemRepository,
                 rulesPenaltyRepository,
+                employeeRepository,
                 null,
-                null,
-                null,
-                null,
-                null,
-                housekeepingTaskRepository
+                pricePolicyRepository,
+                roomPriceConfigRepository,
+                sePayPaymentService,
+                housekeepingTaskRepository,
+                bookingCodeGenerator,
+                stayAccessService
         );
     }
 
@@ -122,6 +154,90 @@ class AdminBookingServiceImplTest {
 
         assertEquals(1, result.size());
         assertEquals(true, result.getFirst().available());
+    }
+
+    @Test
+    void createDirectBookingSavesSelectedServicesPerRoom() {
+        LocalDateTime checkIn = LocalDateTime.of(2026, 6, 30, 14, 0);
+        LocalDateTime checkOut = LocalDateTime.of(2026, 7, 1, 12, 0);
+        Role customerRole = Role.builder().id(1L).name("ROLE_CUSTOMER").build();
+        Account account = Account.builder().id(2L).email("guest@example.com").role(customerRole).build();
+        Customer customer = Customer.builder().id(3L).account(account).fullName("Guest").build();
+        PricePolicy pricePolicy = PricePolicy.builder().id(4L).policyName("Daily").rentType("DAILY").build();
+        RoomType roomType = RoomType.builder().id(5L).name("Studio").maxAdults(2).maxChildren(1).build();
+        Room room = Room.builder().id(6L).roomNumber("101").roomType(roomType).build();
+        RoomPriceConfig priceConfig = RoomPriceConfig.builder()
+                .id(7L).roomType(roomType).pricePolicy(pricePolicy).dayType("WEEKDAY")
+                .price(BigDecimal.valueOf(8_000)).build();
+        FacilityService breakfast = FacilityService.builder()
+                .id(8L).name("Breakfast").price(BigDecimal.valueOf(2_000)).isActive(true).build();
+        InventoryService bike = InventoryService.builder()
+                .id(9L).name("Bike").price(BigDecimal.valueOf(1_500)).quantityInStock(5).build();
+        Booking booking = Booking.builder().id(10L).customer(customer).status("CONFIRMED").build();
+
+        when(accountRepository.findByEmail("guest@example.com")).thenReturn(Optional.of(account));
+        when(customerRepository.findByAccountId(2L)).thenReturn(Optional.of(customer));
+        when(accountRepository.save(account)).thenReturn(account);
+        when(customerRepository.save(customer)).thenReturn(customer);
+        when(roomRepository.findAllById(any())).thenReturn(List.of(room));
+        when(bookingDetailRepository.findOverlappingSchedule(checkIn, checkOut)).thenReturn(List.of());
+        when(pricePolicyRepository.findById(4L)).thenReturn(Optional.of(pricePolicy));
+        when(bookingCodeGenerator.generate(any())).thenReturn("BK_30062026_1");
+        when(bookingRepository.save(any(Booking.class))).thenAnswer(invocation -> {
+            Booking saved = invocation.getArgument(0);
+            saved.setId(10L);
+            return saved;
+        });
+        when(roomPriceConfigRepository.findByRoomTypeIdAndPricePolicyIdAndDayType(5L, 4L, "WEEKDAY"))
+                .thenReturn(Optional.of(priceConfig));
+        when(bookingDetailRepository.save(any(BookingDetail.class))).thenAnswer(invocation -> {
+            BookingDetail saved = invocation.getArgument(0);
+            saved.setId(11L);
+            return saved;
+        });
+        when(facilityServiceRepository.findById(8L)).thenReturn(Optional.of(breakfast));
+        when(inventoryServiceRepository.findById(9L)).thenReturn(Optional.of(bike));
+        when(bookingDetailRepository.findByIdForAdminDetail(11L)).thenReturn(Optional.of(
+                BookingDetail.builder().id(11L).booking(booking).room(room).roomType(roomType)
+                        .checkInTarget(checkIn).checkOutTarget(checkOut)
+                        .numberOfAdults(1).numberOfChildren(0).priceAtBooking(BigDecimal.valueOf(8_000))
+                        .rentType("DAILY").status("CONFIRMED").build()
+        ));
+        when(checkInRecordRepository.findByBookingDetailIdForAdmin(11L)).thenReturn(List.of());
+        when(bookingServiceItemRepository.findByBookingDetailIds(List.of(11L))).thenReturn(List.of());
+        when(serviceUsageRepository.findByBookingDetailIdForAdmin(11L)).thenReturn(List.of());
+        when(roomAmenitiesUsageRepository.findByBookingDetailIdForAdmin(11L)).thenReturn(List.of());
+        when(appliedPenaltyRepository.findByBookingDetailIdForAdmin(11L)).thenReturn(List.of());
+        when(invoiceRepository.findByBookingIdForAdmin(10L)).thenReturn(Optional.empty());
+        when(bookingGuestRepository.findByBookingDetailIds(List.of(11L))).thenReturn(List.of());
+        when(facilityServiceRepository.findAll()).thenReturn(List.of());
+        when(inventoryServiceRepository.findAll()).thenReturn(List.of());
+        when(roomMiniBarItemRepository.findAll()).thenReturn(List.of());
+        when(rulesPenaltyRepository.findAll()).thenReturn(List.of());
+
+        AdminDirectBookingRequest request = new AdminDirectBookingRequest(
+                "Guest", "0900000000", "guest@example.com", "Ha Noi", null, "0123456789",
+                List.of(new AdminDirectBookingRoomRequest(
+                        6L, 1, 0,
+                        List.of(new AdminDirectBookingGuestRequest("Guest", "0123456789", "0900000000", null, "guest@example.com", "Ha Noi")),
+                        List.of(
+                                new AdminDirectBookingServiceRequest("FACILITY", 8L, 2),
+                                new AdminDirectBookingServiceRequest("INVENTORY", 9L, 1)
+                        )
+                )),
+                checkIn, checkOut, "DAILY", 4L
+        );
+
+        service.createDirectBooking(request);
+
+        ArgumentCaptor<BookingServiceItem> itemCaptor = ArgumentCaptor.forClass(BookingServiceItem.class);
+        verify(bookingServiceItemRepository, times(2)).save(itemCaptor.capture());
+        assertEquals(2, itemCaptor.getAllValues().get(0).getQuantity());
+        assertEquals(breakfast, itemCaptor.getAllValues().get(0).getFacilityService());
+        assertEquals(1, itemCaptor.getAllValues().get(1).getQuantity());
+        assertEquals(bike, itemCaptor.getAllValues().get(1).getInventoryService());
+        assertEquals(4, bike.getQuantityInStock());
+        verify(inventoryServiceRepository).save(bike);
     }
 
     @Test
@@ -287,20 +403,20 @@ class AdminBookingServiceImplTest {
                 .quantity(2).priceAtUse(BigDecimal.valueOf(10_000)).build();
         Invoice invoice = Invoice.builder().id(13L).booking(booking).build();
         Payment checkoutPayment = Payment.builder()
-                .id(14L).invoice(invoice).amount(BigDecimal.valueOf(30_000))
+                .id(14L).invoice(invoice).bookingDetail(detail).amount(BigDecimal.valueOf(30_000))
                 .paymentPurpose("CHECKOUT").status("SUCCESS").build();
+        Payment bookingPayment = Payment.builder()
+                .id(15L).invoice(invoice).amount(BigDecimal.valueOf(700_000))
+                .paymentPurpose("BOOKING").status("SUCCESS").build();
 
         when(bookingDetailRepository.findByIdForAdminDetail(6L)).thenReturn(Optional.of(detail));
         when(checkInRecordRepository.findByBookingDetailId(6L)).thenReturn(Optional.of(record));
         when(housekeepingTaskRepository.findByCheckInRecordId(7L)).thenReturn(Optional.of(task));
         when(bookingDetailRepository.findByBookingId(3L)).thenReturn(List.of(detail));
         when(bookingServiceItemRepository.findByBookingDetailIds(List.of(6L))).thenReturn(List.of(bookedRentalItem));
-        when(serviceUsageRepository.findByBookingIdForInvoice(3L)).thenReturn(List.of(stayRentalUsage));
-        when(roomAmenitiesUsageRepository.findByBookingIdForInvoice(3L)).thenReturn(List.of());
-        when(checkInRecordRepository.findByBookingIdForInvoice(3L)).thenReturn(List.of());
-        when(appliedPenaltyRepository.findByBookingIdForInvoice(3L)).thenReturn(List.of());
         when(invoiceRepository.findByBookingIdForAdmin(3L)).thenReturn(Optional.of(invoice));
-        when(paymentRepository.findByInvoiceIdOrderByPaymentTimeDescIdDesc(13L)).thenReturn(List.of(checkoutPayment));
+        when(paymentRepository.findByInvoiceIdOrderByPaymentTimeDescIdDesc(13L))
+                .thenReturn(List.of(checkoutPayment, bookingPayment));
         when(checkInRecordRepository.findByBookingDetailIdForAdmin(6L)).thenReturn(List.of(record));
         when(serviceUsageRepository.findByBookingDetailIdForAdmin(6L)).thenReturn(List.of(stayRentalUsage));
         when(roomAmenitiesUsageRepository.findByBookingDetailIdForAdmin(6L)).thenReturn(List.of());
@@ -322,5 +438,148 @@ class AdminBookingServiceImplTest {
         verify(inventoryServiceRepository).save(stayRental);
         verify(bookingDetailRepository).save(detail);
         verify(bookingRepository).save(booking);
+        verify(stayAccessService).expireAccess(6L);
+    }
+
+    @Test
+    void prepareCheckOutChargesRemainingInvoiceBalanceAfterBookingDeposit() {
+        Account account = Account.builder().id(1L).email("customer@example.com").build();
+        Customer customer = Customer.builder().id(2L).account(account).fullName("Customer").build();
+        Booking booking = Booking.builder()
+                .id(3L).customer(customer).bookingDate(LocalDateTime.now()).status("CHECKED_IN").build();
+        RoomType roomType = RoomType.builder().id(4L).name("Studio").build();
+        Room room = Room.builder().id(5L).roomNumber("201").roomType(roomType).status("OCCUPIED").build();
+        BookingDetail detail = BookingDetail.builder()
+                .id(6L).booking(booking).roomType(roomType).room(room)
+                .checkInTarget(LocalDateTime.of(2026, 6, 30, 14, 0))
+                .checkOutTarget(LocalDateTime.of(2026, 7, 1, 12, 0))
+                .numberOfAdults(2).numberOfChildren(0)
+                .priceAtBooking(BigDecimal.valueOf(8_000))
+                .rentType("DAILY").status("CHECKED_IN").build();
+        CheckInRecord record = CheckInRecord.builder().id(7L).bookingDetail(detail).build();
+        HousekeepingTask task = HousekeepingTask.builder()
+                .id(8L).checkInRecord(record).room(room).inspectionStatus("COMPLETED").build();
+        FacilityService facility = FacilityService.builder()
+                .id(9L).name("Breakfast").price(BigDecimal.valueOf(4_000)).isActive(true).build();
+        BookingServiceItem bookedService = BookingServiceItem.builder()
+                .id(10L).bookingDetail(detail).facilityService(facility)
+                .quantity(1).priceAtBooking(BigDecimal.valueOf(4_000)).build();
+        Invoice invoice = Invoice.builder()
+                .id(11L).booking(booking).totalAmount(BigDecimal.valueOf(12_000)).build();
+        Payment bookingDeposit = Payment.builder()
+                .id(12L).invoice(invoice).paymentPurpose("BOOKING")
+                .amount(BigDecimal.valueOf(6_000)).status("SUCCESS").build();
+        Employee employee = Employee.builder().id(13L).fullName("Receptionist").build();
+        SePayPaymentResponse paymentResponse = new SePayPaymentResponse(
+                3L, booking.getBookingCode(), 14L, BigDecimal.valueOf(6_000), "HMS14",
+                "HMS14", "Vietcombank", "0123456789", "HOME STAY", "qr-url", null
+        );
+
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken("staff@example.com", "password")
+        );
+        try {
+            when(bookingDetailRepository.findByIdForAdminDetail(6L)).thenReturn(Optional.of(detail));
+            when(checkInRecordRepository.findByBookingDetailId(6L)).thenReturn(Optional.of(record));
+            when(housekeepingTaskRepository.findByCheckInRecordId(7L)).thenReturn(Optional.of(task));
+            when(checkInRecordRepository.findByBookingIdForInvoice(3L)).thenReturn(List.of(record));
+            when(bookingDetailRepository.findByBookingId(3L)).thenReturn(List.of(detail));
+            when(bookingServiceItemRepository.findByBookingDetailIds(List.of(6L))).thenReturn(List.of(bookedService));
+            when(serviceUsageRepository.findByBookingIdForInvoice(3L)).thenReturn(List.of());
+            when(roomAmenitiesUsageRepository.findByBookingIdForInvoice(3L)).thenReturn(List.of());
+            when(appliedPenaltyRepository.findByBookingIdForInvoice(3L)).thenReturn(List.of());
+            when(invoiceRepository.findByBookingIdForAdmin(3L)).thenReturn(Optional.of(invoice));
+            when(employeeRepository.findByAccountEmail("staff@example.com")).thenReturn(Optional.of(employee));
+            when(paymentRepository.findByInvoiceIdOrderByPaymentTimeDescIdDesc(11L)).thenReturn(List.of(bookingDeposit));
+            when(sePayPaymentService.createCheckoutPayment(3L, 6L, new BigDecimal("6000.00"))).thenReturn(paymentResponse);
+            when(checkInRecordRepository.findByBookingDetailIdForAdmin(6L)).thenReturn(List.of(record));
+            when(serviceUsageRepository.findByBookingDetailIdForAdmin(6L)).thenReturn(List.of());
+            when(roomAmenitiesUsageRepository.findByBookingDetailIdForAdmin(6L)).thenReturn(List.of());
+            when(appliedPenaltyRepository.findByBookingDetailIdForAdmin(6L)).thenReturn(List.of());
+            when(bookingGuestRepository.findByBookingDetailIds(List.of(6L))).thenReturn(List.of());
+            when(facilityServiceRepository.findAll()).thenReturn(List.of());
+            when(inventoryServiceRepository.findAll()).thenReturn(List.of());
+            when(roomMiniBarItemRepository.findAll()).thenReturn(List.of());
+            when(rulesPenaltyRepository.findAll()).thenReturn(List.of());
+
+            var response = service.prepareCheckOut(6L);
+
+            assertEquals(false, response.completed());
+            assertEquals(BigDecimal.valueOf(6_000), response.payment().amount());
+            verify(sePayPaymentService).createCheckoutPayment(3L, 6L, new BigDecimal("6000.00"));
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
+    }
+
+    @Test
+    void getBookingDetailSettlesEachRoomIndependentlyInMultiRoomBooking() {
+        Account account = Account.builder().id(1L).email("customer@example.com").build();
+        Customer customer = Customer.builder().id(2L).account(account).fullName("Customer").build();
+        Booking booking = Booking.builder()
+                .id(3L).customer(customer).bookingDate(LocalDateTime.now()).status("CHECKED_IN").build();
+        RoomType roomType = RoomType.builder().id(4L).name("Deluxe").build();
+        Room room102 = Room.builder().id(5L).roomNumber("102").roomType(roomType).build();
+        Room room201 = Room.builder().id(6L).roomNumber("201").roomType(roomType).build();
+        BookingDetail detail102 = BookingDetail.builder()
+                .id(7L).booking(booking).roomType(roomType).room(room102)
+                .priceAtBooking(BigDecimal.valueOf(20_000)).status("CHECKED_IN").build();
+        BookingDetail detail201 = BookingDetail.builder()
+                .id(8L).booking(booking).roomType(roomType).room(room201)
+                .priceAtBooking(BigDecimal.valueOf(20_000)).status("CHECKED_IN").build();
+        CheckInRecord record102 = CheckInRecord.builder().id(9L).bookingDetail(detail102).build();
+        CheckInRecord record201 = CheckInRecord.builder().id(10L).bookingDetail(detail201).build();
+        FacilityService bbq = FacilityService.builder()
+                .id(11L).name("BBQ").price(BigDecimal.valueOf(2_000)).build();
+        FacilityService bike = FacilityService.builder()
+                .id(12L).name("Bike").price(BigDecimal.valueOf(5_000)).build();
+        ServiceUsage bbqUsage = ServiceUsage.builder()
+                .id(13L).checkInRecord(record102).facilityService(bbq)
+                .quantity(1).priceAtUse(BigDecimal.valueOf(2_000)).build();
+        ServiceUsage bikeUsage = ServiceUsage.builder()
+                .id(14L).checkInRecord(record201).facilityService(bike)
+                .quantity(1).priceAtUse(BigDecimal.valueOf(5_000)).build();
+        Invoice invoice = Invoice.builder()
+                .id(15L).booking(booking)
+                .roomCharge(BigDecimal.valueOf(40_000))
+                .serviceCharge(BigDecimal.valueOf(7_000))
+                .penaltyCharge(BigDecimal.ZERO)
+                .totalAmount(BigDecimal.valueOf(47_000))
+                .build();
+        Payment bookingPayment = Payment.builder()
+                .id(16L).invoice(invoice).paymentPurpose("BOOKING")
+                .amount(BigDecimal.valueOf(40_000)).status("SUCCESS").build();
+
+        when(bookingDetailRepository.findByIdForAdminDetail(7L)).thenReturn(Optional.of(detail102));
+        when(bookingDetailRepository.findByIdForAdminDetail(8L)).thenReturn(Optional.of(detail201));
+        when(bookingDetailRepository.findByBookingId(3L)).thenReturn(List.of(detail102, detail201));
+        when(checkInRecordRepository.findByBookingDetailIdForAdmin(7L)).thenReturn(List.of(record102));
+        when(checkInRecordRepository.findByBookingDetailIdForAdmin(8L)).thenReturn(List.of(record201));
+        when(serviceUsageRepository.findByBookingDetailIdForAdmin(7L)).thenReturn(List.of(bbqUsage));
+        when(serviceUsageRepository.findByBookingDetailIdForAdmin(8L)).thenReturn(List.of(bikeUsage));
+        when(bookingServiceItemRepository.findByBookingDetailIds(List.of(7L))).thenReturn(List.of());
+        when(bookingServiceItemRepository.findByBookingDetailIds(List.of(8L))).thenReturn(List.of());
+        when(roomAmenitiesUsageRepository.findByBookingDetailIdForAdmin(7L)).thenReturn(List.of());
+        when(roomAmenitiesUsageRepository.findByBookingDetailIdForAdmin(8L)).thenReturn(List.of());
+        when(appliedPenaltyRepository.findByBookingDetailIdForAdmin(7L)).thenReturn(List.of());
+        when(appliedPenaltyRepository.findByBookingDetailIdForAdmin(8L)).thenReturn(List.of());
+        when(invoiceRepository.findByBookingIdForAdmin(3L)).thenReturn(Optional.of(invoice));
+        when(paymentRepository.findByInvoiceIdOrderByPaymentTimeDescIdDesc(15L)).thenReturn(List.of(bookingPayment));
+        when(bookingGuestRepository.findByBookingDetailIds(List.of(7L))).thenReturn(List.of());
+        when(bookingGuestRepository.findByBookingDetailIds(List.of(8L))).thenReturn(List.of());
+        when(facilityServiceRepository.findAll()).thenReturn(List.of());
+        when(inventoryServiceRepository.findAll()).thenReturn(List.of());
+        when(roomMiniBarItemRepository.findAll()).thenReturn(List.of());
+        when(rulesPenaltyRepository.findAll()).thenReturn(List.of());
+
+        var room102Settlement = service.getBookingDetail(7L);
+        var room201Settlement = service.getBookingDetail(8L);
+
+        assertEquals(0, BigDecimal.valueOf(2_000).compareTo(room102Settlement.invoice().serviceCharge()));
+        assertEquals(0, BigDecimal.valueOf(22_000).compareTo(room102Settlement.invoice().totalAmount()));
+        assertEquals(0, BigDecimal.valueOf(20_000).compareTo(room102Settlement.paidAmount()));
+        assertEquals(0, BigDecimal.valueOf(5_000).compareTo(room201Settlement.invoice().serviceCharge()));
+        assertEquals(0, BigDecimal.valueOf(25_000).compareTo(room201Settlement.invoice().totalAmount()));
+        assertEquals(0, BigDecimal.valueOf(20_000).compareTo(room201Settlement.paidAmount()));
     }
 }

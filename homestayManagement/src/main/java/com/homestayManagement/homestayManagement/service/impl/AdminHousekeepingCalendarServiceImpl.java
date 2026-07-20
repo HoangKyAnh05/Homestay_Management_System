@@ -4,6 +4,7 @@ import com.homestayManagement.homestayManagement.dto.response.*;
 import com.homestayManagement.homestayManagement.entity.*;
 import com.homestayManagement.homestayManagement.repository.*;
 import com.homestayManagement.homestayManagement.service.AdminHousekeepingCalendarService;
+import com.homestayManagement.homestayManagement.service.support.BookingInventoryPolicy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,8 +16,6 @@ import java.util.stream.Collectors;
 
 @Service
 public class AdminHousekeepingCalendarServiceImpl implements AdminHousekeepingCalendarService {
-
-    private static final Set<String> ACTIVE_BOOKING_STATUSES = Set.of("PENDING", "CONFIRMED", "CHECKED_IN");
 
     private final RoomRepository roomRepository;
     private final BookingDetailRepository bookingDetailRepository;
@@ -55,8 +54,7 @@ public class AdminHousekeepingCalendarServiceImpl implements AdminHousekeepingCa
         Map<Long, List<BookingDetail>> bookingsByRoom = bookingDetailRepository
                 .findOverlappingSchedule(rangeStart, rangeEnd).stream()
                 .filter(detail -> detail.getRoom() != null && roomIds.contains(detail.getRoom().getId()))
-                .filter(detail -> ACTIVE_BOOKING_STATUSES.contains(normalize(detail.getStatus())))
-                .filter(detail -> ACTIVE_BOOKING_STATUSES.contains(normalize(detail.getBooking().getStatus())))
+                .filter(BookingInventoryPolicy::blocksInventory)
                 .collect(Collectors.groupingBy(detail -> detail.getRoom().getId()));
         Map<Long, List<RoomSchedule>> schedulesByRoom = roomScheduleRepository.findOverlapping(rangeStart, rangeEnd).stream()
                 .filter(schedule -> roomIds.contains(schedule.getRoom().getId()))
@@ -155,7 +153,7 @@ public class AdminHousekeepingCalendarServiceImpl implements AdminHousekeepingCa
                 int completed = (int) checklist.stream().filter(HousekeepingTaskChecklistItem::isCompleted).count();
                 Employee assigned = cleaningTask.getAssignedHousekeeping();
                 result.add(new AdminHousekeepingCalendarDayResponse(
-                        date, "CLEANING", null, null, null, null, null,
+                        date, "CLEANING", null, null, null, null, null, null,
                         cleaningTask.getId(), assigned == null ? null : assigned.getFullName(),
                         completed, checklist.size(), cleaningTask.getNote()
                 ));
@@ -169,7 +167,7 @@ public class AdminHousekeepingCalendarServiceImpl implements AdminHousekeepingCa
             if (booking != null) {
                 String status = "CHECKED_IN".equals(normalize(booking.getStatus())) ? "OCCUPIED" : "BOOKED";
                 result.add(new AdminHousekeepingCalendarDayResponse(
-                        date, status, booking.getBooking().getId(), booking.getId(),
+                        date, status, booking.getBooking().getId(), booking.getBooking().getBookingCode(), booking.getId(),
                         booking.getBooking().getCustomer().getFullName(), booking.getCheckInTarget(), booking.getCheckOutTarget(),
                         null, null, null, null, null
                 ));
@@ -183,7 +181,7 @@ public class AdminHousekeepingCalendarServiceImpl implements AdminHousekeepingCa
 
     private AdminHousekeepingCalendarDayResponse emptyDay(LocalDate date, String status, String note) {
         return new AdminHousekeepingCalendarDayResponse(
-                date, status, null, null, null, null, null, null, null, null, null, note
+                date, status, null, null, null, null, null, null, null, null, null, null, note
         );
     }
 

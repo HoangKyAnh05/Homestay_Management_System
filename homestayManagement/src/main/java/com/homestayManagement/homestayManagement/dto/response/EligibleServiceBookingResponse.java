@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 
 public record EligibleServiceBookingResponse(
         Long bookingId,
+        String bookingCode,
         String status,
         String roomTypeName,
         Integer roomCount,

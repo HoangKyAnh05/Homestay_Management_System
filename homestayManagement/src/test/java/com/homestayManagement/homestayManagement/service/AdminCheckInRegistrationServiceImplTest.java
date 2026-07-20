@@ -36,6 +36,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.inOrder;
@@ -49,6 +50,7 @@ class AdminCheckInRegistrationServiceImplTest {
     @Mock private CheckInRecordRepository checkInRecordRepository;
     @Mock private RoomRepository roomRepository;
     @Mock private EmployeeRepository employeeRepository;
+    @Mock private StayAccessService stayAccessService;
 
     private AdminCheckInRegistrationServiceImpl service;
 
@@ -56,7 +58,7 @@ class AdminCheckInRegistrationServiceImplTest {
     void setUp() {
         service = new AdminCheckInRegistrationServiceImpl(
                 bookingDetailRepository, bookingRepository, bookingGuestRepository,
-                checkInRecordRepository, roomRepository, employeeRepository
+                checkInRecordRepository, roomRepository, employeeRepository, stayAccessService
         );
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken("staff@example.com", "password")
@@ -134,8 +136,15 @@ class AdminCheckInRegistrationServiceImplTest {
         when(roomRepository.findByIdForCheckIn(101L)).thenReturn(Optional.of(data.room()));
         when(bookingDetailRepository.findOverlappingSchedule(any(), any())).thenReturn(List.of(data.detail()));
         when(employeeRepository.findByAccountEmail("staff@example.com")).thenReturn(Optional.of(employee));
+        when(stayAccessService.grantAccess(any(), any(), any(), any()))
+                .thenReturn(new StayAccessService.GrantResult(
+                        81L, "booker@example.com", "ACTIVE", false, true
+                ));
 
-        var response = service.complete(40L, new AdminCompleteCheckInRequest(101L, guests));
+        var response = service.complete(
+                40L,
+                new AdminCompleteCheckInRequest(101L, "booker@example.com", guests)
+        );
 
         assertEquals("CHECKED_IN", data.detail().getStatus());
         assertEquals("CHECKED_IN", data.booking().getStatus());
@@ -151,6 +160,10 @@ class AdminCheckInRegistrationServiceImplTest {
         guestWriteOrder.verify(bookingGuestRepository).saveAll(any());
         verify(checkInRecordRepository).save(any());
         verify(bookingRepository).save(data.booking());
+        verify(stayAccessService).grantAccess(
+                eq(data.detail()), any(), eq("Người đặt"), eq("booker@example.com")
+        );
+        assertEquals(81L, response.stayAccessId());
     }
 
     private TestData testData() {

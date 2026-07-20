@@ -1,0 +1,71 @@
+@startuml
+actor Guest
+boundary "HomePage" as Page
+control "RoomController" as Controller
+control "RoomServiceImpl" as Service
+entity "RoomTypeRepository" as TypeRepo
+entity "RoomRepository" as RoomRepo
+entity "RoomImageRepository" as ImageRepo
+entity "RoomPriceConfigRepository" as PriceConfigRepo
+database "Database" as Database
+
+autonumber
+
+Guest -> Page : Access Homepage URL
+activate Page
+
+Page -> Controller : GET /api/rooms/types
+activate Controller
+
+Controller -> Service : getAllRoomTypes()
+activate Service
+
+Service -> TypeRepo : findAll()
+activate TypeRepo
+TypeRepo -> Database : Query all RoomTypes
+activate Database
+Database --> TypeRepo : Return RoomTypes list
+deactivate Database
+TypeRepo --> Service : Return list of RoomType entities
+deactivate TypeRepo
+
+loop For each RoomType
+    Service -> RoomRepo : findByRoomTypeId(roomTypeId)
+    activate RoomRepo
+    RoomRepo -> Database : Query Rooms by roomTypeId
+    activate Database
+    Database --> RoomRepo : Return Rooms list
+    deactivate Database
+    RoomRepo --> Service : Return list of Room entities
+    deactivate RoomRepo
+    
+    loop For each Room
+        Service -> ImageRepo : findByRoomId(roomId)
+        activate ImageRepo
+        ImageRepo -> Database : Query RoomImages by roomId
+        activate Database
+        Database --> ImageRepo : Return RoomImages list
+        deactivate Database
+        ImageRepo --> Service : Return list of RoomImage entities
+        deactivate ImageRepo
+    end
+    
+    Service -> PriceConfigRepo : findByRoomTypeIdWithPolicy(roomTypeId)
+    activate PriceConfigRepo
+    PriceConfigRepo -> Database : Query RoomPriceConfigs by roomTypeId
+    activate Database
+    Database --> PriceConfigRepo : Return RoomPriceConfigs list
+    deactivate Database
+    PriceConfigRepo --> Service : Return list of RoomPriceConfig entities
+    deactivate PriceConfigRepo
+end
+
+Service --> Controller : Return List<RoomTypeResponse>
+deactivate Service
+
+Controller --> Page : Return HTTP 200 OK (List of RoomTypeResponse)
+deactivate Controller
+
+Page --> Guest : Render homepage banner, rooms list & features
+deactivate Page
+@endum

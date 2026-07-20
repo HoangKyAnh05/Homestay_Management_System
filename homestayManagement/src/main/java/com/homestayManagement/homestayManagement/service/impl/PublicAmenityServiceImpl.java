@@ -145,6 +145,7 @@ public class PublicAmenityServiceImpl implements PublicAmenityService {
 
         return new AddedBookingServiceResponse(
                 bookingId,
+                booking.getBookingCode(),
                 item.getId(),
                 selected.name(),
                 request.quantity(),
@@ -216,7 +217,7 @@ public class PublicAmenityServiceImpl implements PublicAmenityService {
                 .max(LocalDateTime::compareTo).orElse(first.getCheckOutTarget());
         String roomTypeName = first.getRoomType() != null ? first.getRoomType().getName() : "Phòng tại Home Stays";
         return new EligibleServiceBookingResponse(
-                booking.getId(), booking.getStatus(), roomTypeName, details.size(), first.getCheckInTarget(), checkout
+                booking.getId(), booking.getBookingCode(), booking.getStatus(), roomTypeName, details.size(), first.getCheckInTarget(), checkout
         );
     }
 

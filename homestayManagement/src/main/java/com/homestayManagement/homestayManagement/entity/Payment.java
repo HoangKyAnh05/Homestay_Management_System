@@ -23,6 +23,10 @@ public class Payment {
     @JoinColumn(name = "invoice_id", nullable = false)
     private Invoice invoice;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "booking_detail_id")
+    private BookingDetail bookingDetail;
+
     // CASH, VNPAY, MOMO, BANK_TRANSFER
     @Column(name = "payment_method", nullable = false, length = 20)
     private String paymentMethod;
@@ -47,7 +51,7 @@ public class Payment {
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal amount;
 
-    // PENDING, SUCCESS, FAILED
+    // PENDING, SUCCESS, FAILED, REVIEW_REQUIRED
     @Builder.Default
     @Column(nullable = false, length = 20)
     private String status = "PENDING";

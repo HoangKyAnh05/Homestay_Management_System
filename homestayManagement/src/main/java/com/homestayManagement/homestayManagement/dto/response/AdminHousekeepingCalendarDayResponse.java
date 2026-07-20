@@ -7,6 +7,7 @@ public record AdminHousekeepingCalendarDayResponse(
         LocalDate date,
         String status,
         Long bookingId,
+        String bookingCode,
         Long bookingDetailId,
         String customerName,
         LocalDateTime checkInTarget,

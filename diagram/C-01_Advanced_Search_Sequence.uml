@@ -1,0 +1,65 @@
+@startuml
+actor Customer
+boundary "RoomsPage" as Page
+control "RoomController" as Controller
+control "RoomServiceImpl" as Service
+entity "BookingDetailRepository" as DetailRepo
+entity "RoomRepository" as RoomRepo
+entity "RoomTypeRepository" as TypeRepo
+database "Database" as Database
+
+autonumber
+
+Customer -> Page : Enter check-in, check-out, rooms, guests, max price, and search
+activate Page
+
+Page -> Controller : GET /api/rooms/search (checkInDate, checkOutDate, rooms, adults, children, maxPrice)
+activate Controller
+
+Controller -> Service : searchAvailableRooms(checkInDate, checkOutDate, rooms, adults, children, maxPrice)
+activate Service
+
+alt Service Validation Fails (checkOutDate <= checkInDate)
+    Service --> Controller : Throw IllegalArgumentException
+    Controller --> Page : Return HTTP 400 Bad Request
+    Page --> Customer : Display error message
+else Service Validation Passes
+    Service -> DetailRepo : findOverlappingSchedule(start, end)
+    activate DetailRepo
+    DetailRepo -> Database : Query overlapping BookingDetails
+    activate Database
+    Database --> DetailRepo : Return BookingDetails list
+    deactivate Database
+    DetailRepo --> Service : Return list of BookingDetails
+    deactivate DetailRepo
+
+    Service -> RoomRepo : findAllWithRoomType()
+    activate RoomRepo
+    RoomRepo -> Database : Query all Rooms with RoomTypes
+    activate Database
+    Database --> RoomRepo : Return Rooms list
+    deactivate Database
+    RoomRepo --> Service : Return list of Room entities
+    deactivate RoomRepo
+
+    Service -> TypeRepo : findAll()
+    activate TypeRepo
+    TypeRepo -> Database : Query all RoomTypes
+    activate Database
+    Database --> TypeRepo : Return RoomTypes list
+    deactivate Database
+    TypeRepo --> Service : Return list of RoomType entities
+    deactivate TypeRepo
+
+    note over Service: Filter rooms by availability, capacity, and maxPrice.\nSort results by price ascending.
+
+    Service --> Controller : Return List<RoomSearchResponse>
+    deactivate Service
+
+    Controller --> Page : Return HTTP 200 OK (List of RoomSearchResponse)
+    deactivate Controller
+
+    Page --> Customer : Render filtered room cards
+    deactivate Page
+end
+@endum

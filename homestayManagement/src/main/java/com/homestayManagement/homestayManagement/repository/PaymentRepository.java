@@ -21,4 +21,11 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
             String paymentPurpose,
             String status
     );
+    Optional<Payment> findFirstByInvoiceIdAndBookingDetailIdAndPaymentMethodAndPaymentPurposeAndStatusOrderByIdDesc(
+            Long invoiceId,
+            Long bookingDetailId,
+            String paymentMethod,
+            String paymentPurpose,
+            String status
+    );
 }

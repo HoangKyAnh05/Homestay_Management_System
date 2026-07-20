@@ -6,13 +6,14 @@ import AdminBookingsPage from './pages/Admin/AdminBookingsPage'
 import AdminCheckInLogsPage from './pages/Admin/AdminCheckInLogsPage'
 import AdminHousekeepingChecklistsPage from './pages/Admin/AdminHousekeepingChecklistsPage'
 import AdminHousekeepingCalendarPage from './pages/Admin/AdminHousekeepingCalendarPage'
-import AdminPlaceholderPage from './pages/Admin/AdminPlaceholderPage'
 import AdminRulesPenaltiesPage from './pages/Admin/AdminRulesPenaltiesPage'
 import AdminServiceCategoriesPage from './pages/Admin/AdminServiceCategoriesPage'
 import AdminSurchargesPage from './pages/Admin/AdminSurchargesPage'
 import AdminUsersPage from './pages/Admin/AdminUsersPage'
+import CustomerAiChat from './components/CustomerAiChat/CustomerAiChat'
 import DashboardPage from './pages/Admin/DashboardPage'
 import HousekeepingPage from './pages/Admin/HousekeepingPage'
+import { MarketingAIAgentPage, MarketingPostLogsPage, MarketingVouchersPage } from './pages/Admin/MarketingPages'
 import ReceptionistOverviewPage from './pages/Admin/ReceptionistOverviewPage'
 import BookingHistoryPage from './pages/BookingHistory/BookingHistoryPage'
 import ForgotPasswordPage from './pages/ForgotPassword/ForgotPasswordPage'
@@ -23,10 +24,21 @@ import ProfilePage from './pages/Profile/ProfilePage'
 import RegisterPage from './pages/Register/RegisterPage'
 import RoomDetailPage from './pages/Rooms/RoomDetailPage'
 import RoomsPage from './pages/Rooms/RoomsPage'
+import StayPage from './pages/Stay/StayPage'
+import StayActivationPage from './pages/Stay/StayActivationPage'
 import { getStoredUser } from './services/authService'
 import { STAFF_ROLES, roleCanAccess, roleDefaultPath } from './utils/roleUtils'
 
 const AUTH_STORAGE_KEYS = new Set(['homeStayAccessToken', 'homeStayUser'])
+
+function CustomerSurface({ children }) {
+  return (
+    <>
+      {children}
+      <CustomerAiChat />
+    </>
+  )
+}
 
 function normalizePath() {
   if (window.location.pathname === '/') {
@@ -92,13 +104,15 @@ function App() {
   if (currentPath === '/login') return <LoginPage />
   if (currentPath === '/register') return <RegisterPage />
   if (currentPath === '/forgot') return <ForgotPasswordPage />
-  if (currentPath === '/profile') return <ProfilePage />
-  if (currentPath === '/booking-history') return <BookingHistoryPage />
-  if (currentPath === '/amenities') return <AmenitiesPage />
-  if (currentPath === '/rooms') return <RoomsPage />
+  if (currentPath === '/profile') return <CustomerSurface><ProfilePage /></CustomerSurface>
+  if (currentPath === '/booking-history') return <CustomerSurface><BookingHistoryPage /></CustomerSurface>
+  if (currentPath === '/amenities') return <CustomerSurface><AmenitiesPage /></CustomerSurface>
+  if (currentPath === '/stay/activate') return <StayActivationPage />
+  if (currentPath === '/stay') return <CustomerSurface><StayPage /></CustomerSurface>
+  if (currentPath === '/rooms') return <CustomerSurface><RoomsPage /></CustomerSurface>
   if (currentPath.startsWith('/rooms/')) {
     const roomId = currentPath.split('/').filter(Boolean).at(-1)
-    return <RoomDetailPage roomId={roomId} />
+    return <CustomerSurface><RoomDetailPage roomId={roomId} /></CustomerSurface>
   }
   if (currentPath === '/admin/login') {
     const user = getStoredUser()
@@ -153,14 +167,14 @@ function App() {
       return <AdminHousekeepingChecklistsPage />
     }
     if (currentPath === '/admin/receptionist') return <ReceptionistOverviewPage />
-    if (currentPath === '/admin/marketing/ai-agent') return <AdminPlaceholderPage activePage="ai-post-agent" title="AI Agent Đăng bài" />
-    if (currentPath === '/admin/marketing/post-logs') return <AdminPlaceholderPage activePage="post-logs" title="Nhật ký Bài đăng" />
-    if (currentPath === '/admin/marketing/vouchers') return <AdminPlaceholderPage activePage="vouchers" title="Mã giảm giá (Vouchers)" />
+    if (currentPath === '/admin/marketing/ai-agent') return <MarketingAIAgentPage />
+    if (currentPath === '/admin/marketing/post-logs') return <MarketingPostLogsPage />
+    if (currentPath === '/admin/marketing/vouchers') return <MarketingVouchersPage />
 
     return <DashboardPage />
   }
 
-  return <HomePage />
+  return <CustomerSurface><HomePage /></CustomerSurface>
 }
 
 export default App

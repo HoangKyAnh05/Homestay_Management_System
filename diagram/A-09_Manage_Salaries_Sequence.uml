@@ -1,0 +1,55 @@
+@startuml
+actor Admin
+boundary "SalariesManagementPage" as Page
+control "AdminSalaryController" as Controller
+control "AdminSalaryServiceImpl" as Service
+entity "EmployeeRepository" as EmployeeRepo
+entity "SalaryRepository" as SalaryRepo
+database "Database" as Database
+
+autonumber
+
+Admin -> Page : Enter basic salary, bonuses, deductions for an employee & submit
+activate Page
+
+Page -> Controller : POST /api/admin/salaries (SalaryRequest) [Bearer Token]
+activate Controller
+
+Controller -> Service : createSalaryRecord(request)
+activate Service
+
+Service -> EmployeeRepo : findById(request.employeeId())
+activate EmployeeRepo
+EmployeeRepo -> Database : Query employee profile
+activate Database
+Database --> EmployeeRepo : Return Employee entity (or empty)
+deactivate Database
+EmployeeRepo --> Service : Return Employee details
+deactivate EmployeeRepo
+
+alt Employee not found
+    Service --> Controller : Throw IllegalArgumentException("Không tìm thấy nhân viên")
+    Controller --> Page : Return HTTP 400 Bad Request
+    Page --> Admin : Display employee not found error message
+else Employee found
+    Service -> Service : Calculate net salary (basic + bonuses - deductions)
+
+    Service -> SalaryRepo : save(Salary)
+    activate SalaryRepo
+    SalaryRepo -> Database : Insert salary statement record
+    activate Database
+    Database --> SalaryRepo : Return saved Salary entity
+    deactivate Database
+    SalaryRepo --> Service : Return Salary entity
+    deactivate SalaryRepo
+
+    Service --> Controller : Return SalaryResponse
+    deactivate Service
+
+    Controller --> Page : Return HTTP 201 Created (SalaryResponse)
+    deactivate Controller
+
+    Page --> Admin : Add salary record to list & show success message
+    deactivate Page
+end
+@endum

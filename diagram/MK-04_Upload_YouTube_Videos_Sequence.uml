@@ -1,0 +1,59 @@
+@startuml
+actor Marketer
+boundary "YouTubeUploadPage" as Page
+control "SocialPublishingController" as Controller
+control "SocialPublishingServiceImpl" as Service
+entity "SocialAccountRepository" as SocialRepo
+entity "MarketingPostRepository" as PostRepo
+database "Database" as Database
+entity "YouTubeDataAPI" as YT_API
+
+autonumber
+
+Marketer -> Page : Select promotional video file, input title, description & click "Upload"
+activate Page
+
+Page -> Controller : POST /api/marketing/youtube/upload (MultipartFile: video, details) [Bearer Token]
+activate Controller
+
+Controller -> Service : uploadToYouTube(request)
+activate Service
+
+Service -> SocialRepo : findByChannelTypeAndMarketerId("YOUTUBE", marketerId)
+activate SocialRepo
+SocialRepo -> Database : Fetch YouTube integration credentials
+activate Database
+Database --> SocialRepo : Return SocialAccountConnection
+deactivate Database
+SocialRepo --> Service : Return SocialAccountConnection
+deactivate SocialRepo
+
+alt YouTube upload quota exceeded or Token expired
+    Service --> Controller : Throw GoogleServiceException("Không thể upload video")
+    Controller --> Page : Return HTTP 400 Bad Request
+    Page --> Marketer : Display YouTube channel upload error alert
+else Valid session & file upload
+    Service -> YT_API : uploadVideo(accessToken, videoFile, metadata)
+    activate YT_API
+    YT_API --> Service : Return external videoId & status
+    deactivate YT_API
+
+    Service -> PostRepo : save(MarketingPost)
+    activate PostRepo
+    PostRepo -> Database : Save video log (videoId, title, publish time)
+    activate Database
+    Database --> PostRepo : Return saved MarketingPost
+    deactivate Database
+    PostRepo --> Service : Return MarketingPost
+    deactivate PostRepo
+
+    Service --> Controller : Return success response
+    deactivate Service
+
+    Controller --> Page : Return HTTP 200 OK (Video details status)
+    deactivate Controller
+
+    Page --> Marketer : Display upload completion banner & YouTube video link
+    deactivate Page
+end
+@endum

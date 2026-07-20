@@ -1,0 +1,54 @@
+@startuml
+actor Marketer
+boundary "MarketingPostsPage" as Page
+control "MarketingPostController" as Controller
+control "MarketingPostServiceImpl" as Service
+entity "MarketingPostRepository" as PostRepo
+database "Database" as Database
+
+autonumber
+
+Marketer -> Page : Select a published post, edit copy description & click "Save Changes"
+activate Page
+
+Page -> Controller : PUT /api/marketing/posts/{id} (UpdatePostRequest) [Bearer Token]
+activate Controller
+
+Controller -> Service : updatePost(id, request)
+activate Service
+
+Service -> PostRepo : findById(id)
+activate PostRepo
+PostRepo -> Database : Fetch post details
+activate Database
+Database --> PostRepo : Return MarketingPost (or empty)
+deactivate Database
+PostRepo --> Service : Return MarketingPost
+deactivate PostRepo
+
+alt Post not found in system logs
+    Service --> Controller : Throw IllegalArgumentException("Không tìm thấy bài viết")
+    Controller --> Page : Return HTTP 400 Bad Request
+    Page --> Marketer : Display error alert dialog
+else Post log found
+    Service -> Service : Update MarketingPost attributes
+
+    Service -> PostRepo : save(MarketingPost)
+    activate PostRepo
+    PostRepo -> Database : Update post record changes in DB
+    activate Database
+    Database --> PostRepo : Return saved MarketingPost
+    deactivate Database
+    PostRepo --> Service : Return saved MarketingPost
+    deactivate PostRepo
+
+    Service --> Controller : Return MarketingPostResponse
+    deactivate Service
+
+    Controller --> Page : Return HTTP 200 OK (MarketingPostResponse)
+    deactivate Controller
+
+    Page --> Marketer : Update post card copy in list UI & show success toast
+    deactivate Page
+end
+@endum

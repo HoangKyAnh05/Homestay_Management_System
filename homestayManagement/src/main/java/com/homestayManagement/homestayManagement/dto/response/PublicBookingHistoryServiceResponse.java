@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 
 public record PublicBookingHistoryServiceResponse(
         Long id,
+        String source,
         Long bookingDetailId,
         String name,
         String type,

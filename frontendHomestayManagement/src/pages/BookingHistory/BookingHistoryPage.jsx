@@ -7,6 +7,10 @@ import './BookingHistoryPage.css'
 
 const API_BASE_URL = 'http://localhost:8080/api'
 
+function bookingDisplay(booking) {
+  return booking?.bookingCode || `#${booking?.bookingId || ''}`
+}
+
 function formatMoney(value) {
   return new Intl.NumberFormat('vi-VN').format(Number(value || 0)) + 'đ'
 }
@@ -24,6 +28,10 @@ function statusLabel(status) {
 
 function serviceTypeLabel(type) {
   return type === 'FACILITY' ? 'Dịch vụ' : 'Thuê đồ'
+}
+
+function serviceSourceLabel(source) {
+  return source === 'STAY' ? 'Gọi trong kỳ ở' : 'Đặt trước'
 }
 
 function canAddService(booking) {
@@ -283,7 +291,7 @@ function BookingHistoryPage() {
                   role="button"
                 >
                   <div className="history-card-top">
-                    <strong>Booking #{booking.bookingId}</strong>
+                    <strong>Booking {bookingDisplay(booking)}</strong>
                     <span className={`history-status history-status--${String(booking.status || '').toLowerCase()}`}>
                       {statusLabel(booking.status)}
                     </span>
@@ -313,7 +321,7 @@ function BookingHistoryPage() {
                 <>
                   <div className="history-detail-head">
                     <div>
-                      <span>Booking #{detail.bookingId}</span>
+                      <span>Booking {bookingDisplay(detail)}</span>
                       <h2>{statusLabel(detail.status)}</h2>
                     </div>
                     <div className="history-detail-actions">
@@ -344,7 +352,7 @@ function BookingHistoryPage() {
                   <div className="history-summary-grid">
                     <div><span>Ngày đặt</span><strong>{formatAppDateTime(detail.bookingDate, { weekday: 'long' })}</strong></div>
                     <div><span>Tổng tiền phòng</span><strong>{formatMoney(detail.roomCharge)}</strong></div>
-                    <div><span>Dịch vụ đi kèm</span><strong>{formatMoney(detail.serviceCharge)}</strong></div>
+                    <div><span>Tổng dịch vụ</span><strong>{formatMoney(detail.serviceCharge)}</strong></div>
                     <div><span>Tổng thanh toán</span><strong>{formatMoney(detail.totalAmount)}</strong></div>
                   </div>
 
@@ -365,12 +373,12 @@ function BookingHistoryPage() {
                   </section>
 
                   <section className="history-detail-section">
-                    <h3>Dịch vụ đi kèm</h3>
+                    <h3>Dịch vụ và phát sinh</h3>
                     {detail.services.length ? (
                       <div className="history-service-list">
                         {detail.services.map((service) => (
-                          <div key={service.id}>
-                            <span>{service.name} · {serviceTypeLabel(service.type)} × {service.quantity}</span>
+                          <div key={`${service.source || 'PRE_BOOKED'}-${service.id}`}>
+                            <span>{service.name} · {serviceSourceLabel(service.source)} · {serviceTypeLabel(service.type)} × {service.quantity}</span>
                             <strong>{formatMoney(service.totalAmount)}</strong>
                           </div>
                         ))}
@@ -403,7 +411,7 @@ function BookingHistoryPage() {
               <div className="sepay-success">
                 <span>✓</span>
                 <h2 id="sepay-payment-title">Thanh toán thành công</h2>
-                <p>Booking #{paymentInfo.bookingId} đã được xác nhận và hóa đơn đã được lưu.</p>
+                <p>Booking {bookingDisplay(paymentInfo)} đã được xác nhận và hóa đơn đã được lưu.</p>
                 <button type="button" onClick={() => setPaymentInfo(null)}>Hoàn tất</button>
               </div>
             ) : (

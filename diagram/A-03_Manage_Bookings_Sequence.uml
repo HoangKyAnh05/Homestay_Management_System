@@ -1,0 +1,93 @@
+@startuml
+actor Admin
+boundary "AdminBookingsPage" as Page
+control "AdminBookingController" as Controller
+control "AdminBookingServiceImpl" as Service
+entity "RoomRepository" as RoomRepo
+entity "AccountRepository" as AccountRepo
+entity "CustomerRepository" as CustomerRepo
+entity "BookingRepository" as BookingRepo
+entity "BookingDetailRepository" as DetailRepo
+database "Database" as Database
+
+autonumber
+
+== Create Direct Booking ==
+Admin -> Page : Enter check-in/out dates, guest info, select room & submit
+activate Page
+
+Page -> Controller : POST /api/admin/bookings/direct (AdminDirectBookingRequest)
+activate Controller
+
+Controller -> Service : createDirectBooking(request)
+activate Service
+
+Service -> RoomRepo : findAllById(roomIds)
+activate RoomRepo
+RoomRepo -> Database : Query selected rooms
+activate Database
+Database --> RoomRepo : Return Rooms list
+deactivate Database
+RoomRepo --> Service : Return Rooms list
+deactivate RoomRepo
+
+Service -> DetailRepo : findOverlappingSchedule(checkInTarget, checkOutTarget)
+activate DetailRepo
+DetailRepo -> Database : Query overlapping bookings
+activate Database
+Database --> DetailRepo : Return overlapping bookings
+deactivate Database
+DetailRepo --> Service : Return overlapping bookings
+deactivate DetailRepo
+
+alt Selected rooms are already booked
+    Service --> Controller : Throw IllegalArgumentException("Phòng đã có booking trong khung giờ này")
+    Controller --> Page : Return HTTP 400 Bad Request
+    Page --> Admin : Display room collision error message
+else Rooms are available
+    Service -> AccountRepo : findByEmail(email)
+    activate AccountRepo
+    AccountRepo -> Database : Query Account by email
+    activate Database
+    Database --> AccountRepo : Return Account
+    deactivate Database
+    AccountRepo --> Service : Return Account
+    deactivate AccountRepo
+
+    Service -> CustomerRepo : save(customer)
+    activate CustomerRepo
+    CustomerRepo -> Database : Insert/Update Customer details
+    activate Database
+    Database --> CustomerRepo : Return Customer
+    deactivate Database
+    CustomerRepo --> Service : Return Customer
+    deactivate CustomerRepo
+
+    Service -> BookingRepo : save(Booking)
+    activate BookingRepo
+    BookingRepo -> Database : Insert Booking
+    activate Database
+    Database --> BookingRepo : Return Booking
+    deactivate Database
+    BookingRepo --> Service : Return Booking
+    deactivate BookingRepo
+
+    Service -> DetailRepo : save(BookingDetail)
+    activate DetailRepo
+    DetailRepo -> Database : Insert BookingDetail details
+    activate Database
+    Database --> DetailRepo : Return BookingDetail
+    deactivate Database
+    DetailRepo --> Service : Return BookingDetail
+    deactivate DetailRepo
+
+    Service --> Controller : Return AdminDirectBookingResponse
+    deactivate Service
+
+    Controller --> Page : Return HTTP 200 OK (Booking details response)
+    deactivate Controller
+
+    Page --> Admin : Show new booking success & refresh table
+    deactivate Page
+end
+@endum

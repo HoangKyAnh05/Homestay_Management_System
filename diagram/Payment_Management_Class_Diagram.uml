@@ -1,0 +1,119 @@
+@startuml
+title Payment Management Class Diagram
+skinparam classAttributeIconSize 0
+
+package "controller" {
+  class SePayPaymentController {
+    + createPayment(auth: Authentication, bookingId: Long): SePayPaymentResponse
+    + webhook(rawBody: byte[], signature: String, timestamp: String): Map<String, Boolean>
+  }
+  class AdminInvoiceController {
+    + getInvoiceByBooking(bookingId: Long): AdminInvoiceResponse
+    + createInvoice(bookingId: Long): AdminInvoiceResponse
+  }
+}
+
+package "service" {
+  interface SePayPaymentService {
+    + createPayment(email: String, bookingId: Long): SePayPaymentResponse
+    + handleWebhook(rawBody: byte[], signature: String, timestamp: String): void
+  }
+  class SePayPaymentServiceImpl {
+    - paymentRepository: PaymentRepository
+    - invoiceRepository: InvoiceRepository
+    - bookingRepository: BookingRepository
+    - sepaySecretKey: String
+    - sepayAccountNumber: String
+  }
+  interface AdminInvoiceService {
+    + getInvoiceByBooking(bookingId: Long): AdminInvoiceResponse
+    + createInvoice(bookingId: Long): AdminInvoiceResponse
+  }
+  class AdminInvoiceServiceImpl {
+    - invoiceRepository: InvoiceRepository
+    - bookingRepository: BookingRepository
+    - checkInRecordRepository: CheckInRecordRepository
+    - minibarUsageRepository: RoomAmenitiesUsageRepository
+    - serviceUsageRepository: ServiceUsageRepository
+    - appliedPenaltyRepository: AppliedPenaltyRepository
+  }
+}
+
+package "repository" {
+  interface PaymentRepository
+  interface InvoiceRepository
+  interface BookingRepository
+  interface CheckInRecordRepository
+  interface ServiceUsageRepository
+  interface AppliedPenaltyRepository
+}
+
+package "entity" {
+  class Payment {
+    - id: Long
+    - paymentMethod: String
+    - transactionNo: String
+    - amount: BigDecimal
+    - status: String
+    - paymentTime: LocalDateTime
+  }
+  class Invoice {
+    - id: Long
+    - roomCharge: BigDecimal
+    - penaltyCharge: BigDecimal
+    - serviceCharge: BigDecimal
+    - appliedDiscount: BigDecimal
+    - totalAmount: BigDecimal
+    - status: String
+    - createdAt: LocalDateTime
+  }
+  class Booking {
+    - id: Long
+    - bookingDate: LocalDateTime
+    - status: String
+  }
+  class CheckInRecord {
+    - id: Long
+    - actualCheckIn: LocalDateTime
+    - actualCheckOut: LocalDateTime
+    - earlyCheckInFee: BigDecimal
+    - lateCheckOutFee: BigDecimal
+  }
+  class ServiceUsage {
+    - id: Long
+    - quantity: Integer
+    - amount: BigDecimal
+  }
+  class AppliedPenalty {
+    - id: Long
+    - penaltyType: String
+    - amount: BigDecimal
+  }
+}
+
+SePayPaymentController --> SePayPaymentService
+AdminInvoiceController --> AdminInvoiceService
+
+SePayPaymentServiceImpl ..|> SePayPaymentService
+AdminInvoiceServiceImpl ..|> AdminInvoiceService
+
+SePayPaymentServiceImpl --> PaymentRepository
+SePayPaymentServiceImpl --> InvoiceRepository
+SePayPaymentServiceImpl --> BookingRepository
+AdminInvoiceServiceImpl --> InvoiceRepository
+AdminInvoiceServiceImpl --> CheckInRecordRepository
+AdminInvoiceServiceImpl --> ServiceUsageRepository
+AdminInvoiceServiceImpl --> AppliedPenaltyRepository
+
+PaymentRepository ..> Payment
+InvoiceRepository ..> Invoice
+BookingRepository ..> Booking
+CheckInRecordRepository ..> CheckInRecord
+ServiceUsageRepository ..> ServiceUsage
+AppliedPenaltyRepository ..> AppliedPenalty
+Invoice --> Booking
+Invoice "1" -- "0..1" CheckInRecord
+Invoice "1" -- "many" ServiceUsage
+Invoice "1" -- "many" AppliedPenalty
+Payment --> Invoice
+@enduml

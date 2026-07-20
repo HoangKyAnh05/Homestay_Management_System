@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 
 public record AddedBookingServiceResponse(
         Long bookingId,
+        String bookingCode,
         Long serviceItemId,
         String serviceName,
         Integer quantity,

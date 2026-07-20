@@ -1,6 +1,7 @@
 package com.homestayManagement.homestayManagement.controller;
 
 import com.homestayManagement.homestayManagement.dto.request.ForgotPasswordRequest;
+import com.homestayManagement.homestayManagement.dto.request.ActivateStayAccountRequest;
 import com.homestayManagement.homestayManagement.dto.request.GoogleLoginRequest;
 import com.homestayManagement.homestayManagement.dto.request.LoginRequest;
 import com.homestayManagement.homestayManagement.dto.request.RegisterRequest;
@@ -9,6 +10,7 @@ import com.homestayManagement.homestayManagement.dto.request.VerifyOtpRequest;
 import com.homestayManagement.homestayManagement.dto.response.AuthResponse;
 import com.homestayManagement.homestayManagement.service.AuthService;
 import com.homestayManagement.homestayManagement.service.PasswordResetService;
+import com.homestayManagement.homestayManagement.service.StayAccessService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -26,10 +28,16 @@ import java.util.Map;
 public class AuthController {
     private final AuthService authService;
     private final PasswordResetService passwordResetService;
+    private final StayAccessService stayAccessService;
 
-    public AuthController(AuthService authService, PasswordResetService passwordResetService) {
+    public AuthController(
+            AuthService authService,
+            PasswordResetService passwordResetService,
+            StayAccessService stayAccessService
+    ) {
         this.authService = authService;
         this.passwordResetService = passwordResetService;
+        this.stayAccessService = stayAccessService;
     }
 
     @PostMapping("/login")
@@ -62,6 +70,11 @@ public class AuthController {
     @PostMapping("/google")
     public AuthResponse loginWithGoogle(@Valid @RequestBody GoogleLoginRequest request) {
         return authService.loginWithGoogle(request);
+    }
+
+    @PostMapping("/stay-activation")
+    public AuthResponse activateStayAccount(@Valid @RequestBody ActivateStayAccountRequest request) {
+        return stayAccessService.activate(request);
     }
 
     @PostMapping("/logout")

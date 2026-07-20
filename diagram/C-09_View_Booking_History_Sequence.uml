@@ -1,0 +1,74 @@
+@startuml
+actor Customer
+boundary "BookingHistoryPage" as Page
+control "PublicBookingController" as Controller
+control "PublicBookingServiceImpl" as Service
+entity "BookingDetailRepository" as DetailRepo
+database "Database" as Database
+
+autonumber
+
+== View Booking History List ==
+Customer -> Page : Access Booking History page
+activate Page
+
+Page -> Controller : GET /api/bookings/my [Bearer Token]
+activate Controller
+
+Controller -> Service : getMyBookings(email)
+activate Service
+
+Service -> DetailRepo : findByCustomerEmailForHistory(email)
+activate DetailRepo
+DetailRepo -> Database : Query BookingDetails
+activate Database
+Database --> DetailRepo : Return BookingDetails list
+deactivate Database
+DetailRepo --> Service : Return list of BookingDetail entities
+deactivate DetailRepo
+
+note over Service: Group BookingDetails by Booking ID\nand sort by bookingDate descending.
+
+Service --> Controller : Return List<PublicBookingHistoryResponse>
+deactivate Service
+
+Controller --> Page : Return HTTP 200 OK (List of PublicBookingHistoryResponse)
+deactivate Controller
+
+Page --> Customer : Render list of booking cards
+deactivate Page
+
+== View Booking Detail ==
+Customer -> Page : Click "Xem chi tiết" (View Details) on a specific booking card
+activate Page
+
+Page -> Controller : GET /api/bookings/my/{bookingId} [Bearer Token]
+activate Controller
+
+Controller -> Service : getMyBookingDetail(email, bookingId)
+activate Service
+
+Service -> DetailRepo : findByCustomerEmailAndBookingIdForHistory(email, bookingId)
+activate DetailRepo
+DetailRepo -> Database : Query BookingDetails by email and bookingId
+activate Database
+Database --> DetailRepo : Return BookingDetails
+deactivate Database
+DetailRepo --> Service : Return list of BookingDetails
+deactivate DetailRepo
+
+alt Booking not found for customer
+    Service --> Controller : Throw IllegalArgumentException
+    Controller --> Page : Return HTTP 400 Bad Request
+    Page --> Customer : Display error message
+else Booking found
+    Service --> Controller : Return PublicBookingHistoryDetailResponse
+    deactivate Service
+
+    Controller --> Page : Return HTTP 200 OK (PublicBookingHistoryDetailResponse)
+    deactivate Controller
+
+    Page --> Customer : Render full booking details
+    deactivate Page
+end
+@endum

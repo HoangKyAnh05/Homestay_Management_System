@@ -14,6 +14,8 @@ import com.homestayManagement.homestayManagement.repository.BookingServiceItemRe
 import com.homestayManagement.homestayManagement.repository.InventoryServiceRepository;
 import com.homestayManagement.homestayManagement.repository.InvoiceRepository;
 import com.homestayManagement.homestayManagement.repository.PaymentRepository;
+import com.homestayManagement.homestayManagement.repository.RoomRepository;
+import com.homestayManagement.homestayManagement.repository.RoomTypeRepository;
 import com.homestayManagement.homestayManagement.repository.ServiceUsageRepository;
 import com.homestayManagement.homestayManagement.service.impl.SePayPaymentServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
@@ -32,7 +34,10 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -47,6 +52,10 @@ class SePayPaymentServiceImplTest {
     @Mock
     private BookingDetailRepository bookingDetailRepository;
     @Mock
+    private RoomRepository roomRepository;
+    @Mock
+    private RoomTypeRepository roomTypeRepository;
+    @Mock
     private BookingServiceItemRepository bookingServiceItemRepository;
     @Mock
     private com.homestayManagement.homestayManagement.repository.CheckInRecordRepository checkInRecordRepository;
@@ -58,6 +67,8 @@ class SePayPaymentServiceImplTest {
     private ServiceUsageRepository serviceUsageRepository;
     @Mock
     private InventoryServiceRepository inventoryServiceRepository;
+    @Mock
+    private StayAccessService stayAccessService;
 
     private SePayPaymentServiceImpl service;
 
@@ -66,12 +77,15 @@ class SePayPaymentServiceImplTest {
         service = new SePayPaymentServiceImpl(
                 bookingRepository,
                 bookingDetailRepository,
+                roomRepository,
+                roomTypeRepository,
                 bookingServiceItemRepository,
                 checkInRecordRepository,
                 invoiceRepository,
                 paymentRepository,
                 serviceUsageRepository,
                 inventoryServiceRepository,
+                stayAccessService,
                 new ObjectMapper(),
                 "Vietcombank",
                 "0123456789",
@@ -183,6 +197,46 @@ class SePayPaymentServiceImplTest {
         assertEquals(10L, response.bookingId());
         assertEquals(BigDecimal.valueOf(300_000), response.amount());
         assertEquals("HMS30", response.transferContent());
+        assertNull(booking.getPaymentHoldExpiresAt());
+        assertNull(response.holdExpiresAt());
+    }
+
+    @Test
+    void createCheckoutPaymentReplacesStalePendingPaymentWhenAmountChanges() {
+        Booking booking = Booking.builder().id(10L).status("CHECKED_IN").build();
+        BookingDetail detail = BookingDetail.builder().id(40L).booking(booking).status("CHECKED_IN").build();
+        Invoice invoice = Invoice.builder().id(20L).booking(booking).build();
+        Payment stalePayment = Payment.builder()
+                .id(30L)
+                .invoice(invoice)
+                .paymentCode("HMS30")
+                .paymentPurpose("CHECKOUT")
+                .paymentMethod("SEPAY")
+                .amount(BigDecimal.valueOf(3_000))
+                .status("PENDING")
+                .build();
+
+        when(bookingRepository.findByIdForPaymentUpdate(10L)).thenReturn(Optional.of(booking));
+        when(bookingDetailRepository.findById(40L)).thenReturn(Optional.of(detail));
+        when(invoiceRepository.findByBookingIdForAdmin(10L)).thenReturn(Optional.of(invoice));
+        when(paymentRepository.findFirstByInvoiceIdAndBookingDetailIdAndPaymentMethodAndPaymentPurposeAndStatusOrderByIdDesc(
+                20L, 40L, "SEPAY", "CHECKOUT", "PENDING"
+        )).thenReturn(Optional.of(stalePayment));
+        when(paymentRepository.save(any(Payment.class))).thenAnswer(invocation -> {
+            Payment payment = invocation.getArgument(0);
+            if (payment.getId() == null) {
+                payment.setId(31L);
+            }
+            return payment;
+        });
+
+        var response = service.createCheckoutPayment(10L, 40L, BigDecimal.valueOf(4_750));
+
+        assertEquals("FAILED", stalePayment.getStatus());
+        assertEquals(31L, response.paymentId());
+        assertEquals(BigDecimal.valueOf(4_750), response.amount());
+        assertEquals("HMS31", response.paymentCode());
+        assertEquals("HMS31", response.transferContent());
     }
 
     @Test
@@ -235,6 +289,50 @@ class SePayPaymentServiceImplTest {
         verify(checkInRecordRepository).saveAll(List.of(record));
         verify(inventoryServiceRepository).save(bookedRental);
         verify(inventoryServiceRepository).save(stayRental);
+    }
+
+    @Test
+    void handleCheckoutWebhookCompletesOnlyThePaidRoom() throws Exception {
+        Booking booking = Booking.builder().id(10L).status("CHECKED_IN").build();
+        var room102 = com.homestayManagement.homestayManagement.entity.Room.builder()
+                .id(11L).roomNumber("102").status("OCCUPIED").build();
+        var room201 = com.homestayManagement.homestayManagement.entity.Room.builder()
+                .id(12L).roomNumber("201").status("OCCUPIED").build();
+        BookingDetail detail102 = BookingDetail.builder()
+                .id(40L).booking(booking).room(room102).status("CHECKED_IN").build();
+        BookingDetail detail201 = BookingDetail.builder()
+                .id(41L).booking(booking).room(room201).status("CHECKED_IN").build();
+        Invoice invoice = Invoice.builder().id(20L).booking(booking).build();
+        Payment payment = Payment.builder()
+                .id(31L).invoice(invoice).bookingDetail(detail102)
+                .paymentCode("HMS31").paymentPurpose("CHECKOUT")
+                .amount(BigDecimal.valueOf(2_000)).status("PENDING").build();
+        var record102 = com.homestayManagement.homestayManagement.entity.CheckInRecord.builder()
+                .id(50L).bookingDetail(detail102).build();
+        byte[] body = webhookBody(92707L, 2_000, "HMS31");
+        String timestamp = String.valueOf(Instant.now().getEpochSecond());
+
+        when(paymentRepository.findBySepayTransactionId(92707L)).thenReturn(Optional.empty());
+        when(paymentRepository.findByPaymentCodeIgnoreCase("HMS31")).thenReturn(Optional.of(payment));
+        when(bookingRepository.findByIdForPaymentUpdate(10L)).thenReturn(Optional.of(booking));
+        when(checkInRecordRepository.findByBookingDetailId(40L)).thenReturn(Optional.of(record102));
+        when(bookingDetailRepository.findByBookingId(10L)).thenReturn(List.of(detail102, detail201));
+        when(bookingServiceItemRepository.findByBookingDetailIds(List.of(40L))).thenReturn(List.of());
+        when(serviceUsageRepository.findByBookingDetailIdForAdmin(40L)).thenReturn(List.of());
+
+        service.handleWebhook(body, signature(body, timestamp), timestamp);
+
+        assertEquals("SUCCESS", payment.getStatus());
+        assertEquals("COMPLETED", detail102.getStatus());
+        assertEquals("CHECKED_IN", detail201.getStatus());
+        assertEquals("AVAILABLE", room102.getStatus());
+        assertEquals("OCCUPIED", room201.getStatus());
+        assertEquals("CHECKED_IN", booking.getStatus());
+        assertNotNull(record102.getActualCheckOut());
+        verify(bookingDetailRepository).save(detail102);
+        verify(roomRepository).save(room102);
+        verify(stayAccessService).expireAccess(40L);
+        verify(bookingDetailRepository, never()).save(detail201);
     }
 
     private byte[] webhookBody(long id, long amount) {

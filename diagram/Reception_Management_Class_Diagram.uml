@@ -1,0 +1,118 @@
+@startuml
+title Reception Management Class Diagram
+skinparam classAttributeIconSize 0
+
+package "controller" {
+  class AdminBookingController {
+    + getWeeklySchedule(weekStart: LocalDate): AdminBookingScheduleResponse
+    + getCheckInLogs(fromDate: LocalDate, toDate: LocalDate): List<AdminCheckInLogBookingResponse>
+    + getBookingDetail(bookingDetailId: Long): AdminBookingDetailResponse
+    + getDirectBookingRooms(checkInTarget: LocalDateTime, checkOutTarget: LocalDateTime): List<AdminDirectBookingRoomResponse>
+    + createDirectBooking(request: AdminDirectBookingRequest): AdminDirectBookingResponse
+    + updateBookingCustomer(bookingDetailId: Long, request: AdminUpdateBookingCustomerRequest): AdminBookingDetailResponse
+    + updateBookingDetail(bookingDetailId: Long, request: AdminUpdateBookingDetailRequest): AdminBookingDetailResponse
+    + checkIn(bookingDetailId: Long): AdminBookingDetailResponse
+    + prepareCheckIn(bookingDetailId: Long): AdminCheckInPreparationResponse
+    + completeCheckIn(bookingDetailId: Long, request: AdminCompleteCheckInRequest): AdminCompleteCheckInResponse
+    + checkOut(bookingDetailId: Long): AdminBookingDetailResponse
+    + prepareCheckOut(bookingDetailId: Long): AdminCheckoutResponse
+  }
+}
+
+package "service" {
+  interface AdminBookingService {
+    + getWeeklySchedule(weekStart: LocalDate): AdminBookingScheduleResponse
+    + getCheckInLogs(fromDate: LocalDate, toDate: LocalDate): List<AdminCheckInLogBookingResponse>
+    + getBookingDetail(bookingDetailId: Long): AdminBookingDetailResponse
+    + getDirectBookingRooms(checkInTarget: LocalDateTime, checkOutTarget: LocalDateTime): List<AdminDirectBookingRoomResponse>
+    + createDirectBooking(request: AdminDirectBookingRequest): AdminDirectBookingResponse
+    + updateBookingCustomer(bookingDetailId: Long, request: AdminUpdateBookingCustomerRequest): AdminBookingDetailResponse
+    + updateBookingDetail(bookingDetailId: Long, request: AdminUpdateBookingDetailRequest): AdminBookingDetailResponse
+    + checkIn(bookingDetailId: Long): AdminBookingDetailResponse
+    + checkOut(bookingDetailId: Long): AdminBookingDetailResponse
+    + prepareCheckOut(bookingDetailId: Long): AdminCheckoutResponse
+  }
+  class AdminBookingServiceImpl {
+    - bookingRepository: BookingRepository
+    - bookingDetailRepository: BookingDetailRepository
+    - roomRepository: RoomRepository
+    - checkInRecordRepository: CheckInRecordRepository
+    - customerRepository: CustomerRepository
+    - employeeRepository: EmployeeRepository
+  }
+
+  interface AdminCheckInRegistrationService {
+    + prepare(bookingDetailId: Long): AdminCheckInPreparationResponse
+    + complete(bookingDetailId: Long, request: AdminCompleteCheckInRequest): AdminCompleteCheckInResponse
+  }
+  class AdminCheckInRegistrationServiceImpl {
+    - bookingDetailRepository: BookingDetailRepository
+    - guestRepository: BookingGuestRepository
+    - checkInRecordRepository: CheckInRecordRepository
+    - roomRepository: RoomRepository
+    - employeeRepository: EmployeeRepository
+  }
+}
+
+package "repository" {
+  interface BookingRepository
+  interface BookingDetailRepository
+  interface CheckInRecordRepository
+  interface BookingGuestRepository
+}
+
+package "entity" {
+  class Booking {
+    - id: Long
+    - status: String
+    - bookingDate: LocalDateTime
+  }
+  class BookingDetail {
+    - id: Long
+    - checkInTarget: LocalDateTime
+    - checkOutTarget: LocalDateTime
+    - rentType: String
+    - status: String
+  }
+  class CheckInRecord {
+    - id: Long
+    - actualCheckIn: LocalDateTime
+    - actualCheckOut: LocalDateTime
+    - earlyCheckInFee: BigDecimal
+    - lateCheckOutFee: BigDecimal
+  }
+  class BookingGuest {
+    - id: Long
+    - fullName: String
+    - identityDocumentNumber: String
+    - isPrimaryGuest: boolean
+  }
+  class Customer {
+    - id: Long
+    - fullName: String
+    - phone: String
+    - email: String
+  }
+}
+
+AdminBookingController --> AdminBookingService
+AdminBookingController --> AdminCheckInRegistrationService
+
+AdminBookingServiceImpl ..|> AdminBookingService
+AdminCheckInRegistrationServiceImpl ..|> AdminCheckInRegistrationService
+
+AdminBookingServiceImpl --> BookingRepository
+AdminBookingServiceImpl --> bookingDetailRepository
+AdminCheckInRegistrationServiceImpl --> bookingDetailRepository
+AdminCheckInRegistrationServiceImpl --> guestRepository
+AdminCheckInRegistrationServiceImpl --> checkInRecordRepository
+
+BookingRepository ..> Booking
+BookingDetailRepository ..> BookingDetail
+BookingGuestRepository ..> BookingGuest
+CheckInRecordRepository ..> CheckInRecord
+Booking "1" *-- "many" BookingDetail
+BookingDetail "1" -- "0..1" CheckInRecord
+BookingDetail "1" *-- "many" BookingGuest
+Booking "many" --> "1" Customer
+@enduml

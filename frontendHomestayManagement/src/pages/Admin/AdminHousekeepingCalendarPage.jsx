@@ -4,6 +4,11 @@ import AdminLayout from './AdminLayout'
 import './AdminHousekeepingCalendarPage.css'
 
 const API = 'http://localhost:8080/api/admin/housekeeping/calendar'
+
+function bookingDisplay(booking) {
+  return booking?.bookingCode || `#${booking?.bookingId || ''}`
+}
+
 const STATUS = {
   AVAILABLE: { label: 'Trống', className: 'available' },
   BOOKED: { label: 'Đã đặt', className: 'booked' },
@@ -163,7 +168,7 @@ function AdminHousekeepingCalendarPage() {
                       {day.customerName && <strong>{day.customerName}</strong>}
                       {day.status === 'CLEANING' && <strong>{day.assignedHousekeepingName || 'Chưa phân công'}</strong>}
                       {day.status === 'CLEANING' && day.checklistTotal > 0 && <small>Checklist {day.checklistCompleted}/{day.checklistTotal}</small>}
-                      {day.bookingId && <small>Booking #{day.bookingId}</small>}
+                      {day.bookingId && <small>Booking {bookingDisplay(day)}</small>}
                       {day.status === 'AVAILABLE' && <small>Sẵn sàng nhận khách</small>}
                     </button>
                   )
@@ -182,7 +187,7 @@ function AdminHousekeepingCalendarPage() {
               <span className="hkr-eyebrow">{weekday(selected.day.date)} · {shortDate(selected.day.date)}</span>
               <h2>Phòng {selected.room.roomNumber}</h2><p>{selected.room.roomTypeName}</p>
               <div className={`hkr-detail-status is-${STATUS[selected.day.status]?.className}`}><i />{STATUS[selected.day.status]?.label}</div>
-              {selected.day.customerName && <div className="hkr-detail-block"><span>Khách lưu trú</span><strong>{selected.day.customerName}</strong><small>Booking #{selected.day.bookingId}</small></div>}
+              {selected.day.customerName && <div className="hkr-detail-block"><span>Khách lưu trú</span><strong>{selected.day.customerName}</strong><small>Booking {bookingDisplay(selected.day)}</small></div>}
               {selected.day.bookingId && <div className="hkr-detail-grid"><div><span>Nhận phòng</span><strong>{dateTime(selected.day.checkInTarget)}</strong></div><div><span>Trả phòng</span><strong>{dateTime(selected.day.checkOutTarget)}</strong></div></div>}
               {selected.day.status === 'CLEANING' && <div className="hkr-detail-block"><span>Nhân viên phụ trách</span><strong>{selected.day.assignedHousekeepingName || 'Chưa phân công'}</strong><small>Checklist {selected.day.checklistCompleted || 0}/{selected.day.checklistTotal || 0}</small></div>}
               {selected.day.note && <div className="hkr-detail-block"><span>Ghi chú</span><strong>{selected.day.note}</strong></div>}

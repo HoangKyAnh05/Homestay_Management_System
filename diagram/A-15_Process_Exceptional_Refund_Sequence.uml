@@ -1,0 +1,78 @@
+@startuml
+actor Admin
+boundary "RefundManagementPage" as Page
+control "AdminRefundController" as Controller
+control "AdminRefundServiceImpl" as Service
+entity "BookingRepository" as BookingRepo
+entity "PaymentRepository" as PaymentRepo
+entity "RefundRecordRepository" as RefundRepo
+database "Database" as Database
+entity "SePayPaymentGateway" as Gateway
+
+autonumber
+
+Admin -> Page : Select booking, enter refund amount & click "Process Exceptional Refund"
+activate Page
+
+Page -> Controller : POST /api/admin/refunds/exceptional (ExceptionalRefundRequest) [Bearer Token]
+activate Controller
+
+Controller -> Service : processExceptionalRefund(request)
+activate Service
+
+Service -> BookingRepo : findById(request.bookingId())
+activate BookingRepo
+BookingRepo -> Database : Query Booking details
+activate Database
+Database --> BookingRepo : Return Booking
+deactivate Database
+BookingRepo --> Service : Return Booking
+deactivate BookingRepo
+
+alt Booking not found OR already refunded
+    Service --> Controller : Throw IllegalArgumentException("Đơn hàng không hợp lệ")
+    Controller --> Page : Return HTTP 400 Bad Request
+    Page --> Admin : Display refund error message
+else Booking is valid
+    Service -> PaymentRepo : findFirstByBookingIdAndStatusSuccess(bookingId)
+    activate PaymentRepo
+    PaymentRepo -> Database : Fetch successful payment record
+    activate Database
+    Database --> PaymentRepo : Return Payment
+    deactivate Database
+    PaymentRepo --> Service : Return Payment
+    deactivate PaymentRepo
+
+    Service -> Gateway : initiateRefund(paymentTransactionId, refundAmount)
+    activate Gateway
+    Gateway --> Service : Refund transaction success code
+    deactivate Gateway
+
+    Service -> RefundRepo : save(RefundRecord)
+    activate RefundRepo
+    RefundRepo -> Database : Insert refund audit details
+    activate Database
+    Database --> RefundRepo : Return RefundRecord
+    deactivate Database
+    RefundRepo --> Service : Return RefundRecord
+    deactivate RefundRepo
+
+    Service -> BookingRepo : save(bookingStatus = 'REFUNDED')
+    activate BookingRepo
+    BookingRepo -> Database : Update booking status
+    activate Database
+    Database --> BookingRepo : Success
+    deactivate Database
+    BookingRepo --> Service : Success
+    deactivate BookingRepo
+
+    Service --> Controller : Return success message
+    deactivate Service
+
+    Controller --> Page : Return HTTP 200 OK (Refund confirmation)
+    deactivate Controller
+
+    Page --> Admin : Show refund complete status & updated invoice details
+    deactivate Page
+end
+@endum

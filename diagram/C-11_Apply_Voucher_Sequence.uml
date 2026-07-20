@@ -1,0 +1,59 @@
+@startuml
+actor Customer
+boundary "RoomsPage" as Page
+control "VoucherController" as Controller
+control "VoucherServiceImpl" as Service
+entity "VoucherRepository" as VoucherRepo
+database "Database" as Database
+
+autonumber
+
+Customer -> Page : Enter voucher code (e.g., "SUMMER20") at checkout summary and click "Apply"
+activate Page
+
+Page -> Controller : POST /api/vouchers/validate (ValidateVoucherRequest) [Bearer Token]
+activate Controller
+
+Controller -> Service : validateVoucher(request)
+activate Service
+
+Service -> VoucherRepo : findByCode(request.code())
+activate VoucherRepo
+VoucherRepo -> Database : Query Voucher by code
+activate Database
+Database --> VoucherRepo : Return Voucher entity
+deactivate Database
+VoucherRepo --> Service : Return Voucher
+deactivate VoucherRepo
+
+alt Voucher not found
+    Service --> Controller : Throw IllegalArgumentException("Mã giảm giá không tồn tại")
+    Controller --> Page : Return HTTP 400 Bad Request
+    Page --> Customer : Display error message
+else Voucher found
+    alt Voucher expired or not started yet
+        Service --> Controller : Throw IllegalArgumentException("Mã giảm giá hết hạn hoặc chưa hiệu lực")
+        Controller --> Page : Return HTTP 400 Bad Request
+        Page --> Customer : Display error message
+    else Voucher has reached usage limit
+        Service --> Controller : Throw IllegalArgumentException("Mã giảm giá đã hết lượt sử dụng")
+        Controller --> Page : Return HTTP 400 Bad Request
+        Page --> Customer : Display error message
+    else Order total < minOrderValue
+        Service --> Controller : Throw IllegalArgumentException("Giá trị đơn hàng chưa đạt tối thiểu")
+        Controller --> Page : Return HTTP 400 Bad Request
+        Page --> Customer : Display error message
+    else Voucher is valid
+        note over Service: Calculate discountAmount based on discountType\n(PERCENTAGE or FIXED), capped at maxDiscountAmount.
+
+        Service --> Controller : Return VoucherValidationResponse (isValid=true, discountAmount)
+        deactivate Service
+
+        Controller --> Page : Return HTTP 200 OK (VoucherValidationResponse)
+        deactivate Controller
+
+        Page --> Customer : Render discounted prices summary and update final price
+        deactivate Page
+    end
+end
+@endum

@@ -1,0 +1,86 @@
+@startuml
+title AI Integration & Marketing Class Diagram
+skinparam classAttributeIconSize 0
+
+package "controller" {
+  class ChatAiController {
+    + processChatMessage(auth: Authentication, request: ChatMessageRequest): ChatMessageResponse
+  }
+  class AIMarketingController {
+    + generateMarketingContent(request: AIPromptRequest): ResponseEntity<AIGeneratedContentResponse>
+  }
+}
+
+package "service" {
+  interface ChatAiService {
+    + processChatMessage(email: String, request: ChatMessageRequest): ChatMessageResponse
+  }
+  class ChatAiServiceImpl {
+    - geminiApiService: GeminiApiService
+    - chatHistoryRepository: ChatHistoryRepository
+  }
+  class GeminiApiService {
+    - apiKey: String
+    - apiUrl: String
+    + generateResponse(promptContext: String): String
+  }
+  
+  interface AIMarketingService {
+    + generateMarketingContent(request: AIPromptRequest): AIGeneratedContentResponse
+  }
+  class AIMarketingServiceImpl {
+    - aiServiceAPI: AIServiceAPI
+    - contentLogRepository: AIContentLogRepository
+  }
+  class AIServiceAPI {
+    - apiKey: String
+    + callGenerativeAPI(prompt: String): String
+  }
+}
+
+package "repository" {
+  interface ChatHistoryRepository
+  interface AIContentLogRepository
+}
+
+package "entity" {
+  class ChatHistory {
+    - id: Long
+    - customerId: Long
+    - userMessage: String
+    - aiResponse: String
+    - timestamp: LocalDateTime
+  }
+  class AIContentLog {
+    - id: Long
+    - prompt: String
+    - generatedText: String
+    - status: String
+    - timestamp: LocalDateTime
+  }
+}
+
+ChatAiController --> ChatAiService
+AIMarketingController --> AIMarketingService
+
+ChatAiServiceImpl ..|> ChatAiService
+AIMarketingServiceImpl ..|> AIMarketingService
+
+ChatAiServiceImpl --> GeminiApiService
+ChatAiServiceImpl --> ChatHistoryRepository
+AIMarketingServiceImpl --> AIServiceAPI
+AIMarketingServiceImpl --> AIContentLogRepository
+
+ChatHistoryRepository ..> ChatHistory
+AIContentLogRepository ..> AIContentLog
+
+note right of GeminiApiService
+  External Service: Google Gemini API
+  Configured via apiKey and apiUrl
+end note
+
+note right of AIServiceAPI
+  External Service: Generative AI API
+  Configured via apiKey
+end note
+@enduml

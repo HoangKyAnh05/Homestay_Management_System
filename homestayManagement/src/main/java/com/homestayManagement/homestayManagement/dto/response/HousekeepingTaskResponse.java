@@ -8,6 +8,7 @@ public record HousekeepingTaskResponse(
         Long id,
         Long version,
         Long bookingId,
+        String bookingCode,
         Long bookingDetailId,
         Long roomId,
         String roomNumber,

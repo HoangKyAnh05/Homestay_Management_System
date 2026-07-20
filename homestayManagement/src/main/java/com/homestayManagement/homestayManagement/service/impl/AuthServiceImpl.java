@@ -360,10 +360,24 @@ public class AuthServiceImpl implements AuthService {
         }
 
         if (googleUser.picture() != null && !googleUser.picture().isBlank()) {
-            customer.setAvatarUrl(googleUser.picture());
+            syncGoogleAvatar(customer, googleUser.picture());
         }
 
         customerRepository.save(customer);
+    }
+
+    static void syncGoogleAvatar(Customer customer, String picture) {
+        customer.setGoogleAvatarUrl(picture);
+        boolean userUploadedAvatar = "USER_UPLOAD".equals(customer.getAvatarSource())
+                || (customer.getAvatarSource() == null
+                && customer.getAvatarUrl() != null
+                && customer.getAvatarUrl().startsWith("/uploads/"));
+        if (!userUploadedAvatar) {
+            customer.setAvatarUrl(picture);
+            customer.setAvatarSource("GOOGLE");
+        } else if (customer.getAvatarSource() == null) {
+            customer.setAvatarSource("USER_UPLOAD");
+        }
     }
 
     private UserResponse toUserResponse(Account account) {

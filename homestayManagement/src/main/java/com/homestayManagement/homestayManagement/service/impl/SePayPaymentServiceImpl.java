@@ -6,8 +6,11 @@ import com.homestayManagement.homestayManagement.dto.response.SePayPaymentRespon
 import com.homestayManagement.homestayManagement.entity.*;
 import com.homestayManagement.homestayManagement.repository.*;
 import com.homestayManagement.homestayManagement.service.SePayPaymentService;
+import com.homestayManagement.homestayManagement.service.StayAccessService;
+import com.homestayManagement.homestayManagement.service.support.BookingInventoryPolicy;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -19,22 +22,29 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 @Service
 public class SePayPaymentServiceImpl implements SePayPaymentService {
 
     private static final long WEBHOOK_MAX_AGE_SECONDS = 300;
-
     private final BookingRepository bookingRepository;
     private final BookingDetailRepository bookingDetailRepository;
+    private final RoomRepository roomRepository;
+    private final RoomTypeRepository roomTypeRepository;
     private final BookingServiceItemRepository bookingServiceItemRepository;
     private final CheckInRecordRepository checkInRecordRepository;
     private final InvoiceRepository invoiceRepository;
     private final PaymentRepository paymentRepository;
     private final ServiceUsageRepository serviceUsageRepository;
     private final InventoryServiceRepository inventoryServiceRepository;
+    private final StayAccessService stayAccessService;
     private final ObjectMapper objectMapper;
     private final String bankName;
     private final String accountNumber;
@@ -42,16 +52,18 @@ public class SePayPaymentServiceImpl implements SePayPaymentService {
     private final String paymentCodePrefix;
     private final String transferPrefix;
     private final String webhookSecret;
-
     public SePayPaymentServiceImpl(
             BookingRepository bookingRepository,
             BookingDetailRepository bookingDetailRepository,
+            RoomRepository roomRepository,
+            RoomTypeRepository roomTypeRepository,
             BookingServiceItemRepository bookingServiceItemRepository,
             CheckInRecordRepository checkInRecordRepository,
             InvoiceRepository invoiceRepository,
             PaymentRepository paymentRepository,
             ServiceUsageRepository serviceUsageRepository,
             InventoryServiceRepository inventoryServiceRepository,
+            StayAccessService stayAccessService,
             ObjectMapper objectMapper,
             @Value("${sepay.bank-name:}") String bankName,
             @Value("${sepay.account-number:}") String accountNumber,
@@ -62,12 +74,15 @@ public class SePayPaymentServiceImpl implements SePayPaymentService {
     ) {
         this.bookingRepository = bookingRepository;
         this.bookingDetailRepository = bookingDetailRepository;
+        this.roomRepository = roomRepository;
+        this.roomTypeRepository = roomTypeRepository;
         this.bookingServiceItemRepository = bookingServiceItemRepository;
         this.checkInRecordRepository = checkInRecordRepository;
         this.invoiceRepository = invoiceRepository;
         this.paymentRepository = paymentRepository;
         this.serviceUsageRepository = serviceUsageRepository;
         this.inventoryServiceRepository = inventoryServiceRepository;
+        this.stayAccessService = stayAccessService;
         this.objectMapper = objectMapper;
         this.bankName = bankName;
         this.accountNumber = accountNumber;
@@ -78,13 +93,13 @@ public class SePayPaymentServiceImpl implements SePayPaymentService {
     }
 
     @Override
-    @Transactional
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public SePayPaymentResponse createPayment(String email, Long bookingId) {
         return createBookingPayment(bookingId, email);
     }
 
     @Override
-    @Transactional
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public SePayPaymentResponse createBookingPaymentForAdmin(Long bookingId) {
         return createBookingPayment(bookingId, null);
     }
@@ -109,6 +124,10 @@ public class SePayPaymentServiceImpl implements SePayPaymentService {
         if (details.isEmpty()) {
             throw new IllegalArgumentException("Booking không có chi tiết phòng");
         }
+        ensureInventoryAvailable(details, booking.getId());
+        booking.setPaymentHoldExpiresAt(null);
+        bookingRepository.save(booking);
+
         Invoice invoice = getOrCreateInvoice(booking, details);
         BigDecimal amount = calculateRequiredPayment(booking, details, invoice.getTotalAmount());
 
@@ -132,12 +151,12 @@ public class SePayPaymentServiceImpl implements SePayPaymentService {
         payment.setAmount(amount);
         payment.setQrCodeUrl(buildQrCodeUrl(amount, transferContent));
         payment = paymentRepository.save(payment);
-        return toResponse(bookingId, payment, transferContent);
+        return toResponse(booking, payment, transferContent);
     }
 
     @Override
     @Transactional
-    public SePayPaymentResponse createCheckoutPayment(Long bookingId, BigDecimal amount) {
+    public SePayPaymentResponse createCheckoutPayment(Long bookingId, Long bookingDetailId, BigDecimal amount) {
         validatePaymentConfiguration();
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("Chi phí phát sinh phải lớn hơn 0");
@@ -150,14 +169,24 @@ public class SePayPaymentServiceImpl implements SePayPaymentService {
         Invoice invoice = invoiceRepository.findByBookingIdForAdmin(bookingId)
                 .orElseThrow(() -> new IllegalArgumentException("Chưa tạo hóa đơn checkout"));
 
+        BookingDetail bookingDetail = bookingDetailRepository.findById(bookingDetailId)
+                .filter(detail -> detail.getBooking() != null && bookingId.equals(detail.getBooking().getId()))
+                .orElseThrow(() -> new IllegalArgumentException("Phòng checkout không thuộc booking"));
+
         Payment payment = paymentRepository
-                .findFirstByInvoiceIdAndPaymentMethodAndPaymentPurposeAndStatusOrderByIdDesc(
-                        invoice.getId(), "SEPAY", "CHECKOUT", "PENDING"
+                .findFirstByInvoiceIdAndBookingDetailIdAndPaymentMethodAndPaymentPurposeAndStatusOrderByIdDesc(
+                        invoice.getId(), bookingDetailId, "SEPAY", "CHECKOUT", "PENDING"
                 )
                 .orElse(null);
+        if (payment != null && !sameAmount(payment.getAmount(), amount)) {
+            payment.setStatus("FAILED");
+            paymentRepository.save(payment);
+            payment = null;
+        }
         if (payment == null) {
             payment = paymentRepository.save(Payment.builder()
                     .invoice(invoice)
+                    .bookingDetail(bookingDetail)
                     .paymentMethod("SEPAY")
                     .paymentPurpose("CHECKOUT")
                     .amount(amount)
@@ -167,14 +196,19 @@ public class SePayPaymentServiceImpl implements SePayPaymentService {
         }
 
         String transferContent = transferPrefix.trim() + payment.getPaymentCode();
+        payment.setBookingDetail(bookingDetail);
         payment.setAmount(amount);
         payment.setQrCodeUrl(buildQrCodeUrl(amount, transferContent));
         payment = paymentRepository.save(payment);
-        return toResponse(bookingId, payment, transferContent);
+        return toResponse(booking, payment, transferContent);
+    }
+
+    private boolean sameAmount(BigDecimal first, BigDecimal second) {
+        return first != null && second != null && first.compareTo(second) == 0;
     }
 
     @Override
-    @Transactional
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public void handleWebhook(byte[] rawBody, String signature, String timestamp) {
         verifySignature(rawBody, signature, timestamp);
         SePayWebhookRequest webhook = readWebhook(rawBody);
@@ -198,6 +232,22 @@ public class SePayPaymentServiceImpl implements SePayPaymentService {
 
         Booking booking = bookingRepository.findByIdForPaymentUpdate(payment.getInvoice().getBooking().getId())
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy booking của giao dịch"));
+        List<BookingDetail> bookingDetails = List.of();
+        if (!"CHECKOUT".equalsIgnoreCase(payment.getPaymentPurpose())) {
+            bookingDetails = bookingDetailRepository.findByBookingId(booking.getId());
+            try {
+                ensureInventoryAvailable(bookingDetails, booking.getId());
+            } catch (IllegalArgumentException conflict) {
+                payment.setSepayTransactionId(webhook.id());
+                payment.setTransactionNo(blankToFallback(webhook.referenceCode(), String.valueOf(webhook.id())));
+                payment.setStatus("REVIEW_REQUIRED");
+                payment.setPaymentTime(LocalDateTime.now());
+                paymentRepository.save(payment);
+                booking.setPaymentHoldExpiresAt(null);
+                bookingRepository.save(booking);
+                return;
+            }
+        }
         payment.setSepayTransactionId(webhook.id());
         payment.setTransactionNo(blankToFallback(webhook.referenceCode(), String.valueOf(webhook.id())));
         payment.setStatus("SUCCESS");
@@ -205,13 +255,13 @@ public class SePayPaymentServiceImpl implements SePayPaymentService {
         paymentRepository.save(payment);
 
         if ("CHECKOUT".equalsIgnoreCase(payment.getPaymentPurpose())) {
-            completeCheckout(booking);
+            completeCheckout(booking, payment.getBookingDetail());
         } else {
             booking.setStatus("CONFIRMED");
+            booking.setPaymentHoldExpiresAt(null);
             bookingRepository.save(booking);
-            List<BookingDetail> details = bookingDetailRepository.findByBookingId(booking.getId());
-            details.forEach(detail -> detail.setStatus("CONFIRMED"));
-            bookingDetailRepository.saveAll(details);
+            bookingDetails.forEach(detail -> detail.setStatus("CONFIRMED"));
+            bookingDetailRepository.saveAll(bookingDetails);
         }
     }
 
@@ -236,7 +286,38 @@ public class SePayPaymentServiceImpl implements SePayPaymentService {
                 });
     }
 
-    private void completeCheckout(Booking booking) {
+    private void completeCheckout(Booking booking, BookingDetail paidDetail) {
+        // Historical checkout payments have no room reference, so retain their old behavior.
+        if (paidDetail == null) {
+            completeLegacyCheckout(booking);
+            return;
+        }
+
+        checkInRecordRepository.findByBookingDetailId(paidDetail.getId()).ifPresent(record -> {
+            if (record.getActualCheckOut() == null) {
+                record.setActualCheckOut(LocalDateTime.now());
+                checkInRecordRepository.save(record);
+            }
+        });
+
+        restoreInventoryServices(List.of(paidDetail));
+        paidDetail.setStatus("COMPLETED");
+        bookingDetailRepository.save(paidDetail);
+        stayAccessService.expireAccess(paidDetail.getId());
+        if (paidDetail.getRoom() != null) {
+            paidDetail.getRoom().setStatus("AVAILABLE");
+            roomRepository.save(paidDetail.getRoom());
+        }
+
+        List<BookingDetail> details = bookingDetailRepository.findByBookingId(booking.getId());
+        boolean allClosed = details.stream()
+                .allMatch(detail -> "COMPLETED".equalsIgnoreCase(detail.getStatus())
+                        || "CANCELLED".equalsIgnoreCase(detail.getStatus()));
+        booking.setStatus(allClosed ? "COMPLETED" : "CHECKED_IN");
+        bookingRepository.save(booking);
+    }
+
+    private void completeLegacyCheckout(Booking booking) {
         List<CheckInRecord> records = checkInRecordRepository.findByBookingIdForInvoice(booking.getId());
         LocalDateTime now = LocalDateTime.now();
         records.stream()
@@ -246,7 +327,14 @@ public class SePayPaymentServiceImpl implements SePayPaymentService {
 
         List<BookingDetail> details = bookingDetailRepository.findByBookingId(booking.getId());
         restoreInventoryServices(details);
-        details.forEach(detail -> detail.setStatus("COMPLETED"));
+        details.forEach(detail -> {
+            detail.setStatus("COMPLETED");
+            stayAccessService.expireAccess(detail.getId());
+            if (detail.getRoom() != null) {
+                detail.getRoom().setStatus("AVAILABLE");
+                roomRepository.save(detail.getRoom());
+            }
+        });
         bookingDetailRepository.saveAll(details);
         booking.setStatus("COMPLETED");
         bookingRepository.save(booking);
@@ -368,9 +456,10 @@ public class SePayPaymentServiceImpl implements SePayPaymentService {
         }
     }
 
-    private SePayPaymentResponse toResponse(Long bookingId, Payment payment, String transferContent) {
+    private SePayPaymentResponse toResponse(Booking booking, Payment payment, String transferContent) {
         return new SePayPaymentResponse(
-                bookingId,
+                booking.getId(),
+                booking.getBookingCode(),
                 payment.getId(),
                 payment.getAmount(),
                 payment.getPaymentCode(),
@@ -378,8 +467,85 @@ public class SePayPaymentServiceImpl implements SePayPaymentService {
                 bankName,
                 accountNumber,
                 accountHolder,
-                payment.getQrCodeUrl()
+                payment.getQrCodeUrl(),
+                null
         );
+    }
+
+    private void ensureInventoryAvailable(
+            List<BookingDetail> requestedDetails,
+            Long currentBookingId
+    ) {
+        Map<AvailabilityKey, Long> requestedBySlot = requestedDetails.stream()
+                .filter(detail -> detail.getRoomType() != null)
+                .collect(Collectors.groupingBy(
+                        detail -> new AvailabilityKey(
+                                detail.getRoomType().getId(),
+                                detail.getCheckInTarget(),
+                                detail.getCheckOutTarget()
+                        ),
+                        Collectors.counting()
+                ));
+        List<Long> roomTypeIds = requestedBySlot.keySet().stream()
+                .map(AvailabilityKey::roomTypeId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .sorted()
+                .toList();
+        if (!roomTypeIds.isEmpty()) {
+            roomTypeRepository.findAllByIdForInventoryUpdate(roomTypeIds);
+        }
+
+        for (BookingDetail requestedDetail : requestedDetails) {
+            if (requestedDetail.getRoom() == null) {
+                continue;
+            }
+            boolean assignedRoomOccupied = bookingDetailRepository
+                    .findOverlappingSchedule(
+                            requestedDetail.getCheckInTarget(),
+                            requestedDetail.getCheckOutTarget()
+                    )
+                    .stream()
+                    .filter(detail -> detail.getBooking() != null)
+                    .filter(detail -> !Objects.equals(detail.getBooking().getId(), currentBookingId))
+                    .filter(detail -> detail.getRoom() != null
+                            && Objects.equals(detail.getRoom().getId(), requestedDetail.getRoom().getId()))
+                    .anyMatch(BookingInventoryPolicy::blocksInventory);
+            if (assignedRoomOccupied) {
+                throw new IllegalArgumentException(
+                        "Phòng vừa được khách khác xác nhận. Vui lòng chọn phòng khác."
+                );
+            }
+        }
+
+        List<AvailabilityKey> orderedSlots = new ArrayList<>(requestedBySlot.keySet());
+        orderedSlots.sort(Comparator.comparing(AvailabilityKey::roomTypeId)
+                .thenComparing(AvailabilityKey::checkInTarget)
+                .thenComparing(AvailabilityKey::checkOutTarget));
+        for (AvailabilityKey slot : orderedSlots) {
+            long occupiedRooms = bookingDetailRepository
+                    .findOverlappingSchedule(slot.checkInTarget(), slot.checkOutTarget())
+                    .stream()
+                    .filter(detail -> detail.getBooking() != null)
+                    .filter(detail -> !Objects.equals(detail.getBooking().getId(), currentBookingId))
+                    .filter(detail -> detail.getRoomType() != null
+                            && Objects.equals(detail.getRoomType().getId(), slot.roomTypeId()))
+                    .filter(BookingInventoryPolicy::blocksInventory)
+                    .count();
+            int totalRooms = roomRepository.findByRoomTypeId(slot.roomTypeId()).size();
+            if (totalRooms - occupiedRooms < requestedBySlot.get(slot)) {
+                throw new IllegalArgumentException(
+                        "Phòng vừa được khách khác xác nhận. Vui lòng chọn phòng khác."
+                );
+            }
+        }
+    }
+
+    private record AvailabilityKey(
+            Long roomTypeId,
+            LocalDateTime checkInTarget,
+            LocalDateTime checkOutTarget
+    ) {
     }
 
     private void validatePaymentConfiguration() {

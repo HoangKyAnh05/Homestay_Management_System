@@ -21,6 +21,7 @@ import com.homestayManagement.homestayManagement.repository.CheckInRecordReposit
 import com.homestayManagement.homestayManagement.repository.EmployeeRepository;
 import com.homestayManagement.homestayManagement.repository.RoomRepository;
 import com.homestayManagement.homestayManagement.service.AdminCheckInRegistrationService;
+import com.homestayManagement.homestayManagement.service.StayAccessService;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -43,6 +44,7 @@ public class AdminCheckInRegistrationServiceImpl implements AdminCheckInRegistra
     private final CheckInRecordRepository checkInRecordRepository;
     private final RoomRepository roomRepository;
     private final EmployeeRepository employeeRepository;
+    private final StayAccessService stayAccessService;
 
     public AdminCheckInRegistrationServiceImpl(
             BookingDetailRepository bookingDetailRepository,
@@ -50,7 +52,8 @@ public class AdminCheckInRegistrationServiceImpl implements AdminCheckInRegistra
             BookingGuestRepository bookingGuestRepository,
             CheckInRecordRepository checkInRecordRepository,
             RoomRepository roomRepository,
-            EmployeeRepository employeeRepository
+            EmployeeRepository employeeRepository,
+            StayAccessService stayAccessService
     ) {
         this.bookingDetailRepository = bookingDetailRepository;
         this.bookingRepository = bookingRepository;
@@ -58,6 +61,7 @@ public class AdminCheckInRegistrationServiceImpl implements AdminCheckInRegistra
         this.checkInRecordRepository = checkInRecordRepository;
         this.roomRepository = roomRepository;
         this.employeeRepository = employeeRepository;
+        this.stayAccessService = stayAccessService;
     }
 
     @Override
@@ -71,6 +75,7 @@ public class AdminCheckInRegistrationServiceImpl implements AdminCheckInRegistra
         boolean preRegistered = hasCompletePreRegistration(detail, registeredGuests);
         return new AdminCheckInPreparationResponse(
                 detail.getBooking().getId(),
+                detail.getBooking().getBookingCode(),
                 detail.getId(),
                 roomType != null ? roomType.getName() : null,
                 detail.getCheckInTarget(),
@@ -120,7 +125,7 @@ public class AdminCheckInRegistrationServiceImpl implements AdminCheckInRegistra
 
         bookingGuestRepository.deleteByBookingDetailId(detail.getId());
         bookingGuestRepository.flush();
-        List<BookingGuest> guests = buildGuests(detail, request.guests());
+        List<BookingGuest> guests = buildGuests(detail, request.guests(), request.representativeEmail());
         bookingGuestRepository.saveAll(guests);
 
         CheckInRecord record = CheckInRecord.builder()
@@ -133,9 +138,17 @@ public class AdminCheckInRegistrationServiceImpl implements AdminCheckInRegistra
                 .build();
         checkInRecordRepository.save(record);
 
+        StayAccessService.GrantResult grant = stayAccessService.grantAccess(
+                detail,
+                record,
+                request.guests().getFirst().fullName(),
+                request.representativeEmail()
+        );
+
         return new AdminCompleteCheckInResponse(
-                detail.getBooking().getId(), detail.getId(), room.getId(), room.getRoomNumber(),
-                detail.getStatus(), now, guests.size()
+                detail.getBooking().getId(), detail.getBooking().getBookingCode(), detail.getId(), room.getId(), room.getRoomNumber(),
+                detail.getStatus(), now, guests.size(),
+                grant.accessId(), grant.email(), grant.status(), grant.activationRequired(), grant.emailQueued()
         );
     }
 
@@ -214,7 +227,11 @@ public class AdminCheckInRegistrationServiceImpl implements AdminCheckInRegistra
         }
     }
 
-    private List<BookingGuest> buildGuests(BookingDetail detail, List<AdminCheckInGuestRequest> requests) {
+    private List<BookingGuest> buildGuests(
+            BookingDetail detail,
+            List<AdminCheckInGuestRequest> requests,
+            String representativeEmail
+    ) {
         return java.util.stream.IntStream.range(0, requests.size())
                 .mapToObj(index -> {
                     AdminCheckInGuestRequest request = requests.get(index);
@@ -225,7 +242,9 @@ public class AdminCheckInRegistrationServiceImpl implements AdminCheckInRegistra
                             .identityDocumentType("CCCD")
                             .identityDocumentNumber(request.identityDocumentNumber().trim())
                             .dateOfBirth(request.dateOfBirth())
-                            .email(blankToNull(request.email()))
+                            .email(index == 0
+                                    ? representativeEmail.trim().toLowerCase()
+                                    : blankToNull(request.email()))
                             .phone(blankToNull(request.phone()))
                             .address(blankToNull(request.address()))
                             .gender(blankToNull(request.gender()))

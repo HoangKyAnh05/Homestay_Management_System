@@ -1,0 +1,65 @@
+@startuml
+actor Admin
+boundary "RevenueDashboardPage" as Page
+control "AdminDashboardController" as Controller
+control "AdminDashboardServiceImpl" as Service
+entity "InvoiceRepository" as InvoiceRepo
+entity "BookingDetailRepository" as DetailRepo
+entity "RoomRepository" as RoomRepo
+database "Database" as Database
+
+autonumber
+
+Admin -> Page : Select report date range (fromDate, toDate) and load dashboard
+activate Page
+
+Page -> Controller : GET /api/admin/dashboard/summary (fromDate, toDate) [Bearer Token]
+activate Controller
+
+Controller -> Service : getSummary(fromDate, toDate)
+activate Service
+
+alt toDate is before fromDate
+    Service --> Controller : Throw IllegalArgumentException("Ngày kết thúc phải sau ngày bắt đầu")
+    Controller --> Page : Return HTTP 400 Bad Request
+    Page --> Admin : Display date range error message
+else Valid date range
+    Service -> InvoiceRepo : findByCreatedAtRangeForDashboard(start, end)
+    activate InvoiceRepo
+    InvoiceRepo -> Database : Fetch paid invoices in range
+    activate Database
+    Database --> InvoiceRepo : Return Invoices list
+    deactivate Database
+    InvoiceRepo --> Service : Return Invoices list
+    deactivate InvoiceRepo
+
+    Service -> DetailRepo : findDashboardDetails(start, end)
+    activate DetailRepo
+    DetailRepo -> Database : Fetch booking details in range
+    activate Database
+    Database --> DetailRepo : Return BookingDetails list
+    deactivate Database
+    DetailRepo --> Service : Return BookingDetails list
+    deactivate DetailRepo
+
+    Service -> RoomRepo : count()
+    activate RoomRepo
+    RoomRepo -> Database : Count total active rooms
+    activate Database
+    Database --> RoomRepo : Return count
+    deactivate Database
+    RoomRepo --> Service : Return count
+    deactivate RoomRepo
+
+    Service -> Service : Aggregate KPI stats, revenue trend, and room occupancy rates
+
+    Service --> Controller : Return AdminDashboardSummaryResponse
+    deactivate Service
+
+    Controller --> Page : Return HTTP 200 OK (Dashboard summary statistics)
+    deactivate Controller
+
+    Page --> Admin : Render charts, revenue breakdowns, and KPI widgets
+    deactivate Page
+end
+@endum

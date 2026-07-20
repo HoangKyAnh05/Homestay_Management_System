@@ -1,0 +1,78 @@
+@startuml
+title Package Diagram - Frontend (React + Vite)
+footer Page 1 of 1
+
+' Style settings
+skinparam handwritten false
+skinparam shadow 2
+skinparam roundCorner 8
+skinparam defaultFontName "Helvetica Neue", Arial, sans-serif
+skinparam defaultFontSize 12
+skinparam defaultFontColor #222222
+skinparam BackgroundColor #FFFFFF
+
+' Colors (Airbnb-inspired Rausch theme)
+!define PRIMARY #FF385C
+!define INK #222222
+!define BORDER #FF385C
+!define PKG_BG #FFF0F2
+!define SUB_PKG_BG #FFFFFF
+
+skinparam ArrowColor PRIMARY
+skinparam ArrowThickness 1.2
+skinparam ArrowFontColor INK
+skinparam ArrowFontSize 10
+
+skinparam package {
+    BackgroundColor PKG_BG
+    BorderColor BORDER
+    FontColor #FF385C
+    FontSize 13
+    FontStyle bold
+}
+
+package "frontendHomestayManagement (src)" as FrontendSrc {
+    
+    package "assets" as AssetsPkg #FFFFFF
+    
+    package "utils" as UtilsPkg #FFFFFF
+    
+    package "services" as ServicesPkg #FFFFFF
+    
+    package "components" as ComponentsPkg #FFFFFF
+    
+    package "pages" as PagesPkg #FFFFFF {
+        package "Home" as HomePkg #FDFDFD
+        package "Rooms" as RoomsPkg #FDFDFD
+        package "Login" as LoginPkg #FDFDFD
+        package "Register" as RegisterPkg #FDFDFD
+        package "Profile" as ProfilePkg #FDFDFD
+        package "BookingHistory" as BookingHistoryPkg #FDFDFD
+        package "ForgotPassword" as ForgotPasswordPkg #FDFDFD
+        package "Admin" as AdminPkg #FDFDFD
+    }
+    
+    package "Root (App/Main)" as RootPkg #FFFFFF {
+        rectangle App as "App.jsx"
+        rectangle Main as "main.jsx"
+    }
+}
+
+' External Backend API Connection
+rectangle "Backend API\n(Spring Boot RestControllers)" as BackendAPI #F5EBF7
+
+' Dependencies
+RootPkg ..> PagesPkg : "<<route>>"
+RootPkg ..> AssetsPkg : "<<import styles/assets>>"
+
+PagesPkg ..> ComponentsPkg : "<<use UI components>>"
+PagesPkg ..> ServicesPkg : "<<call API>>"
+PagesPkg ..> UtilsPkg : "<<use helpers>>"
+
+ComponentsPkg ..> UtilsPkg : "<<use helpers>>"
+ComponentsPkg ..> AssetsPkg : "<<use assets>>"
+
+ServicesPkg ..> UtilsPkg : "<<manage JWT/storage>>"
+ServicesPkg ..> BackendAPI : "HTTP REST Requests\n(JSON + JWT)"
+
+@endum

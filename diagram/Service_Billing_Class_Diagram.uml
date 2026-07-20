@@ -1,0 +1,174 @@
+@startuml
+title Service & Billing Management Class Diagram
+skinparam classAttributeIconSize 0
+
+package "controller" {
+  class AdminServiceCatalogController {
+    + getAllFacilityServices(): List<FacilityServiceResponse>
+    + createFacilityService(request: FacilityServiceRequest): ResponseEntity<FacilityServiceResponse>
+    + updateFacilityService(id: Long, request: FacilityServiceRequest): FacilityServiceResponse
+    + deleteFacilityService(id: Long): ResponseEntity<Void>
+    + getAllInventoryServices(): List<InventoryServiceResponse>
+    + createInventoryService(request: InventoryServiceRequest): ResponseEntity<InventoryServiceResponse>
+    + updateInventoryService(id: Long, request: InventoryServiceRequest): InventoryServiceResponse
+    + deleteInventoryService(id: Long): ResponseEntity<Void>
+  }
+  class AdminMiniBarItemController {
+    + getAllMiniBarItems(): List<RoomMiniBarItemResponse>
+    + createMiniBarItem(request: MiniBarItemRequest): ResponseEntity<RoomMiniBarItemResponse>
+    + updateMiniBarItem(id: Long, request: MiniBarItemRequest): RoomMiniBarItemResponse
+    + deleteMiniBarItem(id: Long): ResponseEntity<Void>
+  }
+  class AdminRulesPenaltyController {
+    + getAllRulesPenalties(): List<RulesPenaltyResponse>
+    + createRulesPenalty(request: RulesPenaltyRequest): ResponseEntity<RulesPenaltyResponse>
+    + updateRulesPenalty(id: Long, request: RulesPenaltyRequest): RulesPenaltyResponse
+    + deleteRulesPenalty(id: Long): ResponseEntity<Void>
+  }
+  class AdminInvoiceController {
+    + getInvoiceByBooking(bookingId: Long): AdminInvoiceResponse
+    + createInvoice(bookingId: Long): AdminInvoiceResponse
+  }
+}
+
+package "service" {
+  interface AdminServiceCatalogService {
+    + getAllFacilityServices(): List<FacilityServiceResponse>
+    + createFacilityService(request: FacilityServiceRequest): FacilityServiceResponse
+    + updateFacilityService(id: Long, request: FacilityServiceRequest): FacilityServiceResponse
+    + deleteFacilityService(id: Long): void
+    + getAllInventoryServices(): List<InventoryServiceResponse>
+    + createInventoryService(request: InventoryServiceRequest): InventoryServiceResponse
+    + updateInventoryService(id: Long, request: InventoryServiceRequest): InventoryServiceResponse
+    + deleteInventoryService(id: Long): void
+  }
+  class AdminServiceCatalogServiceImpl {
+    - facilityServiceRepository: FacilityServiceRepository
+    - inventoryServiceRepository: InventoryServiceRepository
+  }
+
+  interface AdminMiniBarItemService {
+    + getAllMiniBarItems(): List<RoomMiniBarItemResponse>
+    + createMiniBarItem(request: MiniBarItemRequest): RoomMiniBarItemResponse
+    + updateMiniBarItem(id: Long, request: MiniBarItemRequest): RoomMiniBarItemResponse
+    + deleteMiniBarItem(id: Long): void
+  }
+  class AdminMiniBarItemServiceImpl {
+    - miniBarItemRepository: RoomMiniBarItemRepository
+  }
+
+  interface AdminRulesPenaltyService {
+    + getAllRulesPenalties(): List<RulesPenaltyResponse>
+    + createRulesPenalty(request: RulesPenaltyRequest): RulesPenaltyResponse
+    + updateRulesPenalty(id: Long, request: RulesPenaltyRequest): RulesPenaltyResponse
+    + deleteRulesPenalty(id: Long): void
+  }
+  class AdminRulesPenaltyServiceImpl {
+    - rulesPenaltyRepository: RulesPenaltyRepository
+  }
+
+  interface AdminInvoiceService {
+    + getInvoiceByBooking(bookingId: Long): AdminInvoiceResponse
+    + createInvoice(bookingId: Long): AdminInvoiceResponse
+  }
+  class AdminInvoiceServiceImpl {
+    - invoiceRepository: InvoiceRepository
+    - bookingRepository: BookingRepository
+    - checkInRecordRepository: CheckInRecordRepository
+    - minibarUsageRepository: RoomAmenitiesUsageRepository
+    - serviceUsageRepository: ServiceUsageRepository
+    - appliedPenaltyRepository: AppliedPenaltyRepository
+  }
+}
+
+package "repository" {
+  interface FacilityServiceRepository
+  interface InventoryServiceRepository
+  interface RoomMiniBarItemRepository
+  interface RulesPenaltyRepository
+  interface InvoiceRepository
+  interface RoomAmenitiesUsageRepository
+  interface ServiceUsageRepository
+  interface AppliedPenaltyRepository
+}
+
+package "entity" {
+  class FacilityService {
+    - id: Long
+    - name: String
+    - price: BigDecimal
+    - isActive: boolean
+  }
+  class InventoryService {
+    - id: Long
+    - name: String
+    - price: BigDecimal
+    - quantityInStock: int
+  }
+  class RoomMiniBarItem {
+    - id: Long
+    - name: String
+    - price: BigDecimal
+    - quantityInStock: int
+  }
+  class RulesPenalty {
+    - id: Long
+    - title: String
+    - penaltyAmount: BigDecimal
+  }
+  class AppliedPenalty {
+    - id: Long
+    - actualFine: BigDecimal
+    - description: String
+  }
+  class RoomAmenitiesUsage {
+    - id: Long
+    - quantityUsed: int
+  }
+  class ServiceUsage {
+    - id: Long
+    - quantity: int
+    - priceAtUse: BigDecimal
+  }
+  class Invoice {
+    - id: Long
+    - roomCharge: BigDecimal
+    - penaltyCharge: BigDecimal
+    - serviceCharge: BigDecimal
+    - totalAmount: BigDecimal
+    - createdAt: LocalDateTime
+  }
+}
+
+AdminServiceCatalogController --> AdminServiceCatalogService
+AdminMiniBarItemController --> AdminMiniBarItemService
+AdminRulesPenaltyController --> AdminRulesPenaltyService
+AdminInvoiceController --> AdminInvoiceService
+
+AdminServiceCatalogServiceImpl ..|> AdminServiceCatalogService
+AdminMiniBarItemServiceImpl ..|> AdminMiniBarItemService
+AdminRulesPenaltyServiceImpl ..|> AdminRulesPenaltyService
+AdminInvoiceServiceImpl ..|> AdminInvoiceService
+
+AdminServiceCatalogServiceImpl --> FacilityServiceRepository
+AdminServiceCatalogServiceImpl --> InventoryServiceRepository
+AdminMiniBarItemServiceImpl --> RoomMiniBarItemRepository
+AdminRulesPenaltyServiceImpl --> RulesPenaltyRepository
+AdminInvoiceServiceImpl --> InvoiceRepository
+
+FacilityServiceRepository ..> FacilityService
+InventoryServiceRepository ..> InventoryService
+RoomMiniBarItemRepository ..> RoomMiniBarItem
+RulesPenaltyRepository ..> RulesPenalty
+InvoiceRepository ..> Invoice
+RoomAmenitiesUsageRepository ..> RoomAmenitiesUsage
+ServiceUsageRepository ..> ServiceUsage
+AppliedPenaltyRepository ..> AppliedPenalty
+Invoice "1" *-- "many" ServiceUsage
+Invoice "1" *-- "many" RoomAmenitiesUsage
+Invoice "1" *-- "many" AppliedPenalty
+RoomAmenitiesUsage --> RoomMiniBarItem
+AppliedPenalty --> RulesPenalty
+ServiceUsage --> FacilityService
+ServiceUsage --> InventoryService
+@enduml

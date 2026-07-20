@@ -1,0 +1,83 @@
+@startuml
+actor Admin
+boundary "AdminReviewsPage" as Page
+control "AdminReviewController" as Controller
+control "ReviewServiceImpl" as Service
+entity "ReviewRepository" as ReviewRepo
+database "Database" as Database
+
+autonumber
+
+== View All Reviews ==
+Admin -> Page : Navigate to "Manage Reviews" tab
+activate Page
+
+Page -> Controller : GET /api/admin/reviews [Bearer Token]
+activate Controller
+
+Controller -> Service : getAllReviews()
+activate Service
+
+Service -> ReviewRepo : findAll()
+activate ReviewRepo
+ReviewRepo -> Database : Query all reviews
+activate Database
+Database --> ReviewRepo : Return reviews list
+deactivate Database
+ReviewRepo --> Service : Return list of Review entities
+deactivate ReviewRepo
+
+Service --> Controller : Return List<ReviewResponse>
+deactivate Service
+
+Controller --> Page : Return HTTP 200 OK (List of ReviewResponse)
+deactivate Controller
+
+Page --> Admin : Render list of reviews (rating, comment, status)
+deactivate Page
+
+== Moderate Review (Approve/Hide) ==
+Admin -> Page : Click "Approve" or "Hide" on a review card
+activate Page
+
+Page -> Controller : PUT /api/admin/reviews/{reviewId}/status (UpdateReviewStatusRequest) [Bearer Token]
+activate Controller
+
+Controller -> Service : updateReviewStatus(reviewId, request)
+activate Service
+
+Service -> ReviewRepo : findById(reviewId)
+activate ReviewRepo
+ReviewRepo -> Database : Query Review by ID
+activate Database
+Database --> ReviewRepo : Return Review entity
+deactivate Database
+ReviewRepo --> Service : Return Review
+deactivate ReviewRepo
+
+alt Review not found
+    Service --> Controller : Throw IllegalArgumentException
+    Controller --> Page : Return HTTP 404 Not Found
+    Page --> Admin : Display error message
+else Review found
+    Service -> Service : Update Review status (APPROVED / HIDDEN)
+    
+    Service -> ReviewRepo : save(Review)
+    activate ReviewRepo
+    ReviewRepo -> Database : Update Review status in DB
+    activate Database
+    Database --> ReviewRepo : Success
+    deactivate Database
+    ReviewRepo --> Service : Return saved Review
+    deactivate ReviewRepo
+
+    Service --> Controller : Return success response (updated ReviewDetails)
+    deactivate Service
+
+    Controller --> Page : Return HTTP 200 OK (Success)
+    deactivate Controller
+
+    Page --> Admin : Refresh reviews list grid and show updated status
+    deactivate Page
+end
+@endum

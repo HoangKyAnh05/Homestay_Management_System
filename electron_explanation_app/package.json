@@ -1,0 +1,12 @@
+{
+  "name": "homestay-code-flow-explorer",
+  "version": "1.0.0",
+  "description": "Interactive code flow explorer for Homestay Management System",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^31.0.0"
+  }
+}

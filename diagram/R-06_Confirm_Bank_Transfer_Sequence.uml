@@ -1,0 +1,75 @@
+@startuml
+actor Receptionist
+boundary "AdminBookingsPage" as Page
+control "AdminBookingController" as Controller
+control "AdminBookingServiceImpl" as Service
+entity "BookingRepository" as BookingRepo
+entity "PaymentRepository" as PaymentRepo
+database "Database" as Database
+
+autonumber
+
+Receptionist -> Page : View booking details and click "Confirm Bank Transfer"
+activate Page
+
+Page -> Controller : POST /api/admin/bookings/details/{bookingDetailId}/confirm-bank-transfer [Bearer Token]
+activate Controller
+
+Controller -> Service : confirmBankTransfer(bookingDetailId)
+activate Service
+
+Service -> BookingRepo : findById(bookingId)
+activate BookingRepo
+BookingRepo -> Database : Query Booking entity
+activate Database
+Database --> BookingRepo : Return Booking
+deactivate Database
+BookingRepo --> Service : Return Booking
+deactivate BookingRepo
+
+alt Booking not found OR already COMPLETED
+    Service --> Controller : Throw IllegalArgumentException("Không tìm thấy booking hợp lệ")
+    Controller --> Page : Return HTTP 400 Bad Request
+    Page --> Receptionist : Display error message
+else Booking is valid
+    Service -> PaymentRepo : findFirstByInvoiceIdAndStatus(...)
+    activate PaymentRepo
+    PaymentRepo -> Database : Query Payment details
+    activate Database
+    Database --> PaymentRepo : Return Payment entity
+    deactivate Database
+    PaymentRepo --> Service : Return Payment
+    deactivate PaymentRepo
+
+    Service -> Service : Update Payment status to 'SUCCESS' and record manual transaction details
+    
+    Service -> PaymentRepo : save(Payment)
+    activate PaymentRepo
+    PaymentRepo -> Database : Update payment in DB
+    activate Database
+    Database --> PaymentRepo : Success
+    deactivate Database
+    PaymentRepo --> Service : Return saved Payment
+    deactivate PaymentRepo
+
+    Service -> Service : Update Booking status to 'CONFIRMED'
+    
+    Service -> BookingRepo : save(Booking)
+    activate BookingRepo
+    BookingRepo -> Database : Update booking status = 'CONFIRMED'
+    activate Database
+    Database --> BookingRepo : Success
+    deactivate Database
+    BookingRepo --> Service : Return saved Booking
+    deactivate BookingRepo
+
+    Service --> Controller : Return success response (updated Booking details)
+    deactivate Service
+
+    Controller --> Page : Return HTTP 200 OK (Success status)
+    deactivate Controller
+
+    Page --> Receptionist : Update weekly schedule grid, show success banner & mark status as CONFIRMED
+    deactivate Page
+end
+@endum

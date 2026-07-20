@@ -1,0 +1,79 @@
+@startuml
+title Loyalty & Voucher Management Class Diagram
+skinparam classAttributeIconSize 0
+
+package "controller" {
+  class MarketerVoucherController {
+    + getAllVouchers(): List<VoucherResponse>
+    + createVoucher(request: CreateVoucherRequest): ResponseEntity<VoucherResponse>
+  }
+  class MarketerLoyaltyController {
+    + getLoyaltyConfiguration(): LoyaltyConfigResponse
+    + updateLoyaltyConfiguration(request: UpdateLoyaltyConfigRequest): ResponseEntity<Void>
+  }
+}
+
+package "service" {
+  interface VoucherService {
+    + getAllVouchers(): List<VoucherResponse>
+    + createVoucher(request: CreateVoucherRequest): VoucherResponse
+  }
+  class VoucherServiceImpl {
+    - voucherRepository: VoucherRepository
+  }
+  
+  interface LoyaltyService {
+    + getLoyaltyConfiguration(): LoyaltyConfigResponse
+    + updateLoyaltyConfiguration(request: UpdateLoyaltyConfigRequest): void
+  }
+  class LoyaltyServiceImpl {
+    - loyaltyConfigRepository: LoyaltyConfigRepository
+  }
+}
+
+package "repository" {
+  interface VoucherRepository
+  interface LoyaltyConfigRepository
+  interface CustomerLoyaltyRepository
+}
+
+package "entity" {
+  class Voucher {
+    - id: Long
+    - code: String
+    - discountType: String
+    - discountValue: BigDecimal
+    - minOrderValue: BigDecimal
+    - maxDiscountAmount: BigDecimal
+    - startDate: LocalDateTime
+    - endDate: LocalDateTime
+    - usageLimit: int
+    - usedCount: int
+  }
+  class CustomerLoyalty {
+    - id: Long
+    - customerId: Long
+    - currentPoints: int
+    - totalEarnedPoints: int
+  }
+  class LoyaltyConfig {
+    - id: Long
+    - pointConversionRate: double
+    - tierThresholdGold: int
+    - tierThresholdPlatinum: int
+    - isActive: boolean
+  }
+}
+
+MarketerVoucherController --> VoucherService
+MarketerLoyaltyController --> LoyaltyService
+
+VoucherServiceImpl ..|> VoucherService
+LoyaltyServiceImpl ..|> LoyaltyService
+
+VoucherServiceImpl --> VoucherRepository
+LoyaltyServiceImpl --> LoyaltyConfigRepository
+
+VoucherRepository ..> Voucher
+LoyaltyConfigRepository ..> LoyaltyConfig
+@enduml

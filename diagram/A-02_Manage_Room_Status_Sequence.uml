@@ -1,0 +1,73 @@
+@startuml
+actor Admin
+boundary "RoomsManagementPage" as Page
+control "AdminRoomController" as Controller
+control "AdminRoomServiceImpl" as Service
+entity "RoomRepository" as RoomRepo
+entity "RoomTypeRepository" as RoomTypeRepo
+database "Database" as Database
+
+autonumber
+
+Admin -> Page : Select room status (e.g., MAINTENANCE, CLEANING) and click "Update Room"
+activate Page
+
+Page -> Controller : PUT /api/admin/rooms/{id} (RoomRequest) [Bearer Token]
+activate Controller
+
+Controller -> Service : updateRoom(id, request)
+activate Service
+
+Service -> RoomRepo : findById(id)
+activate RoomRepo
+RoomRepo -> Database : Query Room by ID
+activate Database
+Database --> RoomRepo : Return Room entity (or empty)
+deactivate Database
+RoomRepo --> Service : Return Room
+deactivate RoomRepo
+
+Service -> RoomRepo : existsByRoomNumberAndIdNot(request.roomNumber(), id)
+activate RoomRepo
+RoomRepo -> Database : Query existing rooms with same number and different ID
+activate Database
+Database --> RoomRepo : Return boolean
+deactivate Database
+RoomRepo --> Service : Return exists flag
+deactivate RoomRepo
+
+Service -> RoomTypeRepo : findById(request.roomTypeId())
+activate RoomTypeRepo
+RoomTypeRepo -> Database : Query RoomType by ID
+activate Database
+Database --> RoomTypeRepo : Return RoomType
+deactivate Database
+RoomTypeRepo --> Service : Return RoomType
+deactivate RoomTypeRepo
+
+alt Invalid status OR Room not found OR Room number already exists
+    Service --> Controller : Throw IllegalArgumentException
+    Controller --> Page : Return HTTP 400 Bad Request
+    Page --> Admin : Display validation error message
+else Valid status & details update
+    Service -> Service : Update room details & status\n(roomNumber, roomType, status)
+
+    Service -> RoomRepo : save(room)
+    activate RoomRepo
+    RoomRepo -> Database : Update Room entity in DB
+    activate Database
+    Database --> RoomRepo : Return saved Room
+    deactivate Database
+    RoomRepo --> Service : Return saved Room entity
+    deactivate RoomRepo
+
+    Service --> Controller : Return AdminRoomResponse
+    deactivate Service
+
+    Controller --> Page : Return HTTP 200 OK (AdminRoomResponse)
+    deactivate Controller
+
+    Page --> Admin : Render updated room status badge & show success message
+    deactivate Page
+end
+@endum

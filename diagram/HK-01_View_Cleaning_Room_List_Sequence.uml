@@ -1,0 +1,45 @@
+@startuml
+actor HousekeepingStaff
+boundary "HousekeepingDashboardPage" as Page
+control "HousekeepingController" as Controller
+control "HousekeepingServiceImpl" as Service
+entity "HousekeepingTaskRepository" as TaskRepo
+database "Database" as Database
+
+autonumber
+
+HousekeepingStaff -> Page : Open dashboard & select filter status (e.g. ALL, PENDING, IN_PROGRESS)
+activate Page
+
+Page -> Controller : GET /api/housekeeping/tasks?status={status} [Bearer Token]
+activate Controller
+
+Controller -> Service : getTasks(status)
+activate Service
+
+alt Invalid filter status value
+    Service --> Controller : Throw IllegalArgumentException("Trạng thái lọc không hợp lệ")
+    Controller --> Page : Return HTTP 400 Bad Request
+    Page --> HousekeepingStaff : Display invalid filter warning toast
+else Valid status value
+    Service -> TaskRepo : findAllForHousekeeping()
+    activate TaskRepo
+    TaskRepo -> Database : Fetch all cleaning/inspection tasks
+    activate Database
+    Database --> TaskRepo : Return list of HousekeepingTasks
+    deactivate Database
+    TaskRepo --> Service : Return list of HousekeepingTasks
+    deactivate TaskRepo
+
+    Service -> Service : Filter task list based on normalized status parameter & build responses
+
+    Service --> Controller : Return List<HousekeepingTaskResponse>
+    deactivate Service
+
+    Controller --> Page : Return HTTP 200 OK (List of tasks)
+    deactivate Controller
+
+    Page --> HousekeepingStaff : Render task list grid showing room numbers, checkout times & assignment status
+    deactivate Page
+end
+@endum

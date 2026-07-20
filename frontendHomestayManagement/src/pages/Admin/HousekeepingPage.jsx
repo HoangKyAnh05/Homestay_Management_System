@@ -5,6 +5,10 @@ import './HousekeepingPage.css'
 
 const API = 'http://localhost:8080/api/housekeeping'
 
+function bookingDisplay(booking) {
+  return booking?.bookingCode || `#${booking?.bookingId || ''}`
+}
+
 const TABS = [
   { key: 'PENDING', label: 'Chờ kiểm tra' },
   { key: 'IN_PROGRESS', label: 'Đang thực hiện' },
@@ -54,7 +58,7 @@ function TaskCard({ task, active, onClick }) {
         <StatusBadge task={task} />
       </div>
       <h3>Phòng {task.roomNumber}</h3>
-      <p>{task.customerName || 'Khách lưu trú'} · Booking #{task.bookingId}</p>
+      <p>{task.customerName || 'Khách lưu trú'} · Booking {bookingDisplay(task)}</p>
       <div className="hk-task-meta">
         <span>Trả phòng {time(task.checkOutTarget)}</span>
         <strong>{money(task.totalMiniBarCharge)}</strong>
@@ -120,7 +124,7 @@ function TaskDetail({ task, busy, onStart, onSubmitInspection, onCompleteCleanin
     <section className="hk-detail">
       <div className="hk-detail__head">
         <div>
-          <span className="hk-eyebrow">Booking #{task.bookingId}</span>
+          <span className="hk-eyebrow">Booking {bookingDisplay(task)}</span>
           <h2>Phòng {task.roomNumber}</h2>
           <p>{task.customerName} {task.customerPhone ? `· ${task.customerPhone}` : ''}</p>
         </div>
@@ -313,7 +317,10 @@ function HousekeepingPage() {
       <div className="hk-page">
         <header className="hk-page-head">
           <div><span className="hk-eyebrow">Vận hành phòng</span><h1>Housekeeping</h1><p>Kiểm tra chi phí trước checkout và theo dõi tiến độ dọn phòng.</p></div>
-          <button type="button" className="hk-refresh" onClick={() => loadTasks()} disabled={loading}>↻ Làm mới</button>
+          <button type="button" className="hk-refresh" onClick={() => loadTasks()} disabled={loading} aria-label="Làm mới danh sách">
+            <span aria-hidden="true">↻</span>
+            <span>Làm mới</span>
+          </button>
         </header>
 
         <div className="hk-stats">
@@ -330,7 +337,7 @@ function HousekeepingPage() {
           {TABS.map(item => <button type="button" key={item.key} className={tab === item.key ? 'is-active' : ''} onClick={() => { setTab(item.key); setSelectedId(null) }}>{item.label}<b>{count(item.key)}</b></button>)}
         </div>
 
-        <div className="hk-workspace">
+        <div className={`hk-workspace${selected ? ' hk-workspace--detail-open' : ''}`}>
           <div className="hk-list">
             {loading ? <div className="hk-list-empty">Đang tải công việc...</div> : visibleTasks.length === 0 ? <div className="hk-list-empty"><b>Không có phòng trong nhóm này</b><span>Danh sách sẽ tự cập nhật khi có yêu cầu mới.</span></div> : visibleTasks.map(task => <TaskCard key={task.id} task={task} active={task.id === selectedId} onClick={() => setSelectedId(task.id)} />)}
           </div>

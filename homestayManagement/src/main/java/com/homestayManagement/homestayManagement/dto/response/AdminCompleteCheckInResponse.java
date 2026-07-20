@@ -4,11 +4,17 @@ import java.time.LocalDateTime;
 
 public record AdminCompleteCheckInResponse(
         Long bookingId,
+        String bookingCode,
         Long bookingDetailId,
         Long roomId,
         String roomNumber,
         String status,
         LocalDateTime actualCheckIn,
-        int guestCount
+        int guestCount,
+        Long stayAccessId,
+        String representativeEmail,
+        String accessStatus,
+        boolean activationRequired,
+        boolean emailQueued
 ) {
 }

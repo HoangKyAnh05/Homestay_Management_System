@@ -1,0 +1,86 @@
+@startuml
+actor Customer
+boundary "BookingHistoryPage" as Page
+control "SePayPaymentController" as Controller
+control "SePayPaymentServiceImpl" as Service
+entity "BookingRepository" as BookingRepo
+entity "PaymentRepository" as PaymentRepo
+database "Database" as Database
+
+autonumber
+
+Customer -> Page : View pending booking and click "Pay Now"
+activate Page
+
+Page -> Controller : POST /api/payments/sepay/bookings/{bookingId} [Bearer Token]
+activate Controller
+
+Controller -> Service : createPayment(email, bookingId)
+activate Service
+
+Service -> Service : validatePaymentConfiguration()
+
+Service -> BookingRepo : findByIdForPaymentUpdate(bookingId)
+activate BookingRepo
+BookingRepo -> Database : Query Booking details
+activate Database
+Database --> BookingRepo : Return Booking entity
+deactivate Database
+BookingRepo --> Service : Return Booking
+deactivate BookingRepo
+
+alt Booking not found OR doesn't belong to Customer
+    Service --> Controller : Throw IllegalArgumentException
+    Controller --> Page : Return HTTP 400 Bad Request
+    Page --> Customer : Display error message
+else Booking belongs to Customer
+    alt Booking status is not PENDING
+        Service --> Controller : Throw IllegalArgumentException("Booking này không ở trạng thái chờ thanh toán")
+        Controller --> Page : Return HTTP 400 Bad Request
+        Page --> Customer : Display error message
+    else Booking status is PENDING
+        Service -> Service : getOrCreateInvoice(booking, details)
+        Service -> Service : calculateRequiredPayment(booking, details, totalAmount)
+
+        Service -> PaymentRepo : findFirstByInvoiceIdAndPaymentMethodAndPaymentPurposeAndStatusOrderByIdDesc(...)
+        activate PaymentRepo
+        PaymentRepo -> Database : Query existing pending payment
+        activate Database
+        Database --> PaymentRepo : Return Payment entity (or null)
+        deactivate Database
+        PaymentRepo --> Service : Return Payment (or null)
+        deactivate PaymentRepo
+
+        alt No existing pending payment found
+            Service -> PaymentRepo : save(Payment)
+            activate PaymentRepo
+            PaymentRepo -> Database : Insert Payment
+            activate Database
+            Database --> PaymentRepo : Return saved Payment
+            deactivate Database
+            PaymentRepo --> Service : Return saved Payment
+            deactivate PaymentRepo
+        end
+
+        Service -> Service : Generate QR code URL using amount and paymentCode
+        
+        Service -> PaymentRepo : save(payment)
+        activate PaymentRepo
+        PaymentRepo -> Database : Update payment with QR Code URL
+        activate Database
+        Database --> PaymentRepo : Success
+        deactivate Database
+        PaymentRepo --> Service : Return final Payment
+        deactivate PaymentRepo
+
+        Service --> Controller : Return SePayPaymentResponse (QR URL, amount, transferContent)
+        deactivate Service
+
+        Controller --> Page : Return HTTP 200 OK (SePayPaymentResponse)
+        deactivate Controller
+
+        Page --> Customer : Render QR Code payment modal for scanning
+        deactivate Page
+    end
+end
+@endum

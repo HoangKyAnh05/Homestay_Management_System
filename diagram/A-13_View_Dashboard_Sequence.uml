@@ -1,0 +1,59 @@
+@startuml
+actor Admin
+boundary "AdminDashboardPage" as Page
+control "AdminDashboardController" as Controller
+control "AdminDashboardServiceImpl" as Service
+entity "InvoiceRepository" as InvoiceRepo
+entity "BookingDetailRepository" as DetailRepo
+entity "RoomRepository" as RoomRepo
+database "Database" as Database
+
+autonumber
+
+Admin -> Page : Navigate to Admin Dashboard main page
+activate Page
+
+Page -> Controller : GET /api/admin/dashboard/summary [Bearer Token]
+activate Controller
+
+Controller -> Service : getSummary(null, null)
+activate Service
+
+Service -> InvoiceRepo : findByCreatedAtRangeForDashboard(startInclusive, endExclusive)
+activate InvoiceRepo
+InvoiceRepo -> Database : Fetch invoices for last 30 days
+activate Database
+Database --> InvoiceRepo : Return Invoices
+deactivate Database
+InvoiceRepo --> Service : Return Invoices
+deactivate InvoiceRepo
+
+Service -> DetailRepo : findDashboardDetails(startInclusive, endExclusive)
+activate DetailRepo
+DetailRepo -> Database : Fetch booking details for last 30 days
+activate Database
+Database --> DetailRepo : Return BookingDetails
+deactivate Database
+DetailRepo --> Service : Return BookingDetails
+deactivate DetailRepo
+
+Service -> RoomRepo : count()
+activate RoomRepo
+RoomRepo -> Database : Count total active rooms
+activate Database
+Database --> RoomRepo : Return count
+deactivate Database
+RoomRepo --> Service : Return count
+deactivate RoomRepo
+
+Service -> Service : Calculate KPIs (total revenue, occupancy rate, booking count)
+
+Service --> Controller : Return AdminDashboardSummaryResponse
+deactivate Service
+
+Controller --> Page : Return HTTP 200 OK (Dashboard summary statistics)
+deactivate Controller
+
+Page --> Admin : Render KPI widgets, revenue trends & occupancy charts
+deactivate Page
+@endum

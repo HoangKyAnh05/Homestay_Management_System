@@ -1,0 +1,72 @@
+@startuml
+title Package Diagram - Backend (Spring Boot)
+footer Page 1 of 1
+
+' Style settings
+skinparam handwritten false
+skinparam shadow 2
+skinparam roundCorner 8
+skinparam defaultFontName "Helvetica Neue", Arial, sans-serif
+skinparam defaultFontSize 12
+skinparam defaultFontColor #222222
+skinparam BackgroundColor #FFFFFF
+
+' Colors (Airbnb-inspired & Spring-inspired)
+!define PRIMARY #FF385C
+!define INK #222222
+!define BORDER #A88AB3
+!define PKG_BG #F5EBF7
+!define SUB_PKG_BG #FFFFFF
+
+skinparam ArrowColor PRIMARY
+skinparam ArrowThickness 1.2
+skinparam ArrowFontColor INK
+skinparam ArrowFontSize 10
+
+skinparam package {
+    BackgroundColor PKG_BG
+    BorderColor BORDER
+    FontColor #460479
+    FontSize 13
+    FontStyle bold
+}
+
+package "com.homestayManagement.homestayManagement" as MainPackage {
+    
+    package "config" as ConfigPkg #FFFFFF
+    
+    package "security" as SecurityPkg #FFFFFF
+    
+    package "controller" as ControllerPkg #FFFFFF
+    
+    package "dto" as DtoPkg #FFFFFF {
+        package "request" as ReqDtoPkg #FDFDFD
+        package "response" as ResDtoPkg #FDFDFD
+    }
+    
+    package "service" as ServicePkg #FFFFFF {
+        package "impl" as ServiceImplPkg #FDFDFD
+    }
+    
+    package "repository" as RepositoryPkg #FFFFFF
+    
+    package "entity" as EntityPkg #FFFFFF
+}
+
+' Package Dependencies
+ControllerPkg ..> DtoPkg : "<<use>>"
+ControllerPkg ..> ServicePkg : "<<call>>"
+ControllerPkg ..> SecurityPkg : "<<protect>>"
+
+ServicePkg ..> RepositoryPkg : "<<use>>"
+ServicePkg ..> DtoPkg : "<<use>>"
+ServicePkg ..> EntityPkg : "<<manage>>"
+
+RepositoryPkg ..> EntityPkg : "<<map>>"
+
+SecurityPkg ..> ConfigPkg : "<<configure>>"
+SecurityPkg ..> ServicePkg : "<<load user>>"
+
+ConfigPkg ..> ServicePkg : "<<inject>>"
+
+@endum

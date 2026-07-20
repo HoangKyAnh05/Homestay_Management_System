@@ -1,0 +1,83 @@
+@startuml
+actor Customer
+boundary "ProfilePage" as Page
+control "UserController" as Controller
+control "UserServiceImpl" as Service
+entity "CustomerRepository" as CustomerRepo
+database "Database" as Database
+
+autonumber
+
+== View Current Profile ==
+Customer -> Page : Navigate to Profile page
+activate Page
+
+Page -> Controller : GET /api/users/me [Bearer Token]
+activate Controller
+
+Controller -> Service : getCurrentUserProfile(email)
+activate Service
+
+Service -> CustomerRepo : findByAccountEmail(email)
+activate CustomerRepo
+CustomerRepo -> Database : Query Customer profile info
+activate Database
+Database --> CustomerRepo : Return Customer details
+deactivate Database
+CustomerRepo --> Service : Return Customer entity
+deactivate CustomerRepo
+
+Service --> Controller : Return UserResponse
+deactivate Service
+
+Controller --> Page : Return HTTP 200 OK (UserResponse)
+deactivate Controller
+
+Page --> Customer : Display current profile details
+deactivate Page
+
+== Update Profile ==
+Customer -> Page : Edit profile fields and click "Save"
+activate Page
+
+Page -> Controller : PUT /api/users/me (UpdateProfileRequest) [Bearer Token]
+activate Controller
+
+Controller -> Service : updateCurrentUserProfile(email, request)
+activate Service
+
+Service -> CustomerRepo : findByAccountEmail(email)
+activate CustomerRepo
+CustomerRepo -> Database : Query Customer
+activate Database
+Database --> CustomerRepo : Return Customer entity
+deactivate Database
+CustomerRepo --> Service : Return Customer
+deactivate CustomerRepo
+
+alt Customer not found
+    Service --> Controller : Throw IllegalArgumentException
+    Controller --> Page : Return HTTP 404 Not Found
+    Page --> Customer : Display error message
+else Customer found
+    Service -> Service : Update profile properties (fullName, phone, address, dateOfBirth)
+    
+    Service -> CustomerRepo : save(Customer)
+    activate CustomerRepo
+    CustomerRepo -> Database : Update Customer row in DB
+    activate Database
+    Database --> CustomerRepo : Success
+    deactivate Database
+    CustomerRepo --> Service : Return saved Customer
+    deactivate CustomerRepo
+
+    Service --> Controller : Return updated UserResponse
+    deactivate Service
+
+    Controller --> Page : Return HTTP 200 OK (UserResponse)
+    deactivate Controller
+
+    Page --> Customer : Show profile updated success notification
+    deactivate Page
+end
+@endum

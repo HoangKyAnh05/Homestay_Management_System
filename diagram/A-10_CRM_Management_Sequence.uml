@@ -1,0 +1,55 @@
+@startuml
+actor Admin
+boundary "CustomerManagementPage" as Page
+control "AdminUserController" as Controller
+control "AdminCustomerHistoryServiceImpl" as Service
+entity "CustomerRepository" as CustomerRepo
+entity "BookingRepository" as BookingRepo
+database "Database" as Database
+
+autonumber
+
+Admin -> Page : Click "View Booking History" for a specific customer
+activate Page
+
+Page -> Controller : GET /api/admin/users/{id}/booking-history [Bearer Token]
+activate Controller
+
+Controller -> Service : getBookingHistory(customerId)
+activate Service
+
+Service -> CustomerRepo : findById(customerId)
+activate CustomerRepo
+CustomerRepo -> Database : Query customer details
+activate Database
+Database --> CustomerRepo : Return Customer (or empty)
+deactivate Database
+CustomerRepo --> Service : Return Customer details
+deactivate CustomerRepo
+
+alt Customer not found
+    Service --> Controller : Throw IllegalArgumentException("Không tìm thấy hồ sơ khách hàng")
+    Controller --> Page : Return HTTP 400 Bad Request
+    Page --> Admin : Display customer missing error message
+else Customer found
+    Service -> BookingRepo : findByCustomerId(customerId)
+    activate BookingRepo
+    BookingRepo -> Database : Query historical bookings
+    activate Database
+    Database --> BookingRepo : Return Booking list
+    deactivate Database
+    BookingRepo --> Service : Return Booking list
+    deactivate BookingRepo
+
+    Service -> Service : Calculate total spent, cancellation rate & loyalty points
+
+    Service --> Controller : Return AdminCustomerBookingHistoryResponse
+    deactivate Service
+
+    Controller --> Page : Return HTTP 200 OK (Customer booking history details)
+    deactivate Controller
+
+    Page --> Admin : Render customer profile, booking stats & historical table
+    deactivate Page
+end
+@endum

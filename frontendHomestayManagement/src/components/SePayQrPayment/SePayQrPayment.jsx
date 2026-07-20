@@ -80,6 +80,12 @@ function SePayQrPayment({
                 <div><dt>Số tài khoản</dt><dd>{payment.accountNumber}</dd></div>
                 <div><dt>Chủ tài khoản</dt><dd>{payment.accountHolder}</dd></div>
                 <div><dt>Nội dung</dt><dd className="sepay-shared-code">{payment.transferContent}</dd></div>
+                {payment.holdExpiresAt && (
+                  <div>
+                    <dt>Giữ phòng đến</dt>
+                    <dd>{new Date(payment.holdExpiresAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</dd>
+                  </div>
+                )}
               </dl>
             </div>
           </>

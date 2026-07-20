@@ -1,0 +1,72 @@
+@startuml
+actor Admin
+boundary "EmployeesManagementPage" as Page
+control "AdminUserController" as Controller
+control "AdminUserServiceImpl" as Service
+entity "AccountRepository" as AccountRepo
+entity "RoleRepository" as RoleRepo
+entity "EmployeeRepository" as EmployeeRepo
+database "Database" as Database
+
+autonumber
+
+Admin -> Page : Enter employee email, full name, phone number, select role & click "Create"
+activate Page
+
+Page -> Controller : POST /api/admin/users (AdminCreateUserRequest) [Bearer Token]
+activate Controller
+
+Controller -> Service : createUser(request)
+activate Service
+
+Service -> AccountRepo : existsByEmail(request.email())
+activate AccountRepo
+AccountRepo -> Database : Check if email already registered
+activate Database
+Database --> AccountRepo : Return boolean
+deactivate Database
+AccountRepo --> Service : Return boolean
+deactivate AccountRepo
+
+alt Email already registered or invalid phone format
+    Service --> Controller : Throw IllegalArgumentException("Email đã được sử dụng")
+    Controller --> Page : Return HTTP 400 Bad Request
+    Page --> Admin : Display validation error message
+else Unique email & valid details
+    Service -> RoleRepo : findById(request.roleId())
+    activate RoleRepo
+    RoleRepo -> Database : Query Role details
+    activate Database
+    Database --> RoleRepo : Return Role
+    deactivate Database
+    RoleRepo --> Service : Return Role
+    deactivate RoleRepo
+
+    Service -> AccountRepo : save(Account)
+    activate AccountRepo
+    AccountRepo -> Database : Insert Account details
+    activate Database
+    Database --> AccountRepo : Return saved Account
+    deactivate Database
+    AccountRepo --> Service : Return Account
+    deactivate AccountRepo
+
+    Service -> EmployeeRepo : save(Employee)
+    activate EmployeeRepo
+    EmployeeRepo -> Database : Insert Employee profile details
+    activate Database
+    Database --> EmployeeRepo : Return saved Employee
+    deactivate Database
+    EmployeeRepo --> Service : Return Employee
+    deactivate EmployeeRepo
+
+    Service --> Controller : Return AdminUserResponse
+    deactivate Service
+
+    Controller --> Page : Return HTTP 201 Created (AdminUserResponse)
+    deactivate Controller
+
+    Page --> Admin : Add new employee to table & show success message
+    deactivate Page
+end
+@endum

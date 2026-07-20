@@ -1,0 +1,160 @@
+@startuml
+actor Guest
+boundary "RegisterPage" as Page
+control "AuthController" as Controller
+control "AuthServiceImpl" as Service
+entity "AccountRepository" as AccountRepo
+entity "CustomerRepository" as CustomerRepo
+entity "RoleRepository" as RoleRepo
+entity "OtpTokenRepository" as OtpRepo
+database "Database" as Database
+
+autonumber
+
+== Register & Send OTP ==
+Guest -> Page : Enter Register Details (email, password, fullName, phone) & submit
+activate Page
+
+Page -> Controller : POST /api/auth/register (RegisterRequest)
+activate Controller
+
+Controller -> Service : register(request)
+activate Service
+
+Service -> AccountRepo : existsByEmail(email)
+activate AccountRepo
+AccountRepo -> Database : Check if email exists
+activate Database
+Database --> AccountRepo : Return boolean
+deactivate Database
+AccountRepo --> Service : Return boolean
+deactivate AccountRepo
+
+alt Email already exists
+    Service --> Controller : Throw IllegalArgumentException("Email đã được sử dụng")
+    Controller --> Page : Return HTTP 400 Bad Request
+    Page --> Guest : Display "Email đã được sử dụng"
+else Email not registered
+    Service -> RoleRepo : findByName("ROLE_CUSTOMER")
+    activate RoleRepo
+    RoleRepo -> Database : Query Customer role
+    activate Database
+    Database --> RoleRepo : Return Role
+    deactivate Database
+    RoleRepo --> Service : Return Role
+    deactivate RoleRepo
+
+    Service -> AccountRepo : save(account)
+    activate AccountRepo
+    AccountRepo -> Database : Save Account (isActive = false)
+    activate Database
+    Database --> AccountRepo : Return Account
+    deactivate Database
+    AccountRepo --> Service : Return Account
+    deactivate AccountRepo
+
+    Service -> CustomerRepo : save(customer)
+    activate CustomerRepo
+    CustomerRepo -> Database : Save Customer profile
+    activate Database
+    Database --> CustomerRepo : Return Customer
+    deactivate Database
+    CustomerRepo --> Service : Return Customer
+    deactivate CustomerRepo
+
+    Service -> Service : sendEmailOtp(email)
+    activate Service
+    
+    Service -> OtpRepo : save(otpToken)
+    activate OtpRepo
+    OtpRepo -> Database : Save OTP token
+    activate Database
+    Database --> OtpRepo : Return saved OtpToken
+    deactivate Database
+    OtpRepo --> Service : Return OtpToken
+    deactivate OtpRepo
+    
+    Service -> Service : Send email via JavaMailSender
+    deactivate Service
+
+    Service --> Controller : Return success
+    deactivate Service
+
+    Controller --> Page : Return HTTP 200 OK (OTP Sent)
+    deactivate Controller
+
+    Page --> Guest : Display OTP input form
+end
+
+== Verify OTP & Complete Registration ==
+Guest -> Page : Enter OTP and submit
+activate Page
+
+Page -> Controller : POST /api/auth/verify-email (VerifyOtpRequest)
+activate Controller
+
+Controller -> Service : verifyEmail(request)
+activate Service
+
+Service -> OtpRepo : findTopByEmailOrderByExpiresAtDesc(email)
+activate OtpRepo
+OtpRepo -> Database : Query latest OTP token
+activate Database
+Database --> OtpRepo : Return OtpToken
+deactivate Database
+OtpRepo --> Service : Return OtpToken
+deactivate OtpRepo
+
+alt OTP Invalid / Expired
+    Service --> Controller : Throw IllegalArgumentException("Mã OTP không đúng hoặc hết hạn")
+    Controller --> Page : Return HTTP 401 Unauthorized
+    Page --> Guest : Display "Mã OTP không đúng hoặc hết hạn"
+else OTP Valid
+    Service -> AccountRepo : findByEmail(email)
+    activate AccountRepo
+    AccountRepo -> Database : Query Account
+    activate Database
+    Database --> AccountRepo : Return Account
+    deactivate Database
+    AccountRepo --> Service : Return Account
+    deactivate AccountRepo
+
+    Service -> AccountRepo : save(account)
+    activate AccountRepo
+    AccountRepo -> Database : Update Account (isActive = true)
+    activate Database
+    Database --> AccountRepo : Return Account
+    deactivate Database
+    AccountRepo --> Service : Return Account
+    deactivate AccountRepo
+
+    Service -> OtpRepo : deleteAllByEmail(email)
+    activate OtpRepo
+    OtpRepo -> Database : Delete used OTP tokens
+    activate Database
+    Database --> OtpRepo : Acknowledge delete
+    deactivate Database
+    OtpRepo --> Service : Return void
+    deactivate OtpRepo
+
+    Service -> Service : generateToken(account)
+
+    Service -> CustomerRepo : findCustomerByAccountId(accountId)
+    activate CustomerRepo
+    CustomerRepo -> Database : Query Customer profile
+    activate Database
+    Database --> CustomerRepo : Return Customer
+    deactivate Database
+    CustomerRepo --> Service : Return Customer
+    deactivate CustomerRepo
+
+    Service --> Controller : Return AuthResponse(jwtToken, userResponse)
+    deactivate Service
+
+    Controller --> Page : Return HTTP 200 OK (AuthResponse)
+    deactivate Controller
+
+    Page --> Guest : Store JWT & redirect to Homepage
+    deactivate Page
+end
+@endum

@@ -31,6 +31,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 @ExtendWith(MockitoExtension.class)
 class AdminCustomerHistoryServiceImplTest {
@@ -101,5 +102,20 @@ class AdminCustomerHistoryServiceImplTest {
         assertEquals(checkIn.plusMinutes(10), historyRoom.actualCheckIn());
         assertEquals("Đưa đón sân bay", historyRoom.services().getFirst().name());
         assertEquals("012345678901", historyRoom.guests().getFirst().identityDocumentNumber());
+    }
+
+    @Test
+    void getBookingHistoryReturnsEmptyWhenRepositoryExcludesUnpaidBookings() {
+        Account account = Account.builder().id(10L).build();
+        Customer customer = Customer.builder().id(11L).account(account).fullName("Nguyen Van A").build();
+
+        when(customerRepository.findByAccountId(10L)).thenReturn(Optional.of(customer));
+        when(bookingDetailRepository.findByCustomerAccountIdForAdminHistory(10L)).thenReturn(List.of());
+
+        var response = service.getBookingHistory(10L);
+
+        assertEquals(0, response.bookingCount());
+        assertEquals(List.of(), response.bookings());
+        verifyNoInteractions(bookingGuestRepository, bookingServiceItemRepository, checkInRecordRepository, invoiceRepository);
     }
 }

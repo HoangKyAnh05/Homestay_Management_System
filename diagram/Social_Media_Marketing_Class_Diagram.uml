@@ -1,0 +1,82 @@
+@startuml
+title Social Media & Email Marketing Class Diagram
+skinparam classAttributeIconSize 0
+
+package "controller" {
+  class MarketerSocialController {
+    + connectSocialAccount(platform: String): ResponseEntity<Void>
+    + publishPost(postId: Long): ResponseEntity<Void>
+    + uploadVideo(request: VideoUploadRequest): ResponseEntity<Void>
+    + schedulePost(request: MarketingPostRequest): ResponseEntity<MarketingPostResponse>
+  }
+  class EmailMarketingController {
+    + sendMarketingEmail(request: MarketingEmailRequest): ResponseEntity<Void>
+  }
+}
+
+package "service" {
+  interface SocialMediaService {
+    + connectAccount(platform: String): void
+    + publishPost(postId: Long): void
+    + uploadVideo(request: VideoUploadRequest): void
+    + schedulePost(request: MarketingPostRequest): MarketingPostResponse
+  }
+  class SocialMediaServiceImpl {
+    - postRepository: MarketingPostRepository
+    - facebookApiClient: FacebookApiClient
+    - youtubeApiClient: YouTubeApiClient
+  }
+  class FacebookApiClient {
+    + publishFeed(content: String, mediaUrl: String): String
+  }
+  class YouTubeApiClient {
+    + uploadVideoFile(videoUrl: String, title: String): String
+  }
+
+  interface EmailMarketingService {
+    + sendMarketingEmail(request: MarketingEmailRequest): void
+  }
+  class EmailMarketingServiceImpl {
+    - mailSender: JavaMailSender
+    - customerRepository: CustomerRepository
+  }
+}
+
+package "repository" {
+  interface MarketingPostRepository
+  interface CustomerRepository
+}
+
+package "entity" {
+  class MarketingPost {
+    - id: Long
+    - platform: String
+    - generatedContent: String
+    - mediaUrl: String
+    - scheduledAt: LocalDateTime
+    - postedAt: LocalDateTime
+    - status: String
+    - externalPostId: String
+  }
+  class AiAgentConfig {
+    - id: Long
+    - agentName: String
+    - systemPrompt: String
+    - postingIntervalHours: int
+    - isActive: boolean
+  }
+}
+
+MarketerSocialController --> SocialMediaService
+EmailMarketingController --> EmailMarketingService
+
+SocialMediaServiceImpl ..|> SocialMediaService
+EmailMarketingServiceImpl ..|> EmailMarketingService
+
+SocialMediaServiceImpl --> MarketingPostRepository
+SocialMediaServiceImpl --> facebookApiClient
+SocialMediaServiceImpl --> youtubeApiClient
+EmailMarketingServiceImpl --> CustomerRepository
+
+MarketingPost --> AiAgentConfig
+@enduml

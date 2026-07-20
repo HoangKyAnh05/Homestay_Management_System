@@ -1,0 +1,65 @@
+@startuml
+actor Customer
+boundary "RoomsPage" as Page
+control "PublicBookingController" as Controller
+control "PublicBookingServiceImpl" as Service
+entity "BookingRepository" as BookingRepo
+entity "BookingDetailRepository" as DetailRepo
+entity "BookingGuestRepository" as GuestRepo
+database "Database" as Database
+
+autonumber
+
+Customer -> Page : Select rooms, fill details, and submit booking
+activate Page
+
+Page -> Controller : POST /api/bookings (CreateBookingRequest) [Bearer Token]
+activate Controller
+
+Controller -> Service : createBooking(email, request)
+activate Service
+
+alt Room Type unavailable (availableRooms < requested)
+    Service --> Controller : Throw IllegalArgumentException
+    Controller --> Page : Return HTTP 400 Bad Request
+    Page --> Customer : Display error message
+else Room Type available
+    Service -> BookingRepo : save(Booking)
+    activate BookingRepo
+    BookingRepo -> Database : Insert Booking (Status: PENDING or CONFIRMED)
+    activate Database
+    Database --> BookingRepo : Return saved Booking
+    deactivate Database
+    BookingRepo --> Service : Return Booking entity
+    deactivate BookingRepo
+
+    loop For each selected room
+        Service -> DetailRepo : save(BookingDetail)
+        activate DetailRepo
+        DetailRepo -> Database : Insert BookingDetail (Status: PENDING or CONFIRMED)
+        activate Database
+        Database --> DetailRepo : Return saved BookingDetail
+        deactivate Database
+        DetailRepo --> Service : Return BookingDetail entity
+        deactivate DetailRepo
+    end
+
+    Service -> GuestRepo : save(BookingGuest)
+    activate GuestRepo
+    GuestRepo -> Database : Insert BookingGuest
+    activate Database
+    Database --> GuestRepo : Return saved BookingGuest
+    deactivate Database
+    GuestRepo --> Service : Return BookingGuest entity
+    deactivate GuestRepo
+
+    Service --> Controller : Return PublicBookingResponse (booking details + requiresDeposit)
+    deactivate Service
+
+    Controller --> Page : Return HTTP 200 OK (PublicBookingResponse)
+    deactivate Controller
+
+    Page --> Customer : Render booking success confirmation screen
+    deactivate Page
+end
+@endum

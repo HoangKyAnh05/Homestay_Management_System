@@ -1,0 +1,83 @@
+@startuml
+actor Admin
+boundary "AdminUsersPage" as Page
+control "AdminUserController" as Controller
+control "AdminUserServiceImpl" as Service
+entity "AccountRepository" as AccountRepo
+database "Database" as Database
+
+autonumber
+
+== View User List ==
+Admin -> Page : Navigate to User Management tab
+activate Page
+
+Page -> Controller : GET /api/admin/users [Bearer Token]
+activate Controller
+
+Controller -> Service : getAllUsers()
+activate Service
+
+Service -> AccountRepo : findAll()
+activate AccountRepo
+AccountRepo -> Database : Query all Accounts
+activate Database
+Database --> AccountRepo : Return Accounts list
+deactivate Database
+AccountRepo --> Service : Return list of Account entities
+deactivate AccountRepo
+
+Service --> Controller : Return List<AdminUserResponse>
+deactivate Service
+
+Controller --> Page : Return HTTP 200 OK (List of AdminUserResponse)
+deactivate Controller
+
+Page --> Admin : Render users grid with account details and states
+deactivate Page
+
+== Toggle Account Status (Deactivate / Activate) ==
+Admin -> Page : Click "Deactivate" / "Activate" toggle on a user row
+activate Page
+
+Page -> Controller : PATCH /api/admin/users/{id}/toggle-active (ToggleActiveRequest) [Bearer Token]
+activate Controller
+
+Controller -> Service : toggleActive(id, isActive)
+activate Service
+
+Service -> AccountRepo : findById(id)
+activate AccountRepo
+AccountRepo -> Database : Query Account by ID
+activate Database
+Database --> AccountRepo : Return Account entity
+deactivate Database
+AccountRepo --> Service : Return Account
+deactivate AccountRepo
+
+alt Account not found
+    Service --> Controller : Throw IllegalArgumentException
+    Controller --> Page : Return HTTP 400 Bad Request
+    Page --> Admin : Display error message
+else Account found
+    Service -> Service : Set Account isActive status
+    
+    Service -> AccountRepo : save(Account)
+    activate AccountRepo
+    AccountRepo -> Database : Update Account isActive column in DB
+    activate Database
+    Database --> AccountRepo : Success
+    deactivate Database
+    AccountRepo --> Service : Return saved Account
+    deactivate AccountRepo
+
+    Service --> Controller : Return updated AdminUserResponse
+    deactivate Service
+
+    Controller --> Page : Return HTTP 200 OK (AdminUserResponse)
+    deactivate Controller
+
+    Page --> Admin : Toggle user row UI indicator and display status update alert
+    deactivate Page
+end
+@endum

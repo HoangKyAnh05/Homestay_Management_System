@@ -1,0 +1,45 @@
+@startuml
+actor Admin
+boundary "ServicesManagementPage" as Page
+control "AdminServiceCatalogController" as Controller
+control "AdminServiceCatalogServiceImpl" as Service
+entity "FacilityServiceRepository" as FacilityRepo
+database "Database" as Database
+
+autonumber
+
+Admin -> Page : Enter service details (name, price, description) & click "Create Service"
+activate Page
+
+Page -> Controller : POST /api/admin/services/facility (FacilityServiceRequest) [Bearer Token]
+activate Controller
+
+Controller -> Service : createFacilityService(request)
+activate Service
+
+alt Service price is negative or name is blank
+    Service --> Controller : Throw IllegalArgumentException("Tên dịch vụ hoặc giá không hợp lệ")
+    Controller --> Page : Return HTTP 400 Bad Request
+    Page --> Admin : Display validation error message
+else Valid service details
+    Service -> Service : Build FacilityService entity
+    
+    Service -> FacilityRepo : save(FacilityService)
+    activate FacilityRepo
+    FacilityRepo -> Database : Insert new facility service details
+    activate Database
+    Database --> FacilityRepo : Return saved FacilityService
+    deactivate Database
+    FacilityRepo --> Service : Return FacilityService
+    deactivate FacilityRepo
+
+    Service --> Controller : Return FacilityServiceResponse
+    deactivate Service
+
+    Controller --> Page : Return HTTP 201 Created (FacilityServiceResponse)
+    deactivate Controller
+
+    Page --> Admin : Add new service to list & display success message
+    deactivate Page
+end
+@endum

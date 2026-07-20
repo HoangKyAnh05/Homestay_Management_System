@@ -1,0 +1,63 @@
+@startuml
+actor Receptionist
+boundary "BookingDetailPage" as Page
+control "AdminBookingController" as Controller
+control "AdminBookingServiceImpl" as Service
+entity "CheckInRecordRepository" as RecordRepo
+entity "RulesPenaltyRepository" as PenaltyRepo
+entity "AppliedPenaltyRepository" as AppliedRepo
+database "Database" as Database
+
+autonumber
+
+Receptionist -> Page : Select surcharge type (penalty rule), input actual fine amount & click "Add Surcharge"
+activate Page
+
+Page -> Controller : POST /api/admin/bookings/details/{bookingDetailId}/penalties (AdminBookingAddPenaltyRequest) [Bearer Token]
+activate Controller
+
+Controller -> Service : addPenalty(bookingDetailId, request)
+activate Service
+
+Service -> RecordRepo : findByBookingDetailId(bookingDetailId)
+activate RecordRepo
+RecordRepo -> Database : Fetch CheckInRecord for active room stay
+activate Database
+Database --> RecordRepo : Return CheckInRecord (or empty)
+deactivate Database
+RecordRepo --> Service : Return CheckInRecord
+deactivate RecordRepo
+
+alt Room not checked-in yet
+    Service --> Controller : Throw IllegalArgumentException("Phòng này chưa thực hiện check-in")
+    Controller --> Page : Return HTTP 400 Bad Request
+    Page --> Receptionist : Display check-in warning message
+else Room stay is active (checked-in)
+    Service -> PenaltyRepo : findById(request.rulesPenaltyId())
+    activate PenaltyRepo
+    PenaltyRepo -> Database : Query penalty rule details
+    activate Database
+    Database --> PenaltyRepo : Return RulesPenalty
+    deactivate Database
+    PenaltyRepo --> Service : Return RulesPenalty
+    deactivate PenaltyRepo
+
+    Service -> AppliedRepo : save(AppliedPenalty)
+    activate AppliedRepo
+    AppliedRepo -> Database : Save applied penalty to customer stay invoice record
+    activate Database
+    Database --> AppliedRepo : Return saved AppliedPenalty
+    deactivate Database
+    AppliedRepo --> Service : Return AppliedPenalty
+    deactivate AppliedRepo
+
+    Service --> Controller : Return AdminBookingDetailResponse
+    deactivate Service
+
+    Controller --> Page : Return HTTP 200 OK (Booking detail)
+    deactivate Controller
+
+    Page --> Receptionist : Show surcharge added to stay log & update total bill amount
+    deactivate Page
+end
+@endum

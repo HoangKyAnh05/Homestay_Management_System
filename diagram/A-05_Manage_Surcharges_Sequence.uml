@@ -1,0 +1,54 @@
+@startuml
+actor Admin
+boundary "SurchargesManagementPage" as Page
+control "AdminRulesPenaltyController" as Controller
+control "AdminRulesPenaltyService" as Service
+entity "RulesPenaltyRepository" as PenaltyRepo
+database "Database" as Database
+
+autonumber
+
+Admin -> Page : Input surcharge rule details (code, standard amount, description) & submit
+activate Page
+
+Page -> Controller : POST /api/admin/rules-penalties (RulesPenaltyRequest) [Bearer Token]
+activate Controller
+
+Controller -> Service : createRulesPenalty(request)
+activate Service
+
+Service -> PenaltyRepo : existsByCode(request.code())
+activate PenaltyRepo
+PenaltyRepo -> Database : Check if penalty code exists
+activate Database
+Database --> PenaltyRepo : Return boolean
+deactivate Database
+PenaltyRepo --> Service : Return boolean
+deactivate PenaltyRepo
+
+alt Penalty rule code already exists
+    Service --> Controller : Throw IllegalArgumentException("Mã khoản phạt đã tồn tại")
+    Controller --> Page : Return HTTP 400 Bad Request
+    Page --> Admin : Display validation error message
+else Unique code
+    Service -> Service : Build RulesPenalty entity
+
+    Service -> PenaltyRepo : save(RulesPenalty)
+    activate PenaltyRepo
+    PenaltyRepo -> Database : Insert new surcharge rule details
+    activate Database
+    Database --> PenaltyRepo : Return saved RulesPenalty
+    deactivate Database
+    PenaltyRepo --> Service : Return RulesPenalty
+    deactivate PenaltyRepo
+
+    Service --> Controller : Return RulesPenaltyResponse
+    deactivate Service
+
+    Controller --> Page : Return HTTP 201 Created (RulesPenaltyResponse)
+    deactivate Controller
+
+    Page --> Admin : Add rule to surcharges list & display success message
+    deactivate Page
+end
+@endum

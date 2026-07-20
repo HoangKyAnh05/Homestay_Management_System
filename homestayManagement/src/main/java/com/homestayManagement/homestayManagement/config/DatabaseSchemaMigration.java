@@ -47,5 +47,35 @@ public class DatabaseSchemaMigration implements ApplicationRunner {
                     """);
             LOGGER.info("Added payments.payment_purpose for booking and checkout payments");
         }
+
+        Integer paymentBookingDetailColumn = jdbcTemplate.queryForObject("""
+                select count(*)
+                from information_schema.columns
+                where table_schema = database()
+                  and table_name = 'payments'
+                  and column_name = 'booking_detail_id'
+                """, Integer.class);
+        if (paymentBookingDetailColumn != null && paymentBookingDetailColumn == 0) {
+            jdbcTemplate.execute("""
+                    alter table payments
+                    add column booking_detail_id bigint null
+                    """);
+            LOGGER.info("Added payments.booking_detail_id for room-specific checkout payments");
+        }
+
+        Integer paymentHoldColumn = jdbcTemplate.queryForObject("""
+                select count(*)
+                from information_schema.columns
+                where table_schema = database()
+                  and table_name = 'bookings'
+                  and column_name = 'payment_hold_expires_at'
+                """, Integer.class);
+        if (paymentHoldColumn != null && paymentHoldColumn == 0) {
+            jdbcTemplate.execute("""
+                    alter table bookings
+                    add column payment_hold_expires_at datetime null
+                    """);
+            LOGGER.info("Added bookings.payment_hold_expires_at for temporary payment holds");
+        }
     }
 }

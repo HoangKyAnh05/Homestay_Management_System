@@ -9,7 +9,7 @@ public interface SePayPaymentService {
 
     SePayPaymentResponse createBookingPaymentForAdmin(Long bookingId);
 
-    SePayPaymentResponse createCheckoutPayment(Long bookingId, BigDecimal amount);
+    SePayPaymentResponse createCheckoutPayment(Long bookingId, Long bookingDetailId, BigDecimal amount);
 
     void handleWebhook(byte[] rawBody, String signature, String timestamp);
 }

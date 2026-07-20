@@ -1,0 +1,54 @@
+@startuml
+title Identity Verification Class Diagram
+skinparam classAttributeIconSize 0
+
+package "controller" {
+  class UserController {
+    + verifyIdentityCard(auth: Authentication, front: MultipartFile, back: MultipartFile): UserResponse
+  }
+}
+
+package "service" {
+  interface UserService {
+    + verifyIdentityCard(email: String, front: MultipartFile, back: MultipartFile): UserResponse
+  }
+  class UserServiceImpl {
+    - customerRepository: CustomerRepository
+    - ocrService: OcrService
+  }
+  class OcrService {
+    + extractIdCardData(front: MultipartFile, back: MultipartFile): OcrResultDto
+  }
+}
+
+package "repository" {
+  interface CustomerRepository
+  interface BookingGuestRepository
+}
+
+package "entity" {
+  class Customer {
+    - id: Long
+    - fullName: String
+    - identityDocumentNumber: String
+    - dateOfBirth: LocalDate
+    - gender: String
+    - isVerified: boolean
+  }
+  class BookingGuest {
+    - id: Long
+    - fullName: String
+    - identityDocumentType: String
+    - identityDocumentNumber: String
+    - isPrimaryGuest: boolean
+  }
+}
+
+UserController --> UserService
+UserServiceImpl ..|> UserService
+UserServiceImpl --> OcrService
+UserServiceImpl --> CustomerRepository
+
+CustomerRepository ..> Customer
+BookingGuestRepository ..> BookingGuest
+@enduml

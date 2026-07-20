@@ -160,7 +160,7 @@ function AdminLayout({ activePage, children }) {
   }
 
   return (
-    <div className={`admin-shell${collapsed ? ' admin-shell--collapsed' : ''}`}>
+    <div className={`admin-shell${collapsed ? ' admin-shell--collapsed' : ''}${role === 'ROLE_HOUSEKEEPING' ? ' admin-shell--housekeeping-role' : ''}`}>
       <aside className="admin-sidebar">
         <div className="admin-sidebar-logo">
           <span className="admin-sidebar-logo-icon">

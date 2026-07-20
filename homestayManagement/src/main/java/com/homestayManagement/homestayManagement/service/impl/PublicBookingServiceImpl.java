@@ -7,7 +7,10 @@ import com.homestayManagement.homestayManagement.dto.response.*;
 import com.homestayManagement.homestayManagement.entity.*;
 import com.homestayManagement.homestayManagement.repository.*;
 import com.homestayManagement.homestayManagement.service.PublicBookingService;
+import com.homestayManagement.homestayManagement.service.support.BookingCodeGenerator;
+import com.homestayManagement.homestayManagement.service.support.BookingInventoryPolicy;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -21,11 +24,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Service
 public class PublicBookingServiceImpl implements PublicBookingService {
-
-    private static final Set<String> ACTIVE_STATUSES = Set.of("PENDING", "CONFIRMED", "CHECKED_IN");
 
     private final AccountRepository accountRepository;
     private final CustomerRepository customerRepository;
@@ -35,10 +37,12 @@ public class PublicBookingServiceImpl implements PublicBookingService {
     private final BookingDetailRepository bookingDetailRepository;
     private final BookingGuestRepository bookingGuestRepository;
     private final BookingServiceItemRepository bookingServiceItemRepository;
+    private final ServiceUsageRepository serviceUsageRepository;
     private final PricePolicyRepository pricePolicyRepository;
     private final RoomPriceConfigRepository roomPriceConfigRepository;
     private final FacilityServiceRepository facilityServiceRepository;
     private final InventoryServiceRepository inventoryServiceRepository;
+    private final BookingCodeGenerator bookingCodeGenerator;
 
     public PublicBookingServiceImpl(
             AccountRepository accountRepository,
@@ -49,10 +53,12 @@ public class PublicBookingServiceImpl implements PublicBookingService {
             BookingDetailRepository bookingDetailRepository,
             BookingGuestRepository bookingGuestRepository,
             BookingServiceItemRepository bookingServiceItemRepository,
+            ServiceUsageRepository serviceUsageRepository,
             PricePolicyRepository pricePolicyRepository,
             RoomPriceConfigRepository roomPriceConfigRepository,
             FacilityServiceRepository facilityServiceRepository,
-            InventoryServiceRepository inventoryServiceRepository
+            InventoryServiceRepository inventoryServiceRepository,
+            BookingCodeGenerator bookingCodeGenerator
     ) {
         this.accountRepository = accountRepository;
         this.customerRepository = customerRepository;
@@ -62,10 +68,12 @@ public class PublicBookingServiceImpl implements PublicBookingService {
         this.bookingDetailRepository = bookingDetailRepository;
         this.bookingGuestRepository = bookingGuestRepository;
         this.bookingServiceItemRepository = bookingServiceItemRepository;
+        this.serviceUsageRepository = serviceUsageRepository;
         this.pricePolicyRepository = pricePolicyRepository;
         this.roomPriceConfigRepository = roomPriceConfigRepository;
         this.facilityServiceRepository = facilityServiceRepository;
         this.inventoryServiceRepository = inventoryServiceRepository;
+        this.bookingCodeGenerator = bookingCodeGenerator;
     }
 
     @Override
@@ -123,12 +131,14 @@ public class PublicBookingServiceImpl implements PublicBookingService {
         BigDecimal roomCharge = calculateRoomCharge(details);
         List<Long> detailIds = details.stream().map(BookingDetail::getId).toList();
         List<BookingServiceItem> serviceItems = bookingServiceItemRepository.findByBookingDetailIds(detailIds);
-        BigDecimal serviceCharge = calculateServiceCharge(serviceItems);
+        List<ServiceUsage> stayUsages = serviceUsageRepository.findByBookingIdForInvoice(bookingId);
+        BigDecimal serviceCharge = calculateServiceCharge(serviceItems).add(calculateServiceUsageCharge(stayUsages));
         BigDecimal totalAmount = roomCharge.add(serviceCharge);
         DepositPolicy depositPolicy = booking.getDepositPolicy();
 
         return new PublicBookingHistoryDetailResponse(
                 booking.getId(),
+                booking.getBookingCode(),
                 booking.getBookingDate(),
                 booking.getStatus(),
                 roomCharge,
@@ -140,12 +150,15 @@ public class PublicBookingServiceImpl implements PublicBookingService {
                 depositPolicy != null ? depositPolicy.getPolicyValue() : null,
                 calculateDepositAmount(depositPolicy, totalAmount),
                 details.stream().map(this::toHistoryRoomResponse).toList(),
-                serviceItems.stream().map(this::toHistoryServiceResponse).toList()
+                Stream.concat(
+                        serviceItems.stream().map(this::toHistoryServiceResponse),
+                        stayUsages.stream().map(this::toHistoryServiceResponse)
+                ).toList()
         );
     }
 
     @Override
-    @Transactional
+    @Transactional(isolation = Isolation.SERIALIZABLE)
     public PublicBookingResponse createBooking(String email, PublicCreateBookingRequest request) {
         validateRange(request.checkInTarget(), request.checkOutTarget());
 
@@ -160,10 +173,14 @@ public class PublicBookingServiceImpl implements PublicBookingService {
         updateCustomer(customer, request);
 
         List<PublicBookingRoomRequest> selectedRooms = requireSelectedRooms(request);
+        int requestedRoomCount = selectedRooms.stream().mapToInt(this::quantityOf).sum();
+        if (requestedRoomCount > 1 && request.services() != null && !request.services().isEmpty()) {
+            throw new IllegalArgumentException("Vui lòng chọn phòng áp dụng cho từng dịch vụ");
+        }
         Set<Long> selectedRoomTypeIds = selectedRooms.stream()
                 .map(this::resolveRoomTypeId)
                 .collect(Collectors.toCollection(HashSet::new));
-        Map<Long, RoomType> roomTypesById = roomTypeRepository.findAllById(selectedRoomTypeIds).stream()
+        Map<Long, RoomType> roomTypesById = roomTypeRepository.findAllByIdForInventoryUpdate(selectedRoomTypeIds).stream()
                 .collect(Collectors.toMap(RoomType::getId, roomType -> roomType));
         if (roomTypesById.size() != selectedRoomTypeIds.size()) {
             throw new IllegalArgumentException("Khong tim thay mot hoac nhieu loai phong da chon");
@@ -189,14 +206,17 @@ public class PublicBookingServiceImpl implements PublicBookingService {
         boolean requiresDeposit = hourlyPrepaymentRequired || depositPolicy != null;
         String bookingStatus = requiresDeposit ? "PENDING" : "CONFIRMED";
 
+        LocalDateTime bookingDate = LocalDateTime.now();
         Booking booking = bookingRepository.save(Booking.builder()
+                .bookingCode(bookingCodeGenerator.generate(bookingDate))
                 .customer(customer)
                 .depositPolicy(depositPolicy)
-                .bookingDate(LocalDateTime.now())
+                .bookingDate(bookingDate)
                 .status(bookingStatus)
                 .build());
 
         List<BookingDetail> savedDetails = new ArrayList<>();
+        BigDecimal serviceCharge = BigDecimal.ZERO;
         for (PublicBookingRoomRequest selectedRoom : selectedRooms) {
             RoomType roomType = roomTypesById.get(resolveRoomTypeId(selectedRoom));
             BigDecimal currentRoomPrice = roomPriceConfigRepository
@@ -204,7 +224,7 @@ public class PublicBookingServiceImpl implements PublicBookingService {
                     .map(RoomPriceConfig::getPrice)
                     .orElseThrow(() -> new IllegalArgumentException("Chua cau hinh gia cho loai phong " + roomType.getName() + " va goi thue nay"));
             for (int index = 0; index < quantityOf(selectedRoom); index++) {
-                savedDetails.add(bookingDetailRepository.save(BookingDetail.builder()
+                BookingDetail savedDetail = bookingDetailRepository.save(BookingDetail.builder()
                         .booking(booking)
                         .roomType(roomType)
                         .room(null)
@@ -216,13 +236,17 @@ public class PublicBookingServiceImpl implements PublicBookingService {
                         .rentType(pricePolicy.getRentType())
                         .roomAssignmentStatus("UNASSIGNED")
                         .status(bookingStatus)
-                        .build()));
+                        .build());
+                savedDetails.add(savedDetail);
+                serviceCharge = serviceCharge.add(saveServices(savedDetail, selectedRoom.services()));
             }
         }
 
         BookingDetail firstDetail = savedDetails.get(0);
         BigDecimal roomCharge = calculateRoomCharge(savedDetails);
-        BigDecimal serviceCharge = saveServices(firstDetail, request.services());
+        if (request.services() != null && !request.services().isEmpty()) {
+            serviceCharge = serviceCharge.add(saveServices(firstDetail, request.services()));
+        }
         BigDecimal totalAmount = roomCharge.add(serviceCharge);
         BigDecimal depositAmount = hourlyPrepaymentRequired
                 ? roomCharge
@@ -231,6 +255,7 @@ public class PublicBookingServiceImpl implements PublicBookingService {
 
         return new PublicBookingResponse(
                 booking.getId(),
+                booking.getBookingCode(),
                 firstDetail.getId(),
                 null,
                 null,
@@ -258,7 +283,8 @@ public class PublicBookingServiceImpl implements PublicBookingService {
                     request.roomTypeId(),
                     1,
                     request.numberOfAdults(),
-                    request.numberOfChildren()
+                    request.numberOfChildren(),
+                    null
             ));
         }
         if (request.roomId() != null) {
@@ -269,7 +295,8 @@ public class PublicBookingServiceImpl implements PublicBookingService {
                     room.getRoomType().getId(),
                     1,
                     request.numberOfAdults(),
-                    request.numberOfChildren()
+                    request.numberOfChildren(),
+                    null
             ));
         }
         throw new IllegalArgumentException("Vui long chon it nhat mot loai phong");
@@ -406,8 +433,7 @@ public class PublicBookingServiceImpl implements PublicBookingService {
     }
 
     private boolean isActive(BookingDetail detail) {
-        return ACTIVE_STATUSES.contains(normalize(detail.getStatus()))
-                && ACTIVE_STATUSES.contains(normalize(detail.getBooking().getStatus()));
+        return BookingInventoryPolicy.blocksInventory(detail);
     }
 
     private PublicBookingHistoryResponse toHistoryResponse(List<BookingDetail> details) {
@@ -417,7 +443,8 @@ public class PublicBookingServiceImpl implements PublicBookingService {
                 .orElse(details.get(0));
         BigDecimal roomCharge = calculateRoomCharge(details);
         List<Long> detailIds = details.stream().map(BookingDetail::getId).toList();
-        BigDecimal serviceCharge = calculateServiceCharge(bookingServiceItemRepository.findByBookingDetailIds(detailIds));
+        BigDecimal serviceCharge = calculateServiceCharge(bookingServiceItemRepository.findByBookingDetailIds(detailIds))
+                .add(calculateServiceUsageCharge(serviceUsageRepository.findByBookingIdForInvoice(booking.getId())));
         BigDecimal totalAmount = roomCharge.add(serviceCharge);
         DepositPolicy depositPolicy = booking.getDepositPolicy();
         Room room = firstDetail.getRoom();
@@ -425,6 +452,7 @@ public class PublicBookingServiceImpl implements PublicBookingService {
 
         return new PublicBookingHistoryResponse(
                 booking.getId(),
+                booking.getBookingCode(),
                 booking.getBookingDate(),
                 booking.getStatus(),
                 room != null ? room.getRoomNumber() : null,
@@ -469,11 +497,31 @@ public class PublicBookingServiceImpl implements PublicBookingService {
         BigDecimal total = item.getPriceAtBooking().multiply(BigDecimal.valueOf(item.getQuantity()));
         return new PublicBookingHistoryServiceResponse(
                 item.getId(),
+                "PRE_BOOKED",
                 item.getBookingDetail().getId(),
                 name,
                 type,
                 item.getQuantity(),
                 item.getPriceAtBooking(),
+                total
+        );
+    }
+
+    private PublicBookingHistoryServiceResponse toHistoryServiceResponse(ServiceUsage usage) {
+        boolean facility = usage.getFacilityService() != null;
+        String name = facility
+                ? usage.getFacilityService().getName()
+                : usage.getInventoryService().getName();
+        String type = facility ? "FACILITY" : "INVENTORY";
+        BigDecimal total = usage.getPriceAtUse().multiply(BigDecimal.valueOf(usage.getQuantity()));
+        return new PublicBookingHistoryServiceResponse(
+                usage.getId(),
+                "STAY",
+                usage.getCheckInRecord().getBookingDetail().getId(),
+                name,
+                type,
+                usage.getQuantity(),
+                usage.getPriceAtUse(),
                 total
         );
     }
@@ -487,6 +535,12 @@ public class PublicBookingServiceImpl implements PublicBookingService {
     private BigDecimal calculateServiceCharge(List<BookingServiceItem> services) {
         return services.stream()
                 .map(item -> item.getPriceAtBooking().multiply(BigDecimal.valueOf(item.getQuantity())))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    private BigDecimal calculateServiceUsageCharge(List<ServiceUsage> services) {
+        return services.stream()
+                .map(item -> item.getPriceAtUse().multiply(BigDecimal.valueOf(item.getQuantity())))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 

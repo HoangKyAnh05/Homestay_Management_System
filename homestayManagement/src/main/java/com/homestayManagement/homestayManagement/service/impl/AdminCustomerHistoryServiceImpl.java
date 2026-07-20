@@ -129,6 +129,7 @@ public class AdminCustomerHistoryServiceImpl implements AdminCustomerHistoryServ
 
         return new AdminCustomerHistoryBookingResponse(
                 booking.getId(),
+                booking.getBookingCode(),
                 booking.getBookingDate(),
                 booking.getStatus(),
                 rooms.size(),

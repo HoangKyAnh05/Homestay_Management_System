@@ -6,13 +6,23 @@ import AdminLayout from './AdminLayout'
 import './AdminBookingsPage.css'
 
 const API_BASE = 'http://localhost:8080/api/admin/bookings'
+const ADMIN_SERVICE_API = 'http://localhost:8080/api/admin/services'
 const HOUSEKEEPING_API = 'http://localhost:8080/api/housekeeping'
 const SCHEDULE_API = `${API_BASE}/schedule`
 const PAGE_SIZE_OPTIONS = [6, 8, 12]
 const ADMIN_SCHEDULE_STATUSES = new Set(['CONFIRMED', 'CHECKED_IN', 'COMPLETED'])
 
+function bookingDisplay(booking) {
+  return booking?.bookingCode || `#${booking?.bookingId || ''}`
+}
+
 function authHeaders() {
   return { 'Content-Type': 'application/json', Authorization: `Bearer ${getStoredToken()}` }
+}
+
+function serviceImageSrc(imageUrl) {
+  if (!imageUrl) return '/img.png'
+  return imageUrl.startsWith('/uploads/') ? `http://localhost:8080${imageUrl}` : imageUrl
 }
 
 function toDate(value) {
@@ -146,7 +156,7 @@ function roomMatchesSearch(room, bookings, keyword) {
   if (roomText.includes(keyword)) return true
   return bookings.some(booking =>
     booking.roomId === room.id &&
-    `${booking.customerName || ''} ${booking.customerPhone || ''} ${booking.bookingId || ''}`.toLowerCase().includes(keyword)
+    `${booking.customerName || ''} ${booking.customerPhone || ''} ${booking.bookingId || ''} ${booking.bookingCode || ''}`.toLowerCase().includes(keyword)
   )
 }
 
@@ -169,7 +179,7 @@ function BookingCard({ booking, onOpenDetail }) {
     <article className={bookingStatusClass(booking.detailStatus || booking.bookingStatus)}>
       <div className="abk-booking-main">
         <strong>{booking.customerName || 'Khách hàng'}</strong>
-        <span>#{booking.bookingId} · {statusLabel(booking.detailStatus || booking.bookingStatus)}</span>
+        <span>{bookingDisplay(booking)} · {statusLabel(booking.detailStatus || booking.bookingStatus)}</span>
       </div>
       <div className="abk-booking-meta">
         <span>{formatBookingCardTime(booking)}</span>
@@ -422,7 +432,7 @@ function BookingDetailModal({ detail, loading, error, actionLoading, actionError
         <div className="abk-modal-head">
           <div>
             <h3>Chi tiết đơn đặt phòng</h3>
-            <p>{detail ? `Booking #${detail.bookingId} · ${detail.roomNumber ? `Phòng ${detail.roomNumber}` : 'Chưa gán phòng'}` : 'Đang tải thông tin...'}</p>
+            <p>{detail ? `Booking ${bookingDisplay(detail)} · ${detail.roomNumber ? `Phòng ${detail.roomNumber}` : 'Chưa gán phòng'}` : 'Đang tải thông tin...'}</p>
           </div>
           <button type="button" className="abk-modal-close" onClick={onClose}>×</button>
         </div>
@@ -441,7 +451,12 @@ function BookingDetailModal({ detail, loading, error, actionLoading, actionError
                 </span>
                 <div>
                   {canCheckIn && (
-                    <button type="button" className="abk-action-primary" disabled={actionLoading} onClick={() => onAction('check-in')}>
+                    <button
+                      type="button"
+                      className="abk-action-primary"
+                      disabled={actionLoading}
+                      onClick={() => window.location.assign(`/admin/check-in-logs?bookingDetailId=${detail.bookingDetailId}`)}
+                    >
                       Check in
                     </button>
                   )}
@@ -836,7 +851,7 @@ function BookingDetailModal({ detail, loading, error, actionLoading, actionError
           headers={authHeaders()}
           statusField="bookingStatus"
           successStatus="COMPLETED"
-          title="Thanh toán chi phí phát sinh tại quầy"
+          title="Thanh toán số tiền còn lại tại quầy"
           onSuccess={(booking) => onAction('__refresh__', null, booking)}
           onClose={() => setCheckoutPayment(null)}
         />
@@ -871,6 +886,9 @@ function DirectBookingModal({ onClose, onCreated }) {
   const [submitLoading, setSubmitLoading] = useState(false)
   const [error, setError] = useState('')
   const [paymentResult, setPaymentResult] = useState(null)
+  const [serviceCatalog, setServiceCatalog] = useState({ facility: [], inventory: [] })
+  const [servicesLoading, setServicesLoading] = useState(false)
+  const [servicePickerRoomId, setServicePickerRoomId] = useState(null)
 
   // Load gói thuê + toàn bộ config giá một lần khi mở modal
   useEffect(() => {
@@ -891,8 +909,38 @@ function DirectBookingModal({ onClose, onCreated }) {
       .catch(() => {}) // non-critical
   }, [])
 
+  useEffect(() => {
+    setServicesLoading(true)
+    Promise.all([
+      fetch(`${ADMIN_SERVICE_API}/facility`, { headers: authHeaders() }),
+      fetch(`${ADMIN_SERVICE_API}/inventory`, { headers: authHeaders() }),
+    ])
+      .then(async ([facilityRes, inventoryRes]) => {
+        const [facility, inventory] = await Promise.all([
+          facilityRes.json().catch(() => []),
+          inventoryRes.json().catch(() => []),
+        ])
+        if (!facilityRes.ok || !inventoryRes.ok) throw new Error('Không tải được danh sách dịch vụ')
+        setServiceCatalog({
+          facility: Array.isArray(facility) ? facility : [],
+          inventory: Array.isArray(inventory) ? inventory : [],
+        })
+      })
+      .catch(err => setError(err.message || 'Không tải được danh sách dịch vụ'))
+      .finally(() => setServicesLoading(false))
+  }, [])
+
   const selectedRoomEntries = Object.values(form.selectedRooms)
   const selectedRoomIds = new Set(selectedRoomEntries.map(r => String(r.roomId)))
+  const serviceOptions = useMemo(() => [
+    ...serviceCatalog.facility
+      .filter(service => service.isActive !== false)
+      .map(service => ({ ...service, type: 'FACILITY', stock: null })),
+    ...serviceCatalog.inventory
+      .filter(service => Number(service.quantityInStock || 0) > 0)
+      .map(service => ({ ...service, type: 'INVENTORY', stock: Number(service.quantityInStock || 0) })),
+  ], [serviceCatalog])
+  const servicePickerRoom = servicePickerRoomId ? form.selectedRooms[String(servicePickerRoomId)] : null
 
   // Tính ngày check-in là WEEKDAY hay WEEKEND
   const isWeekend = useMemo(() => {
@@ -993,6 +1041,7 @@ function DirectBookingModal({ onClose, onCreated }) {
             email: f.email,
             address: f.address,
           }],
+          services: [],
         }
       }
       return { ...f, selectedRooms }
@@ -1043,6 +1092,62 @@ function DirectBookingModal({ onClose, onCreated }) {
     })
   }
 
+  const serviceKey = (service) => `${service.type}:${service.id ?? service.serviceId}`
+
+  const updateRoomServices = (roomId, service, quantityValue) => {
+    const quantity = Math.max(0, Number(quantityValue || 0))
+    setForm(f => {
+      const room = f.selectedRooms[String(roomId)]
+      if (!room) return f
+      const currentServices = Array.isArray(room.services) ? room.services : []
+      const key = serviceKey(service)
+      const maxQuantity = service.type === 'INVENTORY' ? Number(service.stock || 0) : 99
+      const nextQuantity = Math.min(quantity, maxQuantity)
+      const nextServices = nextQuantity <= 0
+        ? currentServices.filter(item => serviceKey(item) !== key)
+        : [
+            ...currentServices.filter(item => serviceKey(item) !== key),
+            {
+              type: service.type,
+              serviceId: Number(service.id ?? service.serviceId),
+              id: Number(service.id ?? service.serviceId),
+              name: service.name,
+              price: service.price,
+              quantity: nextQuantity,
+              stock: service.stock,
+            },
+          ]
+      return {
+        ...f,
+        selectedRooms: {
+          ...f.selectedRooms,
+          [String(roomId)]: { ...room, services: nextServices },
+        },
+      }
+    })
+  }
+
+  const serviceMaxQuantity = (service) => (
+    service.type === 'INVENTORY' ? Number(service.stock || 0) : 99
+  )
+
+  const incrementRoomService = (roomId, service) => {
+    const room = form.selectedRooms[String(roomId)]
+    const selected = (room?.services || []).find(item => serviceKey(item) === serviceKey(service))
+    const nextQuantity = Math.min(Number(selected?.quantity || 0) + 1, serviceMaxQuantity(service))
+    updateRoomServices(roomId, service, nextQuantity)
+  }
+
+  const decrementRoomService = (roomId, service) => {
+    const room = form.selectedRooms[String(roomId)]
+    const selected = (room?.services || []).find(item => serviceKey(item) === serviceKey(service))
+    const nextQuantity = Math.max(Number(selected?.quantity || 0) - 1, 0)
+    updateRoomServices(roomId, service, nextQuantity)
+  }
+
+  const roomServiceTotal = (room) => (room.services || [])
+    .reduce((sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 0), 0)
+
   const formatDeposit = (room) => {
     if (!room.depositPolicyName) return 'Không cọc'
     if (room.depositCalculationType === 'PERCENTAGE') {
@@ -1079,7 +1184,11 @@ function DirectBookingModal({ onClose, onCreated }) {
             email: guest.email || null,
             address: guest.address || null,
           })),
-          services: [],
+          services: (r.services || []).map(service => ({
+            type: service.type,
+            serviceId: Number(service.serviceId),
+            quantity: Number(service.quantity),
+          })),
         })),
       }),
     })
@@ -1223,6 +1332,31 @@ function DirectBookingModal({ onClose, onCreated }) {
                       </label>
                       {/* Fix: dùng removeRoom thay vì toggleRoom để xóa chính xác bằng key */}
                       <button type="button" className="abk-remove-room-btn" onClick={() => removeRoom(room.roomId)} aria-label="Bỏ chọn phòng">×</button>
+                      <div className="abk-room-services">
+                        <div className="abk-room-services-head">
+                          <strong>Dịch vụ</strong>
+                          <button type="button" className="abk-service-picker-btn" onClick={() => setServicePickerRoomId(room.roomId)}>
+                            Chọn dịch vụ
+                          </button>
+                        </div>
+                        {room.services?.length ? (
+                          <div className="abk-room-service-list">
+                            {room.services.map(service => (
+                              <span key={serviceKey(service)}>
+                                {service.name} x{service.quantity}
+                                <b>{formatMoney(Number(service.price || 0) * Number(service.quantity || 0))}</b>
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <p>Chưa chọn dịch vụ cho phòng này.</p>
+                        )}
+                        {room.services?.length ? (
+                          <span className="abk-selected-room-services">
+                            {room.services.length} dịch vụ · {formatMoney(roomServiceTotal(room))}
+                          </span>
+                        ) : null}
+                      </div>
                       <div className="abk-room-guests">
                         <div className="abk-room-guests-head">
                           <strong>Thông tin người lưu trú</strong>
@@ -1330,6 +1464,77 @@ function DirectBookingModal({ onClose, onCreated }) {
             onClose()
           }}
         />
+      )}
+      {servicePickerRoom && (
+        <div className="abk-overlay abk-service-picker-overlay" onClick={e => e.target === e.currentTarget && setServicePickerRoomId(null)}>
+          <div className="abk-modal abk-service-picker-modal" role="dialog" aria-modal="true">
+            <div className="abk-modal-head">
+              <div>
+                <h3>Chọn dịch vụ phòng {servicePickerRoom.roomNumber}</h3>
+                <p>Dịch vụ được lưu vào booking của riêng phòng này.</p>
+              </div>
+              <button type="button" className="abk-modal-close" onClick={() => setServicePickerRoomId(null)}>×</button>
+            </div>
+            <div className="abk-service-picker-body">
+              {servicesLoading ? (
+                <div className="abk-empty abk-empty--sm">Đang tải dịch vụ...</div>
+              ) : serviceOptions.length ? (
+                serviceOptions.map(service => {
+                  const selected = (servicePickerRoom.services || []).find(item => serviceKey(item) === serviceKey(service))
+                  const quantity = selected?.quantity || 0
+                  const maxQuantity = serviceMaxQuantity(service)
+                  return (
+                    <button
+                      type="button"
+                      className={`abk-service-picker-row${quantity > 0 ? ' abk-service-picker-row--selected' : ''}`}
+                      key={serviceKey(service)}
+                      onClick={() => incrementRoomService(servicePickerRoom.roomId, service)}
+                      disabled={maxQuantity <= 0}
+                    >
+                      <img
+                        src={serviceImageSrc(service.imageUrl)}
+                        alt=""
+                        onError={e => { e.currentTarget.src = '/img.png' }}
+                      />
+                      <div>
+                        <strong>{service.name}</strong>
+                        <span>{service.type === 'FACILITY' ? 'Dịch vụ tiện ích' : `Thuê đồ · còn ${service.stock}`}</span>
+                      </div>
+                      <b>{formatMoney(service.price)}</b>
+                      <div className="abk-service-quantity" onClick={e => e.stopPropagation()}>
+                        <button
+                          type="button"
+                          onClick={() => decrementRoomService(servicePickerRoom.roomId, service)}
+                          disabled={quantity <= 0}
+                          aria-label={`Gi?m ${service.name}`}
+                        >
+                          -
+                        </button>
+                        <strong>{quantity}</strong>
+                        <button
+                          type="button"
+                          onClick={() => incrementRoomService(servicePickerRoom.roomId, service)}
+                          disabled={quantity >= maxQuantity}
+                          aria-label={`Tang ${service.name}`}
+                        >
+                          +
+                        </button>
+                      </div>
+                    </button>
+                  )
+                })
+              ) : (
+                <div className="abk-empty abk-empty--sm">Chưa có dịch vụ đang khả dụng.</div>
+              )}
+            </div>
+            <div className="abk-direct-actions">
+              <button type="button" className="abk-action-secondary" onClick={() => setServicePickerRoomId(null)}>Đóng</button>
+              <button type="button" className="abk-action-primary" onClick={() => setServicePickerRoomId(null)}>
+                Lưu lựa chọn
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </>
   )

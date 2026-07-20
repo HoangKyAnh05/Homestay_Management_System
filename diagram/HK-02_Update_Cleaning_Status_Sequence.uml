@@ -1,0 +1,85 @@
+@startuml
+actor HousekeepingStaff
+boundary "CleaningTaskDetailsPage" as Page
+control "HousekeepingController" as Controller
+control "HousekeepingServiceImpl" as Service
+entity "HousekeepingTaskRepository" as TaskRepo
+entity "HousekeepingTaskChecklistItemRepository" as ItemRepo
+entity "RoomRepository" as RoomRepo
+database "Database" as Database
+
+autonumber
+
+HousekeepingStaff -> Page : Check off completed items in checklist & click "Complete Cleaning"
+activate Page
+
+Page -> Controller : POST /api/housekeeping/tasks/{taskId}/complete-cleaning (HousekeepingCleaningCompletionRequest) [Bearer Token]
+activate Controller
+
+Controller -> Service : completeCleaning(taskId, request)
+activate Service
+
+Service -> TaskRepo : findByIdForDetail(taskId)
+activate TaskRepo
+TaskRepo -> Database : Query HousekeepingTask details
+activate Database
+Database --> TaskRepo : Return HousekeepingTask
+deactivate Database
+TaskRepo --> Service : Return HousekeepingTask
+deactivate TaskRepo
+
+alt Room inspection is not completed yet
+    Service --> Controller : Throw IllegalArgumentException("Vui lòng gửi kết quả kiểm tra trước khi hoàn tất dọn phòng")
+    Controller --> Page : Return HTTP 400 Bad Request
+    Page --> HousekeepingStaff : Display inspection pending error alert
+else Inspection completed
+    Service -> ItemRepo : findByHousekeepingTaskIdOrderByDisplayOrderAsc(taskId)
+    activate ItemRepo
+    ItemRepo -> Database : Fetch checklist items snapshot
+    activate Database
+    Database --> ItemRepo : Return list of task checklist items
+    deactivate Database
+    ItemRepo --> Service : Return list of checklist items
+    deactivate ItemRepo
+
+    Service -> Service : Apply checklist completion & validate all required items are checked
+
+    Service -> ItemRepo : saveAll(checklist)
+    activate ItemRepo
+    ItemRepo -> Database : Update checklist items status in DB
+    activate Database
+    Database --> ItemRepo : Success
+    deactivate Database
+    ItemRepo --> Service : Success
+    deactivate ItemRepo
+
+    Service -> Service : Set cleaning status = 'COMPLETED' & update room status = 'AVAILABLE'
+
+    Service -> RoomRepo : save(Room)
+    activate RoomRepo
+    RoomRepo -> Database : Update Room status to AVAILABLE in DB
+    activate Database
+    Database --> RoomRepo : Success
+    deactivate Database
+    RoomRepo --> Service : Success
+    deactivate RoomRepo
+
+    Service -> TaskRepo : save(HousekeepingTask)
+    activate TaskRepo
+    TaskRepo -> Database : Update task status in DB
+    activate Database
+    Database --> TaskRepo : Return saved task
+    deactivate Database
+    TaskRepo --> Service : Return task
+    deactivate TaskRepo
+
+    Service --> Controller : Return HousekeepingTaskResponse
+    deactivate Service
+
+    Controller --> Page : Return HTTP 200 OK (Updated task status)
+    deactivate Controller
+
+    Page --> HousekeepingStaff : Display task completed successfully & redirect to dashboard
+    deactivate Page
+end
+@endum

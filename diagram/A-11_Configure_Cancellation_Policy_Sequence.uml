@@ -1,0 +1,45 @@
+@startuml
+actor Admin
+boundary "CancellationPolicyPage" as Page
+control "AdminRoomController" as Controller
+control "AdminRoomServiceImpl" as Service
+entity "DepositPolicyRepository" as PolicyRepo
+database "Database" as Database
+
+autonumber
+
+Admin -> Page : Input policy name, type (PERCENTAGE, FIXED_AMOUNT), value & click "Create Policy"
+activate Page
+
+Page -> Controller : POST /api/admin/rooms/deposit-policies (DepositPolicyRequest) [Bearer Token]
+activate Controller
+
+Controller -> Service : createDepositPolicy(request)
+activate Service
+
+alt Calculation type is not PERCENTAGE or FIXED_AMOUNT
+    Service --> Controller : Throw IllegalArgumentException("Loại tính toán không hợp lệ")
+    Controller --> Page : Return HTTP 400 Bad Request
+    Page --> Admin : Display validation error message
+else Valid calculation type
+    Service -> Service : Build DepositPolicy entity
+
+    Service -> PolicyRepo : save(DepositPolicy)
+    activate PolicyRepo
+    PolicyRepo -> Database : Insert deposit/cancellation policy details
+    activate Database
+    Database --> PolicyRepo : Return saved DepositPolicy
+    deactivate Database
+    PolicyRepo --> Service : Return DepositPolicy
+    deactivate PolicyRepo
+
+    Service --> Controller : Return DepositPolicyResponse
+    deactivate Service
+
+    Controller --> Page : Return HTTP 201 Created (DepositPolicyResponse)
+    deactivate Controller
+
+    Page --> Admin : Add policy to list & display success message
+    deactivate Page
+end
+@endum

@@ -7,6 +7,10 @@ import './AdminInvoicesPage.css'
 const API = 'http://localhost:8080/api/admin/invoices'
 const PAGE_SIZE = 6
 
+function bookingDisplay(booking) {
+  return booking?.bookingCode || `#${booking?.bookingId || ''}`
+}
+
 function authHeaders() {
   return { 'Content-Type': 'application/json', Authorization: `Bearer ${getStoredToken()}` }
 }
@@ -57,7 +61,7 @@ function InvoiceDetailModal({ invoice, onClose }) {
         <div className="ain-modal-head">
           <div>
             <h3>Hóa đơn #{invoice.id}</h3>
-            <p>Booking #{invoice.bookingId} · {invoice.customerName}</p>
+            <p>Booking {bookingDisplay(invoice)} · {invoice.customerName}</p>
           </div>
           <button type="button" className="ain-modal-close" onClick={onClose}>×</button>
         </div>
@@ -164,6 +168,7 @@ function AdminInvoicesPage() {
       const matchSearch = !keyword ||
         String(invoice.id).includes(keyword) ||
         String(invoice.bookingId).includes(keyword) ||
+        String(invoice.bookingCode || '').toLowerCase().includes(keyword) ||
         invoice.customerName?.toLowerCase().includes(keyword) ||
         invoice.customerEmail?.toLowerCase().includes(keyword)
       const matchMethod = !methodFilter || invoice.latestPaymentMethod === methodFilter
@@ -252,7 +257,7 @@ function AdminInvoicesPage() {
                 <tr key={invoice.id}>
                   <td>
                     <strong>#{invoice.id}</strong>
-                    <span>Booking #{invoice.bookingId}</span>
+                    <span>Booking {bookingDisplay(invoice)}</span>
                   </td>
                   <td>
                     <strong>{invoice.customerName}</strong>

@@ -5,6 +5,7 @@ import java.util.List;
 
 public record AdminCheckInPreparationResponse(
         Long bookingId,
+        String bookingCode,
         Long bookingDetailId,
         String roomTypeName,
         LocalDateTime checkInTarget,

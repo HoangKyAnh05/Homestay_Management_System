@@ -19,6 +19,7 @@ import com.homestayManagement.homestayManagement.repository.RoomPriceConfigRepos
 import com.homestayManagement.homestayManagement.repository.RoomRepository;
 import com.homestayManagement.homestayManagement.repository.RoomTypeRepository;
 import com.homestayManagement.homestayManagement.service.RoomService;
+import com.homestayManagement.homestayManagement.service.support.BookingInventoryPolicy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,7 +37,6 @@ import java.util.stream.Collectors;
 @Service
 public class RoomServiceImpl implements RoomService {
 
-    private static final Set<String> ACTIVE_BOOKING_STATUSES = Set.of("PENDING", "CONFIRMED", "CHECKED_IN");
     private static final Set<String> PREFERRED_RENT_TYPES = Set.of("OVERNIGHT", "DAILY", "BY_NIGHT", "NIGHTLY");
 
     private final RoomTypeRepository roomTypeRepository;
@@ -191,9 +191,7 @@ public class RoomServiceImpl implements RoomService {
     }
 
     private boolean isActiveBooking(BookingDetail detail) {
-        String detailStatus = normalize(detail.getStatus());
-        String bookingStatus = normalize(detail.getBooking().getStatus());
-        return ACTIVE_BOOKING_STATUSES.contains(detailStatus) && ACTIVE_BOOKING_STATUSES.contains(bookingStatus);
+        return BookingInventoryPolicy.blocksInventory(detail);
     }
 
     private boolean hasCapacity(RoomType roomType, int adultsPerRoom, int childrenPerRoom) {

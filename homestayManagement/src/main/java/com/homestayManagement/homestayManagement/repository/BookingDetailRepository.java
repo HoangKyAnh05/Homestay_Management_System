@@ -50,6 +50,8 @@ public interface BookingDetailRepository extends JpaRepository<BookingDetail, Lo
             join fetch bd.roomType
             left join fetch bd.room r
             where c.account.id = :accountId
+              and b.status in ('CONFIRMED', 'CHECKED_IN', 'COMPLETED')
+              and bd.status in ('CONFIRMED', 'CHECKED_IN', 'COMPLETED')
             order by b.bookingDate desc, b.id desc, bd.checkInTarget asc
             """)
     List<BookingDetail> findByCustomerAccountIdForAdminHistory(@Param("accountId") Long accountId);
@@ -128,8 +130,8 @@ public interface BookingDetailRepository extends JpaRepository<BookingDetail, Lo
             where r.id = :roomId
               and bd.checkInTarget < :endExclusive
               and bd.checkOutTarget > :startInclusive
-              and bd.status in ('PENDING', 'CONFIRMED', 'CHECKED_IN')
-              and b.status in ('PENDING', 'CONFIRMED', 'CHECKED_IN')
+              and bd.status in ('CONFIRMED', 'CHECKED_IN')
+              and b.status in ('CONFIRMED', 'CHECKED_IN')
             order by bd.checkInTarget asc
             """)
     List<BookingDetail> findPublicBusySlotsByRoom(

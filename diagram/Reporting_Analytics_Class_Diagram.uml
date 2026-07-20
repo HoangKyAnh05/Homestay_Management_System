@@ -1,0 +1,64 @@
+@startuml
+title Reporting & Analytics Class Diagram
+skinparam classAttributeIconSize 0
+
+package "controller" {
+  class AdminDashboardController {
+    + getSummary(fromDate: LocalDate, toDate: LocalDate): AdminDashboardSummaryResponse
+  }
+}
+
+package "service" {
+  interface AdminDashboardService {
+    + getSummary(fromDate: LocalDate, toDate: LocalDate): AdminDashboardSummaryResponse
+  }
+  class AdminDashboardServiceImpl {
+    - invoiceRepository: InvoiceRepository
+    - bookingRepository: BookingRepository
+    - roomRepository: RoomRepository
+    - bookingDetailRepository: BookingDetailRepository
+    + getSummary(fromDate: LocalDate, toDate: LocalDate): AdminDashboardSummaryResponse
+  }
+}
+
+package "repository" {
+  interface InvoiceRepository
+  interface BookingRepository
+  interface RoomRepository
+  interface BookingDetailRepository
+}
+
+package "entity" {
+  class Invoice {
+    - id: Long
+    - totalAmount: BigDecimal
+    - createdAt: LocalDateTime
+  }
+  class Booking {
+    - id: Long
+    - status: String
+  }
+  class BookingDetail {
+    - id: Long
+    - status: String
+    - checkInTarget: LocalDateTime
+  }
+  class Room {
+    - id: Long
+    - status: String
+  }
+}
+
+AdminDashboardController --> AdminDashboardService
+AdminDashboardServiceImpl ..|> AdminDashboardService
+
+AdminDashboardServiceImpl --> InvoiceRepository
+AdminDashboardServiceImpl --> BookingRepository
+AdminDashboardServiceImpl --> RoomRepository
+AdminDashboardServiceImpl --> BookingDetailRepository
+
+InvoiceRepository ..> Invoice
+BookingRepository ..> Booking
+BookingDetailRepository ..> BookingDetail
+RoomRepository ..> Room
+@enduml

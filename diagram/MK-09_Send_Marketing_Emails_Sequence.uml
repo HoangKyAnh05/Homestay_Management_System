@@ -1,0 +1,61 @@
+@startuml
+actor Marketer
+boundary "EmailMarketingPage" as Page
+control "EmailMarketingController" as Controller
+control "EmailMarketingServiceImpl" as Service
+entity "CustomerRepository" as CustomerRepo
+entity "EmailCampaignRepository" as CampaignRepo
+database "Database" as Database
+entity "EmailServiceProvider" as EmailProvider
+
+autonumber
+
+Marketer -> Page : Enter subject, body copy, select target audience & click "Send Emails"
+activate Page
+
+Page -> Controller : POST /api/marketing/emails/send (EmailCampaignRequest) [Bearer Token]
+activate Controller
+
+Controller -> Service : sendMarketingEmails(request)
+activate Service
+
+Service -> CustomerRepo : findEmailsByAudienceGroup(request.audienceGroup())
+activate CustomerRepo
+CustomerRepo -> Database : Fetch recipient emails list
+activate Database
+Database --> CustomerRepo : Return List<String> of emails
+deactivate Database
+CustomerRepo --> Service : Return list of emails
+deactivate CustomerRepo
+
+alt Recipient list is empty
+    Service --> Controller : Throw IllegalArgumentException("Không tìm thấy khách hàng phù hợp nhóm đối tượng")
+    Controller --> Page : Return HTTP 400 Bad Request
+    Page --> Marketer : Display empty recipient list error alert
+else Valid recipients
+    Service -> EmailProvider : sendBulkEmails(emails, subject, body)
+    activate EmailProvider
+    EmailProvider --> Service : Return delivery receipt / status code
+    deactivate EmailProvider
+
+    Service -> Service : Build EmailCampaign entity with stats
+
+    Service -> CampaignRepo : save(EmailCampaign)
+    activate CampaignRepo
+    CampaignRepo -> Database : Insert marketing campaign email log
+    activate Database
+    Database --> CampaignRepo : Return saved EmailCampaign
+    deactivate Database
+    CampaignRepo --> Service : Return EmailCampaign
+    deactivate CampaignRepo
+
+    Service --> Controller : Return EmailCampaignResponse
+    deactivate Service
+
+    Controller --> Page : Return HTTP 200 OK (EmailCampaignResponse)
+    deactivate Controller
+
+    Page --> Marketer : Show campaign delivery success notification & update logs table
+    deactivate Page
+end
+@endum

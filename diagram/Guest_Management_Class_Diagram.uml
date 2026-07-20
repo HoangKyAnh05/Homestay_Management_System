@@ -1,0 +1,64 @@
+@startuml
+title Guest Management Class Diagram
+skinparam classAttributeIconSize 0
+
+package "controller" {
+  class RoomController {
+    + getAllPublicRooms(): List<RoomPublicResponse>
+    + getAllRoomTypes(): List<RoomTypeResponse>
+    + searchAvailableRooms(checkInDate: LocalDate, checkOutDate: LocalDate, rooms: Integer, adults: Integer, children: Integer, maxPrice: BigDecimal): List<RoomSearchResponse>
+    + getPublicRoomDetail(roomId: Long, fromDate: LocalDate, toDate: LocalDate): RoomDetailPublicResponse
+  }
+}
+
+package "service" {
+  interface RoomService {
+    + getAllPublicRooms(): List<RoomPublicResponse>
+    + getAllRoomTypes(): List<RoomTypeResponse>
+    + searchAvailableRooms(checkInDate: LocalDate, checkOutDate: LocalDate, rooms: Integer, adults: Integer, children: Integer, maxPrice: BigDecimal): List<RoomSearchResponse>
+    + getPublicRoomDetail(roomId: Long, fromDate: LocalDate, toDate: LocalDate): RoomDetailPublicResponse
+  }
+  class RoomServiceImpl {
+    - roomRepository: RoomRepository
+    - roomTypeRepository: RoomTypeRepository
+    - bookingDetailRepository: BookingDetailRepository
+    - roomPriceConfigRepository: RoomPriceConfigRepository
+  }
+}
+
+package "repository" {
+  interface RoomRepository
+  interface RoomTypeRepository
+  interface RoomImageRepository
+}
+
+package "entity" {
+  class Room {
+    - id: Long
+    - roomNumber: String
+    - status: String
+  }
+  class RoomType {
+    - id: Long
+    - name: String
+    - maxAdults: int
+    - maxChildren: int
+    - description: String
+  }
+  class RoomImage {
+    - id: Long
+    - imageUrl: String
+    - isPrimary: boolean
+  }
+}
+
+RoomController --> RoomService
+RoomServiceImpl ..|> RoomService
+RoomServiceImpl --> RoomRepository
+RoomServiceImpl --> RoomTypeRepository
+RoomRepository ..> Room
+RoomTypeRepository ..> RoomType
+RoomImageRepository ..> RoomImage
+Room "many" -- "1" RoomType
+RoomType "1" *-- "many" RoomImage
+@enduml

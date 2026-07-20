@@ -1,0 +1,79 @@
+@startuml
+title Booking & Room Class Diagram
+skinparam classAttributeIconSize 0
+
+package "controller" {
+  class RoomController
+  class PublicBookingController
+}
+
+package "service" {
+  interface RoomService
+  interface PublicBookingService
+  class RoomServiceImpl
+  class PublicBookingServiceImpl
+}
+
+package "repository" {
+  class AccountRepository
+  class CustomerRepository
+  class RoomRepository
+  class RoomTypeRepository
+  class BookingRepository
+  class BookingDetailRepository
+  class RoomImageRepository
+  class BookingGuestRepository
+  class BookingServiceItemRepository
+  class PricePolicyRepository
+  class RoomPriceConfigRepository
+  class FacilityServiceRepository
+  class InventoryServiceRepository
+}
+
+package "entity" {
+  class Room
+  class RoomType
+  class DepositPolicy
+  class RoomPriceConfig
+  class Booking
+  class BookingDetail
+  class Customer
+  class Account
+}
+
+RoomController --> RoomService
+PublicBookingController --> PublicBookingService
+RoomServiceImpl ..|> RoomService
+PublicBookingServiceImpl ..|> PublicBookingService
+RoomServiceImpl --> RoomRepository
+RoomServiceImpl --> RoomTypeRepository
+RoomServiceImpl --> RoomImageRepository
+RoomServiceImpl --> BookingDetailRepository
+RoomServiceImpl --> RoomPriceConfigRepository
+PublicBookingServiceImpl --> AccountRepository
+PublicBookingServiceImpl --> CustomerRepository
+PublicBookingServiceImpl --> RoomRepository
+PublicBookingServiceImpl --> RoomTypeRepository
+PublicBookingServiceImpl --> BookingRepository
+PublicBookingServiceImpl --> BookingDetailRepository
+PublicBookingServiceImpl --> BookingGuestRepository
+PublicBookingServiceImpl --> BookingServiceItemRepository
+PublicBookingServiceImpl --> PricePolicyRepository
+PublicBookingServiceImpl --> RoomPriceConfigRepository
+PublicBookingServiceImpl --> FacilityServiceRepository
+PublicBookingServiceImpl --> InventoryServiceRepository
+AccountRepository ..> Account
+CustomerRepository ..> Customer
+RoomRepository ..> Room
+RoomTypeRepository ..> RoomType
+BookingRepository ..> Booking
+BookingDetailRepository ..> BookingDetail
+BookingGuestRepository ..> BookingGuest
+BookingDetail --> Booking
+BookingDetail "many" --> "1" RoomType
+BookingDetail "many" --> "1" Room
+Booking "many" --> "1" Customer
+Booking "many" --> "1" DepositPolicy
+Room "many" --> "1" RoomType
+RoomType "many" --> "1" DepositPolicy
+@enduml

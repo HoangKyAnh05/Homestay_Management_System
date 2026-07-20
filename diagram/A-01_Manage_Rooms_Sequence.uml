@@ -1,0 +1,108 @@
+@startuml
+actor Admin
+boundary "RoomsManagementPage" as Page
+control "AdminRoomController" as Controller
+control "AdminRoomServiceImpl" as Service
+entity "RoomRepository" as RoomRepo
+entity "RoomTypeRepository" as RoomTypeRepo
+database "Database" as Database
+
+autonumber
+
+== Create Room ==
+Admin -> Page : Enter room number, select Room Type & status, and click "Create Room"
+activate Page
+
+Page -> Controller : POST /api/admin/rooms (RoomRequest) [Bearer Token]
+activate Controller
+
+Controller -> Service : createRoom(request)
+activate Service
+
+Service -> RoomRepo : existsByRoomNumber(request.roomNumber())
+activate RoomRepo
+RoomRepo -> Database : Query existing room number
+activate Database
+Database --> RoomRepo : Return boolean
+deactivate Database
+RoomRepo --> Service : Return exists flag
+deactivate RoomRepo
+
+Service -> RoomTypeRepo : findById(request.roomTypeId())
+activate RoomTypeRepo
+RoomTypeRepo -> Database : Query RoomType details
+activate Database
+Database --> RoomTypeRepo : Return RoomType
+deactivate Database
+RoomTypeRepo --> Service : Return RoomType
+deactivate RoomTypeRepo
+
+alt Invalid status OR room number exists OR RoomType not found
+    Service --> Controller : Throw IllegalArgumentException
+    Controller --> Page : Return HTTP 400 Bad Request
+    Page --> Admin : Display validation error message
+else Valid room request
+    Service -> Service : Build new Room entity
+
+    Service -> RoomRepo : save(Room)
+    activate RoomRepo
+    RoomRepo -> Database : Insert Room
+    activate Database
+    Database --> RoomRepo : Return saved Room
+    deactivate Database
+    RoomRepo --> Service : Return saved Room entity
+    deactivate RoomRepo
+
+    Service --> Controller : Return AdminRoomResponse
+    deactivate Service
+
+    Controller --> Page : Return HTTP 201 Created (AdminRoomResponse)
+    deactivate Controller
+
+    Page --> Admin : Add new room to list & display success message
+    deactivate Page
+end
+
+== Delete Room ==
+Admin -> Page : Click "Delete" on a room from the list
+activate Page
+
+Page -> Controller : DELETE /api/admin/rooms/{id} [Bearer Token]
+activate Controller
+
+Controller -> Service : deleteRoom(id)
+activate Service
+
+Service -> RoomRepo : findById(id)
+activate RoomRepo
+RoomRepo -> Database : Query Room by ID
+activate Database
+Database --> RoomRepo : Return Room entity (or empty)
+deactivate Database
+RoomRepo --> Service : Return Room
+deactivate RoomRepo
+
+alt Room not found
+    Service --> Controller : Throw IllegalArgumentException("Không tìm thấy phòng")
+    Controller --> Page : Return HTTP 400 Bad Request
+    Page --> Admin : Display error message
+else Room found
+    Service -> RoomRepo : delete(room)
+    activate RoomRepo
+    RoomRepo -> Database : Delete Room entity & cascades (images, checklists)
+    activate Database
+    Database --> RoomRepo : Success
+    deactivate Database
+    RoomRepo --> Service : Success
+    deactivate RoomRepo
+
+    Service --> Controller : Return success
+    deactivate Service
+
+    Controller --> Page : Return HTTP 204 No Content
+    deactivate Controller
+
+    Page --> Admin : Remove room from list & show deletion success message
+    deactivate Page
+end
+@endum
