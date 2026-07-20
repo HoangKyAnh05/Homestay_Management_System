@@ -82,6 +82,7 @@ public class CustomerAiChatServiceImpl implements CustomerAiChatService {
                         request.message().trim(),
                         request.sessionId(),
                         sanitizePagePath(request.pagePath()),
+                        "customer",
                         authenticatedCustomer,
                         publicContext,
                         customerContext,

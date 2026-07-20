@@ -12,6 +12,7 @@ public interface CustomerAiClient {
             String message,
             String sessionId,
             String pagePath,
+            String audience,
             boolean authenticated,
             Map<String, Object> publicContext,
             Map<String, Object> customerContext,

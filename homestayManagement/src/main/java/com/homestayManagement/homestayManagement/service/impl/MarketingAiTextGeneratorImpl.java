@@ -1,0 +1,244 @@
+package com.homestayManagement.homestayManagement.service.impl;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.homestayManagement.homestayManagement.dto.request.MarketingPostRequest;
+import com.homestayManagement.homestayManagement.service.MarketingAiTextGenerator;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+
+import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+@Service
+public class MarketingAiTextGeneratorImpl implements MarketingAiTextGenerator {
+
+    private final boolean enabled;
+    private final String provider;
+    private final String apiKey;
+    private final String baseUrl;
+    private final String chatPath;
+    private final String model;
+    private final String compatibilityMode;
+    private final String authHeaderName;
+    private final String authHeaderPrefix;
+    private final Duration timeout;
+    private final ObjectMapper objectMapper;
+    private final HttpClient httpClient;
+
+    public MarketingAiTextGeneratorImpl(
+            @Value("${marketing.ai.enabled:true}") boolean enabled,
+            @Value("${marketing.ai.provider:openai}") String provider,
+            @Value("${marketing.ai.api-key:}") String apiKey,
+            @Value("${marketing.ai.base-url:https://api.openai.com/v1}") String baseUrl,
+            @Value("${marketing.ai.chat-path:/chat/completions}") String chatPath,
+            @Value("${marketing.ai.model:gpt-5.5}") String model,
+            @Value("${marketing.ai.compatibility-mode:openai}") String compatibilityMode,
+            @Value("${marketing.ai.auth-header-name:Authorization}") String authHeaderName,
+            @Value("${marketing.ai.auth-header-prefix:Bearer}") String authHeaderPrefix,
+            @Value("${marketing.ai.timeout-seconds:60}") long timeoutSeconds,
+            ObjectMapper objectMapper
+    ) {
+        this.enabled = enabled;
+        this.provider = normalize(provider, "openai");
+        this.apiKey = apiKey;
+        this.baseUrl = trimTrailingSlash(baseUrl);
+        this.chatPath = normalizeChatPath(chatPath);
+        this.model = model;
+        this.compatibilityMode = normalize(compatibilityMode, "openai");
+        this.authHeaderName = normalize(authHeaderName, "Authorization");
+        this.authHeaderPrefix = authHeaderPrefix == null ? "" : authHeaderPrefix.trim();
+        this.timeout = Duration.ofSeconds(Math.max(5, timeoutSeconds));
+        this.objectMapper = objectMapper;
+        this.httpClient = HttpClient.newBuilder().connectTimeout(this.timeout).build();
+    }
+
+    @Override
+    public GenerationResult generate(MarketingPostRequest request) {
+        if (!enabled) {
+            return failed("MARKETING_AI_DISABLED", "Chưa bật Marketing AI.");
+        }
+        if (!hasText(apiKey)) {
+            return failed("MARKETING_AI_KEY_MISSING", "Thiếu MARKETING_AI_API_KEY.");
+        }
+
+        try {
+            String variationSeed = UUID.randomUUID().toString();
+            String prompt = """
+                    Bạn là AI marketing cho homestay. Hãy viết nội dung đăng mạng xã hội bằng tiếng Việt.
+                    Chỉ trả JSON hợp lệ theo schema: {"content":"...","hashtags":"#tag #tag","title":"..."}.
+                    Mỗi lần tạo phải viết một phiên bản mới, không lặp lại câu mở đầu/cấu trúc nếu cùng brief.
+                    Mã biến thể sáng tạo: %s
+                    Độ dài mong muốn: %s
+
+                    Tiêu đề nội bộ: %s
+                    Mục tiêu: %s
+                    Giọng điệu: %s
+                    Brief: %s
+                    """.formatted(variationSeed, lengthInstruction(request.contentLength()), request.title(), request.goal(), request.tone(), request.brief());
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("model", model);
+            payload.put("messages", List.of(
+                    Map.of("role", "system", "content", "You are a creative Vietnamese social media marketing copywriter. Return valid JSON only. Avoid repeating prior wording."),
+                    Map.of("role", "user", "content", prompt)
+            ));
+            if (isGenericCompatible()) {
+                payload.put("temperature", 0.95);
+            } else {
+                payload.put("seed", Math.abs(variationSeed.hashCode()));
+                if (!isGpt55OrNewer(model)) {
+                    payload.put("temperature", 0.95);
+                    payload.put("presence_penalty", 0.35);
+                    payload.put("frequency_penalty", 0.25);
+                } else {
+                    payload.put("reasoning_effort", "low");
+                }
+            }
+            HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
+                    .uri(URI.create(baseUrl + chatPath))
+                    .timeout(timeout)
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(payload)));
+            requestBuilder.header(authHeaderName, authHeaderValue());
+            HttpRequest httpRequest = requestBuilder.build();
+            HttpResponse<String> response = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() < 200 || response.statusCode() >= 300) {
+                return new GenerationResult(false, null, null, providerName(), model, response.body(), "MARKETING_AI_HTTP_" + response.statusCode(), "Marketing AI trả về HTTP " + response.statusCode());
+            }
+            return toGenerationResult(response.body(), request);
+        } catch (IOException exception) {
+            return failed("MARKETING_AI_IO_ERROR", "Không thể gọi Marketing AI: " + exception.getMessage());
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            return failed("MARKETING_AI_INTERRUPTED", "Tác vụ sinh nội dung bị gián đoạn.");
+        } catch (RuntimeException exception) {
+            return failed("MARKETING_AI_CLIENT_ERROR", "Không thể tạo yêu cầu Marketing AI: " + exception.getMessage());
+        }
+    }
+
+    private GenerationResult toGenerationResult(String responseBody, MarketingPostRequest request) throws JsonProcessingException {
+        JsonNode root = objectMapper.readTree(responseBody);
+        String text = root.path("choices").path(0).path("message").path("content").asText("");
+        JsonNode parsed = parseJsonFromModel(text);
+        String content = firstText(parsed, "content", "body");
+        String hashtags = firstText(parsed, "hashtags");
+        return new GenerationResult(
+                hasText(content) || hasText(text),
+                hasText(content) ? content : text,
+                hasText(hashtags) ? hashtags : "#HomeStays #HomestayVietNam #DuLichNghiDuong",
+                providerName(),
+                model,
+                responseBody,
+                null,
+                null
+        );
+    }
+
+    private JsonNode parseJsonFromModel(String text) {
+        String value = String.valueOf(text == null ? "" : text).trim()
+                .replaceFirst("^```json\\s*", "")
+                .replaceFirst("^```\\s*", "")
+                .replaceFirst("```$", "")
+                .trim();
+        try {
+            return objectMapper.readTree(value);
+        } catch (Exception ignored) {
+            int start = value.indexOf('{');
+            int end = value.lastIndexOf('}');
+            if (start >= 0 && end > start) {
+                try {
+                    return objectMapper.readTree(value.substring(start, end + 1));
+                } catch (Exception ignoredAgain) {
+                    return objectMapper.createObjectNode();
+                }
+            }
+            return objectMapper.createObjectNode();
+        }
+    }
+
+    private GenerationResult failed(String code, String message) {
+        return new GenerationResult(false, null, null, providerName(), model, null, code, message);
+    }
+
+    private String firstText(JsonNode node, String... fields) {
+        for (String field : fields) {
+            JsonNode value = node.get(field);
+            if (value != null && !value.isNull() && hasText(value.asText())) {
+                return value.asText();
+            }
+        }
+        return null;
+    }
+
+    private static String trimTrailingSlash(String value) {
+        return value == null ? "" : value.replaceAll("/+$", "");
+    }
+
+    private static String normalizeChatPath(String value) {
+        if (value == null || value.isBlank()) {
+            return "/chat/completions";
+        }
+        String trimmed = value.trim();
+        return trimmed.startsWith("/") ? trimmed : "/" + trimmed;
+    }
+
+    private static String normalize(String value, String fallback) {
+        return value == null || value.isBlank() ? fallback : value.trim();
+    }
+
+    private boolean isGpt55OrNewer(String value) {
+        String normalized = value == null ? "" : value.toLowerCase();
+        return normalized.contains("gpt-5.5") || normalized.contains("gpt-5.6");
+    }
+
+    private String providerName() {
+        if (hasText(provider)) {
+            return provider;
+        }
+        if (baseUrl.contains("api.openai.com")) {
+            return "openai";
+        }
+        if (baseUrl.contains("openrouter.ai")) {
+            return "openrouter";
+        }
+        return "custom-openai-compatible";
+    }
+
+    private boolean isGenericCompatible() {
+        return "generic".equalsIgnoreCase(compatibilityMode)
+                || "fpt".equalsIgnoreCase(provider)
+                || baseUrl.toLowerCase().contains("fpt");
+    }
+
+    private String authHeaderValue() {
+        if (!hasText(authHeaderPrefix)) {
+            return apiKey;
+        }
+        return authHeaderPrefix + " " + apiKey;
+    }
+
+    private String lengthInstruction(String value) {
+        if (!hasText(value)) {
+            return "STANDARD - khoảng 2-3 đoạn ngắn, đủ CTA và hashtag.";
+        }
+        return switch (value.trim().toUpperCase()) {
+            case "LONGER" -> "LONGER - dài hơn trước, khoảng 4-5 đoạn, giàu hình ảnh, có cảm xúc và CTA rõ.";
+            case "SHORTER" -> "SHORTER - ngắn hơn trước, khoảng 1-2 đoạn, vẫn đủ lợi ích chính và CTA.";
+            case "CONCISE" -> "CONCISE - cô đọng hơn, đi thẳng vào ý chính, câu ngắn, ít lan man.";
+            default -> "STANDARD - khoảng 2-3 đoạn ngắn, đủ CTA và hashtag.";
+        };
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.isBlank();
+    }
+}

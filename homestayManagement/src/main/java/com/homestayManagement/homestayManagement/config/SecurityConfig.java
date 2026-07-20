@@ -36,8 +36,11 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/marketing/social/oauth/callback").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/payments/sepay/webhook").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/ai/customer/chat").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/ai/staff/chat")
+                        .hasAnyAuthority("ROLE_ADMIN", "ROLE_RECEPTIONIST")
                         .requestMatchers("/uploads/**").permitAll()
                         .requestMatchers("/api/rooms/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/amenities").permitAll()
@@ -77,6 +80,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/admin/rules-penalties/**").hasAuthority("ROLE_ADMIN")
                         // Dashboard tổng quan
                         .requestMatchers("/api/admin/dashboard/**").hasAuthority("ROLE_ADMIN")
+                        .requestMatchers("/api/admin/marketing/**").hasAnyAuthority("ROLE_ADMIN", "ROLE_MARKETING")
 
                         // Các API admin còn lại không tự động mở cho role chuyên biệt.
                         .requestMatchers("/api/admin/**").hasAuthority("ROLE_ADMIN")
