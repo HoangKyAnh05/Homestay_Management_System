@@ -4,9 +4,11 @@ import com.homestayManagement.homestayManagement.dto.request.CustomerAiHistoryMe
 
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 
 public interface CustomerAiClient {
     CustomerAiClientResponse chat(CustomerAiClientRequest request);
+    CustomerAiClientResponse chatStream(CustomerAiClientRequest request, Consumer<String> deltaConsumer);
 
     record CustomerAiClientRequest(
             String message,

@@ -1,6 +1,7 @@
 ﻿import { useEffect, useMemo, useState } from 'react'
 import AdminLayout, { navigate } from './AdminLayout'
 import { getStoredToken, getStoredUser } from '../../services/authService'
+import { readNdjsonStream } from '../../utils/readNdjsonStream'
 import './MarketingPages.css'
 
 const API = 'http://localhost:8080/api/admin/marketing'
@@ -273,6 +274,7 @@ export function MarketingAIAgentPage() {
     title: 'Bài đăng nghỉ dưỡng cuối tuần',
     goal: FALLBACK_GOALS[0].label,
     tone: FALLBACK_TONES[0].label,
+    targetAudience: 'Cặp đôi trẻ, gia đình nhỏ hoặc nhóm bạn muốn nghỉ dưỡng cuối tuần.',
     brief: 'Giới thiệu không gian nghỉ dưỡng yên tĩnh giữa rừng thông, phù hợp cho cặp đôi muốn chữa lành cuối tuần.',
     mediaUrl: '',
     mediaItems: [],
@@ -412,6 +414,7 @@ export function MarketingAIAgentPage() {
       title: editablePost.title || current.title,
       goal: editablePost.goal || current.goal,
       tone: editablePost.tone || current.tone,
+      targetAudience: editablePost.targetAudience || '',
       brief: editablePost.brief || '',
       mediaUrl: '',
       mediaItems: (editablePost.media || []).map((media, index) => ({
@@ -746,6 +749,7 @@ export function MarketingAIAgentPage() {
       const payload = {
         title: form.title,
         brief: form.brief,
+        targetAudience: form.targetAudience,
         goal: form.goal,
         tone: form.tone,
         channels: targets.map((target) => ({
@@ -756,8 +760,50 @@ export function MarketingAIAgentPage() {
         })),
         media: mediaPayload(form.mediaItems),
       }
-      const post = await request('/posts/generate', { method: 'POST', body: JSON.stringify(payload) })
-      setGeneratedPost(post)
+      let streamedContent = ''
+      setGeneratedPost({
+        id: null,
+        title: form.title,
+        brief: form.brief,
+        targetAudience: form.targetAudience,
+        goal: form.goal,
+        tone: form.tone,
+        status: 'DRAFT',
+        channels: targets.map((target, index) => ({
+          id: `stream-${index}`,
+          socialAccountId: target.socialAccountId ? Number(target.socialAccountId) : null,
+          platform: target.platform,
+          pageName: target.pageName,
+          pageUrl: target.pageUrl,
+          content: '',
+          status: 'DRAFT',
+        })),
+        media: form.mediaItems,
+        streaming: true,
+      })
+      const response = await fetch(`${API}/posts/generate/stream`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify(payload),
+      })
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}))
+        throw new Error(data.message || 'Không thể tạo nội dung marketing.')
+      }
+      await readNdjsonStream(response, (event) => {
+        const payload = event.payload || {}
+        if (event.type === 'delta') {
+          streamedContent += payload.text || ''
+          setGeneratedPost((current) => current ? {
+            ...current,
+            channels: (current.channels || []).map((channel) => ({ ...channel, content: streamedContent })),
+          } : current)
+        } else if (event.type === 'done') {
+          setGeneratedPost(payload.post)
+        } else if (event.type === 'error') {
+          throw new Error(payload.message || 'Không thể tạo nội dung marketing.')
+        }
+      })
       await refreshDashboard()
     } catch (err) {
       setError(err.message)
@@ -784,6 +830,9 @@ export function MarketingAIAgentPage() {
   }
 
   const saveChannelContent = async (channelId) => {
+    if (!generatedPost?.id) {
+      return true
+    }
     const channel = generatedPost?.channels?.find((item) => item.id === channelId)
     if (!channel?.content?.trim()) {
       setError('Nội dung bài đăng không được để trống.')
@@ -939,6 +988,16 @@ export function MarketingAIAgentPage() {
             </div>
 
             <label className="mkt-field">
+              <span>Đối tượng khách hàng <small>{form.targetAudience.length}/300</small></span>
+              <input
+                maxLength="300"
+                value={form.targetAudience}
+                onChange={(event) => setForm({ ...form, targetAudience: event.target.value })}
+                placeholder="VD: Cặp đôi trẻ, gia đình có trẻ nhỏ, khách doanh nghiệp cần nghỉ dưỡng..."
+              />
+            </label>
+
+            <label className="mkt-field">
               <span>Ý tưởng hoặc mô tả ngắn <em>*</em><small>{form.brief.length}/2000</small></span>
               <textarea maxLength="2000" rows="5" value={form.brief} onChange={(event) => setForm({ ...form, brief: event.target.value })} />
             </label>
@@ -1058,7 +1117,7 @@ export function MarketingAIAgentPage() {
             <div className="mkt-preview-head">
               <div><span>XEM TRƯỚC</span><h2>Nội dung đề xuất</h2></div>
               <div className="mkt-preview-tools">
-                <button type="button" onClick={() => setReloadModal({ open: true, instruction: '' })} disabled={!previewChannel?.id || reloadingContent}><Icon name="sparkles" />Tạo lại</button>
+                <button type="button" onClick={() => setReloadModal({ open: true, instruction: '' })} disabled={!generatedPost?.id || !previewChannel?.id || reloadingContent}><Icon name="sparkles" />Tạo lại</button>
                 <button type="button" onClick={copyPost}><Icon name={copied ? 'check' : 'copy'} />{copied ? 'Đã sao chép' : 'Sao chép'}</button>
               </div>
             </div>
@@ -1112,7 +1171,7 @@ export function MarketingAIAgentPage() {
               </div>
             </div>
 
-            {generatedPost?.channels?.length > 0 && (
+            {generatedPost?.id && generatedPost?.channels?.length > 0 && (
               <div className="mkt-channel-actions">
                 {generatedPost.channels.map((channel) => (
                   <article key={channel.id}>
@@ -1423,6 +1482,7 @@ export function MarketingPostLogsPage() {
                   <div><small>Thời gian đăng/lên lịch</small><strong>{selectedChannel.postedAt || selectedChannel.scheduledAt ? formatScheduleTime(selectedChannel.postedAt || selectedChannel.scheduledAt) : 'Chưa có'}</strong></div>
                   <div><small>Mục tiêu</small><strong>{selectedChannel.post.goal || '—'}</strong></div>
                   <div><small>Giọng điệu</small><strong>{selectedChannel.post.tone || '—'}</strong></div>
+                  <div><small>Đối tượng</small><strong>{selectedChannel.post.targetAudience || '—'}</strong></div>
                 </div>
 
                 <section className="mkt-post-log-section">

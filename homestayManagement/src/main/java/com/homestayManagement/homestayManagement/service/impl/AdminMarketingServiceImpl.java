@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Consumer;
 
 @Service
 public class AdminMarketingServiceImpl implements AdminMarketingService {
@@ -265,6 +266,7 @@ public class AdminMarketingServiceImpl implements AdminMarketingService {
                 .campaign(request.campaignId() == null ? null : campaignRepository.findById(request.campaignId()).orElse(null))
                 .title(request.title().trim())
                 .brief(request.brief().trim())
+                .targetAudience(clean(request.targetAudience()))
                 .goal(request.goal().trim())
                 .tone(request.tone().trim())
                 .contentLength(normalizeContentLength(request.contentLength()))
@@ -277,6 +279,84 @@ public class AdminMarketingServiceImpl implements AdminMarketingService {
         MarketingPost savedPost = postRepository.save(post);
 
         String aiOutput = generateWithAi(request, agentConfig);
+        generationLogRepository.save(AiGenerationLog.builder()
+                .post(savedPost)
+                .agentConfig(agentConfig)
+                .inputBrief(request.brief())
+                .inputGoal(request.goal())
+                .inputTone(request.tone())
+                .outputJson(aiOutput)
+                .provider(agentConfig == null ? "customer-ai-sidecar" : agentConfig.getProvider())
+                .modelName(agentConfig == null ? null : agentConfig.getModelName())
+                .status("SUCCESS")
+                .createdBy(creator)
+                .build());
+
+        for (MarketingChannelRequest channelRequest : request.channels()) {
+            SocialAccount account = channelRequest.socialAccountId() == null
+                    ? null
+                    : socialAccountRepository.findById(channelRequest.socialAccountId()).orElse(null);
+            String content = hasText(channelRequest.content())
+                    ? channelRequest.content().trim()
+                    : channelCopy(aiOutput, request, channelRequest.platform(), account);
+            MarketingPostChannel channel = MarketingPostChannel.builder()
+                    .post(savedPost)
+                    .socialAccount(account)
+                    .platform(normalize(channelRequest.platform()))
+                    .pageName(hasText(channelRequest.pageName()) ? channelRequest.pageName().trim() : accountName(account))
+                    .pageUrl(hasText(channelRequest.pageUrl()) ? channelRequest.pageUrl().trim() : accountUrl(account))
+                    .content(content)
+                    .hashtags(channelRequest.hashtags())
+                    .platformOptionJson(clean(channelRequest.platformOptionJson()))
+                    .scheduledAt(channelRequest.scheduledAt())
+                    .status(channelRequest.scheduledAt() == null ? "DRAFT" : "SCHEDULED")
+                    .build();
+            channelRepository.save(channel);
+        }
+
+        if (request.media() != null) {
+            int index = 1;
+            for (MarketingMediaRequest mediaRequest : request.media()) {
+                mediaRepository.save(MarketingPostMedia.builder()
+                        .post(savedPost)
+                        .mediaUrl(mediaRequest.mediaUrl())
+                        .mediaType(normalize(mediaRequest.mediaType()))
+                        .displayOrder(mediaRequest.displayOrder() == null ? index : mediaRequest.displayOrder())
+                        .altText(mediaRequest.altText())
+                        .source(mediaRequest.source())
+                        .build());
+                index++;
+            }
+        }
+        return getPost(savedPost.getId());
+    }
+
+    @Override
+    @Transactional
+    public MarketingPostResponse generatePostStream(
+            MarketingPostRequest request,
+            Authentication authentication,
+            Consumer<String> deltaConsumer
+    ) {
+        Employee creator = currentEmployee(authentication);
+        AiAgentConfig agentConfig = agentConfigRepository.findFirstByIsActiveTrueOrderByIdAsc().orElse(null);
+        MarketingPost post = MarketingPost.builder()
+                .campaign(request.campaignId() == null ? null : campaignRepository.findById(request.campaignId()).orElse(null))
+                .title(request.title().trim())
+                .brief(request.brief().trim())
+                .targetAudience(clean(request.targetAudience()))
+                .goal(request.goal().trim())
+                .tone(request.tone().trim())
+                .contentLength(normalizeContentLength(request.contentLength()))
+                .sourceType("AI_GENERATED")
+                .status("DRAFT")
+                .approvalStatus("PENDING")
+                .creator(creator)
+                .agentConfig(agentConfig)
+                .build();
+        MarketingPost savedPost = postRepository.save(post);
+
+        String aiOutput = generateWithAiStream(request, agentConfig, deltaConsumer);
         generationLogRepository.save(AiGenerationLog.builder()
                 .post(savedPost)
                 .agentConfig(agentConfig)
@@ -379,6 +459,7 @@ public class AdminMarketingServiceImpl implements AdminMarketingService {
                 Hãy viết một phiên bản hoàn toàn mới, tránh lặp lại nội dung cũ sau đây:
                 %s
                 """.formatted(post.getBrief(), instruction, channel.getContent() == null ? "" : channel.getContent()).trim(),
+                post.getTargetAudience(),
                 post.getGoal(),
                 post.getTone(),
                 null,
@@ -569,6 +650,20 @@ public class AdminMarketingServiceImpl implements AdminMarketingService {
         */
     }
 
+    private String generateWithAiStream(
+            MarketingPostRequest request,
+            AiAgentConfig agentConfig,
+            Consumer<String> deltaConsumer
+    ) {
+        MarketingAiTextGenerator.GenerationResult result = aiTextGenerator.generateStream(request, deltaConsumer);
+        if (result.success() && hasText(result.content())) {
+            return result.content();
+        }
+        throw new IllegalStateException(hasText(result.errorMessage())
+                ? result.errorMessage()
+                : "AI khÃ´ng táº¡o Ä‘Æ°á»£c ná»™i dung. HÃ£y kiá»ƒm tra cáº¥u hÃ¬nh OpenAI API key/model.");
+    }
+
     private String channelCopy(String aiOutput, MarketingPostRequest request, String platform, SocialAccount account) {
         String platformLabel = normalize(platform);
         String page = accountName(account);
@@ -596,6 +691,7 @@ public class AdminMarketingServiceImpl implements AdminMarketingService {
                 post.getId(),
                 post.getTitle(),
                 post.getBrief(),
+                post.getTargetAudience(),
                 post.getGoal(),
                 post.getTone(),
                 post.getContentLength(),

@@ -576,6 +576,7 @@ Bai viet cha/brief marketing do nhan vien hoac AI Agent tao. Mot bai cha co the 
 | `campaign_id` | bigint | FK -> `marketing_campaigns.id`, nullable |
 | `title` | varchar(160) | Tieu de noi bo |
 | `brief` | text | Mo ta/yeu cau nguoi dung nhap |
+| `target_audience` | varchar(300) | Doi tuong khach hang muc tieu de AI viet noi dung phu hop |
 | `goal` | varchar(100) | Muc tieu bai viet tai thoi diem tao |
 | `tone` | varchar(100) | Giong dieu tai thoi diem tao |
 | `content_length` | varchar(30) | Do dai mong muon: `STANDARD`, `LONGER`, `SHORTER`, `CONCISE` |

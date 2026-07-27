@@ -1,5 +1,6 @@
 package com.homestayManagement.homestayManagement.controller;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.homestayManagement.homestayManagement.dto.request.MarketingOptionRequest;
 import com.homestayManagement.homestayManagement.dto.request.MarketingChannelContentRequest;
 import com.homestayManagement.homestayManagement.dto.request.MarketingMediaRequest;
@@ -21,11 +22,14 @@ import com.homestayManagement.homestayManagement.dto.response.VoucherResponse;
 import com.homestayManagement.homestayManagement.service.AdminMarketingService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
 import java.io.IOException;
+import java.io.OutputStream;
 import java.util.List;
 import java.util.Map;
 
@@ -34,9 +38,11 @@ import java.util.Map;
 public class AdminMarketingController {
 
     private final AdminMarketingService adminMarketingService;
+    private final ObjectMapper objectMapper;
 
-    public AdminMarketingController(AdminMarketingService adminMarketingService) {
+    public AdminMarketingController(AdminMarketingService adminMarketingService, ObjectMapper objectMapper) {
         this.adminMarketingService = adminMarketingService;
+        this.objectMapper = objectMapper;
     }
 
     @GetMapping("/dashboard")
@@ -129,6 +135,31 @@ public class AdminMarketingController {
         return adminMarketingService.generatePost(request, authentication);
     }
 
+    @PostMapping(value = "/posts/generate/stream", produces = MediaType.APPLICATION_NDJSON_VALUE)
+    @ResponseStatus(HttpStatus.CREATED)
+    public StreamingResponseBody generatePostStream(
+            @Valid @RequestBody MarketingPostRequest request,
+            Authentication authentication
+    ) {
+        return outputStream -> {
+            try {
+                writeEvent(outputStream, "meta", Map.of("title", request.title()));
+                MarketingPostResponse post = adminMarketingService.generatePostStream(request, authentication, delta -> {
+                    try {
+                        writeEvent(outputStream, "delta", Map.of("text", delta));
+                    } catch (IOException exception) {
+                        throw new MarketingStreamWriteException(exception);
+                    }
+                });
+                writeEvent(outputStream, "done", Map.of("post", post));
+            } catch (MarketingStreamWriteException exception) {
+                throw exception;
+            } catch (Exception exception) {
+                writeEvent(outputStream, "error", Map.of("message", safeMessage(exception)));
+            }
+        };
+    }
+
     @GetMapping("/posts/{id}")
     public MarketingPostResponse getPost(@PathVariable Long id) {
         return adminMarketingService.getPost(id);
@@ -175,5 +206,21 @@ public class AdminMarketingController {
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public Map<String, String> handleMarketingBadRequest(RuntimeException exception) {
         return Map.of("message", exception.getMessage());
+    }
+
+    private void writeEvent(OutputStream outputStream, String type, Map<String, ?> payload) throws IOException {
+        objectMapper.writeValue(outputStream, Map.of("type", type, "payload", payload));
+        outputStream.write('\n');
+        outputStream.flush();
+    }
+
+    private String safeMessage(Exception exception) {
+        return exception.getMessage() == null ? "Không thể tạo nội dung marketing." : exception.getMessage();
+    }
+
+    private static final class MarketingStreamWriteException extends RuntimeException {
+        private MarketingStreamWriteException(Throwable cause) {
+            super(cause);
+        }
     }
 }

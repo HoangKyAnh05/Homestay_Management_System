@@ -108,6 +108,7 @@ public class MarketingAiAgentPublisherImpl implements MarketingSocialPublisher {
         post.put("id", channel.getPost().getId());
         post.put("title", channel.getPost().getTitle());
         post.put("brief", channel.getPost().getBrief());
+        post.put("targetAudience", channel.getPost().getTargetAudience());
         post.put("goal", channel.getPost().getGoal());
         post.put("tone", channel.getPost().getTone());
 

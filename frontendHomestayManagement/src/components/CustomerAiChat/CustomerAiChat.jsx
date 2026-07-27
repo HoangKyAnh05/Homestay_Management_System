@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { getStoredToken, getStoredUser } from '../../services/authService'
+import { readNdjsonStream } from '../../utils/readNdjsonStream'
 import './CustomerAiChat.css'
 
-const API_URL = 'http://localhost:8080/api/ai/customer/chat'
+const STREAM_API_URL = 'http://localhost:8080/api/ai/customer/chat/stream'
 const SESSION_STORAGE_KEY = 'homeStayAiChatSessionId'
 const WELCOME_MESSAGE = {
   role: 'assistant',
@@ -59,10 +60,15 @@ export default function CustomerAiChat() {
 
     const history = messages
       .filter((message) => message !== WELCOME_MESSAGE)
+      .filter((message) => message.content?.trim())
       .slice(-10)
       .map(({ role, content }) => ({ role, content }))
-    const userMessage = { role: 'user', content: question }
-    setMessages((current) => [...current, userMessage])
+    const assistantMessageId = `assistant_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+    setMessages((current) => [
+      ...current,
+      { role: 'user', content: question },
+      { id: assistantMessageId, role: 'assistant', content: '' },
+    ])
     setInput('')
     setError('')
     setSending(true)
@@ -73,7 +79,7 @@ export default function CustomerAiChat() {
     try {
       const headers = { 'Content-Type': 'application/json' }
       if (token) headers.Authorization = `Bearer ${token}`
-      const response = await fetch(API_URL, {
+      const response = await fetch(STREAM_API_URL, {
         method: 'POST',
         headers,
         signal: controller.signal,
@@ -84,17 +90,36 @@ export default function CustomerAiChat() {
           history,
         }),
       })
-      const data = await response.json().catch(() => ({}))
       if (!response.ok) {
+        const data = await response.json().catch(() => ({}))
         throw new Error(data.message || 'AI chat đang tạm thời không khả dụng.')
       }
-      setMessages((current) => [
-        ...current,
-        { role: 'assistant', content: data.answer || 'Mình chưa có câu trả lời phù hợp.' },
-      ])
+      let finalAnswer = ''
+      await readNdjsonStream(response, (event) => {
+        const payload = event.payload || {}
+        if (event.type === 'delta') {
+          const text = payload.text || ''
+          finalAnswer += text
+          setMessages((current) => current.map((message) => (
+            message.id === assistantMessageId
+              ? { ...message, content: `${message.content || ''}${text}` }
+              : message
+          )))
+        } else if (event.type === 'done') {
+          finalAnswer = payload.answer || finalAnswer
+          setMessages((current) => current.map((message) => (
+            message.id === assistantMessageId
+              ? { ...message, content: finalAnswer || 'Mình chưa có câu trả lời phù hợp.' }
+              : message
+          )))
+        } else if (event.type === 'error') {
+          throw new Error(payload.message || 'AI chat đang tạm thời không khả dụng.')
+        }
+      })
     } catch (requestError) {
       if (requestError.name !== 'AbortError') {
         setError(requestError.message)
+        setMessages((current) => current.filter((message) => message.id !== assistantMessageId || message.content))
       }
     } finally {
       if (!controller.signal.aborted) setSending(false)
@@ -109,12 +134,7 @@ export default function CustomerAiChat() {
   return (
     <div className={`customer-ai-chat${open ? ' is-open' : ''}`}>
       {open && (
-        <section
-          className="customer-ai-panel"
-          role="dialog"
-          aria-modal="false"
-          aria-labelledby="customer-ai-title"
-        >
+        <section className="customer-ai-panel" role="dialog" aria-modal="false" aria-labelledby="customer-ai-title">
           <header className="customer-ai-header">
             <div className="customer-ai-avatar" aria-hidden="true">AI</div>
             <div>
@@ -128,20 +148,16 @@ export default function CustomerAiChat() {
             {messages.map((message, index) => (
               <div
                 className={`customer-ai-message customer-ai-message--${message.role}`}
-                key={`${message.role}-${index}-${message.content.slice(0, 20)}`}
+                key={message.id || `${message.role}-${index}-${message.content.slice(0, 20)}`}
               >
                 {message.role === 'assistant' && <span className="customer-ai-mini-avatar">AI</span>}
-                <p>{message.content}</p>
+                {message.role === 'assistant' && !message.content && sending ? (
+                  <div className="customer-ai-typing" aria-label="AI đang trả lời"><i /><i /><i /></div>
+                ) : (
+                  <p>{message.content}</p>
+                )}
               </div>
             ))}
-            {sending && (
-              <div className="customer-ai-message customer-ai-message--assistant">
-                <span className="customer-ai-mini-avatar">AI</span>
-                <div className="customer-ai-typing" aria-label="AI đang trả lời">
-                  <i /><i /><i />
-                </div>
-              </div>
-            )}
           </div>
 
           {messages.length === 1 && (

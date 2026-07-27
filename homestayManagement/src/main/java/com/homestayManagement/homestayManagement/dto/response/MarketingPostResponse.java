@@ -7,6 +7,7 @@ public record MarketingPostResponse(
         Long id,
         String title,
         String brief,
+        String targetAudience,
         String goal,
         String tone,
         String contentLength,

@@ -24,6 +24,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 
 import java.util.List;
+import java.util.function.Consumer;
 
 public interface AdminMarketingService {
     MarketingDashboardResponse dashboard();
@@ -36,6 +37,7 @@ public interface AdminMarketingService {
     MarketingOptionResponse createOption(MarketingOptionRequest request);
     void deleteOption(Long id);
     MarketingPostResponse generatePost(MarketingPostRequest request, Authentication authentication);
+    MarketingPostResponse generatePostStream(MarketingPostRequest request, Authentication authentication, Consumer<String> deltaConsumer);
     MarketingPostResponse updateChannelContent(Long channelId, MarketingChannelContentRequest request);
     MarketingPostResponse regenerateChannelContent(Long channelId, MarketingRegenerateContentRequest request);
     MarketingPostResponse scheduleChannel(Long channelId, ScheduleMarketingChannelRequest request);

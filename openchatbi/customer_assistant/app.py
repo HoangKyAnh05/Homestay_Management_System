@@ -205,6 +205,21 @@ def get_model() -> tuple[ChatOpenAI, str]:
     )
 
 
+def build_messages(request: CustomerChatRequest) -> list[SystemMessage | AIMessage | HumanMessage]:
+    messages: list[SystemMessage | AIMessage | HumanMessage] = [SystemMessage(content=build_system_prompt(request))]
+    for item in request.history[-10:]:
+        if item.role == "assistant":
+            messages.append(AIMessage(content=item.content))
+        else:
+            messages.append(HumanMessage(content=item.content))
+    messages.append(HumanMessage(content=request.message))
+    return messages
+
+
+def ndjson_event(event_type: str, **payload: Any) -> str:
+    return json.dumps({"type": event_type, **payload}, ensure_ascii=False, default=str) + "\n"
+
+
 @app.get("/health")
 async def health() -> dict[str, Any]:
     api_key = (
@@ -250,13 +265,7 @@ async def customer_chat(request: CustomerChatRequest) -> CustomerChatResponse:
         request.page_path,
         model_name,
     )
-    messages = [SystemMessage(content=build_system_prompt(request))]
-    for item in request.history[-10:]:
-        if item.role == "assistant":
-            messages.append(AIMessage(content=item.content))
-        else:
-            messages.append(HumanMessage(content=item.content))
-    messages.append(HumanMessage(content=request.message))
+    messages = build_messages(request)
 
     try:
         response = await model.ainvoke(messages)
@@ -283,3 +292,48 @@ async def customer_chat(request: CustomerChatRequest) -> CustomerChatResponse:
             detail="Mô hình AI không trả về nội dung",
         )
     return CustomerChatResponse(answer=answer.strip(), model=model_name)
+
+
+@app.post(
+    "/customer/chat/stream",
+    dependencies=[Depends(require_internal_token)],
+)
+async def customer_chat_stream(request: CustomerChatRequest) -> StreamingResponse:
+    model, model_name = get_model()
+    logger.info(
+        "Customer AI stream request received: session_id=%s authenticated=%s page_path=%s model=%s",
+        request.session_id,
+        request.authenticated,
+        request.page_path,
+        model_name,
+    )
+    messages = build_messages(request)
+
+    async def stream_events():
+        answer_parts: list[str] = []
+        try:
+            yield ndjson_event("meta", model=model_name)
+            async for chunk in model.astream(messages):
+                content = chunk.content if isinstance(chunk.content, str) else str(chunk.content or "")
+                if content:
+                    answer_parts.append(content)
+                    yield ndjson_event("delta", text=content)
+            answer = "".join(answer_parts).strip()
+            if not answer:
+                yield ndjson_event("error", message="Mô hình AI không trả về nội dung")
+                return
+            yield ndjson_event("done", answer=answer, model=model_name)
+        except Exception as exc:
+            logger.exception(
+                "Customer AI stream failed: model=%s base_url=%s session_id=%s error=%s",
+                model_name,
+                os.getenv("OPENAI_BASE_URL", "").strip()
+                or os.getenv("OPENROUTER_BASE_URL", "").strip()
+                or os.getenv("FPT_AI_BASE_URL", "").strip()
+                or "https://api.openai.com/v1",
+                request.session_id,
+                exc,
+            )
+            yield ndjson_event("error", message="Không thể kết nối mô hình AI")
+
+    return StreamingResponse(stream_events(), media_type="application/x-ndjson")

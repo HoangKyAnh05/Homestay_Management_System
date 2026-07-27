@@ -19,6 +19,7 @@ import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 
 @Service
 public class StaffAiChatServiceImpl implements StaffAiChatService {
@@ -74,18 +75,71 @@ public class StaffAiChatServiceImpl implements StaffAiChatService {
         List<CustomerAiHistoryMessageRequest> history = request.history() == null
                 ? List.of()
                 : request.history();
-        CustomerAiClient.CustomerAiClientResponse aiResponse = customerAiClient.chat(
-                new CustomerAiClient.CustomerAiClientRequest(
-                        request.message().trim(),
-                        request.sessionId(),
-                        sanitizePagePath(request.pagePath()),
-                        "staff",
-                        true,
-                        publicContext,
-                        staffContext,
-                        history
-                )
+        CustomerAiClient.CustomerAiClientResponse aiResponse = customerAiClient.chat(new CustomerAiClient.CustomerAiClientRequest(
+                request.message().trim(),
+                request.sessionId(),
+                sanitizePagePath(request.pagePath()),
+                "staff",
+                true,
+                publicContext,
+                staffContext,
+                history
+        ));
+        return responseFromAi(request, aiResponse);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public CustomerAiChatResponse chatStream(
+            CustomerAiChatRequest request,
+            Authentication authentication,
+            Consumer<String> deltaConsumer
+    ) {
+        String role = primaryRole(authentication);
+        LocalDate today = LocalDate.now();
+        Map<String, Object> publicContext = new LinkedHashMap<>();
+        publicContext.put("roomCatalog", roomService.getAllPublicRooms().stream()
+                .map(this::toCompactRoomContext)
+                .toList());
+        publicContext.put("pricePolicies", publicBookingService.getPricePolicies());
+        publicContext.put("services", publicBookingService.getServiceOptions());
+
+        Map<String, Object> staffContext = new LinkedHashMap<>();
+        staffContext.put("staffEmail", authentication != null ? authentication.getName() : null);
+        staffContext.put("staffRole", role);
+        staffContext.put("today", today);
+        staffContext.put("dashboardLast7Days", adminDashboardService.getSummary(today.minusDays(6), today));
+        staffContext.put("todayCheckInLogs", adminBookingService.getCheckInLogs(today, today).stream()
+                .limit(12)
+                .toList());
+        staffContext.put("recentCheckInLogs", adminBookingService.getCheckInLogs(today.minusDays(6), today).stream()
+                .limit(30)
+                .toList());
+        staffContext.put(
+                "operationRules",
+                "AI chi tu van va tom tat du lieu. Khong tu dong tao booking, check-in, check-out, thanh toan, tao hoa don hoac thay doi du lieu."
         );
+
+        List<CustomerAiHistoryMessageRequest> history = request.history() == null
+                ? List.of()
+                : request.history();
+        CustomerAiClient.CustomerAiClientResponse aiResponse = customerAiClient.chatStream(new CustomerAiClient.CustomerAiClientRequest(
+                request.message().trim(),
+                request.sessionId(),
+                sanitizePagePath(request.pagePath()),
+                "staff",
+                true,
+                publicContext,
+                staffContext,
+                history
+        ), deltaConsumer);
+        return responseFromAi(request, aiResponse);
+    }
+
+    private CustomerAiChatResponse responseFromAi(
+            CustomerAiChatRequest request,
+            CustomerAiClient.CustomerAiClientResponse aiResponse
+    ) {
         return new CustomerAiChatResponse(
                 aiResponse.answer(),
                 request.sessionId(),
