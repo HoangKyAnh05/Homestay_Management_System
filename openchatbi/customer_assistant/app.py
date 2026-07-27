@@ -15,6 +15,7 @@ from datetime import datetime
 from typing import Any, Literal
 
 from fastapi import Depends, FastAPI, Header, HTTPException, status
+from fastapi.responses import StreamingResponse
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, Field
@@ -146,31 +147,57 @@ CUSTOMER_CONTEXT:
 
 
 def get_model() -> tuple[ChatOpenAI, str]:
-    # FPT AI Factory configuration for Customer AI Assistant
-    fpt_api_key = os.getenv("FPT_AI_API_KEY", "").strip()
-    if not fpt_api_key:
+    api_key = (
+        os.getenv("OPENAI_API_KEY", "").strip()
+        or os.getenv("OPENROUTER_API_KEY", "").strip()
+        or os.getenv("FPT_AI_API_KEY", "").strip()
+    )
+    if not api_key:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="FPT_AI_API_KEY is not configured",
+            detail="OPENAI_API_KEY, OPENROUTER_API_KEY or FPT_AI_API_KEY is not configured",
         )
-    
-    base_url = os.getenv("FPT_AI_BASE_URL", "https://mkp-api.fptcloud.com/v1").strip()
-    model_name = os.getenv("FPT_AI_MODEL", "GLM-5.2").strip()
-    
+
+    base_url = (
+        os.getenv("OPENAI_BASE_URL", "").strip()
+        or os.getenv("OPENROUTER_BASE_URL", "").strip()
+        or os.getenv("FPT_AI_BASE_URL", "").strip()
+        or "https://api.openai.com/v1"
+    )
+    model_name = (
+        os.getenv("OPENAI_MODEL", "").strip()
+        or os.getenv("OPENROUTER_MODEL", "").strip()
+        or os.getenv("FPT_AI_MODEL", "").strip()
+        or "gpt-4.1-mini"
+    )
+    default_headers = {}
+    referer = os.getenv("OPENROUTER_REFERER", "").strip()
+    title = os.getenv("OPENROUTER_TITLE", "").strip()
+    if referer:
+        default_headers["HTTP-Referer"] = referer
+    if title:
+        default_headers["X-OpenRouter-Title"] = title
+    provider_name = "OpenAI" if "api.openai.com" in base_url else "OpenAI-compatible"
+
     model_kwargs: dict[str, Any] = {
-        "api_key": fpt_api_key,
+        "api_key": api_key,
         "model": model_name,
         "temperature": 0.1,
         "max_tokens": 800,
         "timeout": 45,
         "max_retries": 2,
-        "base_url": base_url,
     }
+    if base_url:
+        model_kwargs["base_url"] = base_url
+    if default_headers:
+        model_kwargs["default_headers"] = default_headers
 
     logger.info(
-        "Customer AI model configured: model=%s base_url=%s provider=FPT AI Factory",
+        "Customer AI model configured: model=%s base_url=%s provider=%s openrouter_headers=%s",
         model_name,
         base_url,
+        provider_name,
+        sorted(default_headers.keys()),
     )
     return (
         ChatOpenAI(**model_kwargs),
@@ -178,19 +205,49 @@ def get_model() -> tuple[ChatOpenAI, str]:
     )
 
 
+def build_messages(request: CustomerChatRequest) -> list[SystemMessage | AIMessage | HumanMessage]:
+    messages: list[SystemMessage | AIMessage | HumanMessage] = [SystemMessage(content=build_system_prompt(request))]
+    for item in request.history[-10:]:
+        if item.role == "assistant":
+            messages.append(AIMessage(content=item.content))
+        else:
+            messages.append(HumanMessage(content=item.content))
+    messages.append(HumanMessage(content=request.message))
+    return messages
+
+
+def ndjson_event(event_type: str, **payload: Any) -> str:
+    return json.dumps({"type": event_type, **payload}, ensure_ascii=False, default=str) + "\n"
+
+
 @app.get("/health")
 async def health() -> dict[str, Any]:
-    fpt_api_key = os.getenv("FPT_AI_API_KEY", "").strip()
-    fpt_model = os.getenv("FPT_AI_MODEL", "GLM-5.2").strip()
-    fpt_base_url = os.getenv("FPT_AI_BASE_URL", "https://mkp-api.fptcloud.com/v1").strip()
-    
+    api_key = (
+        os.getenv("OPENAI_API_KEY", "").strip()
+        or os.getenv("OPENROUTER_API_KEY", "").strip()
+        or os.getenv("FPT_AI_API_KEY", "").strip()
+    )
+    base_url = (
+        os.getenv("OPENAI_BASE_URL", "").strip()
+        or os.getenv("OPENROUTER_BASE_URL", "").strip()
+        or os.getenv("FPT_AI_BASE_URL", "").strip()
+        or "https://api.openai.com/v1"
+    )
+    model_name = (
+        os.getenv("OPENAI_MODEL", "").strip()
+        or os.getenv("OPENROUTER_MODEL", "").strip()
+        or os.getenv("FPT_AI_MODEL", "").strip()
+        or "gpt-4.1-mini"
+    )
+    provider_name = "OpenAI" if "api.openai.com" in base_url else "OpenAI-compatible"
+
     return {
         "status": "UP",
-        "api_key_configured": bool(fpt_api_key),
-        "api_key_provider": "FPT AI Factory",
+        "api_key_configured": bool(api_key),
+        "api_key_provider": provider_name,
         "internal_token_configured": bool(os.getenv("AI_INTERNAL_TOKEN", "").strip()),
-        "model": fpt_model,
-        "base_url": fpt_base_url,
+        "model": model_name,
+        "base_url": base_url,
     }
 
 
@@ -208,13 +265,7 @@ async def customer_chat(request: CustomerChatRequest) -> CustomerChatResponse:
         request.page_path,
         model_name,
     )
-    messages = [SystemMessage(content=build_system_prompt(request))]
-    for item in request.history[-10:]:
-        if item.role == "assistant":
-            messages.append(AIMessage(content=item.content))
-        else:
-            messages.append(HumanMessage(content=item.content))
-    messages.append(HumanMessage(content=request.message))
+    messages = build_messages(request)
 
     try:
         response = await model.ainvoke(messages)
@@ -222,7 +273,10 @@ async def customer_chat(request: CustomerChatRequest) -> CustomerChatResponse:
         logger.exception(
             "Customer AI model call failed: model=%s base_url=%s session_id=%s error=%s",
             model_name,
-            os.getenv("FPT_AI_BASE_URL", "https://mkp-api.fptcloud.com/v1"),
+            os.getenv("OPENAI_BASE_URL", "").strip()
+            or os.getenv("OPENROUTER_BASE_URL", "").strip()
+            or os.getenv("FPT_AI_BASE_URL", "").strip()
+            or "https://api.openai.com/v1",
             request.session_id,
             exc,
         )
@@ -238,3 +292,48 @@ async def customer_chat(request: CustomerChatRequest) -> CustomerChatResponse:
             detail="Mô hình AI không trả về nội dung",
         )
     return CustomerChatResponse(answer=answer.strip(), model=model_name)
+
+
+@app.post(
+    "/customer/chat/stream",
+    dependencies=[Depends(require_internal_token)],
+)
+async def customer_chat_stream(request: CustomerChatRequest) -> StreamingResponse:
+    model, model_name = get_model()
+    logger.info(
+        "Customer AI stream request received: session_id=%s authenticated=%s page_path=%s model=%s",
+        request.session_id,
+        request.authenticated,
+        request.page_path,
+        model_name,
+    )
+    messages = build_messages(request)
+
+    async def stream_events():
+        answer_parts: list[str] = []
+        try:
+            yield ndjson_event("meta", model=model_name)
+            async for chunk in model.astream(messages):
+                content = chunk.content if isinstance(chunk.content, str) else str(chunk.content or "")
+                if content:
+                    answer_parts.append(content)
+                    yield ndjson_event("delta", text=content)
+            answer = "".join(answer_parts).strip()
+            if not answer:
+                yield ndjson_event("error", message="Mô hình AI không trả về nội dung")
+                return
+            yield ndjson_event("done", answer=answer, model=model_name)
+        except Exception as exc:
+            logger.exception(
+                "Customer AI stream failed: model=%s base_url=%s session_id=%s error=%s",
+                model_name,
+                os.getenv("OPENAI_BASE_URL", "").strip()
+                or os.getenv("OPENROUTER_BASE_URL", "").strip()
+                or os.getenv("FPT_AI_BASE_URL", "").strip()
+                or "https://api.openai.com/v1",
+                request.session_id,
+                exc,
+            )
+            yield ndjson_event("error", message="Không thể kết nối mô hình AI")
+
+    return StreamingResponse(stream_events(), media_type="application/x-ndjson")

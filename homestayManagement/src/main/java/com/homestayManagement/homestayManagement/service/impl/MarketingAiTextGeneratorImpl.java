@@ -18,6 +18,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Consumer;
+import java.util.stream.Stream;
 
 @Service
 public class MarketingAiTextGeneratorImpl implements MarketingAiTextGenerator {
@@ -41,7 +43,7 @@ public class MarketingAiTextGeneratorImpl implements MarketingAiTextGenerator {
             @Value("${marketing.ai.api-key:}") String apiKey,
             @Value("${marketing.ai.base-url:https://api.openai.com/v1}") String baseUrl,
             @Value("${marketing.ai.chat-path:/chat/completions}") String chatPath,
-            @Value("${marketing.ai.model:gpt-5.5}") String model,
+            @Value("${marketing.ai.model:gpt-4.1-mini}") String model,
             @Value("${marketing.ai.compatibility-mode:openai}") String compatibilityMode,
             @Value("${marketing.ai.auth-header-name:Authorization}") String authHeaderName,
             @Value("${marketing.ai.auth-header-prefix:Bearer}") String authHeaderPrefix,
@@ -83,8 +85,9 @@ public class MarketingAiTextGeneratorImpl implements MarketingAiTextGenerator {
                     Tiêu đề nội bộ: %s
                     Mục tiêu: %s
                     Giọng điệu: %s
+                    Đối tượng khách hàng: %s
                     Brief: %s
-                    """.formatted(variationSeed, lengthInstruction(request.contentLength()), request.title(), request.goal(), request.tone(), request.brief());
+                    """.formatted(variationSeed, lengthInstruction(request.contentLength()), request.title(), request.goal(), request.tone(), audienceInstruction(request.targetAudience()), request.brief());
             Map<String, Object> payload = new LinkedHashMap<>();
             payload.put("model", model);
             payload.put("messages", List.of(
@@ -95,7 +98,7 @@ public class MarketingAiTextGeneratorImpl implements MarketingAiTextGenerator {
                 payload.put("temperature", 0.95);
             } else {
                 payload.put("seed", Math.abs(variationSeed.hashCode()));
-                if (!isGpt55OrNewer(model)) {
+                if (!usesReasoningEffortOnly(model)) {
                     payload.put("temperature", 0.95);
                     payload.put("presence_penalty", 0.35);
                     payload.put("frequency_penalty", 0.25);
@@ -122,6 +125,89 @@ public class MarketingAiTextGeneratorImpl implements MarketingAiTextGenerator {
             return failed("MARKETING_AI_INTERRUPTED", "Tác vụ sinh nội dung bị gián đoạn.");
         } catch (RuntimeException exception) {
             return failed("MARKETING_AI_CLIENT_ERROR", "Không thể tạo yêu cầu Marketing AI: " + exception.getMessage());
+        }
+    }
+
+    @Override
+    public GenerationResult generateStream(MarketingPostRequest request, Consumer<String> deltaConsumer) {
+        if (!enabled) {
+            return failed("MARKETING_AI_DISABLED", "ChÆ°a báº­t Marketing AI.");
+        }
+        if (!hasText(apiKey)) {
+            return failed("MARKETING_AI_KEY_MISSING", "Thiáº¿u MARKETING_AI_API_KEY.");
+        }
+
+        try {
+            String variationSeed = UUID.randomUUID().toString();
+            String prompt = """
+                    Bạn là AI marketing cho homestay. Hãy viết nội dung đăng mạng xã hội bằng tiếng Việt.
+                    Chỉ trả nội dung bài đăng thuần văn bản, không trả JSON, không bọc markdown.
+                    Mỗi lần tạo phải viết một phiên bản mới, không lặp lại câu mở đầu/cấu trúc nếu cùng brief.
+                    Mã biến thể sáng tạo: %s
+                    Độ dài mong muốn: %s
+
+                    Tiêu đề nội bộ: %s
+                    Mục tiêu: %s
+                    Giọng điệu: %s
+                    Đối tượng khách hàng: %s
+                    Brief: %s
+                    """.formatted(variationSeed, lengthInstruction(request.contentLength()), request.title(), request.goal(), request.tone(), audienceInstruction(request.targetAudience()), request.brief());
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("model", model);
+            payload.put("messages", List.of(
+                    Map.of("role", "system", "content", "You are a creative Vietnamese social media marketing copywriter. Stream plain post copy only."),
+                    Map.of("role", "user", "content", prompt)
+            ));
+            payload.put("stream", true);
+            if (isGenericCompatible()) {
+                payload.put("temperature", 0.95);
+            } else {
+                payload.put("seed", Math.abs(variationSeed.hashCode()));
+                if (!usesReasoningEffortOnly(model)) {
+                    payload.put("temperature", 0.95);
+                    payload.put("presence_penalty", 0.35);
+                    payload.put("frequency_penalty", 0.25);
+                } else {
+                    payload.put("reasoning_effort", "low");
+                }
+            }
+            HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
+                    .uri(URI.create(baseUrl + chatPath))
+                    .timeout(timeout)
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(payload)));
+            requestBuilder.header(authHeaderName, authHeaderValue());
+            HttpResponse<Stream<String>> response = httpClient.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofLines());
+            if (response.statusCode() < 200 || response.statusCode() >= 300) {
+                String responseBody;
+                try (Stream<String> lines = response.body()) {
+                    responseBody = String.join("\n", lines.toList());
+                }
+                return new GenerationResult(false, null, null, providerName(), model, responseBody, "MARKETING_AI_HTTP_" + response.statusCode(), "Marketing AI tráº£ vá» HTTP " + response.statusCode());
+            }
+
+            StringBuilder content = new StringBuilder();
+            try (Stream<String> lines = response.body()) {
+                lines.forEach(line -> appendStreamingLine(line, content, deltaConsumer));
+            }
+            String text = content.toString().trim();
+            return new GenerationResult(
+                    hasText(text),
+                    text,
+                    "#HomeStays #HomestayVietNam #DuLichNghiDuong",
+                    providerName(),
+                    model,
+                    text,
+                    null,
+                    hasText(text) ? null : "Marketing AI không trả về nội dung."
+            );
+        } catch (IOException exception) {
+            return failed("MARKETING_AI_IO_ERROR", "KhÃ´ng thá»ƒ gá»i Marketing AI: " + exception.getMessage());
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            return failed("MARKETING_AI_INTERRUPTED", "TÃ¡c vá»¥ sinh ná»™i dung bá»‹ giÃ¡n Ä‘oáº¡n.");
+        } catch (RuntimeException exception) {
+            return failed("MARKETING_AI_CLIENT_ERROR", "KhÃ´ng thá»ƒ táº¡o yÃªu cáº§u Marketing AI: " + exception.getMessage());
         }
     }
 
@@ -165,6 +251,32 @@ public class MarketingAiTextGeneratorImpl implements MarketingAiTextGenerator {
         }
     }
 
+    private void appendStreamingLine(String line, StringBuilder content, Consumer<String> deltaConsumer) {
+        if (line == null || line.isBlank()) {
+            return;
+        }
+        String value = line.trim();
+        if (value.startsWith("data:")) {
+            value = value.substring(5).trim();
+        }
+        if (value.isBlank() || "[DONE]".equals(value)) {
+            return;
+        }
+        try {
+            JsonNode node = objectMapper.readTree(value);
+            String delta = node.path("choices").path(0).path("delta").path("content").asText("");
+            if (!hasText(delta)) {
+                delta = node.path("choices").path(0).path("message").path("content").asText("");
+            }
+            if (hasText(delta)) {
+                content.append(delta);
+                deltaConsumer.accept(delta);
+            }
+        } catch (Exception ignored) {
+            // Ignore provider keepalive lines that are not JSON payloads.
+        }
+    }
+
     private GenerationResult failed(String code, String message) {
         return new GenerationResult(false, null, null, providerName(), model, null, code, message);
     }
@@ -195,9 +307,9 @@ public class MarketingAiTextGeneratorImpl implements MarketingAiTextGenerator {
         return value == null || value.isBlank() ? fallback : value.trim();
     }
 
-    private boolean isGpt55OrNewer(String value) {
+    private boolean usesReasoningEffortOnly(String value) {
         String normalized = value == null ? "" : value.toLowerCase();
-        return normalized.contains("gpt-5.5") || normalized.contains("gpt-5.6");
+        return normalized.startsWith("gpt-5") || normalized.startsWith("o1") || normalized.startsWith("o3") || normalized.startsWith("o4");
     }
 
     private String providerName() {
@@ -236,6 +348,12 @@ public class MarketingAiTextGeneratorImpl implements MarketingAiTextGenerator {
             case "CONCISE" -> "CONCISE - cô đọng hơn, đi thẳng vào ý chính, câu ngắn, ít lan man.";
             default -> "STANDARD - khoảng 2-3 đoạn ngắn, đủ CTA và hashtag.";
         };
+    }
+
+    private String audienceInstruction(String value) {
+        return hasText(value)
+                ? value.trim()
+                : "Không chỉ định - tự suy luận nhóm khách phù hợp từ brief, nhưng vẫn giữ nội dung tự nhiên.";
     }
 
     private boolean hasText(String value) {

@@ -302,6 +302,141 @@ window.FLOWS_CONFIG = {
         "security": "Truy vấn trực tiếp qua JPA."
       }
     ]
+  },
+  "customer_ai_chat": {
+    "title": "Trợ lý AI Khách hàng (Customer AI Assistant)",
+    "desc": "Luồng tương tác tư vấn phòng trống, dịch vụ, chính sách và lịch sử đặt phòng qua mô hình GLM-5.2 trên FPT AI Factory.",
+    "steps": [
+      {
+        "name": "CustomerAiChat.jsx",
+        "path": "frontendHomestayManagement/src/components/CustomerAiChat/CustomerAiChat.jsx",
+        "layer": "Frontend UI",
+        "desc": "Bong bóng chat góc màn hình cho phép khách hàng nhập câu hỏi trực quan. Hiển thị lịch sử trò chuyện và câu trả lời từ AI.",
+        "dto": "Tin nhắn của khách hàng (message), sessionId, lịch sử hội thoại.",
+        "validation": "Nội dung câu hỏi không được rỗng và giới hạn tối đa 1000 ký tự.",
+        "security": "Không yêu cầu đăng nhập, mở công khai cho toàn bộ khách hàng."
+      },
+      {
+        "name": "CustomerAiChatController.java",
+        "path": "homestayManagement/src/main/java/com/homestayManagement/homestayManagement/controller/CustomerAiChatController.java",
+        "layer": "Controller",
+        "desc": "REST Controller nhận câu hỏi tại POST '/api/ai/customer/chat'. Áp dụng kiểm soát tần suất truy cập (Rate Limit) theo IP/Tài khoản.",
+        "dto": "CustomerAiChatRequest, CustomerAiChatResponse",
+        "validation": "Tự động xác thực qua annotation @Valid.",
+        "security": "Chặn spam bằng CustomerAiRateLimiter (tối đa 20 yêu cầu/phút)."
+      },
+      {
+        "name": "CustomerAiChatServiceImpl.java",
+        "path": "homestayManagement/src/main/java/com/homestayManagement/homestayManagement/service/impl/CustomerAiChatServiceImpl.java",
+        "layer": "Service",
+        "desc": "Thu thập context nghiệp vụ hiện tại của hệ thống (danh mục phòng trống, chính sách giá, lịch sử booking của khách) để đưa vào context gọi AI.",
+        "dto": "CustomerAiClientRequest chứa payload context an toàn.",
+        "validation": "Xử lý timeout và các ngoại lệ khi kết nối dịch vụ AI.",
+        "security": "Chỉ lấy thông tin booking thuộc tài khoản JWT hiện hành của khách."
+      },
+      {
+        "name": "app.py",
+        "path": "openchatbi/customer_assistant/app.py",
+        "layer": "AI Sidecar (Python)",
+        "desc": "FastAPI sidecar nhận request, cấu hình System Prompt ngăn chặn rò rỉ dữ liệu nhạy cảm và gọi API FPT AI Factory GLM-5.2.",
+        "dto": "Cấu trúc tin nhắn Chat Completion chuẩn FPT/OpenAI.",
+        "validation": "Xác thực token bảo mật nội bộ X-Internal-Token.",
+        "security": "Bảo mật khóa API FPT_AI_API_KEY ở môi trường máy chủ nội bộ."
+      }
+    ]
+  },
+  "ai_marketing": {
+    "title": "AI Agent Marketing Đăng bài (AI Marketing Agent)",
+    "desc": "Luồng tạo nội dung quảng cáo tự động bằng AI và lập lịch/đăng bài viết trực tiếp lên các kênh mạng xã hội (Facebook, YouTube).",
+    "steps": [
+      {
+        "name": "MarketingPages.jsx",
+        "path": "frontendHomestayManagement/src/pages/Admin/MarketingPages.jsx",
+        "layer": "Frontend UI",
+        "desc": "Giao diện quản trị marketing cho phép admin chọn kênh đăng bài, cấu hình giọng điệu (Tone), nhập mô tả chủ đề và quản lý bài viết.",
+        "dto": "MarketingPostRequest (platform, tone, description, scheduledTime).",
+        "validation": "Đảm bảo đã chọn ít nhất một kênh mạng xã hội, giờ hẹn giờ phải nằm trong tương lai.",
+        "security": "Yêu cầu tài khoản có quyền quản trị viên (ADMIN)."
+      },
+      {
+        "name": "AdminMarketingController.java",
+        "path": "homestayManagement/src/main/java/com/homestayManagement/homestayManagement/controller/AdminMarketingController.java",
+        "layer": "Controller",
+        "desc": "Nhận yêu cầu khởi tạo quy trình viết bài tự động bằng AI hoặc gửi bài viết đi xuất bản ngay lập tức.",
+        "dto": "MarketingPostDto, phản hồi MarketingPostResponse.",
+        "validation": "@Valid kiểm tra dữ liệu yêu cầu tạo bài đăng.",
+        "security": "Bảo vệ nghiêm ngặt bằng Spring Security phân quyền ROLE_ADMIN."
+      },
+      {
+        "name": "AdminMarketingServiceImpl.java",
+        "path": "homestayManagement/src/main/java/com/homestayManagement/homestayManagement/service/impl/AdminMarketingServiceImpl.java",
+        "layer": "Service",
+        "desc": "Điều phối dịch vụ: Kích hoạt mô hình AI sinh nội dung bài viết, lưu trữ nháp trong DB và thiết lập lập lịch đăng bài.",
+        "dto": "Đơn vị dữ liệu Post Entity cập nhật trạng thái SCHEDULED/PUBLISHED.",
+        "validation": "Kiểm tra giới hạn dung lượng phương tiện truyền thông đính kèm.",
+        "security": "Ghi log lịch sử người dùng thực hiện tạo chiến dịch."
+      },
+      {
+        "name": "MarketingAiTextGeneratorImpl.java",
+        "path": "homestayManagement/src/main/java/com/homestayManagement/homestayManagement/service/impl/MarketingAiTextGeneratorImpl.java",
+        "layer": "Service",
+        "desc": "Giao tiếp với mô hình OpenAI/FPT để sinh đoạn text quảng cáo sáng tạo theo đúng Tone yêu cầu (thân thiện, chuyên nghiệp...).",
+        "dto": "Prompt mang theo chỉ thị và mô tả chủ đề.",
+        "validation": "Lọc nội dung từ ngữ độc hại/nhạy cảm trước khi trả về.",
+        "security": "Sử dụng API Key cấu hình độc quyền trên Server."
+      },
+      {
+        "name": "MarketingSocialPublisherImpl.java",
+        "path": "homestayManagement/src/main/java/com/homestayManagement/homestayManagement/service/impl/MarketingSocialPublisherImpl.java",
+        "layer": "Service Integration",
+        "desc": "Tích hợp API mạng xã hội để đăng bài viết lên Fanpage Facebook (sử dụng Facebook Graph API) hoặc tải video lên kênh YouTube.",
+        "dto": "Payload Graph API (message, link, access_token).",
+        "validation": "Kiểm tra mã lỗi trả về từ API của mạng xã hội (Token hết hạn, lỗi cấu trúc).",
+        "security": "Mã hóa và quản lý an toàn OAuth Access Token của các tài khoản mạng xã hội."
+      }
+    ]
+  },
+  "stay_portal": {
+    "title": "Cổng Thông Tin Lưu Trú (Guest Stay Portal)",
+    "desc": "Luồng dành cho khách hàng đang lưu trú tại homestay tự phục vụ: Kích hoạt tài khoản, xem thông tin phòng, và gọi đồ ăn/dịch vụ minibar.",
+    "steps": [
+      {
+        "name": "StayPage.jsx",
+        "path": "frontendHomestayManagement/src/pages/Stay/StayPage.jsx",
+        "layer": "Frontend UI",
+        "desc": "Cổng thông tin riêng tư cho khách đang ở. Hiển thị thông tin phòng, số điện thoại khẩn cấp, các dịch vụ minibar và nút gọi đồ.",
+        "dto": "Mã đặt phòng (access token/bookingId), yêu cầu dịch vụ (serviceId, quantity).",
+        "validation": "Kiểm tra số lượng dịch vụ đặt mua phải lớn hơn 0.",
+        "security": "Chỉ truy cập được thông qua đường dẫn bảo mật gửi riêng qua email của khách."
+      },
+      {
+        "name": "StayPortalController.java",
+        "path": "homestayManagement/src/main/java/com/homestayManagement/homestayManagement/controller/StayPortalController.java",
+        "layer": "Controller",
+        "desc": "Cung cấp API REST cho cổng lưu trú tại '/api/stays/current' và đặt thêm dịch vụ tiện ích.",
+        "dto": "AddBookingFacilityServiceRequest, StaySummaryResponse",
+        "validation": "Xác thực cấu trúc DTO đầu vào hợp lệ.",
+        "security": "Xác thực vai trò GUEST/CUSTOMER dựa vào Access Token lưu trú."
+      },
+      {
+        "name": "StayAccessServiceImpl.java",
+        "path": "homestayManagement/src/main/java/com/homestayManagement/homestayManagement/service/impl/StayAccessServiceImpl.java",
+        "layer": "Service",
+        "desc": "Thực hiện nghiệp vụ kiểm tra trạng thái lưu trú hiện tại, thêm yêu cầu dịch vụ vào hóa đơn phụ thu, và kích hoạt thông báo cho lễ tân dọn phòng/phục vụ.",
+        "dto": "Ghi nhận thực thể BookingServiceOrder mới.",
+        "validation": "Đảm bảo thời gian đặt dịch vụ nằm trong khoảng thời gian khách check-in và check-out thực tế.",
+        "security": "Xác thực token lưu trú trùng khớp với đơn đặt phòng đang active."
+      },
+      {
+        "name": "StayAccessRepository.java",
+        "path": "homestayManagement/src/main/java/com/homestayManagement/homestayManagement/repository/StayAccessRepository.java",
+        "layer": "Repository",
+        "desc": "Truy xuất bản ghi StayAccess, liên kết giữa khách hàng, phòng đang ở và thời hạn hiệu lực của mã token truy cập.",
+        "dto": "Thực thể StayAccess.",
+        "validation": "Lọc bản ghi theo trạng thái active.",
+        "security": "Giao dịch an toàn được quản lý bởi Spring Data JPA."
+      }
+    ]
   }
 };
 

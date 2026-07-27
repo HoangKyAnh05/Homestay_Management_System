@@ -1,29 +1,29 @@
-# Hướng dẫn cấu hình chức năng AI Agent đăng bài
+﻿# HÆ°á»›ng dáº«n cáº¥u hÃ¬nh chá»©c nÄƒng AI Agent Ä‘Äƒng bÃ i
 
-Tài liệu này áp dụng cho thiết kế mới:
+TÃ i liá»‡u nÃ y Ã¡p dá»¥ng cho thiáº¿t káº¿ má»›i:
 
 ```text
 Frontend Homestay
-  → Backend Spring Boot
-  → MySQL
-  → AI Provider để viết nội dung: OpenAI hoặc FPT Marketplace GLM-5.2
-  → Social API thật để đăng bài
+  â†’ Backend Spring Boot
+  â†’ MySQL
+Them/cap nhat trong file `.env` cua backend:
+  â†’ Social API tháº­t Ä‘á»ƒ Ä‘Äƒng bÃ i
 ```
 
-Folder `aiagent/AiToEarn` chỉ dùng để tham khảo source code/ý tưởng. Hệ thống không cần chạy Docker, không cần MongoDB, không cần Redis, không cần AiToEarn online.
+Folder `aiagent/AiToEarn` chá»‰ dÃ¹ng Ä‘á»ƒ tham kháº£o source code/Ã½ tÆ°á»Ÿng. Há»‡ thá»‘ng khÃ´ng cáº§n cháº¡y Docker, khÃ´ng cáº§n MongoDB, khÃ´ng cáº§n Redis, khÃ´ng cáº§n AiToEarn online.
 
-## 1. Vai trò các folder
+## 1. Vai trÃ² cÃ¡c folder
 
-| Folder | Vai trò |
+| Folder | Vai trÃ² |
 |---|---|
-| `frontendHomestayManagement` | Giao diện marketing/admin |
-| `homestayManagement` | Backend chính: AI viết bài, OAuth social, lưu MySQL, đăng social |
-| `openchatbi` | Chat box AI tư vấn khách hàng/admin |
-| `aiagent/AiToEarn` | Chỉ tham khảo source code, không phải service runtime |
+| `frontendHomestayManagement` | Giao diá»‡n marketing/admin |
+| `homestayManagement` | Backend chÃ­nh: AI viáº¿t bÃ i, OAuth social, lÆ°u MySQL, Ä‘Äƒng social |
+| `openchatbi` | Chat box AI tÆ° váº¥n khÃ¡ch hÃ ng/admin |
+| `aiagent/AiToEarn` | Chá»‰ tham kháº£o source code, khÃ´ng pháº£i service runtime |
 
-## 2. Chỉ cần chạy gì?
+## 2. Chá»‰ cáº§n cháº¡y gÃ¬?
 
-Bạn chỉ cần chạy:
+Báº¡n chá»‰ cáº§n cháº¡y:
 
 ```text
 1. MySQL
@@ -31,7 +31,7 @@ Bạn chỉ cần chạy:
 3. Frontend React/Vite
 ```
 
-Không cần chạy:
+KhÃ´ng cáº§n cháº¡y:
 
 ```text
 Docker
@@ -41,18 +41,18 @@ AiToEarn online
 aiagent/homestay-marketing-agent
 ```
 
-## 3. Cấu hình Backend Spring Boot
+## 3. Cáº¥u hÃ¬nh Backend Spring Boot
 
-Trong `.env` của backend:
+Trong `.env` cá»§a backend:
 
 ```env
 MARKETING_AI_ENABLED=true
-MARKETING_AI_PROVIDER=fpt
-MARKETING_AI_API_KEY=your_fpt_marketplace_api_key
-MARKETING_AI_BASE_URL=https://your-fpt-marketplace-endpoint/v1
+MARKETING_AI_PROVIDER=openai
+MARKETING_AI_API_KEY=sk-proj-your-openai-api-key
+MARKETING_AI_BASE_URL=https://api.openai.com/v1
 MARKETING_AI_CHAT_PATH=/chat/completions
-MARKETING_AI_MODEL=GLM-5.2
-MARKETING_AI_COMPATIBILITY_MODE=generic
+- `MARKETING_AI_MODEL=gpt-4.1-mini`: model dung de viet noi dung. Co the doi sang `gpt-5.1` neu project OpenAI co quyen.
+MARKETING_AI_COMPATIBILITY_MODE=openai
 MARKETING_AI_AUTH_HEADER_NAME=Authorization
 MARKETING_AI_AUTH_HEADER_PREFIX=Bearer
 
@@ -68,40 +68,40 @@ MARKETING_AIAGENT_SIDECAR_AUTO_START=false
 MARKETING_AITOEARN_LOCAL_AUTO_START=false
 ```
 
-`MARKETING_AI_API_KEY` là API key của provider đang dùng để AI viết bài. Nếu test FPT Marketplace, lấy key trong trang sản phẩm/API key của FPT Marketplace.
+- `MARKETING_AI_API_KEY`: API key do OpenAI cap.
 
-`MARKETING_AI_BASE_URL` là base URL do provider cấp. Với FPT Marketplace, hãy copy endpoint được FPT cấp cho GLM-5.2. Nếu endpoint FPT đã bao gồm `/v1`, giữ nguyên như FPT cung cấp; nếu không có `/v1` thì không tự thêm bừa, hãy dùng đúng URL trong tài liệu/API detail của FPT.
+- `MARKETING_AI_BASE_URL`: endpoint OpenAI, mac dinh `https://api.openai.com/v1`.
 
-`MARKETING_AI_CHAT_PATH` mặc định là `/chat/completions`. Nếu FPT Marketplace cấp path khác, đổi biến này theo đúng tài liệu FPT.
+`MARKETING_AI_CHAT_PATH` mac dinh la `/chat/completions`.
 
-`MARKETING_AI_MODEL` đặt là `GLM-5.2` khi test GLM-5.2. Nếu FPT yêu cầu model id viết thường hoặc có tiền tố khác, hãy sửa đúng theo model id FPT hiển thị.
+`MARKETING_AI_MODEL` mac dinh la `gpt-4.1-mini`. Co the doi sang `gpt-5.1` neu project OpenAI co quyen.
 
-`MARKETING_AI_COMPATIBILITY_MODE=generic` giúp backend chỉ gửi payload cơ bản `model/messages/temperature`, tránh gửi các tham số riêng của OpenAI như `reasoning_effort`, `seed`, `presence_penalty`, `frequency_penalty`.
+- `MARKETING_AI_COMPATIBILITY_MODE=openai`: backend gui payload phu hop OpenAI.
 
-Nếu quay lại OpenAI trực tiếp, dùng:
+Náº¿u quay láº¡i OpenAI trá»±c tiáº¿p, dÃ¹ng:
 
 ```env
 MARKETING_AI_PROVIDER=openai
 MARKETING_AI_API_KEY=sk-proj-your-openai-api-key
 MARKETING_AI_BASE_URL=https://api.openai.com/v1
 MARKETING_AI_CHAT_PATH=/chat/completions
-MARKETING_AI_MODEL=gpt-5.5
+- `MARKETING_AI_MODEL=gpt-4.1-mini`: model dung de viet noi dung. Co the doi sang `gpt-5.1` neu project OpenAI co quyen.
 MARKETING_AI_COMPATIBILITY_MODE=openai
 MARKETING_AI_AUTH_HEADER_NAME=Authorization
 MARKETING_AI_AUTH_HEADER_PREFIX=Bearer
 ```
 
-Social token không nhập tay trong giao diện; backend lấy qua OAuth và lưu vào MySQL.
+Social token khÃ´ng nháº­p tay trong giao diá»‡n; backend láº¥y qua OAuth vÃ  lÆ°u vÃ o MySQL.
 
-## 4. Cấu hình Facebook Developer
+## 4. Cáº¥u hÃ¬nh Facebook Developer
 
-Trong Facebook Developer Console, redirect URI phải trùng:
+Trong Facebook Developer Console, redirect URI pháº£i trÃ¹ng:
 
 ```text
 http://localhost:8080/api/marketing/social/oauth/callback
 ```
 
-Quyền cần xin tối thiểu:
+Quyá»n cáº§n xin tá»‘i thiá»ƒu:
 
 ```text
 pages_show_list
@@ -109,52 +109,54 @@ pages_read_engagement
 pages_manage_posts
 ```
 
-Sau khi cấu hình `.env`, khi backend khởi động, hệ thống tự seed/cập nhật bảng `social_oauth_apps` cho Facebook.
+Sau khi cáº¥u hÃ¬nh `.env`, khi backend khá»Ÿi Ä‘á»™ng, há»‡ thá»‘ng tá»± seed/cáº­p nháº­t báº£ng `social_oauth_apps` cho Facebook.
 
-## 5. Luồng kết nối page social
+## 5. Luá»“ng káº¿t ná»‘i page social
 
-Trên giao diện:
+TrÃªn giao diá»‡n:
 
-1. Vào `Marketing & AI Agent → AI Agent Đăng bài`.
-2. Ở phần `Kết nối page social vào thư viện`, chọn Facebook.
-3. Bấm `Kết nối social`.
-4. Spring Boot tự tạo OAuth URL.
-5. Đăng nhập Facebook và cấp quyền.
-6. Facebook callback về Spring Boot.
-7. Backend đổi `code` lấy token, lấy danh sách page, lưu vào MySQL `social_accounts`.
-8. Quay lại giao diện, bấm `Tải tài khoản đã kết nối` hoặc `Kiểm tra kết nối`.
-9. Chọn page trong phần `Kênh & page đăng bài`.
+1. VÃ o `Marketing & AI Agent â†’ AI Agent ÄÄƒng bÃ i`.
+2. á»ž pháº§n `Káº¿t ná»‘i page social vÃ o thÆ° viá»‡n`, chá»n Facebook.
+3. Báº¥m `Káº¿t ná»‘i social`.
+4. Spring Boot tá»± táº¡o OAuth URL.
+5. ÄÄƒng nháº­p Facebook vÃ  cáº¥p quyá»n.
+6. Facebook callback vá» Spring Boot.
+7. Backend Ä‘á»•i `code` láº¥y token, láº¥y danh sÃ¡ch page, lÆ°u vÃ o MySQL `social_accounts`.
+8. Quay láº¡i giao diá»‡n, báº¥m `Táº£i tÃ i khoáº£n Ä‘Ã£ káº¿t ná»‘i` hoáº·c `Kiá»ƒm tra káº¿t ná»‘i`.
+9. Chá»n page trong pháº§n `KÃªnh & page Ä‘Äƒng bÃ i`.
 
-## 6. Luồng tạo và đăng bài
+## 6. Luá»“ng táº¡o vÃ  Ä‘Äƒng bÃ i
 
 ```text
-Nhân viên nhập brief
-→ Backend gọi AI Provider đang cấu hình
-→ Backend lưu bài vào MySQL
-→ Nhân viên bấm Đăng ngay
-→ Backend lấy token page trong MySQL
-→ Backend gọi Facebook Graph API
-→ Backend lưu external_post_id/external_url/log vào MySQL
+NhÃ¢n viÃªn nháº­p brief
+â†’ Backend gá»i AI Provider Ä‘ang cáº¥u hÃ¬nh
+â†’ Backend lÆ°u bÃ i vÃ o MySQL
+â†’ NhÃ¢n viÃªn báº¥m ÄÄƒng ngay
+â†’ Backend láº¥y token page trong MySQL
+â†’ Backend gá»i Facebook Graph API
+â†’ Backend lÆ°u external_post_id/external_url/log vÃ o MySQL
 ```
 
-## 7. Database MySQL chính
+## 7. Database MySQL chÃ­nh
 
-Các bảng quan trọng:
+CÃ¡c báº£ng quan trá»ng:
 
-| Bảng | Mục đích |
+| Báº£ng | Má»¥c Ä‘Ã­ch |
 |---|---|
-| `social_oauth_apps` | Lưu app OAuth theo platform |
-| `social_oauth_sessions` | Lưu phiên kết nối social/OAuth state |
-| `social_accounts` | Lưu page/account, token, external account id |
-| `marketing_posts` | Bài viết cha |
-| `marketing_post_channels` | Nội dung/trạng thái theo từng page |
-| `marketing_publish_attempts` | Log mỗi lần đăng |
-| `ai_generation_logs` | Log mỗi lần gọi AI viết bài |
+| `social_oauth_apps` | LÆ°u app OAuth theo platform |
+| `social_oauth_sessions` | LÆ°u phiÃªn káº¿t ná»‘i social/OAuth state |
+| `social_accounts` | LÆ°u page/account, token, external account id |
+| `marketing_posts` | BÃ i viáº¿t cha |
+| `marketing_post_channels` | Ná»™i dung/tráº¡ng thÃ¡i theo tá»«ng page |
+| `marketing_publish_attempts` | Log má»—i láº§n Ä‘Äƒng |
+| `ai_generation_logs` | Log má»—i láº§n gá»i AI viáº¿t bÃ i |
 
-## 8. Lưu ý hiện tại
+## 8. LÆ°u Ã½ hiá»‡n táº¡i
 
-- Đăng trực tiếp Facebook Page đã có khung xử lý trong Spring Boot.
-- Instagram/TikTok/LinkedIn cần bổ sung publish API riêng theo chính sách từng nền tảng.
-- Không nhập `External Account ID` thủ công nữa.
-- Không nhập access token thủ công nữa.
-- AiToEarn chỉ còn là tài liệu tham khảo, không còn là dependency runtime.
+- ÄÄƒng trá»±c tiáº¿p Facebook Page Ä‘Ã£ cÃ³ khung xá»­ lÃ½ trong Spring Boot.
+- Instagram/TikTok/LinkedIn cáº§n bá»• sung publish API riÃªng theo chÃ­nh sÃ¡ch tá»«ng ná»n táº£ng.
+- KhÃ´ng nháº­p `External Account ID` thá»§ cÃ´ng ná»¯a.
+- KhÃ´ng nháº­p access token thá»§ cÃ´ng ná»¯a.
+- AiToEarn chá»‰ cÃ²n lÃ  tÃ i liá»‡u tham kháº£o, khÃ´ng cÃ²n lÃ  dependency runtime.
+
+

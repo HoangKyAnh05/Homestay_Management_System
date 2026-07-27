@@ -15,13 +15,17 @@ import com.homestayManagement.homestayManagement.dto.response.AdminDirectBooking
 import com.homestayManagement.homestayManagement.dto.response.AdminDirectBookingResponse;
 import com.homestayManagement.homestayManagement.dto.response.AdminCheckInPreparationResponse;
 import com.homestayManagement.homestayManagement.dto.response.AdminCompleteCheckInResponse;
+import com.homestayManagement.homestayManagement.dto.response.IdentityOcrResponse;
 import com.homestayManagement.homestayManagement.service.AdminBookingService;
 import com.homestayManagement.homestayManagement.service.AdminCheckInRegistrationService;
+import com.homestayManagement.homestayManagement.service.IdentityOcrService;
 import jakarta.validation.Valid;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -34,13 +38,16 @@ public class AdminBookingController {
 
     private final AdminBookingService adminBookingService;
     private final AdminCheckInRegistrationService adminCheckInRegistrationService;
+    private final IdentityOcrService identityOcrService;
 
     public AdminBookingController(
             AdminBookingService adminBookingService,
-            AdminCheckInRegistrationService adminCheckInRegistrationService
+            AdminCheckInRegistrationService adminCheckInRegistrationService,
+            IdentityOcrService identityOcrService
     ) {
         this.adminBookingService = adminBookingService;
         this.adminCheckInRegistrationService = adminCheckInRegistrationService;
+        this.identityOcrService = identityOcrService;
     }
 
     @GetMapping("/schedule")
@@ -118,6 +125,15 @@ public class AdminBookingController {
             @Valid @RequestBody AdminCompleteCheckInRequest request
     ) {
         return adminCheckInRegistrationService.complete(bookingDetailId, request);
+    }
+
+    @PostMapping(value = "/details/{bookingDetailId}/identity-ocr", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public IdentityOcrResponse scanIdentityDocument(
+            @PathVariable Long bookingDetailId,
+            @RequestPart("image_front") MultipartFile imageFront,
+            @RequestPart("image_back") MultipartFile imageBack
+    ) {
+        return identityOcrService.extractIdentity(imageFront, imageBack);
     }
 
     @PostMapping("/details/{bookingDetailId}/check-out")

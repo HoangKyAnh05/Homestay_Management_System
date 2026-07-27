@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { getStoredToken, getStoredUser } from '../../services/authService'
+import { readNdjsonStream } from '../../utils/readNdjsonStream'
 import './StaffAiChat.css'
 
-const API_URL = 'http://localhost:8080/api/ai/staff/chat'
+const STREAM_API_URL = 'http://localhost:8080/api/ai/staff/chat/stream'
 const SESSION_STORAGE_KEY = 'homeStayStaffAiChatSessionId'
 const WELCOME_MESSAGE = {
   role: 'assistant',
-  content: 'Xin chao! Minh co the ho tro tom tat booking, check-in/out, phong, doanh thu va cac viec can chu y trong ca truc.',
+  content: 'Xin chào! Mình có thể hỗ trợ tóm tắt booking, check-in/out, phòng, doanh thu và các việc cần chú ý trong ca trực.',
 }
 
 function getSessionId() {
@@ -20,8 +21,8 @@ function getSessionId() {
 
 function quickQuestions(role) {
   return role === 'ROLE_RECEPTIONIST'
-    ? ['Hom nay co booking nao can check-in?', 'Tom tat phong dang luu tru', 'Viec nao can chu y khi checkout?']
-    : ['Tom tat tinh hinh 7 ngay gan day', 'Phong nao dang co doanh thu tot?', 'Hom nay co booking nao can theo doi?']
+    ? ['Hôm nay có booking nào cần check-in?', 'Tóm tắt phòng đang lưu trú', 'Việc nào cần chú ý khi checkout?']
+    : ['Tóm tắt tình hình 7 ngày gần đây', 'Phòng nào đang có doanh thu tốt?', 'Hôm nay có booking nào cần theo dõi?']
 }
 
 export default function StaffAiChat() {
@@ -58,9 +59,15 @@ export default function StaffAiChat() {
 
     const history = messages
       .filter((message) => message !== WELCOME_MESSAGE)
+      .filter((message) => message.content?.trim())
       .slice(-10)
       .map(({ role, content }) => ({ role, content }))
-    setMessages((current) => [...current, { role: 'user', content: question }])
+    const assistantMessageId = `assistant_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+    setMessages((current) => [
+      ...current,
+      { role: 'user', content: question },
+      { id: assistantMessageId, role: 'assistant', content: '' },
+    ])
     setInput('')
     setError('')
     setSending(true)
@@ -69,7 +76,7 @@ export default function StaffAiChat() {
     abortControllerRef.current = controller
 
     try {
-      const response = await fetch(API_URL, {
+      const response = await fetch(STREAM_API_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -83,17 +90,36 @@ export default function StaffAiChat() {
           history,
         }),
       })
-      const data = await response.json().catch(() => ({}))
       if (!response.ok) {
-        throw new Error(data.message || 'AI noi bo dang tam thoi khong kha dung.')
+        const data = await response.json().catch(() => ({}))
+        throw new Error(data.message || 'AI nội bộ đang tạm thời không khả dụng.')
       }
-      setMessages((current) => [
-        ...current,
-        { role: 'assistant', content: data.answer || 'Minh chua co cau tra loi phu hop.' },
-      ])
+      let finalAnswer = ''
+      await readNdjsonStream(response, (event) => {
+        const payload = event.payload || {}
+        if (event.type === 'delta') {
+          const text = payload.text || ''
+          finalAnswer += text
+          setMessages((current) => current.map((message) => (
+            message.id === assistantMessageId
+              ? { ...message, content: `${message.content || ''}${text}` }
+              : message
+          )))
+        } else if (event.type === 'done') {
+          finalAnswer = payload.answer || finalAnswer
+          setMessages((current) => current.map((message) => (
+            message.id === assistantMessageId
+              ? { ...message, content: finalAnswer || 'Mình chưa có câu trả lời phù hợp.' }
+              : message
+          )))
+        } else if (event.type === 'error') {
+          throw new Error(payload.message || 'AI nội bộ đang tạm thời không khả dụng.')
+        }
+      })
     } catch (requestError) {
       if (requestError.name !== 'AbortError') {
         setError(requestError.message)
+        setMessages((current) => current.filter((message) => message.id !== assistantMessageId || message.content))
       }
     } finally {
       if (!controller.signal.aborted) setSending(false)
@@ -112,27 +138,26 @@ export default function StaffAiChat() {
           <header className="staff-ai-header">
             <div className="staff-ai-avatar" aria-hidden="true">AI</div>
             <div>
-              <h2 id="staff-ai-title">Tro ly noi bo</h2>
-              <p><span /> Admin & le tan</p>
+              <h2 id="staff-ai-title">Trợ lý nội bộ</h2>
+              <p><span /> Admin & lễ tân</p>
             </div>
-            <button type="button" onClick={() => setOpen(false)} aria-label="Dong tro ly AI">×</button>
+            <button type="button" onClick={() => setOpen(false)} aria-label="Đóng trợ lý AI">×</button>
           </header>
 
           <div className="staff-ai-messages" ref={messageListRef} aria-live="polite">
             {messages.map((message, index) => (
-              <div className={`staff-ai-message staff-ai-message--${message.role}`} key={`${message.role}-${index}-${message.content.slice(0, 20)}`}>
+              <div
+                className={`staff-ai-message staff-ai-message--${message.role}`}
+                key={message.id || `${message.role}-${index}-${message.content.slice(0, 20)}`}
+              >
                 {message.role === 'assistant' && <span className="staff-ai-mini-avatar">AI</span>}
-                <p>{message.content}</p>
+                {message.role === 'assistant' && !message.content && sending ? (
+                  <div className="staff-ai-typing" aria-label="AI đang trả lời"><i /><i /><i /></div>
+                ) : (
+                  <p>{message.content}</p>
+                )}
               </div>
             ))}
-            {sending && (
-              <div className="staff-ai-message staff-ai-message--assistant">
-                <span className="staff-ai-mini-avatar">AI</span>
-                <div className="staff-ai-typing" aria-label="AI dang tra loi">
-                  <i /><i /><i />
-                </div>
-              </div>
-            )}
           </div>
 
           {messages.length === 1 && (
@@ -156,8 +181,8 @@ export default function StaffAiChat() {
             <textarea
               rows="1"
               maxLength="1000"
-              placeholder="Nhap cau hoi noi bo..."
-              aria-label="Cau hoi cho tro ly AI noi bo"
+              placeholder="Nhập câu hỏi nội bộ..."
+              aria-label="Câu hỏi cho trợ lý AI nội bộ"
               value={input}
               disabled={sending}
               onChange={(event) => setInput(event.target.value)}
@@ -168,21 +193,21 @@ export default function StaffAiChat() {
                 }
               }}
             />
-            <button type="submit" disabled={sending || !input.trim()} aria-label="Gui cau hoi">
+            <button type="submit" disabled={sending || !input.trim()} aria-label="Gửi câu hỏi">
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="m4 4 16 8-16 8 3-8-3-8Z" />
                 <path d="M7 12h13" />
               </svg>
             </button>
           </form>
-          <footer>AI chi ho tro tu van. Cac thao tac nghiep vu van can thuc hien tren he thong.</footer>
+          <footer>AI chỉ hỗ trợ tư vấn. Các thao tác nghiệp vụ vẫn cần thực hiện trên hệ thống.</footer>
         </section>
       )}
 
       <button
         type="button"
         className="staff-ai-launcher"
-        aria-label={open ? 'Dong tro ly AI noi bo' : 'Mo tro ly AI noi bo'}
+        aria-label={open ? 'Đóng trợ lý AI nội bộ' : 'Mở trợ lý AI nội bộ'}
         aria-expanded={open}
         onClick={() => setOpen((current) => !current)}
       >

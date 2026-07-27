@@ -17,6 +17,7 @@ import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 
 @Service
 public class CustomerAiChatServiceImpl implements CustomerAiChatService {
@@ -77,18 +78,78 @@ public class CustomerAiChatServiceImpl implements CustomerAiChatService {
         List<CustomerAiHistoryMessageRequest> history = request.history() == null
                 ? List.of()
                 : request.history();
-        CustomerAiClient.CustomerAiClientResponse aiResponse = customerAiClient.chat(
-                new CustomerAiClient.CustomerAiClientRequest(
-                        request.message().trim(),
-                        request.sessionId(),
-                        sanitizePagePath(request.pagePath()),
-                        "customer",
-                        authenticatedCustomer,
-                        publicContext,
-                        customerContext,
-                        history
-                )
+        CustomerAiClient.CustomerAiClientResponse aiResponse = customerAiClient.chat(new CustomerAiClient.CustomerAiClientRequest(
+                request.message().trim(),
+                request.sessionId(),
+                sanitizePagePath(request.pagePath()),
+                "customer",
+                authenticatedCustomer,
+                publicContext,
+                customerContext,
+                history
+        ));
+        return responseFromAi(request, authenticatedCustomer, aiResponse);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public CustomerAiChatResponse chatStream(
+            CustomerAiChatRequest request,
+            Authentication authentication,
+            Consumer<String> deltaConsumer
+    ) {
+        boolean authenticatedCustomer = isAuthenticatedCustomer(authentication);
+        Map<String, Object> publicContext = new LinkedHashMap<>();
+        publicContext.put(
+                "roomCatalog",
+                roomService.getAllPublicRooms().stream()
+                        .map(this::toCompactRoomContext)
+                        .toList()
         );
+        publicContext.put("pricePolicies", publicBookingService.getPricePolicies());
+        publicContext.put("services", publicBookingService.getServiceOptions());
+        publicContext.put(
+                "bookingInstructions",
+                "KhÃ¡ch chá»n ngÃ y, sá»‘ ngÆ°á»i vÃ  loáº¡i phÃ²ng táº¡i trang /rooms. "
+                        + "GiÃ¡ vÃ  phÃ²ng trá»‘ng cuá»‘i cÃ¹ng pháº£i Ä‘Æ°á»£c xÃ¡c nháº­n trÃªn giao diá»‡n."
+        );
+
+        Map<String, Object> customerContext = null;
+        if (authenticatedCustomer) {
+            List<PublicBookingHistoryResponse> bookings = publicBookingService
+                    .getMyBookings(authentication.getName())
+                    .stream()
+                    .limit(MAX_CONTEXT_BOOKINGS)
+                    .toList();
+            customerContext = new LinkedHashMap<>();
+            customerContext.put("bookings", bookings);
+            customerContext.put(
+                    "privacyNote",
+                    "Context chá»‰ chá»©a booking thuá»™c tÃ i khoáº£n JWT hiá»‡n táº¡i."
+            );
+        }
+
+        List<CustomerAiHistoryMessageRequest> history = request.history() == null
+                ? List.of()
+                : request.history();
+        CustomerAiClient.CustomerAiClientResponse aiResponse = customerAiClient.chatStream(new CustomerAiClient.CustomerAiClientRequest(
+                request.message().trim(),
+                request.sessionId(),
+                sanitizePagePath(request.pagePath()),
+                "customer",
+                authenticatedCustomer,
+                publicContext,
+                customerContext,
+                history
+        ), deltaConsumer);
+        return responseFromAi(request, authenticatedCustomer, aiResponse);
+    }
+
+    private CustomerAiChatResponse responseFromAi(
+            CustomerAiChatRequest request,
+            boolean authenticatedCustomer,
+            CustomerAiClient.CustomerAiClientResponse aiResponse
+    ) {
         return new CustomerAiChatResponse(
                 aiResponse.answer(),
                 request.sessionId(),

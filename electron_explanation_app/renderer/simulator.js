@@ -50,6 +50,15 @@ function loadSimulator(flowId) {
     case 'rules_penalties':
       renderRulesSimulator(simContent);
       break;
+    case 'customer_ai_chat':
+      renderCustomerAiChatSimulator(simContent);
+      break;
+    case 'ai_marketing':
+      renderAiMarketingSimulator(simContent);
+      break;
+    case 'stay_portal':
+      renderStayPortalSimulator(simContent);
+      break;
     default:
       if (window.FLOWS_CONFIG[flowId]) {
         renderGenericFlowSimulator(simContent, flowId);
@@ -444,3 +453,223 @@ function renderRulesSimulator(container) {
     triggerTraceRun('rules_penalties', 4, logs);
   });
 }
+
+// 8. CUSTOMER AI CHAT SIMULATOR
+function renderCustomerAiChatSimulator(container) {
+  container.innerHTML = `
+    <div class="sim-page" style="display: flex; flex-direction: column; height: 100%; max-height: 380px;">
+      <div class="sim-page-header" style="flex-shrink: 0; padding-bottom: 8px;">
+        <h4 style="display: flex; align-items: center; gap: 6px;">🤖 Lagom AI Assistant <span style="font-size: 10px; background-color: var(--success); color: white; padding: 2px 6px; border-radius: 10px;">GLM-5.2 Active</span></h4>
+        <p>Hỏi đáp thông tin phòng trống, dịch vụ & chính sách homestay tự động.</p>
+      </div>
+
+      <div class="sim-card" style="flex: 1; display: flex; flex-direction: column; overflow: hidden; background-color: var(--bg-tertiary); padding: 12px; gap: 8px; border: 1px solid var(--border-color); border-radius: var(--radius-md);">
+        <!-- Messages Area -->
+        <div id="ai-chat-messages" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 4px; font-size: 12px;">
+          <div style="background-color: var(--bg-accent); padding: 8px 12px; border-radius: var(--radius-md); align-self: flex-start; max-width: 85%; color: var(--text-primary);">
+            Xin chào! Tôi là trợ lý ảo Lagom Homestay. Bạn cần tôi hỗ trợ tìm thông tin phòng, xem giá hay kiểm tra lịch trình gì không?
+          </div>
+        </div>
+
+        <!-- Preset Prompts -->
+        <div style="display: flex; gap: 6px; flex-wrap: wrap; flex-shrink: 0;">
+          <button class="browser-btn preset-chat-btn" onclick="sendPresetChat('Phòng Suite VIP có những tiện ích gì và giá bao nhiêu?')" style="font-size: 10.5px; padding: 4px 8px; background-color: var(--bg-primary);">🏠 Xem phòng Suite VIP</button>
+          <button class="browser-btn preset-chat-btn" onclick="sendPresetChat('Chính sách check-in sớm của homestay tính phí thế nào?')" style="font-size: 10.5px; padding: 4px 8px; background-color: var(--bg-primary);">🛡️ Chính sách phụ thu</button>
+        </div>
+
+        <!-- Input Box -->
+        <div style="display: flex; gap: 6px; flex-shrink: 0;">
+          <input type="text" id="ai-chat-input" class="sim-input" placeholder="Nhập câu hỏi của bạn..." style="margin-bottom: 0; flex: 1; font-size: 12px; padding: 6px 10px;">
+          <button class="sim-btn" id="ai-chat-send-btn" style="padding: 6px 14px; font-size: 12px; margin-top: 0; white-space: nowrap;">Gửi AI ➔</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Define helper inside window context for inline onclick
+  window.sendPresetChat = (msg) => {
+    const input = document.getElementById('ai-chat-input');
+    if (input) {
+      input.value = msg;
+      document.getElementById('ai-chat-send-btn').click();
+    }
+  };
+
+  document.getElementById('ai-chat-send-btn').addEventListener('click', () => {
+    const chatInput = document.getElementById('ai-chat-input');
+    const msg = chatInput.value.trim();
+    if (!msg) return;
+
+    // Append user message
+    const msgContainer = document.getElementById('ai-chat-messages');
+    const userMsg = document.createElement('div');
+    userMsg.style.cssText = 'background-color: var(--primary); padding: 8px 12px; border-radius: var(--radius-md); align-self: flex-end; max-width: 85%; color: white;';
+    userMsg.innerText = msg;
+    msgContainer.appendChild(userMsg);
+    msgContainer.scrollTop = msgContainer.scrollHeight;
+
+    chatInput.value = '';
+
+    const logs = [
+      () => logToConsole(`[Customer UI] Khách gửi câu hỏi: "${msg}". Kích hoạt widget CustomerAiChat.jsx.`, 'system'),
+      () => logToConsole(`[API Endpoint] POST '/api/ai/customer/chat'. CustomerAiChatController tiếp nhận, kích hoạt CustomerAiRateLimiter kiểm tra spam.`, 'api-call'),
+      () => logToConsole(`[Service Layer] CustomerAiChatServiceImpl tập hợp context: Catalog phòng trống (RoomService) và lịch sử bookings của khách.`, 'api-response'),
+      () => {
+        logToConsole(`[AI Client] OpenChatBiCustomerClient tạo HTTP request, đính kèm X-Internal-Token bảo mật, gọi python sidecar tại port 8001.`, 'api-call');
+        
+        // Simulating the AI response bubble
+        setTimeout(() => {
+          const aiMsg = document.createElement('div');
+          aiMsg.style.cssText = 'background-color: var(--bg-accent); padding: 8px 12px; border-radius: var(--radius-md); align-self: flex-start; max-width: 85%; color: var(--text-primary); margin-top: 4px; line-height: 1.4;';
+          
+          let responseText = 'Mô hình GLM-5.2 (FPT AI Factory) đang phản hồi...';
+          if (msg.includes('Suite VIP')) {
+            responseText = 'Phòng Suite VIP Căn Hộ hiện tại có mức giá trong tuần là 1.200.000đ/đêm. Phòng rộng rãi, đầy đủ minibar, view hồ tuyệt đẹp và tối đa 2 người lớn kèm 2 trẻ em.';
+          } else if (msg.includes('check-in')) {
+            responseText = 'Chính sách phụ thu check-in sớm: từ 06:00 - 09:00 phụ thu 50% tiền phòng, từ 09:00 - 12:00 phụ thu 30%. Quy tắc này được lưu trữ và tính toán tự động trong RulesPenalty.';
+          } else {
+            responseText = 'Cảm ơn câu hỏi của bạn. Hệ thống Lagom Homestay cung cấp đầy đủ thông tin phòng, tiện ích và đặt lịch trực tiếp. Bạn vui lòng chọn ngày đặt phòng để được tư vấn chính xác nhất nhé!';
+          }
+          
+          aiMsg.innerText = responseText;
+          msgContainer.appendChild(aiMsg);
+          msgContainer.scrollTop = msgContainer.scrollHeight;
+          logToConsole(`[Python Sidecar] app.py nhận request. Cấu trúc System Prompt, gọi API FPT AI Factory GLM-5.2 thành công.`, 'api-response');
+        }, 1000);
+      }
+    ];
+
+    triggerTraceRun('customer_ai_chat', 4, logs);
+  });
+}
+
+// 9. AI MARKETING AGENT SIMULATOR
+function renderAiMarketingSimulator(container) {
+  container.innerHTML = `
+    <div class="sim-page">
+      <div class="sim-page-header">
+        <h4>🤖 AI Agent Đăng Bài Marketing</h4>
+        <p>Sinh nội dung quảng bá homestay bằng AI và tự động đăng lên mạng xã hội.</p>
+      </div>
+
+      <div class="sim-card">
+        <div class="sim-form-group">
+          <label>Kênh Đăng Bài</label>
+          <select id="sim-mkt-platform" class="sim-input" style="background-color: var(--bg-primary); border-color: var(--border-color); color: white;">
+            <option value="Facebook">Facebook Fanpage</option>
+            <option value="YouTube">YouTube Channel</option>
+          </select>
+        </div>
+
+        <div class="sim-form-group" style="display: flex; gap: 10px;">
+          <div style="flex: 1;">
+            <label>Giọng điệu (Tone)</label>
+            <select id="sim-mkt-tone" class="sim-input" style="background-color: var(--bg-primary); border-color: var(--border-color); color: white; width: 100%;">
+              <option value="Thân thiện">Thân thiện, trẻ trung</option>
+              <option value="Chuyên nghiệp">Chuyên nghiệp, sang trọng</option>
+              <option value="Hài hước">Hài hước, Gen Z</option>
+            </select>
+          </div>
+          <div style="flex: 1;">
+            <label>Chủ đề / Mô tả ngắn</label>
+            <input type="text" id="sim-mkt-topic" class="sim-input" value="Khai trương phòng Suite VIP mới view hồ tuyệt đẹp" style="width: 100%;">
+          </div>
+        </div>
+
+        <button class="sim-btn" id="sim-mkt-generate-btn" style="background-color: var(--primary); width: 100%;">🚀 TẠO NỘI DUNG AI & ĐĂNG BÀI</button>
+      </div>
+
+      <div id="sim-mkt-result-card" class="sim-card" style="display: none; margin-top: 12px; background-color: var(--bg-tertiary); border: 1px dashed var(--success); padding: 12px;">
+        <span style="font-size: 10px; background-color: var(--success-glow); color: var(--success); padding: 2px 6px; border-radius: 4px; font-weight: bold;">ĐÃ XUẤT BẢN THÀNH CÔNG</span>
+        <p id="sim-mkt-result-text" style="font-size: 11.5px; color: var(--text-primary); line-height: 1.5; margin-top: 6px; font-family: var(--font-mono); white-space: pre-wrap;"></p>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('sim-mkt-generate-btn').addEventListener('click', () => {
+    const platform = document.getElementById('sim-mkt-platform').value;
+    const tone = document.getElementById('sim-mkt-tone').value;
+    const topic = document.getElementById('sim-mkt-topic').value;
+
+    const logs = [
+      () => logToConsole(`[MKT UI] Chọn kênh: ${platform}, Tone: ${tone}. Bấm "Đăng bài". Gọi MarketingPages.jsx.`, 'system'),
+      () => logToConsole(`[Controller] AdminMarketingController nhận request POST '/api/admin/marketing/posts/generate' với chủ đề: "${topic}"`, 'api-call'),
+      () => logToConsole(`[Service Layer] AdminMarketingServiceImpl gọi bộ sinh văn bản AI với Tone: "${tone}".`, 'api-response'),
+      () => logToConsole(`[AI Text Generator] MarketingAiTextGeneratorImpl gọi OpenAI/FPT API để sinh bài đăng quảng cáo tối ưu.`, 'api-response'),
+      () => {
+        logToConsole(`[Publisher Integration] MarketingSocialPublisherImpl gọi Facebook Graph API sử dụng Access Token để đăng bài viết lên Fanpage.`, 'api-call');
+        
+        // Show simulated MKT post result
+        setTimeout(() => {
+          const resultCard = document.getElementById('sim-mkt-result-card');
+          const resultText = document.getElementById('sim-mkt-result-text');
+          if (resultCard && resultText) {
+            resultCard.style.display = 'block';
+            let generatedContent = '';
+            if (tone === 'Thân thiện') {
+              generatedContent = `🌟 SIÊU PHẨM MỚI TOANH TẠI LAGOM HOMESTAY 🌟\n\nBạn đã sẵn sàng tận hưởng bình minh lãng mạn bên hồ nước xanh mát chưa? Homestay chính thức ra mắt phòng Suite VIP view hồ cực xịn sò! 😍\n\n📌 Tiện ích chuẩn 5 sao\n📌 Không gian yên tĩnh thư giãn\n\n👉 Inbox ngay để đặt chỗ trước nhé cả nhà!`;
+            } else if (tone === 'Hài hước') {
+              generatedContent = `📣 CHỐN DUNG THÂN LÝ TƯỞNG CHO TEAM MÊ CHILL 📣\n\nSuite VIP view hồ mới lên sóng, đẹp xỉu up xỉu down! 🌊 Cảnh đẹp thế này không đi thì phí cả thanh xuân. Phòng ngủ êm ái, tủ lạnh minibar ngập tràn nước ngọt.\n\nĐặt ngay kẻo lỡ chuyến đi trốn thế gian cuối tuần này nhé! 🏎️💨`;
+            } else {
+              generatedContent = `[Lagom Homestay - Trải nghiệm Nghỉ dưỡng Cao cấp]\n\nChúng tôi trân trọng giới thiệu căn hộ hạng sang Suite VIP với tầm nhìn bao quát toàn bộ hồ cảnh quan. Thiết kế hiện đại kết hợp tiện nghi cao cấp mang đến kỳ nghỉ dưỡng tuyệt hảo cho quý đối tác và gia đình.\n\nLiên hệ hotline để nhận báo giá chi tiết.`;
+            }
+            resultText.innerText = generatedContent;
+            logToConsole(`[Mạng xã hội] Facebook xác nhận bài viết đã đăng trên Page (Post ID: 9817293812_fb).`, 'api-response');
+          }
+        }, 1000);
+      }
+    ];
+
+    triggerTraceRun('ai_marketing', 5, logs);
+  });
+}
+
+// 10. GUEST STAY PORTAL SIMULATOR
+function renderStayPortalSimulator(container) {
+  container.innerHTML = `
+    <div class="sim-page">
+      <div class="sim-page-header">
+        <h4>🛎️ Cổng Tương Tác Khách Lưu Trú (Stay Portal)</h4>
+        <p>Dành cho khách hàng tự phục vụ khi đang ở tại homestay.</p>
+      </div>
+
+      <div class="sim-card" style="background-color: var(--bg-secondary); margin-bottom: 12px; border: 1px solid var(--primary-glow);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <span style="font-size: 13px; font-weight: bold; color: #a5b4fc;">PHÒNG L202 (Suite VIP)</span>
+          <span class="step-layer-badge" style="background-color: rgba(16, 185, 129, 0.15); color: var(--success);">ĐANG LƯU TRÚ</span>
+        </div>
+        <p style="font-size: 11px; color: var(--text-secondary)">Thời gian ở: 2026-07-20 ➔ 2026-07-22</p>
+      </div>
+
+      <div class="sim-card">
+        <label style="font-size: 11px; color: var(--text-muted); font-weight: bold; text-transform: uppercase;">Mua đồ uống tủ lạnh Minibar</label>
+        <div class="sim-form-group" style="display: flex; gap: 8px; margin-top: 6px;">
+          <select id="sim-stay-item" class="sim-input" style="flex: 2; background-color: var(--bg-primary); border-color: var(--border-color); color: white; margin-bottom: 0; font-size: 12px;">
+            <option value="Coca-Cola (20k)">Coca-Cola (Đơn giá: 20,000đ)</option>
+            <option value="Yến sào Khánh Hòa (35k)">Yến sào Khánh Hòa (Đơn giá: 35,000đ)</option>
+            <option value="Mì ly Hảo Hảo (15k)">Mì ly Hảo Hảo (Đơn giá: 15,000đ)</option>
+          </select>
+          
+          <input type="number" id="sim-stay-qty" class="sim-input" value="2" min="1" max="10" style="flex: 1; margin-bottom: 0; font-size: 12px; text-align: center;">
+        </div>
+
+        <button class="sim-btn" id="sim-stay-order-btn" style="background-color: var(--success); width: 100%; margin-top: 10px;">🛒 GỌI DỊCH VỤ MINIBAR</button>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('sim-stay-order-btn').addEventListener('click', () => {
+    const item = document.getElementById('sim-stay-item').value;
+    const qty = document.getElementById('sim-stay-qty').value;
+
+    const logs = [
+      () => logToConsole(`[Stay Portal UI] Khách chọn mua: ${qty} x ${item}. Gửi request từ StayPage.jsx.`, 'system'),
+      () => logToConsole(`[Controller] StayPortalController nhận POST '/api/stays/1/services' (gọi dịch vụ cho mã lưu trú accessId = 1)`, 'api-call'),
+      () => logToConsole(`[Service] StayAccessServiceImpl thêm Order vào hóa đơn chi tiết phòng L202. Đổi trạng thái cần phục vụ.`, 'api-response'),
+      () => logToConsole(`[Database] StayAccessRepository thực hiện lưu bản ghi dịch vụ BookingServiceOrder mới.`, 'api-call')
+    ];
+
+    triggerTraceRun('stay_portal', 4, logs);
+  });
+}
+

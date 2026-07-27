@@ -27,6 +27,9 @@ public class MarketingPost {
     @Column(columnDefinition = "TEXT")
     private String brief;
 
+    @Column(name = "target_audience", length = 300)
+    private String targetAudience;
+
     @Column(length = 100)
     private String goal;
 

@@ -1,6 +1,7 @@
 package com.homestayManagement.homestayManagement.config;
 
 import com.homestayManagement.homestayManagement.security.JwtAuthenticationFilter;
+import jakarta.servlet.DispatcherType;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -34,15 +35,20 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        .dispatcherTypeMatchers(DispatcherType.ASYNC, DispatcherType.ERROR).permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/marketing/social/oauth/callback").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/payments/sepay/webhook").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/ai/customer/chat").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/ai/customer/chat/stream").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/ai/staff/chat")
+                        .hasAnyAuthority("ROLE_ADMIN", "ROLE_RECEPTIONIST")
+                        .requestMatchers(HttpMethod.POST, "/api/ai/staff/chat/stream")
                         .hasAnyAuthority("ROLE_ADMIN", "ROLE_RECEPTIONIST")
                         .requestMatchers("/uploads/**").permitAll()
                         .requestMatchers("/api/rooms/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/vouchers/active").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/amenities").permitAll()
                         .requestMatchers("/api/stays/**").hasAuthority("ROLE_CUSTOMER")
 

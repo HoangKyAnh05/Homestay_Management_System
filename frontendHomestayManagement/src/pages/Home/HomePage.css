@@ -1432,3 +1432,160 @@
     grid-template-columns: 1fr;
   }
 }
+
+.home-voucher-float {
+  position: fixed;
+  left: 24px;
+  bottom: 24px;
+  z-index: 90;
+  width: min(226px, calc(100vw - 32px));
+  min-height: 104px;
+  overflow: hidden;
+  border: 1px solid #dde2d9;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #15191f;
+  box-shadow: 0 10px 26px rgba(21, 25, 31, 0.14);
+  animation: voucherFloatIn 0.5s ease both, voucherSoftPulse 3.4s ease-in-out infinite;
+}
+
+.home-voucher-float img,
+.home-voucher-overlay {
+  display: none;
+}
+
+.home-voucher-float img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.home-voucher-overlay {
+  background:
+    linear-gradient(135deg, rgba(13, 34, 22, 0.9), rgba(13, 34, 22, 0.58)),
+    radial-gradient(circle at 82% 18%, rgba(255, 255, 255, 0.22), transparent 30%);
+}
+
+.home-voucher-close {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  z-index: 2;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #d7dbe2;
+  border-radius: 50%;
+  background: #f7f8fa;
+  color: #5f6674;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.home-voucher-close:hover {
+  color: #15191f;
+  background: #eef0eb;
+}
+
+.home-voucher-content {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 5px;
+  padding: 13px 34px 12px 13px;
+  animation: voucherContentSwap 0.46s ease both;
+}
+
+.home-voucher-kicker {
+  width: fit-content;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: #f1f7f2;
+  color: #15573a;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.home-voucher-content strong {
+  max-width: 170px;
+  color: #15191f;
+  font-size: 15px;
+  font-weight: 900;
+  line-height: 1.15;
+}
+
+.home-voucher-content p {
+  margin: 0;
+  color: #5f6674;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.home-voucher-copy {
+  width: fit-content;
+  min-height: 28px;
+  margin-top: 2px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 999px;
+  background: #1f4328;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: 0 8px 18px rgba(31, 67, 40, 0.18);
+}
+
+.home-voucher-copy:hover {
+  background: #15573a;
+}
+
+@keyframes voucherFloatIn {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes voucherContentSwap {
+  from {
+    opacity: 0;
+    transform: translateX(-14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes voucherSoftPulse {
+  0%, 100% {
+    box-shadow: 0 10px 26px rgba(21, 25, 31, 0.14);
+  }
+  50% {
+    box-shadow: 0 10px 26px rgba(21, 87, 58, 0.16), 0 0 0 2px rgba(31, 67, 40, 0.05);
+  }
+}
+
+@media (max-width: 768px) {
+  .home-voucher-float {
+    left: 16px;
+    right: 16px;
+    bottom: 16px;
+    width: auto;
+    min-height: 104px;
+  }
+
+  .home-voucher-content strong {
+    font-size: 15px;
+  }
+}
