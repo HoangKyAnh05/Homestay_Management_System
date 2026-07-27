@@ -56,6 +56,7 @@ public class AdminMarketingServiceImpl implements AdminMarketingService {
     private final AiAgentConfigRepository agentConfigRepository;
     private final AiGenerationLogRepository generationLogRepository;
     private final EmployeeRepository employeeRepository;
+    private final VoucherRepository voucherRepository;
     private final MarketingAiTextGenerator aiTextGenerator;
     private final MarketingSocialPublisher socialPublisher;
     private final MarketingSocialAccountConnector socialAccountConnector;
@@ -73,6 +74,7 @@ public class AdminMarketingServiceImpl implements AdminMarketingService {
             AiAgentConfigRepository agentConfigRepository,
             AiGenerationLogRepository generationLogRepository,
             EmployeeRepository employeeRepository,
+            VoucherRepository voucherRepository,
             MarketingAiTextGenerator aiTextGenerator,
             MarketingSocialPublisher socialPublisher,
             MarketingSocialAccountConnector socialAccountConnector
@@ -89,6 +91,7 @@ public class AdminMarketingServiceImpl implements AdminMarketingService {
         this.agentConfigRepository = agentConfigRepository;
         this.generationLogRepository = generationLogRepository;
         this.employeeRepository = employeeRepository;
+        this.voucherRepository = voucherRepository;
         this.aiTextGenerator = aiTextGenerator;
         this.socialPublisher = socialPublisher;
         this.socialAccountConnector = socialAccountConnector;
@@ -112,6 +115,44 @@ public class AdminMarketingServiceImpl implements AdminMarketingService {
                 suggestions().stream().map(this::toSuggestionResponse).toList(),
                 postRepository.findTop50ByOrderByCreatedAtDesc().stream().map(this::toPostResponse).toList()
         );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<VoucherResponse> listVouchers() {
+        return voucherRepository.findAllByOrderByStartDateDescIdDesc().stream()
+                .map(this::toVoucherResponse)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public VoucherResponse getVoucher(Long id) {
+        return toVoucherResponse(findVoucher(id));
+    }
+
+    @Override
+    @Transactional
+    public VoucherResponse createVoucher(VoucherRequest request) {
+        String code = normalizeVoucherCode(request.code());
+        if (voucherRepository.existsByCodeIgnoreCase(code)) {
+            throw new IllegalArgumentException("Ma voucher da ton tai.");
+        }
+        Voucher voucher = Voucher.builder().usedCount(0).build();
+        applyVoucherRequest(voucher, request, code);
+        return toVoucherResponse(voucherRepository.save(voucher));
+    }
+
+    @Override
+    @Transactional
+    public VoucherResponse updateVoucher(Long id, VoucherRequest request) {
+        Voucher voucher = findVoucher(id);
+        String code = normalizeVoucherCode(request.code());
+        if (voucherRepository.existsByCodeIgnoreCaseAndIdNot(code, id)) {
+            throw new IllegalArgumentException("Ma voucher da ton tai.");
+        }
+        applyVoucherRequest(voucher, request, code);
+        return toVoucherResponse(voucher);
     }
 
     @Override
@@ -604,6 +645,73 @@ public class AdminMarketingServiceImpl implements AdminMarketingService {
         return new MarketingSuggestionResponse(suggestion.getId(), suggestion.getTitle(), suggestion.getDescription(), suggestion.getSuggestionType(), suggestion.getStatus());
     }
 
+    private VoucherResponse toVoucherResponse(Voucher voucher) {
+        return new VoucherResponse(
+                voucher.getId(),
+                voucher.getCode(),
+                voucher.getDiscountType(),
+                voucher.getDiscountValue(),
+                voucher.getMinOrderValue(),
+                voucher.getMaxDiscountAmount(),
+                voucher.getStartDate(),
+                voucher.getEndDate(),
+                voucher.getUsageLimit(),
+                voucher.getUsedCount() == null ? 0 : voucher.getUsedCount(),
+                voucherStatus(voucher)
+        );
+    }
+
+    private Voucher findVoucher(Long id) {
+        return voucherRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Khong tim thay voucher."));
+    }
+
+    private void applyVoucherRequest(Voucher voucher, VoucherRequest request, String code) {
+        String discountType = normalize(request.discountType());
+        BigDecimal discountValue = request.discountValue();
+        if ("PERCENT".equals(discountType) && discountValue.compareTo(BigDecimal.valueOf(100)) > 0) {
+            throw new IllegalArgumentException("Voucher phan tram khong duoc vuot qua 100%.");
+        }
+        if (request.startDate() != null && request.endDate() != null && !request.endDate().isAfter(request.startDate())) {
+            throw new IllegalArgumentException("Ngay ket thuc phai sau ngay bat dau.");
+        }
+        int usedCount = voucher.getUsedCount() == null ? 0 : voucher.getUsedCount();
+        if (request.usageLimit() != null && request.usageLimit() < usedCount) {
+            throw new IllegalArgumentException("Gioi han su dung khong duoc nho hon so luot da dung.");
+        }
+        if ("PERCENT".equals(discountType) && request.maxDiscountAmount() == null) {
+            throw new IllegalArgumentException("Voucher phan tram can co muc giam toi da.");
+        }
+
+        voucher.setCode(code);
+        voucher.setDiscountType(discountType);
+        voucher.setDiscountValue(discountValue);
+        voucher.setMinOrderValue(nullToZero(request.minOrderValue()));
+        voucher.setMaxDiscountAmount(request.maxDiscountAmount());
+        voucher.setStartDate(request.startDate());
+        voucher.setEndDate(request.endDate());
+        voucher.setUsageLimit(request.usageLimit());
+        if (voucher.getUsedCount() == null) {
+            voucher.setUsedCount(0);
+        }
+    }
+
+    private String voucherStatus(Voucher voucher) {
+        LocalDateTime now = LocalDateTime.now();
+        if (voucher.getEndDate() != null && voucher.getEndDate().isBefore(now)) {
+            return "expired";
+        }
+        if (voucher.getStartDate() != null && voucher.getStartDate().isAfter(now)) {
+            return "scheduled";
+        }
+        Integer limit = voucher.getUsageLimit();
+        Integer used = voucher.getUsedCount() == null ? 0 : voucher.getUsedCount();
+        if (limit != null && limit > 0 && used >= limit) {
+            return "expired";
+        }
+        return "active";
+    }
+
     private Employee currentEmployee(Authentication authentication) {
         if (authentication == null || authentication.getName() == null) {
             return null;
@@ -651,6 +759,14 @@ public class AdminMarketingServiceImpl implements AdminMarketingService {
 
     private String normalize(String value) {
         return value == null ? null : value.trim().toUpperCase(Locale.ROOT);
+    }
+
+    private String normalizeVoucherCode(String value) {
+        return value == null ? "" : value.trim().toUpperCase(Locale.ROOT);
+    }
+
+    private BigDecimal nullToZero(BigDecimal value) {
+        return value == null ? BigDecimal.ZERO : value;
     }
 
     private String normalizeContentLength(String value) {

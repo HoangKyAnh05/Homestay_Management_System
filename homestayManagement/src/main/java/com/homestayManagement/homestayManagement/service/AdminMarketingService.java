@@ -8,6 +8,7 @@ import com.homestayManagement.homestayManagement.dto.request.MarketingRegenerate
 import com.homestayManagement.homestayManagement.dto.request.MarketingSocialAuthStartRequest;
 import com.homestayManagement.homestayManagement.dto.request.ScheduleMarketingChannelRequest;
 import com.homestayManagement.homestayManagement.dto.request.SocialAccountRequest;
+import com.homestayManagement.homestayManagement.dto.request.VoucherRequest;
 import com.homestayManagement.homestayManagement.dto.response.MarketingConnectedAccountResponse;
 import com.homestayManagement.homestayManagement.dto.response.MarketingDashboardResponse;
 import com.homestayManagement.homestayManagement.dto.response.MarketingMediaUploadResponse;
@@ -16,6 +17,7 @@ import com.homestayManagement.homestayManagement.dto.response.MarketingPostRespo
 import com.homestayManagement.homestayManagement.dto.response.MarketingSocialAuthStartResponse;
 import com.homestayManagement.homestayManagement.dto.response.MarketingSocialAuthStatusResponse;
 import com.homestayManagement.homestayManagement.dto.response.SocialAccountResponse;
+import com.homestayManagement.homestayManagement.dto.response.VoucherResponse;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -25,6 +27,10 @@ import java.util.List;
 
 public interface AdminMarketingService {
     MarketingDashboardResponse dashboard();
+    List<VoucherResponse> listVouchers();
+    VoucherResponse getVoucher(Long id);
+    VoucherResponse createVoucher(VoucherRequest request);
+    VoucherResponse updateVoucher(Long id, VoucherRequest request);
     SocialAccountResponse createSocialAccount(SocialAccountRequest request, Authentication authentication);
     void deleteSocialAccount(Long id);
     MarketingOptionResponse createOption(MarketingOptionRequest request);

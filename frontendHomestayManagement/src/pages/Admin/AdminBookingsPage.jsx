@@ -56,24 +56,6 @@ function formatShortDate(value) {
   return new Date(value).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })
 }
 
-function formatDateTime(value) {
-  return formatAppDateTime(value)
-  if (!value) return 'Chưa có'
-  return new Date(value).toLocaleString('vi-VN', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
-
-function formatTime(value) {
-  return formatClockTime(value)
-  if (!value) return ''
-  return new Date(value).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
-}
-
 function normalizeStatus(status) {
   return String(status || '').toUpperCase()
 }
@@ -173,6 +155,29 @@ function paymentStatusLabel(status) {
   return 'Đang chờ'
 }
 
+function sumMoney(items, selector) {
+  return (items || []).reduce((total, item) => total + Number(selector(item) || 0), 0)
+}
+
+function invoiceTotals(detail) {
+  const roomCharge = Number(detail?.invoice?.roomCharge ?? detail?.priceAtBooking ?? 0)
+  const serviceCharge = Number(detail?.invoice?.serviceCharge ?? sumMoney(detail?.serviceItems, item => item.totalPrice))
+  const penaltyCharge = Number(detail?.invoice?.penaltyCharge ?? (
+    sumMoney(detail?.penaltyItems, item => item.amount) +
+    sumMoney(detail?.checkInRecords, record => Number(record.earlyCheckInFee || 0) + Number(record.lateCheckOutFee || 0))
+  ))
+  const totalAmount = Number(detail?.invoice?.totalAmount ?? (roomCharge + serviceCharge + penaltyCharge))
+  const paidAmount = Number(detail?.paidAmount || 0)
+  return {
+    roomCharge,
+    serviceCharge,
+    penaltyCharge,
+    totalAmount,
+    paidAmount,
+    remainingAmount: Math.max(totalAmount - paidAmount, 0),
+  }
+}
+
 function BookingCard({ booking, onOpenDetail }) {
   const totalGuests = Number(booking.numberOfAdults || 0) + Number(booking.numberOfChildren || 0)
   return (
@@ -211,6 +216,180 @@ function AddRow({ title, children, onSubmit, disabled }) {
   )
 }
 
+function InvoicePreviewModal({ detail, onClose }) {
+  const totals = invoiceTotals(detail)
+  const selectedServices = detail?.serviceItems?.filter(item => item.type !== 'MINI_BAR') || []
+  const selectedMiniBars = detail?.serviceItems?.filter(item => item.type === 'MINI_BAR') || []
+  const timeFeeTotal = sumMoney(detail?.checkInRecords, record =>
+    Number(record.earlyCheckInFee || 0) + Number(record.lateCheckOutFee || 0)
+  )
+
+  return (
+    <div className="abk-overlay abk-invoice-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="abk-modal abk-invoice-modal" role="dialog" aria-modal="true">
+        <div className="abk-modal-head abk-invoice-head">
+          <div>
+            <h3>Hóa đơn {detail?.invoice?.id ? `#${detail.invoice.id}` : bookingDisplay(detail)}</h3>
+            <p>{bookingDisplay(detail)} · Phòng {detail?.roomNumber || 'chưa gán'} · {detail?.customer?.fullName || 'Khách hàng'}</p>
+          </div>
+          <button type="button" className="abk-modal-close" onClick={onClose}>×</button>
+        </div>
+
+        <div className="abk-modal-body abk-invoice-body">
+          <section className="abk-invoice-summary">
+            <div>
+              <span>Tổng tiền</span>
+              <strong>{formatMoney(totals.totalAmount)}</strong>
+            </div>
+            <div>
+              <span>Đã thanh toán trước</span>
+              <strong>{formatMoney(totals.paidAmount)}</strong>
+            </div>
+            <div className={totals.remainingAmount > 0 ? 'abk-invoice-due' : 'abk-invoice-paid'}>
+              <span>Còn lại</span>
+              <strong>{formatMoney(totals.remainingAmount)}</strong>
+            </div>
+          </section>
+
+          <section className="abk-invoice-section">
+            <h4>Thông tin đặt phòng</h4>
+            <div className="abk-detail-grid">
+              <DetailField label="Khách đặt" value={detail?.customer?.fullName} />
+              <DetailField label="Điện thoại" value={detail?.customer?.phone} />
+              <DetailField label="Email" value={detail?.customer?.email} />
+              <DetailField label="Phòng" value={`${detail?.roomNumber ? `Phòng ${detail.roomNumber}` : 'Chưa gán phòng'} · ${detail?.roomTypeName || 'Chưa phân loại'}`} />
+              <DetailField label="Nhận phòng" value={formatAppDateTime(detail?.checkInTarget)} />
+              <DetailField label="Trả phòng" value={formatAppDateTime(detail?.checkOutTarget)} />
+              <DetailField label="Số khách" value={`${Number(detail?.numberOfAdults || 0)} người lớn · ${Number(detail?.numberOfChildren || 0)} trẻ em`} />
+              <DetailField label="Loại thuê" value={detail?.rentType} />
+              <DetailField label="Người lập" value={detail?.invoice?.employeeName} />
+            </div>
+          </section>
+
+          <section className="abk-invoice-section">
+            <h4>Người lưu trú ({detail?.guests?.length || 0})</h4>
+            {detail?.guests?.length ? (
+              <div className="abk-invoice-table">
+                <div className="abk-invoice-table-head">
+                  <span>Họ tên</span><span>Giấy tờ</span><span>Liên hệ</span><span>Địa chỉ</span>
+                </div>
+                {detail.guests.map(guest => (
+                  <div className="abk-invoice-table-row" key={guest.id}>
+                    <span><strong>{guest.fullName}</strong>{guest.primaryGuest ? ' · Đại diện' : ''}</span>
+                    <span>{guest.identityDocumentType || 'CCCD'} {guest.identityDocumentNumber || ''}</span>
+                    <span>{[guest.phone, guest.email].filter(Boolean).join(' · ') || 'Chưa có'}</span>
+                    <span>{guest.address || 'Chưa có'}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="abk-empty abk-empty--sm">Chưa có danh sách người lưu trú.</div>
+            )}
+          </section>
+
+          <section className="abk-invoice-section">
+            <h4>Chi tiết tiền phòng và lưu trú</h4>
+            <div className="abk-line-list">
+              <div className="abk-line-row">
+                <div>
+                  <strong>Giá phòng đã đặt</strong>
+                  <span>{detail?.rentType || 'Loại thuê'} · {formatAppDateTime(detail?.checkInTarget)} đến {formatAppDateTime(detail?.checkOutTarget)}</span>
+                </div>
+                <strong>{formatMoney(totals.roomCharge)}</strong>
+              </div>
+              {detail?.checkInRecords?.map(record => (
+                <div className="abk-line-row" key={record.id}>
+                  <div>
+                    <strong>Ca lưu trú #{record.id}</strong>
+                    <span>Check-in {formatAppDateTime(record.actualCheckIn)} · Check-out {formatAppDateTime(record.actualCheckOut)}</span>
+                    <span>Lễ tân: {record.receptionistName || 'Chưa có'} · Housekeeping: {record.housekeepingName || 'Chưa có'}</span>
+                  </div>
+                  <strong>{formatMoney(Number(record.earlyCheckInFee || 0) + Number(record.lateCheckOutFee || 0))}</strong>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="abk-invoice-section">
+            <h4>Dịch vụ đã dùng</h4>
+            {selectedServices.length || selectedMiniBars.length ? (
+              <div className="abk-line-list">
+                {[...selectedServices, ...selectedMiniBars].map(item => (
+                  <div className="abk-line-row" key={`${item.type}-${item.id}`}>
+                    <div>
+                      <strong>{item.name}</strong>
+                      <span>{serviceTypeLabel(item.type)} · SL {item.quantity} × {formatMoney(item.unitPrice)}</span>
+                    </div>
+                    <strong>{formatMoney(item.totalPrice)}</strong>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="abk-empty abk-empty--sm">Chưa ghi nhận dịch vụ.</div>
+            )}
+          </section>
+
+          <section className="abk-invoice-section">
+            <h4>Phụ phí và khoản phạt</h4>
+            {detail?.penaltyItems?.length || timeFeeTotal > 0 ? (
+              <div className="abk-line-list">
+                {timeFeeTotal > 0 && (
+                  <div className="abk-line-row">
+                    <div>
+                      <strong>Phụ phí thời gian lưu trú</strong>
+                      <span>Phí nhận phòng sớm/trả phòng muộn từ các ca lưu trú.</span>
+                    </div>
+                    <strong>{formatMoney(timeFeeTotal)}</strong>
+                  </div>
+                )}
+                {detail.penaltyItems?.map(item => (
+                  <div className="abk-line-row" key={item.id}>
+                    <div>
+                      <strong>{item.title}</strong>
+                      <span>{item.description || 'Không có ghi chú'}</span>
+                    </div>
+                    <strong>{formatMoney(item.amount)}</strong>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="abk-empty abk-empty--sm">Không có phụ phí hoặc khoản phạt.</div>
+            )}
+          </section>
+
+          <section className="abk-invoice-section">
+            <h4>Thanh toán</h4>
+            {detail?.payments?.length ? (
+              <div className="abk-line-list">
+                {detail.payments.map(payment => (
+                  <div className="abk-line-row" key={payment.id}>
+                    <div>
+                      <strong>{payment.paymentMethod || 'Chưa rõ phương thức'} · {paymentStatusLabel(payment.status)}</strong>
+                      <span>{payment.transactionNo || 'Không có mã giao dịch'} · {formatAppDateTime(payment.paymentTime)}</span>
+                    </div>
+                    <strong>{formatMoney(payment.amount)}</strong>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="abk-empty abk-empty--sm">Chưa có thanh toán thành công.</div>
+            )}
+          </section>
+
+          <section className="abk-invoice-total-box">
+            <div><span>Tiền phòng</span><strong>{formatMoney(totals.roomCharge)}</strong></div>
+            <div><span>Dịch vụ, mini-bar</span><strong>{formatMoney(totals.serviceCharge)}</strong></div>
+            <div><span>Phụ phí, phạt</span><strong>{formatMoney(totals.penaltyCharge)}</strong></div>
+            <div><span>Tổng tiền</span><strong>{formatMoney(totals.totalAmount)}</strong></div>
+            <div><span>Đã thanh toán</span><strong>{formatMoney(totals.paidAmount)}</strong></div>
+            <div className="abk-invoice-total-due"><span>Còn lại</span><strong>{formatMoney(totals.remainingAmount)}</strong></div>
+          </section>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function BookingDetailModal({ detail, loading, error, actionLoading, actionError, onClose, onRefresh, onAction }) {
   const PRICE_API_MODAL = 'http://localhost:8080/api/admin/price-config'
 
@@ -239,6 +418,8 @@ function BookingDetailModal({ detail, loading, error, actionLoading, actionError
   const [housekeepingLoading, setHousekeepingLoading] = useState(false)
   const [housekeepingNotice, setHousekeepingNotice] = useState('')
   const [housekeepingTask, setHousekeepingTask] = useState(null)
+  const [invoiceLoading, setInvoiceLoading] = useState(false)
+  const [invoicePreview, setInvoicePreview] = useState(null)
 
   // Reset khi detail thay đổi
   useEffect(() => {
@@ -252,6 +433,7 @@ function BookingDetailModal({ detail, loading, error, actionLoading, actionError
     setPenaltyForm({ rulesPenaltyId: '', amount: '', description: '' })
     setHousekeepingNotice('')
     setHousekeepingTask(null)
+    setInvoicePreview(null)
   }, [detail?.bookingDetailId])
 
   useEffect(() => {
@@ -423,6 +605,26 @@ function BookingDetailModal({ detail, loading, error, actionLoading, actionError
       })
       .catch(err => onAction('__error__', null, err.message))
       .finally(() => setHousekeepingLoading(false))
+  }
+
+  const generateInvoicePreview = () => {
+    if (!detail?.bookingDetailId) return
+    setInvoiceLoading(true)
+    fetch(`${API_BASE}/details/${detail.bookingDetailId}/invoice`, {
+      method: 'POST',
+      headers: authHeaders(),
+    })
+      .then(async response => {
+        const data = await response.json().catch(() => ({}))
+        if (!response.ok) throw new Error(data.message || 'Không thể tạo hóa đơn')
+        return data
+      })
+      .then(data => {
+        onAction('__refresh__', null, data)
+        setInvoicePreview(data)
+      })
+      .catch(err => onAction('__error__', null, err.message))
+      .finally(() => setInvoiceLoading(false))
   }
 
   return (
@@ -805,8 +1007,8 @@ function BookingDetailModal({ detail, loading, error, actionLoading, actionError
                   <div className="abk-stay-block">
                     <div className="abk-block-title-row">
                       <h5>Hóa đơn và thanh toán</h5>
-                      <button type="button" disabled={actionLoading} onClick={() => onAction('invoice')}>
-                        Generate hóa đơn
+                      <button type="button" disabled={actionLoading || invoiceLoading} onClick={generateInvoicePreview}>
+                        {invoiceLoading ? 'Đang tạo...' : 'Generate hóa đơn'}
                       </button>
                     </div>
                     {detail.invoice ? (
@@ -844,6 +1046,12 @@ function BookingDetailModal({ detail, loading, error, actionLoading, actionError
         </div>
         </div>
       </div>
+      {invoicePreview && (
+        <InvoicePreviewModal
+          detail={invoicePreview}
+          onClose={() => setInvoicePreview(null)}
+        />
+      )}
       {checkoutPayment && (
         <SePayQrPayment
           payment={checkoutPayment}

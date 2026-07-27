@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { getStoredToken } from '../../services/authService'
 import { formatDateTime as formatAppDateTime } from '../../utils/dateTimeFormat'
 import SePayQrPayment from '../../components/SePayQrPayment/SePayQrPayment'
@@ -13,6 +13,10 @@ function bookingDisplay(booking) {
 
 function authHeaders() {
   return { 'Content-Type': 'application/json', Authorization: `Bearer ${getStoredToken()}` }
+}
+
+function authUploadHeaders() {
+  return { Authorization: `Bearer ${getStoredToken()}` }
 }
 
 function toDateInputValue(date) {
@@ -222,6 +226,103 @@ function createGuestForms(preparation) {
     gender: '',
     nationality: 'VIETNAM',
   }))
+}
+
+function IdentityCameraModal({ title, onClose, onCapture }) {
+  const videoRef = useRef(null)
+  const streamRef = useRef(null)
+  const [cameraError, setCameraError] = useState('')
+  const [starting, setStarting] = useState(true)
+
+  useEffect(() => {
+    let active = true
+    const startCamera = async () => {
+      try {
+        if (!navigator.mediaDevices?.getUserMedia) {
+          throw new Error('Trình duyệt không hỗ trợ chụp ảnh trực tiếp')
+        }
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: 'environment' } },
+          audio: false,
+        })
+        if (!active) {
+          stream.getTracks().forEach(track => track.stop())
+          return
+        }
+        streamRef.current = stream
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream
+          await videoRef.current.play()
+        }
+      } catch (err) {
+        if (active) setCameraError(err.message || 'Không thể mở camera')
+      } finally {
+        if (active) setStarting(false)
+      }
+    }
+
+    startCamera()
+    return () => {
+      active = false
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop())
+        streamRef.current = null
+      }
+    }
+  }, [])
+
+  const capture = () => {
+    const video = videoRef.current
+    if (!video || !video.videoWidth || !video.videoHeight) {
+      setCameraError('Camera chưa sẵn sàng để chụp')
+      return
+    }
+    const canvas = document.createElement('canvas')
+    canvas.width = video.videoWidth
+    canvas.height = video.videoHeight
+    const context = canvas.getContext('2d')
+    context.drawImage(video, 0, 0, canvas.width, canvas.height)
+    canvas.toBlob(blob => {
+      if (!blob) {
+        setCameraError('Không thể tạo ảnh từ camera')
+        return
+      }
+      const file = new File([blob], `cccd-${Date.now()}.jpg`, { type: 'image/jpeg' })
+      onCapture(file)
+      onClose()
+    }, 'image/jpeg', 0.92)
+  }
+
+  return (
+    <div className="acl-camera-overlay" onClick={event => event.target === event.currentTarget && onClose()}>
+      <section className="acl-camera-modal" role="dialog" aria-modal="true" aria-labelledby="acl-camera-title">
+        <header className="acl-camera-head">
+          <div>
+            <span>Chụp căn cước</span>
+            <h3 id="acl-camera-title">{title}</h3>
+          </div>
+          <button type="button" onClick={onClose} aria-label="Đóng">×</button>
+        </header>
+        <div className="acl-camera-frame">
+          {cameraError ? (
+            <div className="acl-camera-error">{cameraError}</div>
+          ) : (
+            <>
+              {starting && <div className="acl-camera-loading">Đang mở camera...</div>}
+              <video ref={videoRef} playsInline muted />
+              <div className="acl-camera-guide" aria-hidden="true" />
+            </>
+          )}
+        </div>
+        <footer className="acl-camera-actions">
+          <button type="button" onClick={onClose}>Hủy</button>
+          <button type="button" onClick={capture} disabled={starting || Boolean(cameraError)}>
+            Chụp ảnh
+          </button>
+        </footer>
+      </section>
+    </div>
+  )
 }
 
 function CheckOutModal({ bookingDetailId, onClose, onCompleted }) {
@@ -541,6 +642,10 @@ function CheckInModal({ bookingDetailId, onClose, onCompleted }) {
   const [guests, setGuests] = useState([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [ocrLoadingIndex, setOcrLoadingIndex] = useState(null)
+  const [identityImages, setIdentityImages] = useState({})
+  const [cameraTarget, setCameraTarget] = useState(null)
+  const [ocrNotice, setOcrNotice] = useState('')
   const [error, setError] = useState('')
 
   useEffect(() => {
@@ -556,6 +661,8 @@ function CheckInModal({ bookingDetailId, onClose, onCompleted }) {
           ? String(data.assignedRoom.id)
           : data.availableRooms?.[0]?.id ? String(data.availableRooms[0].id) : '')
         setGuests(createGuestForms(data))
+        setIdentityImages({})
+        setCameraTarget(null)
       })
       .catch(err => {
         if (err.name !== 'AbortError') setError(err.message)
@@ -570,6 +677,67 @@ function CheckInModal({ bookingDetailId, onClose, onCompleted }) {
     setGuests(current => current.map((guest, guestIndex) => (
       guestIndex === index ? { ...guest, [field]: value } : guest
     )))
+  }
+
+  const selectIdentityImage = (index, side, file) => {
+    if (!file) return
+    const currentImages = identityImages[index] || {}
+    const nextImages = { ...currentImages, [side]: file }
+    setIdentityImages(current => ({ ...current, [index]: nextImages }))
+    setOcrNotice(
+      nextImages.front && nextImages.back
+        ? ''
+        : `Đã nhận ${side === 'front' ? 'mặt trước' : 'mặt sau'} CCCD cho người lưu trú ${index + 1}. Vui lòng chọn thêm mặt còn lại.`
+    )
+    if (nextImages.front && nextImages.back) {
+      scanIdentityDocument(index, nextImages.front, nextImages.back)
+    }
+  }
+
+  const openIdentityCamera = (index, side) => {
+    setError('')
+    setCameraTarget({ index, side })
+  }
+
+  const scanIdentityDocument = async (index, imageFront, imageBack) => {
+    if (!imageFront || !imageBack) return
+    setOcrLoadingIndex(index)
+    setOcrNotice('')
+    setError('')
+    try {
+      const formData = new FormData()
+      formData.append('image_front', imageFront)
+      formData.append('image_back', imageBack)
+      const response = await fetch(`${API_BASE}/details/${bookingDetailId}/identity-ocr`, {
+        method: 'POST',
+        headers: authUploadHeaders(),
+        body: formData,
+      })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(data.message || 'Không thể đọc thông tin căn cước')
+      setGuests(current => current.map((guest, guestIndex) => {
+        if (guestIndex !== index) return guest
+        return {
+          ...guest,
+          fullName: data.fullName || guest.fullName,
+          identityDocumentNumber: data.identityDocumentNumber || guest.identityDocumentNumber,
+          dateOfBirth: data.dateOfBirth || guest.dateOfBirth,
+          gender: data.gender || guest.gender,
+          nationality: data.nationality || guest.nationality || 'VIETNAM',
+          address: data.address || guest.address,
+        }
+      }))
+      setIdentityImages(current => {
+        const next = { ...current }
+        delete next[index]
+        return next
+      })
+      setOcrNotice(`Đã đọc căn cước cho người lưu trú ${index + 1}. Vui lòng kiểm tra lại trước khi xác nhận.`)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setOcrLoadingIndex(null)
+    }
   }
 
   const submit = async event => {
@@ -664,11 +832,62 @@ function CheckInModal({ bookingDetailId, onClose, onCompleted }) {
               <div className="acl-guest-forms">
                 {guests.map((guest, index) => {
                   const isAdult = index < Number(preparation.numberOfAdults || 0)
+                  const selectedIdentityImages = identityImages[index] || {}
                   return (
                     <article className="acl-guest-form" key={index}>
                       <div className="acl-guest-form-title">
                         <strong>Người lưu trú {index + 1}</strong>
-                        <span>{index === 0 ? 'Người đại diện phòng' : isAdult ? 'Người lớn' : 'Trẻ em'}</span>
+                        <div className="acl-guest-form-actions">
+                          <div className="acl-identity-side">
+                            <span>{selectedIdentityImages.front ? 'Đã có mặt trước' : 'Mặt trước'}</span>
+                            <label className={`acl-identity-scan${ocrLoadingIndex === index ? ' is-loading' : ''}`}>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                disabled={ocrLoadingIndex !== null}
+                                onChange={event => {
+                                  const file = event.target.files?.[0]
+                                  event.target.value = ''
+                                  selectIdentityImage(index, 'front', file)
+                                }}
+                              />
+                              Upload
+                            </label>
+                            <button
+                              type="button"
+                              className="acl-identity-camera-btn"
+                              disabled={ocrLoadingIndex !== null}
+                              onClick={() => openIdentityCamera(index, 'front')}
+                            >
+                              Chụp
+                            </button>
+                          </div>
+                          <div className="acl-identity-side">
+                            <span>{selectedIdentityImages.back ? 'Đã có mặt sau' : 'Mặt sau'}</span>
+                            <label className={`acl-identity-scan${ocrLoadingIndex === index ? ' is-loading' : ''}`}>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                disabled={ocrLoadingIndex !== null}
+                                onChange={event => {
+                                  const file = event.target.files?.[0]
+                                  event.target.value = ''
+                                  selectIdentityImage(index, 'back', file)
+                                }}
+                              />
+                              Upload
+                            </label>
+                            <button
+                              type="button"
+                              className="acl-identity-camera-btn"
+                              disabled={ocrLoadingIndex !== null}
+                              onClick={() => openIdentityCamera(index, 'back')}
+                            >
+                              Chụp
+                            </button>
+                          </div>
+                          <span>{index === 0 ? 'Người đại diện phòng' : isAdult ? 'Người lớn' : 'Trẻ em'}</span>
+                        </div>
                       </div>
                       <div className="acl-guest-fields">
                         <label><span>Họ và tên *</span><input required maxLength="100" value={guest.fullName}
@@ -695,6 +914,7 @@ function CheckInModal({ bookingDetailId, onClose, onCompleted }) {
                   )
                 })}
               </div>
+              {ocrNotice && <div className="acl-ocr-notice">{ocrNotice}</div>}
             </section>
 
             {error && <div className="acl-checkin-warning acl-checkin-warning--error">{error}</div>}
@@ -707,6 +927,13 @@ function CheckInModal({ bookingDetailId, onClose, onCompleted }) {
           </form>
         ) : null}
       </section>
+      {cameraTarget && (
+        <IdentityCameraModal
+          title={`${cameraTarget.side === 'front' ? 'Mặt trước' : 'Mặt sau'} CCCD - Người lưu trú ${cameraTarget.index + 1}`}
+          onClose={() => setCameraTarget(null)}
+          onCapture={file => selectIdentityImage(cameraTarget.index, cameraTarget.side, file)}
+        />
+      )}
     </div>
   )
 }

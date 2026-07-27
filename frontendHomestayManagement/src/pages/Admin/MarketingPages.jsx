@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+﻿import { useEffect, useMemo, useState } from 'react'
 import AdminLayout, { navigate } from './AdminLayout'
 import { getStoredToken, getStoredUser } from '../../services/authService'
 import './MarketingPages.css'
@@ -28,12 +28,6 @@ const FALLBACK_TONES = [
   { id: 'tone-2', label: 'Trẻ trung & gần gũi' },
   { id: 'tone-3', label: 'Sang trọng & tinh tế' },
   { id: 'tone-4', label: 'Hài hước & bắt trend' },
-]
-
-const VOUCHERS = [
-  { code: 'HELLOJULY', name: 'Chào tháng 7', type: 'percent', value: 15, min: '1.500.000đ', used: 38, limit: 100, period: '01/07 – 15/07/2026', status: 'scheduled' },
-  { code: 'STAY3PAY2', name: 'Ở 3 đêm, ưu đãi 1 đêm', type: 'amount', value: 600000, min: '3.000.000đ', used: 67, limit: 80, period: '10/06 – 31/07/2026', status: 'active' },
-  { code: 'WEEKDAY10', name: 'Giảm giá giữa tuần', type: 'percent', value: 10, min: '1.000.000đ', used: 124, limit: 200, period: '01/06 – 31/08/2026', status: 'active' },
 ]
 
 const STATUS = {
@@ -204,6 +198,59 @@ function formatScheduleTime(value) {
     hour: '2-digit',
     minute: '2-digit',
   }).format(new Date(value))
+}
+
+function formatMoney(value) {
+  const amount = Number(value || 0)
+  return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(amount)
+}
+
+function toDateTimeInputValue(value) {
+  if (!value) return ''
+  return String(value).slice(0, 16)
+}
+
+function fromDateTimeInputValue(value) {
+  if (!value) return null
+  return value.length === 16 ? `${value}:00` : value
+}
+
+function voucherFormFromItem(voucher = null) {
+  return {
+    code: voucher?.code || '',
+    discountType: voucher?.discountType || 'PERCENT',
+    discountValue: voucher?.discountValue ?? '',
+    minOrderValue: voucher?.minOrderValue ?? '',
+    maxDiscountAmount: voucher?.maxDiscountAmount ?? '',
+    startDate: toDateTimeInputValue(voucher?.startDate),
+    endDate: toDateTimeInputValue(voucher?.endDate),
+    usageLimit: voucher?.usageLimit ?? '',
+  }
+}
+
+function voucherPayload(form) {
+  const nullableNumber = (value) => value === '' || value == null ? null : Number(value)
+  return {
+    code: form.code.trim().toUpperCase(),
+    discountType: form.discountType,
+    discountValue: Number(form.discountValue),
+    minOrderValue: nullableNumber(form.minOrderValue),
+    maxDiscountAmount: nullableNumber(form.maxDiscountAmount),
+    startDate: fromDateTimeInputValue(form.startDate),
+    endDate: fromDateTimeInputValue(form.endDate),
+    usageLimit: form.usageLimit === '' || form.usageLimit == null ? null : Number.parseInt(form.usageLimit, 10),
+  }
+}
+
+function voucherDiscountLabel(voucher) {
+  if (!voucher) return ''
+  if (voucher.discountType === 'PERCENT') return `${Number(voucher.discountValue || 0).toLocaleString('vi-VN')}%`
+  return formatMoney(voucher.discountValue)
+}
+
+function voucherPeriod(voucher) {
+  const format = (value) => value ? new Date(value).toLocaleDateString('vi-VN') : '∞'
+  return `${format(voucher.startDate)} - ${format(voucher.endDate)}`
 }
 
 export function MarketingAIAgentPage() {
@@ -1444,25 +1491,222 @@ export function MarketingPostLogsPage() {
 
 export function MarketingVouchersPage() {
   const [query, setQuery] = useState('')
-  const filtered = VOUCHERS.filter((voucher) => `${voucher.code} ${voucher.name}`.toLowerCase().includes(query.toLowerCase()))
+  const [vouchers, setVouchers] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const [modal, setModal] = useState({ open: false, mode: 'create', voucher: null })
+  const [form, setForm] = useState(() => voucherFormFromItem())
+
+  const filtered = useMemo(() => {
+    const value = query.trim().toLowerCase()
+    if (!value) return vouchers
+    return vouchers.filter((voucher) => `${voucher.code} ${voucher.discountType} ${voucher.status}`.toLowerCase().includes(value))
+  }, [query, vouchers])
+
+  const refreshVouchers = async () => {
+    const data = await request('/vouchers')
+    setVouchers(data || [])
+    return data || []
+  }
+
+  useEffect(() => {
+    let active = true
+    request('/vouchers')
+      .then((data) => {
+        if (active) setVouchers(data || [])
+      })
+      .catch((err) => {
+        if (active) setError(err.message)
+      })
+      .finally(() => active && setLoading(false))
+    return () => { active = false }
+  }, [])
+
+  const openCreateModal = () => {
+    setForm(voucherFormFromItem())
+    setModal({ open: true, mode: 'create', voucher: null })
+    setError('')
+  }
+
+  const openVoucherDetail = async (voucher) => {
+    setError('')
+    try {
+      const detail = await request(`/vouchers/${voucher.id}`)
+      setForm(voucherFormFromItem(detail))
+      setModal({ open: true, mode: 'edit', voucher: detail })
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
+  const closeVoucherModal = () => {
+    if (saving) return
+    setModal({ open: false, mode: 'create', voucher: null })
+    setForm(voucherFormFromItem())
+  }
+
+  const updateVoucherField = (field, value) => {
+    setForm((current) => ({ ...current, [field]: field === 'code' ? value.toUpperCase() : value }))
+  }
+
+  const saveVoucher = async (event) => {
+    event.preventDefault()
+    setSaving(true)
+    setError('')
+    try {
+      const payload = voucherPayload(form)
+      const isEdit = modal.mode === 'edit' && modal.voucher?.id
+      await request(isEdit ? `/vouchers/${modal.voucher.id}` : '/vouchers', {
+        method: isEdit ? 'PUT' : 'POST',
+        body: JSON.stringify(payload),
+      })
+      await refreshVouchers()
+      setModal({ open: false, mode: 'create', voucher: null })
+      setForm(voucherFormFromItem())
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
   return (
     <AdminLayout activePage="vouchers">
       <div className="mkt-page">
-        <PageHeader eyebrow="Khuyến mãi" title="Mã giảm giá" description="Tạo và quản lý ưu đãi giúp tăng tỷ lệ lấp đầy và giữ chân khách hàng." action={<button className="mkt-btn mkt-btn--primary" type="button"><Icon name="plus" />Tạo voucher</button>} />
+        <PageHeader
+          eyebrow="Khuyến mãi"
+          title="Mã giảm giá"
+          description="Tạo và quản lý ưu đãi giúp tăng tỷ lệ lấp đầy và giữ chân khách hàng."
+          action={<button className="mkt-btn mkt-btn--primary" type="button" onClick={openCreateModal}><Icon name="plus" />Tạo voucher</button>}
+        />
+
         <section className="mkt-card mkt-voucher-panel">
-          <div className="mkt-toolbar"><div className="mkt-search"><Icon name="search" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Tìm mã hoặc tên voucher..." /></div></div>
-          <div className="mkt-voucher-grid">
-            {filtered.map((voucher) => (
-              <article className="mkt-voucher" key={voucher.code}>
-                <div className="mkt-voucher-head"><div><StatusBadge value={voucher.status} /><h2>{voucher.name}</h2></div></div>
-                <div className="mkt-voucher-value"><strong>{voucher.type === 'percent' ? `${voucher.value}%` : `${(voucher.value / 1000).toLocaleString('vi-VN')}K`}</strong><span>GIẢM<br />TỐI ĐA</span></div>
-                <button className="mkt-code" type="button"><span>{voucher.code}</span><Icon name="copy" /></button>
-                <dl><div><dt>Đơn tối thiểu</dt><dd>{voucher.min}</dd></div><div><dt>Thời gian</dt><dd>{voucher.period}</dd></div></dl>
-                <div className="mkt-usage"><div><span>Đã sử dụng</span><strong>{voucher.used}/{voucher.limit}</strong></div><i><b style={{ width: `${Math.min(100, (voucher.used / voucher.limit) * 100)}%` }} /></i></div>
-              </article>
-            ))}
+          <div className="mkt-toolbar">
+            <div className="mkt-search"><Icon name="search" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Tìm mã voucher..." /></div>
+            {error ? <span className="mkt-inline-error">{error}</span> : null}
           </div>
+
+          {loading ? (
+            <div className="mkt-empty-table"><span className="mkt-spinner" /><strong>Đang tải voucher...</strong></div>
+          ) : (
+            <div className="mkt-voucher-grid">
+              {filtered.map((voucher) => (
+                <article
+                  className="mkt-voucher"
+                  key={voucher.id}
+                  role="button"
+                  tabIndex={0}
+                  title="Xem chi tiết và chỉnh sửa voucher"
+                  onClick={() => openVoucherDetail(voucher)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault()
+                      openVoucherDetail(voucher)
+                    }
+                  }}
+                >
+                  <span className={`mkt-voucher-accent mkt-voucher-accent--${STATUS[voucher.status]?.[1] || 'neutral'}`} />
+                  <div className="mkt-voucher-head"><div><StatusBadge value={voucher.status} /><h2>{voucher.code}</h2></div><Icon name="arrow" /></div>
+                  <div className="mkt-voucher-value"><strong>{voucherDiscountLabel(voucher)}</strong><span>Giảm<br />giá</span></div>
+                  <button
+                    className="mkt-code"
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      navigator.clipboard?.writeText(voucher.code)
+                    }}
+                  >
+                    <span>{voucher.code}</span><Icon name="copy" />
+                  </button>
+                  <dl>
+                    <div><dt>Đơn tối thiểu</dt><dd>{formatMoney(voucher.minOrderValue)}</dd></div>
+                    <div><dt>Thời gian</dt><dd>{voucherPeriod(voucher)}</dd></div>
+                  </dl>
+                  <div className="mkt-usage">
+                    <div><span>Đã sử dụng</span><strong>{voucher.usedCount || 0}/{voucher.usageLimit || '∞'}</strong></div>
+                    <i><b style={{ width: `${voucher.usageLimit ? Math.min(100, ((voucher.usedCount || 0) / voucher.usageLimit) * 100) : 0}%` }} /></i>
+                  </div>
+                </article>
+              ))}
+              {!filtered.length && <div className="mkt-empty-table mkt-voucher-empty"><Icon name="ticket" size={30} /><strong>Chưa có voucher</strong><span>Bấm Tạo voucher để tạo mã giảm giá đầu tiên.</span></div>}
+            </div>
+          )}
         </section>
+
+        {modal.open && (
+          <div className="mkt-modal-backdrop" role="presentation" onMouseDown={closeVoucherModal}>
+            <section className="mkt-modal mkt-voucher-modal" role="dialog" aria-modal="true" aria-labelledby="voucher-modal-title" onMouseDown={(event) => event.stopPropagation()}>
+              <header>
+                <div>
+                  <span className="mkt-modal-eyebrow">{modal.mode === 'edit' ? 'Chi tiết voucher' : 'Tạo voucher'}</span>
+                  <h2 id="voucher-modal-title">{modal.mode === 'edit' ? form.code || 'Voucher' : 'Voucher mới'}</h2>
+                  <p>{modal.mode === 'edit' ? `Đã sử dụng ${modal.voucher?.usedCount || 0} lượt` : 'Nhập thông tin ưu đãi để áp dụng cho booking.'}</p>
+                </div>
+                <button type="button" onClick={closeVoucherModal} aria-label="Đóng"><Icon name="close" /></button>
+              </header>
+
+              <form onSubmit={saveVoucher}>
+                <div className="mkt-modal-body">
+                  <div className="mkt-voucher-detail-strip">
+                    <div><small>Trạng thái</small><StatusBadge value={modal.voucher?.status || 'scheduled'} /></div>
+                    <div><small>Giá trị</small><strong>{form.discountValue ? voucherDiscountLabel({ discountType: form.discountType, discountValue: form.discountValue }) : 'Chưa nhập'}</strong></div>
+                    <div><small>Thời gian</small><strong>{voucherPeriod({ startDate: fromDateTimeInputValue(form.startDate), endDate: fromDateTimeInputValue(form.endDate) })}</strong></div>
+                  </div>
+
+                  {error ? <div className="mkt-form-error">{error}</div> : null}
+
+                  <div className="mkt-form-row">
+                    <label className="mkt-field">Mã voucher
+                      <input className="is-uppercase" value={form.code} onChange={(event) => updateVoucherField('code', event.target.value)} maxLength={20} placeholder="VD: SUMMER20" required />
+                    </label>
+                    <label className="mkt-field">Loại giảm giá
+                      <select value={form.discountType} onChange={(event) => updateVoucherField('discountType', event.target.value)}>
+                        <option value="PERCENT">Theo phần trăm</option>
+                        <option value="AMOUNT">Số tiền cố định</option>
+                      </select>
+                    </label>
+                  </div>
+
+                  <div className="mkt-form-row">
+                    <label className="mkt-field">Giá trị giảm
+                      <div className="mkt-input-suffix">
+                        <input type="number" min="0" step={form.discountType === 'PERCENT' ? '1' : '1000'} value={form.discountValue} onChange={(event) => updateVoucherField('discountValue', event.target.value)} required />
+                        <span>{form.discountType === 'PERCENT' ? '%' : 'VND'}</span>
+                      </div>
+                    </label>
+                    <label className="mkt-field">Giảm tối đa
+                      <input type="number" min="0" step="1000" value={form.maxDiscountAmount} onChange={(event) => updateVoucherField('maxDiscountAmount', event.target.value)} placeholder={form.discountType === 'PERCENT' ? 'Bắt buộc với %' : 'Không bắt buộc'} />
+                    </label>
+                  </div>
+
+                  <div className="mkt-form-row">
+                    <label className="mkt-field">Đơn tối thiểu
+                      <input type="number" min="0" step="1000" value={form.minOrderValue} onChange={(event) => updateVoucherField('minOrderValue', event.target.value)} />
+                    </label>
+                    <label className="mkt-field">Giới hạn lượt dùng
+                      <input type="number" min={modal.voucher?.usedCount || 0} step="1" value={form.usageLimit} onChange={(event) => updateVoucherField('usageLimit', event.target.value)} placeholder="Để trống nếu không giới hạn" />
+                    </label>
+                  </div>
+
+                  <div className="mkt-form-row">
+                    <label className="mkt-field">Bắt đầu
+                      <input type="datetime-local" value={form.startDate} onChange={(event) => updateVoucherField('startDate', event.target.value)} />
+                    </label>
+                    <label className="mkt-field">Kết thúc
+                      <input type="datetime-local" value={form.endDate} onChange={(event) => updateVoucherField('endDate', event.target.value)} />
+                    </label>
+                  </div>
+                </div>
+
+                <footer>
+                  <button className="mkt-btn mkt-btn--secondary" type="button" onClick={closeVoucherModal} disabled={saving}>Hủy</button>
+                  <button className="mkt-btn mkt-btn--primary" type="submit" disabled={saving}>{saving ? <span className="mkt-spinner" /> : <Icon name="check" />}{modal.mode === 'edit' ? 'Lưu thay đổi' : 'Tạo voucher'}</button>
+                </footer>
+              </form>
+            </section>
+          </div>
+        )}
       </div>
     </AdminLayout>
   )

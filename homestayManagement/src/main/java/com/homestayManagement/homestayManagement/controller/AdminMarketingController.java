@@ -8,6 +8,7 @@ import com.homestayManagement.homestayManagement.dto.request.MarketingRegenerate
 import com.homestayManagement.homestayManagement.dto.request.MarketingSocialAuthStartRequest;
 import com.homestayManagement.homestayManagement.dto.request.ScheduleMarketingChannelRequest;
 import com.homestayManagement.homestayManagement.dto.request.SocialAccountRequest;
+import com.homestayManagement.homestayManagement.dto.request.VoucherRequest;
 import com.homestayManagement.homestayManagement.dto.response.MarketingConnectedAccountResponse;
 import com.homestayManagement.homestayManagement.dto.response.MarketingDashboardResponse;
 import com.homestayManagement.homestayManagement.dto.response.MarketingMediaUploadResponse;
@@ -16,6 +17,7 @@ import com.homestayManagement.homestayManagement.dto.response.MarketingPostRespo
 import com.homestayManagement.homestayManagement.dto.response.MarketingSocialAuthStartResponse;
 import com.homestayManagement.homestayManagement.dto.response.MarketingSocialAuthStatusResponse;
 import com.homestayManagement.homestayManagement.dto.response.SocialAccountResponse;
+import com.homestayManagement.homestayManagement.dto.response.VoucherResponse;
 import com.homestayManagement.homestayManagement.service.AdminMarketingService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -40,6 +42,30 @@ public class AdminMarketingController {
     @GetMapping("/dashboard")
     public MarketingDashboardResponse dashboard() {
         return adminMarketingService.dashboard();
+    }
+
+    @GetMapping("/vouchers")
+    public List<VoucherResponse> listVouchers() {
+        return adminMarketingService.listVouchers();
+    }
+
+    @GetMapping("/vouchers/{id}")
+    public VoucherResponse getVoucher(@PathVariable Long id) {
+        return adminMarketingService.getVoucher(id);
+    }
+
+    @PostMapping("/vouchers")
+    @ResponseStatus(HttpStatus.CREATED)
+    public VoucherResponse createVoucher(@Valid @RequestBody VoucherRequest request) {
+        return adminMarketingService.createVoucher(request);
+    }
+
+    @PutMapping("/vouchers/{id}")
+    public VoucherResponse updateVoucher(
+            @PathVariable Long id,
+            @Valid @RequestBody VoucherRequest request
+    ) {
+        return adminMarketingService.updateVoucher(id, request);
     }
 
     @PostMapping("/social-accounts")

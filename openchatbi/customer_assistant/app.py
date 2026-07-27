@@ -15,6 +15,7 @@ from datetime import datetime
 from typing import Any, Literal
 
 from fastapi import Depends, FastAPI, Header, HTTPException, status
+from fastapi.responses import StreamingResponse
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, Field
@@ -146,6 +147,7 @@ CUSTOMER_CONTEXT:
 
 
 def get_model() -> tuple[ChatOpenAI, str]:
+<<<<<<< HEAD
     api_key = (
         os.getenv("OPENAI_API_KEY", "").strip()
         or os.getenv("OPENROUTER_API_KEY", "").strip()
@@ -164,6 +166,22 @@ def get_model() -> tuple[ChatOpenAI, str]:
         default_headers["HTTP-Referer"] = referer
     if title:
         default_headers["X-OpenRouter-Title"] = title
+=======
+    api_key = os.getenv("OPENAI_API_KEY", "").strip() or os.getenv("FPT_AI_API_KEY", "").strip()
+    if not api_key:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="OPENAI_API_KEY is not configured",
+        )
+
+    base_url = (
+        os.getenv("OPENAI_BASE_URL", "").strip()
+        or os.getenv("FPT_AI_BASE_URL", "").strip()
+        or "https://api.openai.com/v1"
+    )
+    model_name = os.getenv("OPENAI_MODEL", "").strip() or os.getenv("FPT_AI_MODEL", "").strip() or "gpt-4.1-mini"
+    provider_name = "OpenAI" if "api.openai.com" in base_url else "OpenAI-compatible"
+>>>>>>> 216bc5e ( update: doc cccd & voucher)
 
     model_kwargs: dict[str, Any] = {
         "api_key": api_key,
@@ -179,10 +197,17 @@ def get_model() -> tuple[ChatOpenAI, str]:
         model_kwargs["default_headers"] = default_headers
 
     logger.info(
+<<<<<<< HEAD
         "Customer AI model configured: model=%s base_url=%s openrouter_headers=%s",
         model_name,
         base_url or "https://api.openai.com/v1",
         sorted(default_headers.keys()),
+=======
+        "Customer AI model configured: model=%s base_url=%s provider=%s",
+        model_name,
+        base_url,
+        provider_name,
+>>>>>>> 216bc5e ( update: doc cccd & voucher)
     )
     return (
         ChatOpenAI(**model_kwargs),
@@ -192,6 +217,7 @@ def get_model() -> tuple[ChatOpenAI, str]:
 
 @app.get("/health")
 async def health() -> dict[str, Any]:
+<<<<<<< HEAD
     return {
         "status": "UP",
         "api_key_configured": bool(
@@ -201,6 +227,24 @@ async def health() -> dict[str, Any]:
         "internal_token_configured": bool(os.getenv("AI_INTERNAL_TOKEN", "").strip()),
         "model": os.getenv("OPENAI_MODEL", "gpt-5.5"),
         "base_url": os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1"),
+=======
+    api_key = os.getenv("OPENAI_API_KEY", "").strip() or os.getenv("FPT_AI_API_KEY", "").strip()
+    base_url = (
+        os.getenv("OPENAI_BASE_URL", "").strip()
+        or os.getenv("FPT_AI_BASE_URL", "").strip()
+        or "https://api.openai.com/v1"
+    )
+    model_name = os.getenv("OPENAI_MODEL", "").strip() or os.getenv("FPT_AI_MODEL", "").strip() or "gpt-4.1-mini"
+    provider_name = "OpenAI" if "api.openai.com" in base_url else "OpenAI-compatible"
+
+    return {
+        "status": "UP",
+        "api_key_configured": bool(api_key),
+        "api_key_provider": provider_name,
+        "internal_token_configured": bool(os.getenv("AI_INTERNAL_TOKEN", "").strip()),
+        "model": model_name,
+        "base_url": base_url,
+>>>>>>> 216bc5e ( update: doc cccd & voucher)
     }
 
 
@@ -232,7 +276,11 @@ async def customer_chat(request: CustomerChatRequest) -> CustomerChatResponse:
         logger.exception(
             "Customer AI model call failed: model=%s base_url=%s session_id=%s error=%s",
             model_name,
+<<<<<<< HEAD
             os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1"),
+=======
+            os.getenv("OPENAI_BASE_URL", "").strip() or "https://api.openai.com/v1",
+>>>>>>> 216bc5e ( update: doc cccd & voucher)
             request.session_id,
             exc,
         )

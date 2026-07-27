@@ -41,7 +41,7 @@ public class MarketingAiTextGeneratorImpl implements MarketingAiTextGenerator {
             @Value("${marketing.ai.api-key:}") String apiKey,
             @Value("${marketing.ai.base-url:https://api.openai.com/v1}") String baseUrl,
             @Value("${marketing.ai.chat-path:/chat/completions}") String chatPath,
-            @Value("${marketing.ai.model:gpt-5.5}") String model,
+            @Value("${marketing.ai.model:gpt-4.1-mini}") String model,
             @Value("${marketing.ai.compatibility-mode:openai}") String compatibilityMode,
             @Value("${marketing.ai.auth-header-name:Authorization}") String authHeaderName,
             @Value("${marketing.ai.auth-header-prefix:Bearer}") String authHeaderPrefix,
@@ -95,7 +95,7 @@ public class MarketingAiTextGeneratorImpl implements MarketingAiTextGenerator {
                 payload.put("temperature", 0.95);
             } else {
                 payload.put("seed", Math.abs(variationSeed.hashCode()));
-                if (!isGpt55OrNewer(model)) {
+                if (!usesReasoningEffortOnly(model)) {
                     payload.put("temperature", 0.95);
                     payload.put("presence_penalty", 0.35);
                     payload.put("frequency_penalty", 0.25);
@@ -195,9 +195,9 @@ public class MarketingAiTextGeneratorImpl implements MarketingAiTextGenerator {
         return value == null || value.isBlank() ? fallback : value.trim();
     }
 
-    private boolean isGpt55OrNewer(String value) {
+    private boolean usesReasoningEffortOnly(String value) {
         String normalized = value == null ? "" : value.toLowerCase();
-        return normalized.contains("gpt-5.5") || normalized.contains("gpt-5.6");
+        return normalized.startsWith("gpt-5") || normalized.startsWith("o1") || normalized.startsWith("o3") || normalized.startsWith("o4");
     }
 
     private String providerName() {

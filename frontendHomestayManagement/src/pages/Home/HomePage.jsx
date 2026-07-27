@@ -10,6 +10,25 @@ function formatPrice(price) {
   return new Intl.NumberFormat('vi-VN').format(Number(price || 0)) + 'đ'
 }
 
+function formatVoucherMoney(value) {
+  return new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 0 }).format(Number(value || 0)) + 'đ'
+}
+
+function voucherDiscountText(voucher) {
+  if (!voucher) return ''
+  if (String(voucher.discountType).toUpperCase() === 'PERCENT') {
+    return `giảm ${Number(voucher.discountValue || 0).toLocaleString('vi-VN')}%`
+  }
+  return `giảm ${formatVoucherMoney(voucher.discountValue)}`
+}
+
+function voucherConditionText(voucher) {
+  if (!voucher?.minOrderValue || Number(voucher.minOrderValue) <= 0) {
+    return 'Áp dụng cho kỳ nghỉ của bạn tại Home Stays.'
+  }
+  return `Cho đơn từ ${formatVoucherMoney(voucher.minOrderValue)}.`
+}
+
 function roomPrice(room) {
   return Number(room.price ?? room.basePrice ?? 0)
 }
@@ -420,6 +439,70 @@ function HomeFooter() {
   )
 }
 
+function FloatingVoucherCard() {
+  const [vouchers, setVouchers] = useState([])
+  const [activeIndex, setActiveIndex] = useState(0)
+  const [hidden, setHidden] = useState(() => sessionStorage.getItem('homeVoucherPromoClosed') === '1')
+  const [copiedCode, setCopiedCode] = useState('')
+
+  useEffect(() => {
+    if (hidden) return undefined
+    let active = true
+    fetch(`${API_BASE_URL}/vouchers/active`)
+      .then((response) => response.ok ? response.json() : [])
+      .then((data) => {
+        if (active) setVouchers(Array.isArray(data) ? data : [])
+      })
+      .catch(() => {
+        if (active) setVouchers([])
+      })
+    return () => { active = false }
+  }, [hidden])
+
+  useEffect(() => {
+    if (vouchers.length <= 1) return undefined
+    const intervalId = window.setInterval(() => {
+      setActiveIndex((current) => (current + 1) % vouchers.length)
+      setCopiedCode('')
+    }, 5000)
+    return () => window.clearInterval(intervalId)
+  }, [vouchers.length])
+
+  if (hidden || vouchers.length === 0) return null
+
+  const voucher = vouchers[activeIndex % vouchers.length]
+
+  const closePromo = () => {
+    sessionStorage.setItem('homeVoucherPromoClosed', '1')
+    setHidden(true)
+  }
+
+  const copyCode = async () => {
+    try {
+      await navigator.clipboard?.writeText(voucher.code)
+      setCopiedCode(voucher.code)
+    } catch {
+      setCopiedCode('')
+    }
+  }
+
+  return (
+    <aside className="home-voucher-float" aria-live="polite" aria-label="Ưu đãi đang diễn ra">
+      <img src="/banner.png" alt="" aria-hidden="true" />
+      <div className="home-voucher-overlay" />
+      <button className="home-voucher-close" type="button" onClick={closePromo} aria-label="Đóng ưu đãi">×</button>
+      <div className="home-voucher-content" key={voucher.id}>
+        <span className="home-voucher-kicker">Ưu đãi hôm nay</span>
+        <strong>Nhập mã {voucher.code}</strong>
+        <p>{voucherDiscountText(voucher)}. {voucherConditionText(voucher)}</p>
+        <button className="home-voucher-copy" type="button" onClick={copyCode}>
+          {copiedCode === voucher.code ? 'Đã sao chép' : 'Sao chép mã'}
+        </button>
+      </div>
+    </aside>
+  )
+}
+
 function HomePage() {
   const currentUser = getStoredUser()
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
@@ -533,6 +616,7 @@ function HomePage() {
       <ReviewsSection />
       <GallerySection rooms={rooms} />
       <HomeFooter />
+      <FloatingVoucherCard />
     </div>
   )
 }
