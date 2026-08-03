@@ -815,26 +815,34 @@ function BookingDetailModal({ detail, loading, error, actionLoading, actionError
                 </div>
 
                 {!editBooking ? (
-                  <div className="abk-detail-grid">
-                    <DetailField label="Phòng"            value={`${detail.roomNumber ? `Phòng ${detail.roomNumber}` : 'Chưa gán phòng'} · ${detail.roomTypeName || 'Chưa phân loại'}`} />
-                    <DetailField label="Ngày đặt"         value={formatAppDateTime(detail.bookingDate)} />
-                    <DetailField label="Nhận phòng"       value={formatAppDateTime(detail.checkInTarget)} />
-                    <DetailField label="Trả phòng"        value={formatAppDateTime(detail.checkOutTarget)} />
-                    <DetailField label="Người lớn"        value={detail.numberOfAdults} />
-                    <DetailField label="Trẻ em"           value={detail.numberOfChildren} />
-                    <DetailField label="Loại thuê"        value={detail.rentType} />
-                    <DetailField label="Trạng thái"       value={statusLabel(detail.bookingStatus)} />
-                    <DetailField label="Giá lúc đặt"      value={formatMoney(detail.priceAtBooking)} />
-                    {hasVoucherDiscount(detail) && (
-                      <>
-                        <DetailField label="Voucher" value={detail.voucherCode || 'Đã áp dụng'} />
-                        <DetailField label="Tổng giảm voucher" value={`-${formatMoney(detail.roomDiscountAmount)}`} />
-                        <DetailField label="Giảm cho phòng này" value={`-${formatMoney(detail.allocatedDiscount)}`} />
-                        <DetailField label="Tiền phòng sau giảm" value={formatMoney(detail.finalRoomAmount)} />
-                      </>
-                    )}
-                    <DetailField label="Đã thanh toán"    value={formatMoney(detail.paidAmount)} />
-                  </div>
+                  <>
+                    <div className="abk-detail-grid">
+                      <DetailField label="Phòng"            value={`${detail.roomNumber ? `Phòng ${detail.roomNumber}` : 'Chưa gán phòng'} · ${detail.roomTypeName || 'Chưa phân loại'}`} />
+                      <DetailField label="Ngày đặt"         value={formatAppDateTime(detail.bookingDate)} />
+                      <DetailField label="Nhận phòng"       value={formatAppDateTime(detail.checkInTarget)} />
+                      <DetailField label="Trả phòng"        value={formatAppDateTime(detail.checkOutTarget)} />
+                      <DetailField label="Người lớn"        value={detail.numberOfAdults} />
+                      <DetailField label="Trẻ em"           value={detail.numberOfChildren} />
+                      <DetailField label="Loại thuê"        value={detail.rentType} />
+                      <DetailField label="Trạng thái"       value={statusLabel(detail.bookingStatus)} />
+                      <DetailField label="Giá lúc đặt"      value={formatMoney(detail.priceAtBooking)} />
+                      {hasVoucherDiscount(detail) && (
+                        <>
+                          <DetailField label="Voucher" value={detail.voucherCode || 'Đã áp dụng'} />
+                          <DetailField label="Tổng giảm voucher" value={`-${formatMoney(detail.roomDiscountAmount)}`} />
+                          <DetailField label="Giảm cho phòng này" value={`-${formatMoney(detail.allocatedDiscount)}`} />
+                          <DetailField label="Tiền phòng sau giảm" value={formatMoney(detail.finalRoomAmount)} />
+                        </>
+                      )}
+                      <DetailField label="Khách xác nhận" value={detail.customerConfirmed ? 'Đã xác nhận' : 'Chưa xác nhận'} />
+                      <DetailField label="Đã thanh toán"    value={formatMoney(detail.paidAmount)} />
+                    </div>
+                    <div className={`abk-customer-feedback${detail.customerFeedback ? '' : ' abk-customer-feedback--empty'}`}>
+                      <span>Phản hồi của khách hàng</span>
+                      <strong>{detail.customerFeedback || 'Chưa có phản hồi'}</strong>
+                      {detail.customerFeedbackAt && <small>Gửi lúc {formatAppDateTime(detail.customerFeedbackAt)}</small>}
+                    </div>
+                  </>
                 ) : (
                   <form className="abk-edit-form" onSubmit={saveBooking}>
                     <div className="abk-edit-grid">

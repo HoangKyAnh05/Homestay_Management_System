@@ -154,8 +154,73 @@ function BookingHistoryPage() {
   const [paymentState, setPaymentState] = useState('waiting')
   const [paymentError, setPaymentError] = useState('')
   const [error, setError] = useState('')
+  const [customerActionError, setCustomerActionError] = useState('')
   const [historyPage, setHistoryPage] = useState(1)
+  const [feedbackOpen, setFeedbackOpen] = useState(false)
+  const [feedbackText, setFeedbackText] = useState('')
+  const [feedbackSaving, setFeedbackSaving] = useState(false)
+  const [confirmSaving, setConfirmSaving] = useState(false)
   const token = getStoredToken()
+
+  const updateBookingAfterCustomerAction = (updatedDetail) => {
+    setDetail(updatedDetail)
+    setBookings((current) => current.map((booking) => (
+      booking.bookingId === updatedDetail.bookingId
+        ? {
+            ...booking,
+            customerConfirmed: updatedDetail.customerConfirmed,
+            customerFeedback: updatedDetail.customerFeedback,
+            customerFeedbackAt: updatedDetail.customerFeedbackAt,
+          }
+        : booking
+    )))
+  }
+
+  const handleCustomerConfirm = async () => {
+    if (!detail?.bookingId || detail.customerConfirmed) return
+    setCustomerActionError('')
+    setConfirmSaving(true)
+    try {
+      const response = await fetch(`${API_BASE_URL}/bookings/my/${detail.bookingId}/confirm`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(data.message || 'Không thể xác nhận booking')
+      updateBookingAfterCustomerAction(data)
+    } catch (err) {
+      setCustomerActionError(err.message)
+    } finally {
+      setConfirmSaving(false)
+    }
+  }
+
+  const openFeedback = () => {
+    setFeedbackText(detail?.customerFeedback || '')
+    setFeedbackOpen(true)
+  }
+
+  const submitFeedback = async (event) => {
+    event.preventDefault()
+    if (!detail?.bookingId) return
+    setCustomerActionError('')
+    setFeedbackSaving(true)
+    try {
+      const response = await fetch(`${API_BASE_URL}/bookings/my/${detail.bookingId}/feedback`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ feedback: feedbackText }),
+      })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(data.message || 'Không thể gửi phản hồi')
+      updateBookingAfterCustomerAction(data)
+      setFeedbackOpen(false)
+    } catch (err) {
+      setCustomerActionError(err.message)
+    } finally {
+      setFeedbackSaving(false)
+    }
+  }
 
   const handlePayment = async (bookingId) => {
     setPaymentError('')
@@ -458,6 +523,30 @@ function BookingHistoryPage() {
                       <p className="history-muted">Không có dịch vụ đi kèm.</p>
                     )}
                   </section>
+
+                  <section className="history-customer-review">
+                    <div>
+                      <span>Kiểm tra thông tin đơn</span>
+                      <strong>{detail.customerConfirmed ? 'Bạn đã xác nhận đơn này' : 'Xác nhận nếu hóa đơn và dịch vụ đã đúng'}</strong>
+                      {detail.customerFeedback && (
+                        <p>Phản hồi đã gửi: {detail.customerFeedback}</p>
+                      )}
+                      {customerActionError && <p className="history-customer-review-error">{customerActionError}</p>}
+                    </div>
+                    <div>
+                      <button
+                        type="button"
+                        className="history-confirm-btn"
+                        disabled={detail.customerConfirmed || confirmSaving}
+                        onClick={handleCustomerConfirm}
+                      >
+                        {detail.customerConfirmed ? 'Đã xác nhận' : confirmSaving ? 'Đang lưu...' : 'Xác nhận'}
+                      </button>
+                      <button type="button" className="history-feedback-btn" onClick={openFeedback}>
+                        Phản hồi
+                      </button>
+                    </div>
+                  </section>
                 </>
               ) : selectedBooking ? (
                 <div className="history-state">Chọn booking để xem chi tiết.</div>
@@ -508,6 +597,30 @@ function BookingHistoryPage() {
               </>
             )}
           </section>
+        </div>
+      )}
+
+      {feedbackOpen && (
+        <div className="history-feedback-backdrop" onClick={(event) => event.target === event.currentTarget && setFeedbackOpen(false)}>
+          <form className="history-feedback-modal" onSubmit={submitFeedback}>
+            <div>
+              <h2>Phản hồi về booking</h2>
+              <p>Nhập nội dung cần hệ thống kiểm tra lại về hóa đơn hoặc dịch vụ.</p>
+            </div>
+            <textarea
+              value={feedbackText}
+              onChange={(event) => setFeedbackText(event.target.value)}
+              maxLength={1000}
+              placeholder="Ví dụ: Hóa đơn đang tính nhầm dịch vụ minibar..."
+              autoFocus
+            />
+            <div className="history-feedback-actions">
+              <button type="button" onClick={() => setFeedbackOpen(false)}>Hủy</button>
+              <button type="submit" disabled={feedbackSaving || !feedbackText.trim()}>
+                {feedbackSaving ? 'Đang lưu...' : 'Lưu phản hồi'}
+              </button>
+            </div>
+          </form>
         </div>
       )}
     </div>

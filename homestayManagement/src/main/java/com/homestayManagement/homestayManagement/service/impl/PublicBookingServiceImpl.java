@@ -1,6 +1,7 @@
 package com.homestayManagement.homestayManagement.service.impl;
 
 import com.homestayManagement.homestayManagement.dto.request.PublicBookingServiceRequest;
+import com.homestayManagement.homestayManagement.dto.request.PublicBookingFeedbackRequest;
 import com.homestayManagement.homestayManagement.dto.request.PublicBookingRoomRequest;
 import com.homestayManagement.homestayManagement.dto.request.PublicCreateBookingRequest;
 import com.homestayManagement.homestayManagement.dto.response.*;
@@ -130,11 +131,38 @@ public class PublicBookingServiceImpl implements PublicBookingService {
         if (details.isEmpty()) {
             throw new IllegalArgumentException("KhÃƒÂ´ng tÃƒÂ¬m thÃ¡ÂºÂ¥y Ã„â€˜Ã†Â¡n Ã„â€˜Ã¡ÂºÂ·t phÃƒÂ²ng");
         }
+        return toHistoryDetailResponse(details);
+    }
+
+    @Override
+    @Transactional
+    public PublicBookingHistoryDetailResponse confirmMyBooking(String email, Long bookingId) {
+        Booking booking = findOwnedBookingForUpdate(email, bookingId);
+        booking.setCustomerConfirmed(true);
+        bookingRepository.save(booking);
+        return getMyBookingDetail(email, bookingId);
+    }
+
+    @Override
+    @Transactional
+    public PublicBookingHistoryDetailResponse submitMyBookingFeedback(String email, Long bookingId, PublicBookingFeedbackRequest request) {
+        Booking booking = findOwnedBookingForUpdate(email, bookingId);
+        String feedback = request.feedback() != null ? request.feedback().trim() : "";
+        if (feedback.isBlank()) {
+            throw new IllegalArgumentException("Vui lòng nhập nội dung phản hồi");
+        }
+        booking.setCustomerFeedback(feedback);
+        booking.setCustomerFeedbackAt(LocalDateTime.now());
+        bookingRepository.save(booking);
+        return getMyBookingDetail(email, bookingId);
+    }
+
+    private PublicBookingHistoryDetailResponse toHistoryDetailResponse(List<BookingDetail> details) {
         Booking booking = details.get(0).getBooking();
         BigDecimal roomCharge = calculateRoomCharge(details);
         List<Long> detailIds = details.stream().map(BookingDetail::getId).toList();
         List<BookingServiceItem> serviceItems = bookingServiceItemRepository.findByBookingDetailIds(detailIds);
-        List<ServiceUsage> stayUsages = serviceUsageRepository.findByBookingIdForInvoice(bookingId);
+        List<ServiceUsage> stayUsages = serviceUsageRepository.findByBookingIdForInvoice(booking.getId());
         BigDecimal serviceCharge = calculateServiceCharge(serviceItems).add(calculateServiceUsageCharge(stayUsages));
         BigDecimal totalAmount = roomCharge.add(serviceCharge);
         DepositPolicy depositPolicy = booking.getDepositPolicy();
@@ -157,12 +185,20 @@ public class PublicBookingServiceImpl implements PublicBookingService {
                 depositPolicy != null ? depositPolicy.getCalculationType() : null,
                 depositPolicy != null ? depositPolicy.getPolicyValue() : null,
                 calculateDepositAmount(depositPolicy, totalAmount),
+                booking.isCustomerConfirmed(),
+                booking.getCustomerFeedback(),
+                booking.getCustomerFeedbackAt(),
                 details.stream().map(this::toHistoryRoomResponse).toList(),
                 Stream.concat(
                         serviceItems.stream().map(this::toHistoryServiceResponse),
                         stayUsages.stream().map(this::toHistoryServiceResponse)
                 ).toList()
         );
+    }
+
+    private Booking findOwnedBookingForUpdate(String email, Long bookingId) {
+        return bookingRepository.findByIdAndCustomerEmailForPublicUpdate(bookingId, email)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đơn đặt phòng"));
     }
 
     @Override
@@ -493,7 +529,10 @@ public class PublicBookingServiceImpl implements PublicBookingService {
                 depositPolicy != null ? depositPolicy.getPolicyName() : null,
                 depositPolicy != null ? depositPolicy.getCalculationType() : null,
                 depositPolicy != null ? depositPolicy.getPolicyValue() : null,
-                calculateDepositAmount(depositPolicy, totalAmount)
+                calculateDepositAmount(depositPolicy, totalAmount),
+                booking.isCustomerConfirmed(),
+                booking.getCustomerFeedback(),
+                booking.getCustomerFeedbackAt()
         );
     }
 

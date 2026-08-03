@@ -321,6 +321,9 @@ public class AdminBookingServiceImpl implements AdminBookingService {
                 booking.getVoucherDiscountValue(),
                 safeAmount(booking.getRoomChargeBeforeDiscount()),
                 safeAmount(booking.getRoomDiscountAmount()),
+                booking.isCustomerConfirmed(),
+                booking.getCustomerFeedback(),
+                booking.getCustomerFeedbackAt(),
                 detail.getRentType(),
                 toCustomerResponse(customer),
                 bookingGuestRepository.findByBookingDetailIds(List.of(detail.getId())).stream()

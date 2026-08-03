@@ -1,6 +1,7 @@
 package com.homestayManagement.homestayManagement.service;
 
 import com.homestayManagement.homestayManagement.dto.request.PublicCreateBookingRequest;
+import com.homestayManagement.homestayManagement.dto.request.PublicBookingFeedbackRequest;
 import com.homestayManagement.homestayManagement.dto.response.PricePolicyResponse;
 import com.homestayManagement.homestayManagement.dto.response.PublicBookingHistoryDetailResponse;
 import com.homestayManagement.homestayManagement.dto.response.PublicBookingHistoryResponse;
@@ -14,5 +15,7 @@ public interface PublicBookingService {
     List<PublicServiceOptionResponse> getServiceOptions();
     List<PublicBookingHistoryResponse> getMyBookings(String email);
     PublicBookingHistoryDetailResponse getMyBookingDetail(String email, Long bookingId);
+    PublicBookingHistoryDetailResponse confirmMyBooking(String email, Long bookingId);
+    PublicBookingHistoryDetailResponse submitMyBookingFeedback(String email, Long bookingId, PublicBookingFeedbackRequest request);
     PublicBookingResponse createBooking(String email, PublicCreateBookingRequest request);
 }

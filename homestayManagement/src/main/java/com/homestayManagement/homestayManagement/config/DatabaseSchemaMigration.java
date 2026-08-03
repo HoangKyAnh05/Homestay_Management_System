@@ -84,6 +84,9 @@ public class DatabaseSchemaMigration implements ApplicationRunner {
         addColumnIfMissing("bookings", "voucher_discount_value", "alter table bookings add column voucher_discount_value decimal(10,2) null");
         addColumnIfMissing("bookings", "room_charge_before_discount", "alter table bookings add column room_charge_before_discount decimal(10,2) not null default 0");
         addColumnIfMissing("bookings", "room_discount_amount", "alter table bookings add column room_discount_amount decimal(10,2) not null default 0");
+        addColumnIfMissing("bookings", "customer_confirmed", "alter table bookings add column customer_confirmed bit not null default 0");
+        addColumnIfMissing("bookings", "customer_feedback", "alter table bookings add column customer_feedback varchar(1000) null");
+        addColumnIfMissing("bookings", "customer_feedback_at", "alter table bookings add column customer_feedback_at datetime null");
         addColumnIfMissing("booking_details", "allocated_discount", "alter table booking_details add column allocated_discount decimal(10,2) not null default 0");
         addColumnIfMissing("invoices", "room_discount_amount", "alter table invoices add column room_discount_amount decimal(10,2) not null default 0");
     }

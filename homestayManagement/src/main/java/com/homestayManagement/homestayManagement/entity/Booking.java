@@ -68,6 +68,16 @@ public class Booking {
     @Column(name = "payment_hold_expires_at")
     private LocalDateTime paymentHoldExpiresAt;
 
+    @Builder.Default
+    @Column(name = "customer_confirmed", nullable = false)
+    private boolean customerConfirmed = false;
+
+    @Column(name = "customer_feedback", length = 1000)
+    private String customerFeedback;
+
+    @Column(name = "customer_feedback_at")
+    private LocalDateTime customerFeedbackAt;
+
     public String getBookingCode() {
         if (bookingCode != null && !bookingCode.isBlank()) {
             return bookingCode;

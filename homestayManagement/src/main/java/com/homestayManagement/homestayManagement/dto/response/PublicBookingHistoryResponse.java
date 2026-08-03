@@ -23,6 +23,9 @@ public record PublicBookingHistoryResponse(
         String depositPolicyName,
         String depositCalculationType,
         BigDecimal depositPolicyValue,
-        BigDecimal depositAmount
+        BigDecimal depositAmount,
+        boolean customerConfirmed,
+        String customerFeedback,
+        LocalDateTime customerFeedbackAt
 ) {
 }
