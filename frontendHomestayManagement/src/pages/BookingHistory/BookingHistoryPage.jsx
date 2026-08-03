@@ -6,6 +6,7 @@ import '../Home/HomePage.css'
 import './BookingHistoryPage.css'
 
 const API_BASE_URL = 'http://localhost:8080/api'
+const HISTORY_PAGE_SIZE = 3
 
 function bookingDisplay(booking) {
   return booking?.bookingCode || `#${booking?.bookingId || ''}`
@@ -32,6 +33,12 @@ function serviceTypeLabel(type) {
 
 function serviceSourceLabel(source) {
   return source === 'STAY' ? 'Gọi trong kỳ ở' : 'Đặt trước'
+}
+
+function bookingSortTime(booking) {
+  const value = booking?.bookingDate || booking?.createdAt || booking?.checkInTarget
+  const time = value ? new Date(value).getTime() : 0
+  return Number.isNaN(time) ? 0 : time
 }
 
 function canAddService(booking) {
@@ -147,6 +154,7 @@ function BookingHistoryPage() {
   const [paymentState, setPaymentState] = useState('waiting')
   const [paymentError, setPaymentError] = useState('')
   const [error, setError] = useState('')
+  const [historyPage, setHistoryPage] = useState(1)
   const token = getStoredToken()
 
   const handlePayment = async (bookingId) => {
@@ -216,8 +224,9 @@ function BookingHistoryPage() {
         return Array.isArray(data) ? data : []
       })
       .then((data) => {
-        setBookings(data)
-        setSelectedBookingId((current) => current || data[0]?.bookingId || null)
+        const sortedData = [...data].sort((first, second) => bookingSortTime(second) - bookingSortTime(first))
+        setBookings(sortedData)
+        setSelectedBookingId((current) => current || sortedData[0]?.bookingId || null)
       })
       .catch((err) => {
         if (err.name !== 'AbortError') setError(err.message)
@@ -231,6 +240,7 @@ function BookingHistoryPage() {
     if (!token || !selectedBookingId) {
       return undefined
     }
+    setDetailLoading(true)
     const controller = new AbortController()
     fetch(`${API_BASE_URL}/bookings/my/${selectedBookingId}`, {
       headers: { Authorization: `Bearer ${token}` },
@@ -254,6 +264,27 @@ function BookingHistoryPage() {
     () => bookings.find((booking) => booking.bookingId === selectedBookingId) || null,
     [bookings, selectedBookingId]
   )
+  const sortedBookings = useMemo(
+    () => [...bookings].sort((first, second) => bookingSortTime(second) - bookingSortTime(first)),
+    [bookings]
+  )
+  const totalHistoryPages = Math.max(1, Math.ceil(sortedBookings.length / HISTORY_PAGE_SIZE))
+  const safeHistoryPage = Math.min(historyPage, totalHistoryPages)
+  const paginatedBookings = sortedBookings.slice(
+    (safeHistoryPage - 1) * HISTORY_PAGE_SIZE,
+    safeHistoryPage * HISTORY_PAGE_SIZE
+  )
+
+  useEffect(() => {
+    if (historyPage > totalHistoryPages) setHistoryPage(totalHistoryPages)
+  }, [historyPage, totalHistoryPages])
+
+  const changeHistoryPage = (nextPage) => {
+    const safeNextPage = Math.min(Math.max(nextPage, 1), totalHistoryPages)
+    const nextFirstBooking = sortedBookings[(safeNextPage - 1) * HISTORY_PAGE_SIZE]
+    setHistoryPage(safeNextPage)
+    if (nextFirstBooking) setSelectedBookingId(nextFirstBooking.bookingId)
+  }
 
   return (
     <div className="booking-history-page">
@@ -276,7 +307,7 @@ function BookingHistoryPage() {
         ) : (
           <section className="history-layout">
             <div className="history-list">
-              {bookings.map((booking) => (
+              {paginatedBookings.map((booking) => (
                 <article
                   key={booking.bookingId}
                   className={`history-booking-card${booking.bookingId === selectedBookingId ? ' is-active' : ''}`}
@@ -312,6 +343,36 @@ function BookingHistoryPage() {
                   </div>
                 </article>
               ))}
+              {totalHistoryPages > 1 && (
+                <nav className="history-pagination" aria-label="Phân trang lịch sử booking">
+                  <button
+                    type="button"
+                    disabled={safeHistoryPage === 1}
+                    onClick={() => changeHistoryPage(safeHistoryPage - 1)}
+                    aria-label="Trang trước"
+                  >
+                    ‹
+                  </button>
+                  {Array.from({ length: totalHistoryPages }, (_, index) => index + 1).map((pageNumber) => (
+                    <button
+                      key={pageNumber}
+                      type="button"
+                      className={pageNumber === safeHistoryPage ? 'is-active' : ''}
+                      onClick={() => changeHistoryPage(pageNumber)}
+                    >
+                      {pageNumber}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    disabled={safeHistoryPage === totalHistoryPages}
+                    onClick={() => changeHistoryPage(safeHistoryPage + 1)}
+                    aria-label="Trang sau"
+                  >
+                    ›
+                  </button>
+                </nav>
+              )}
             </div>
 
             <aside className="history-detail">

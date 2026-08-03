@@ -17,6 +17,7 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
             left join fetch c.account
             left join fetch i.employee e
             left join fetch e.account
+            where upper(coalesce(b.status, '')) <> 'PENDING'
             order by i.createdAt desc, i.id desc
             """)
     List<Invoice> findAllForAdmin();
