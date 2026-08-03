@@ -160,7 +160,7 @@ function sumMoney(items, selector) {
 }
 
 function invoiceTotals(detail) {
-  const roomCharge = Number(detail?.invoice?.roomCharge ?? detail?.priceAtBooking ?? 0)
+  const roomCharge = Number(detail?.invoice?.roomCharge ?? detail?.finalRoomAmount ?? detail?.priceAtBooking ?? 0)
   const serviceCharge = Number(detail?.invoice?.serviceCharge ?? sumMoney(detail?.serviceItems, item => item.totalPrice))
   const penaltyCharge = Number(detail?.invoice?.penaltyCharge ?? (
     sumMoney(detail?.penaltyItems, item => item.amount) +
@@ -176,6 +176,10 @@ function invoiceTotals(detail) {
     paidAmount,
     remainingAmount: Math.max(totalAmount - paidAmount, 0),
   }
+}
+
+function hasVoucherDiscount(detail) {
+  return Boolean(detail?.voucherCode) || Number(detail?.roomDiscountAmount || 0) > 0
 }
 
 function BookingCard({ booking, onOpenDetail }) {
@@ -223,6 +227,9 @@ function InvoicePreviewModal({ detail, onClose }) {
   const timeFeeTotal = sumMoney(detail?.checkInRecords, record =>
     Number(record.earlyCheckInFee || 0) + Number(record.lateCheckOutFee || 0)
   )
+  const voucherApplied = hasVoucherDiscount(detail)
+  const roomBaseAmount = Number(detail?.priceAtBooking ?? detail?.roomChargeBeforeDiscount ?? totals.roomCharge)
+  const roomVoucherDiscount = Number(detail?.allocatedDiscount || 0)
 
   return (
     <div className="abk-overlay abk-invoice-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
@@ -245,6 +252,12 @@ function InvoicePreviewModal({ detail, onClose }) {
               <span>Đã thanh toán trước</span>
               <strong>{formatMoney(totals.paidAmount)}</strong>
             </div>
+            {voucherApplied && (
+              <div className="abk-invoice-discount">
+                <span>Voucher đã giảm</span>
+                <strong>-{formatMoney(roomVoucherDiscount)}</strong>
+              </div>
+            )}
             <div className={totals.remainingAmount > 0 ? 'abk-invoice-due' : 'abk-invoice-paid'}>
               <span>Còn lại</span>
               <strong>{formatMoney(totals.remainingAmount)}</strong>
@@ -263,6 +276,12 @@ function InvoicePreviewModal({ detail, onClose }) {
               <DetailField label="Số khách" value={`${Number(detail?.numberOfAdults || 0)} người lớn · ${Number(detail?.numberOfChildren || 0)} trẻ em`} />
               <DetailField label="Loại thuê" value={detail?.rentType} />
               <DetailField label="Người lập" value={detail?.invoice?.employeeName} />
+              {voucherApplied && (
+                <>
+                  <DetailField label="Voucher" value={detail?.voucherCode || 'Đã áp dụng'} />
+                  <DetailField label="Giảm voucher phòng này" value={`-${formatMoney(roomVoucherDiscount)}`} />
+                </>
+              )}
             </div>
           </section>
 
@@ -295,8 +314,26 @@ function InvoicePreviewModal({ detail, onClose }) {
                   <strong>Giá phòng đã đặt</strong>
                   <span>{detail?.rentType || 'Loại thuê'} · {formatAppDateTime(detail?.checkInTarget)} đến {formatAppDateTime(detail?.checkOutTarget)}</span>
                 </div>
-                <strong>{formatMoney(totals.roomCharge)}</strong>
+                <strong>{formatMoney(voucherApplied ? roomBaseAmount : totals.roomCharge)}</strong>
               </div>
+              {voucherApplied && (
+                <>
+                  <div className="abk-line-row abk-line-row--discount">
+                    <div>
+                      <strong>Voucher {detail?.voucherCode || 'đã áp dụng'}</strong>
+                      <span>Giảm trên tiền phòng của phòng này.</span>
+                    </div>
+                    <strong>-{formatMoney(roomVoucherDiscount)}</strong>
+                  </div>
+                  <div className="abk-line-row">
+                    <div>
+                      <strong>Tiền phòng sau giảm</strong>
+                      <span>Số tiền phòng dùng để tính hóa đơn.</span>
+                    </div>
+                    <strong>{formatMoney(totals.roomCharge)}</strong>
+                  </div>
+                </>
+              )}
               {detail?.checkInRecords?.map(record => (
                 <div className="abk-line-row" key={record.id}>
                   <div>
@@ -377,6 +414,12 @@ function InvoicePreviewModal({ detail, onClose }) {
           </section>
 
           <section className="abk-invoice-total-box">
+            {voucherApplied && (
+              <>
+                <div><span>Tiền phòng gốc</span><strong>{formatMoney(roomBaseAmount)}</strong></div>
+                <div><span>Voucher {detail?.voucherCode || ''}</span><strong>-{formatMoney(roomVoucherDiscount)}</strong></div>
+              </>
+            )}
             <div><span>Tiền phòng</span><strong>{formatMoney(totals.roomCharge)}</strong></div>
             <div><span>Dịch vụ, mini-bar</span><strong>{formatMoney(totals.serviceCharge)}</strong></div>
             <div><span>Phụ phí, phạt</span><strong>{formatMoney(totals.penaltyCharge)}</strong></div>
@@ -782,6 +825,14 @@ function BookingDetailModal({ detail, loading, error, actionLoading, actionError
                     <DetailField label="Loại thuê"        value={detail.rentType} />
                     <DetailField label="Trạng thái"       value={statusLabel(detail.bookingStatus)} />
                     <DetailField label="Giá lúc đặt"      value={formatMoney(detail.priceAtBooking)} />
+                    {hasVoucherDiscount(detail) && (
+                      <>
+                        <DetailField label="Voucher" value={detail.voucherCode || 'Đã áp dụng'} />
+                        <DetailField label="Tổng giảm voucher" value={`-${formatMoney(detail.roomDiscountAmount)}`} />
+                        <DetailField label="Giảm cho phòng này" value={`-${formatMoney(detail.allocatedDiscount)}`} />
+                        <DetailField label="Tiền phòng sau giảm" value={formatMoney(detail.finalRoomAmount)} />
+                      </>
+                    )}
                     <DetailField label="Đã thanh toán"    value={formatMoney(detail.paidAmount)} />
                   </div>
                 ) : (
@@ -1015,6 +1066,12 @@ function BookingDetailModal({ detail, loading, error, actionLoading, actionError
                       <>
                         <div className="abk-detail-grid">
                           <DetailField label="Mã hóa đơn" value={`#${detail.invoice.id}`} />
+                          {hasVoucherDiscount(detail) && (
+                            <>
+                              <DetailField label="Tiền phòng gốc" value={formatMoney(detail.priceAtBooking)} />
+                              <DetailField label="Giảm voucher phòng này" value={`-${formatMoney(detail.allocatedDiscount)}`} />
+                            </>
+                          )}
                           <DetailField label="Tiền phòng" value={formatMoney(detail.invoice.roomCharge)} />
                           <DetailField label="Dịch vụ" value={formatMoney(detail.invoice.serviceCharge)} />
                           <DetailField label="Phạt" value={formatMoney(detail.invoice.penaltyCharge)} />

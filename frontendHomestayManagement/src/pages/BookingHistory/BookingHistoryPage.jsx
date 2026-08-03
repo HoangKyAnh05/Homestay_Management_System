@@ -351,6 +351,12 @@ function BookingHistoryPage() {
 
                   <div className="history-summary-grid">
                     <div><span>Ngày đặt</span><strong>{formatAppDateTime(detail.bookingDate, { weekday: 'long' })}</strong></div>
+                    {Number(detail.roomDiscountAmount || 0) > 0 && (
+                      <>
+                        <div><span>Tiền phòng gốc</span><strong>{formatMoney(detail.roomChargeBeforeDiscount)}</strong></div>
+                        <div><span>Voucher {detail.voucherCode}</span><strong>-{formatMoney(detail.roomDiscountAmount)}</strong></div>
+                      </>
+                    )}
                     <div><span>Tổng tiền phòng</span><strong>{formatMoney(detail.roomCharge)}</strong></div>
                     <div><span>Tổng dịch vụ</span><strong>{formatMoney(detail.serviceCharge)}</strong></div>
                     <div><span>Tổng thanh toán</span><strong>{formatMoney(detail.totalAmount)}</strong></div>
@@ -366,7 +372,11 @@ function BookingHistoryPage() {
                             <span>{room.roomTypeName} · {room.numberOfAdults} NL · {room.numberOfChildren} TE</span>
                           </div>
                           <p>{formatAppDateTime(room.checkInTarget, { weekday: 'long' })} → {formatAppDateTime(room.checkOutTarget, { weekday: 'long' })}</p>
-                          <b>{formatMoney(room.priceAtBooking)}</b>
+                          <b>
+                            {Number(room.allocatedDiscount || 0) > 0
+                              ? `${formatMoney(room.finalRoomAmount)} (-${formatMoney(room.allocatedDiscount)})`
+                              : formatMoney(room.priceAtBooking)}
+                          </b>
                         </article>
                       ))}
                     </div>

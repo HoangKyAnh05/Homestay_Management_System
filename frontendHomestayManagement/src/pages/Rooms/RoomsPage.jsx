@@ -19,6 +19,31 @@ function serviceKey(service) {
   return `${service.type}-${service.id}`
 }
 
+function normalizeCode(value) {
+  return String(value || '').trim().toUpperCase()
+}
+
+function calculateVoucherDiscount(voucher, roomTotal) {
+  if (!voucher || roomTotal <= 0) return 0
+  const minOrderValue = Number(voucher.minOrderValue || 0)
+  if (roomTotal < minOrderValue) return 0
+  const discountValue = Number(voucher.discountValue || 0)
+  let discount = String(voucher.discountType || '').toUpperCase() === 'PERCENT'
+    ? Math.round((roomTotal * discountValue) / 100)
+    : Math.round(discountValue)
+  const maxDiscount = Number(voucher.maxDiscountAmount || 0)
+  if (maxDiscount > 0) discount = Math.min(discount, maxDiscount)
+  return Math.max(0, Math.min(discount, roomTotal))
+}
+
+function voucherDiscountText(voucher) {
+  if (!voucher) return ''
+  if (String(voucher.discountType || '').toUpperCase() === 'PERCENT') {
+    return `Giảm ${Number(voucher.discountValue || 0).toLocaleString('vi-VN')}%`
+  }
+  return `Giảm ${formatPrice(voucher.discountValue)}`
+}
+
 function bookingDisplay(booking) {
   return booking?.bookingCode || `#${booking?.bookingId || ''}`
 }
@@ -493,6 +518,104 @@ function RoomCard({ room, selected, onToggle }) {
     </article>
   )
 }
+
+function BookingVoucherControl({
+  voucherCode,
+  setVoucherCode,
+  voucherEligible,
+  voucherDiscount,
+  eligibleVouchers,
+  selectedVoucher,
+}) {
+  const [open, setOpen] = useState(false)
+  const [draftCode, setDraftCode] = useState(voucherCode)
+  const draftVoucher = eligibleVouchers.find((voucher) => normalizeCode(voucher.code) === normalizeCode(draftCode))
+  const appliedLabel = selectedVoucher && voucherEligible
+    ? `${selectedVoucher.code} · -${formatPrice(voucherDiscount)}`
+    : 'Chọn hoặc nhập mã khuyến mãi'
+
+  const openPopup = () => {
+    setDraftCode(voucherCode)
+    setOpen(true)
+  }
+
+  const confirmVoucher = () => {
+    setVoucherCode(draftCode.trim())
+    setOpen(false)
+  }
+
+  return (
+    <>
+      <button className="public-voucher-row" type="button" onClick={openPopup}>
+        <span className="public-voucher-ticket" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <path d="M4 8.5V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2.5a2.5 2.5 0 0 0 0 5V18a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-4.5a2.5 2.5 0 0 0 0-5Z" />
+            <path d="M9 7.5v9" />
+          </svg>
+        </span>
+        <span className="public-voucher-row-text">
+          <strong>Voucher</strong>
+          <small>{appliedLabel}</small>
+        </span>
+        <span className="public-voucher-chevron" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="m9 18 6-6-6-6" /></svg>
+        </span>
+      </button>
+
+      {open && (
+        <div className="public-voucher-modal-overlay" role="presentation" onClick={(event) => event.target === event.currentTarget && setOpen(false)}>
+          <section className="public-voucher-modal" role="dialog" aria-modal="true" aria-labelledby="voucher-picker-title">
+            <div className="public-voucher-modal-head">
+              <div>
+                <h3 id="voucher-picker-title">Voucher</h3>
+                <p>Chọn mã phù hợp với tổng tiền phòng hiện tại.</p>
+              </div>
+              <button type="button" onClick={() => setOpen(false)} aria-label="Đóng">×</button>
+            </div>
+
+            <div className="public-voucher-options">
+              {eligibleVouchers.length ? eligibleVouchers.map((voucher) => {
+                const isSelected = normalizeCode(voucher.code) === normalizeCode(draftCode)
+                return (
+                  <article className={`public-voucher-option${isSelected ? ' is-selected' : ''}`} key={voucher.id}>
+                    <div>
+                      <span>{voucher.code}</span>
+                      <strong>{voucherDiscountText(voucher)}</strong>
+                      <p>{voucher.minOrderValue ? `Cho tiền phòng từ ${formatPrice(voucher.minOrderValue)}` : 'Không yêu cầu giá trị tối thiểu'}</p>
+                    </div>
+                    <button type="button" onClick={() => setDraftCode(voucher.code)}>
+                      {isSelected ? 'Đã nhận' : 'Nhận'}
+                    </button>
+                  </article>
+                )
+              }) : (
+                <div className="public-voucher-empty">Chưa có voucher phù hợp với tổng tiền phòng hiện tại.</div>
+              )}
+            </div>
+
+            <div className="public-voucher-manual">
+              <label>
+                <span>Thêm khuyến mãi</span>
+                <input
+                  value={draftCode}
+                  onChange={(event) => setDraftCode(event.target.value)}
+                  placeholder="Nhập mã khuyến mãi"
+                />
+              </label>
+              {draftVoucher && <small>Đã chọn {draftVoucher.code}</small>}
+            </div>
+
+            <div className="public-voucher-modal-actions">
+              {voucherCode && <button type="button" onClick={() => setDraftCode('')}>Bỏ mã</button>}
+              <button type="button" className="public-voucher-confirm" onClick={confirmVoucher}>Xác nhận</button>
+            </div>
+          </section>
+        </div>
+      )}
+    </>
+  )
+}
+
 export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated }) {
   const currentUser = getStoredUser()
   const [form, setForm] = useState({
@@ -514,6 +637,8 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
   const initialRoomUnitKeyRef = useRef(roomUnitKey(selectedRooms[0], 1))
   const [policies, setPolicies] = useState([])
   const [serviceOptions, setServiceOptions] = useState([])
+  const [vouchers, setVouchers] = useState([])
+  const [voucherCode, setVoucherCode] = useState('')
   const [serviceForm, setServiceForm] = useState({ optionKey: '', quantity: 1 })
   const [serviceDialogRoomKey, setServiceDialogRoomKey] = useState(null)
   const [loadingMeta, setLoadingMeta] = useState(true)
@@ -576,16 +701,21 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
         if (!res.ok) throw new Error('Không thể tải dịch vụ đi kèm.')
         return res.json()
       }),
+      fetch(`${API_BASE_URL}/vouchers/active`).then((res) => {
+        if (!res.ok) return []
+        return res.json()
+      }).catch(() => []),
       fetch(`${API_BASE_URL}/users/me`, { headers: { Authorization: `Bearer ${token}` } }).then((res) => {
         if (!res.ok) return null
         return res.json()
       }).catch(() => null),
     ])
-      .then(([policyData, serviceData, profileData]) => {
+      .then(([policyData, serviceData, voucherData, profileData]) => {
         const nextPolicies = Array.isArray(policyData) ? policyData : []
         const nextServices = Array.isArray(serviceData) ? serviceData : []
         setPolicies(nextPolicies)
         setServiceOptions(nextServices)
+        setVouchers(Array.isArray(voucherData) ? voucherData : [])
         try {
           const pending = JSON.parse(window.sessionStorage.getItem('homeStayPendingAmenityService') || 'null')
           const matched = nextServices.find(item => item.type === pending?.type && String(item.id) === String(pending?.serviceId))
@@ -640,6 +770,11 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
     ),
     0,
   )
+  const selectedVoucher = vouchers.find((voucher) => normalizeCode(voucher.code) === normalizeCode(voucherCode))
+  const voucherDiscount = calculateVoucherDiscount(selectedVoucher, roomTotal)
+  const roomTotalAfterDiscount = Math.max(0, roomTotal - voucherDiscount)
+  const voucherEligible = Boolean(selectedVoucher && voucherDiscount > 0)
+  const eligibleVouchers = vouchers.filter((voucher) => calculateVoucherDiscount(voucher, roomTotal) > 0)
   const selectedServiceOption = serviceOptions.find((item) => serviceKey(item) === serviceForm.optionKey)
   const serviceDialogRoom = roomUnits.find((unit) => unit.key === serviceDialogRoomKey)
   const selectedServiceQuantity = selectedServiceOption
@@ -935,6 +1070,7 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
           })),
         })),
         services: [],
+        voucherCode: voucherCode.trim() || null,
       }),
     })
       .then(async (response) => {
@@ -985,12 +1121,18 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
                           : 'Không có dịch vụ đi kèm'}
                       </small>
                     </span>
-                    <strong>{formatPrice(Number(room.priceAtBooking || 0) + configuredServiceTotal)}</strong>
+                    <strong>{formatPrice(Number(room.finalRoomAmount ?? room.priceAtBooking ?? 0) + configuredServiceTotal)}</strong>
                   </div>
                 )
               })}
             </div>
             <div className="public-payment-grid">
+              {paymentSummary.roomDiscountAmount > 0 && (
+                <>
+                  <div><span>Tiền phòng gốc</span><strong>{formatPrice(paymentSummary.roomChargeBeforeDiscount)}</strong></div>
+                  <div><span>Voucher {paymentSummary.voucherCode}</span><strong>-{formatPrice(paymentSummary.roomDiscountAmount)}</strong></div>
+                </>
+              )}
               <div><span>Tiền phòng</span><strong>{formatPrice(paymentSummary.roomCharge)}</strong></div>
               <div><span>Dịch vụ</span><strong>{formatPrice(paymentSummary.serviceCharge)}</strong></div>
               <div><span>Tổng tạm tính</span><strong>{formatPrice(paymentSummary.totalAmount)}</strong></div>
@@ -1104,6 +1246,14 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
                 </article>
               ))}
             </div>
+            <BookingVoucherControl
+              voucherCode={voucherCode}
+              setVoucherCode={setVoucherCode}
+              voucherEligible={voucherEligible}
+              voucherDiscount={voucherDiscount}
+              eligibleVouchers={eligibleVouchers}
+              selectedVoucher={selectedVoucher}
+            />
           </section>
 
           <section className="multi-room-config-section">
@@ -1275,8 +1425,9 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
 
         <div className="public-booking-summary">
           <span>Tiền phòng: <strong>{formatPrice(roomTotal)}{isHourlyPolicy(selectedPolicy) ? ' / giờ đầu' : ''}</strong></span>
+          {voucherDiscount > 0 && <span>Voucher: <strong>-{formatPrice(voucherDiscount)}</strong></span>}
           <span>Dịch vụ: <strong>{formatPrice(serviceTotal)}</strong></span>
-          <span>Tổng tạm tính: <strong>{formatPrice(roomTotal + serviceTotal)}</strong></span>
+          <span>Tổng tạm tính: <strong>{formatPrice(roomTotalAfterDiscount + serviceTotal)}</strong></span>
         </div>
 
         <div className="public-booking-actions">

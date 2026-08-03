@@ -54,6 +54,10 @@ function serviceTypeLabel(type) {
   return 'Dịch vụ'
 }
 
+function hasInvoiceVoucher(invoice) {
+  return Boolean(invoice?.voucherCode) || Number(invoice?.roomDiscountAmount || 0) > 0
+}
+
 function InvoiceDetailModal({ invoice, onClose }) {
   return (
     <div className="ain-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
@@ -68,6 +72,13 @@ function InvoiceDetailModal({ invoice, onClose }) {
 
         <div className="ain-modal-body">
           <div className="ain-detail-grid">
+            {hasInvoiceVoucher(invoice) && (
+              <>
+                <div><span>Tiền phòng gốc</span><strong>{formatMoney(invoice.roomChargeBeforeDiscount)}</strong></div>
+                <div><span>Voucher</span><strong>{invoice.voucherCode || 'Đã áp dụng'}</strong></div>
+                <div><span>Số tiền đã giảm</span><strong>-{formatMoney(invoice.roomDiscountAmount)}</strong></div>
+              </>
+            )}
             <div><span>Tiền phòng</span><strong>{formatMoney(invoice.roomCharge)}</strong></div>
             <div><span>Dịch vụ</span><strong>{formatMoney(invoice.serviceCharge)}</strong></div>
             <div><span>Phạt</span><strong>{formatMoney(invoice.penaltyCharge)}</strong></div>
@@ -179,6 +190,7 @@ function AdminInvoicesPage() {
 
   const totalAmount = filteredInvoices.reduce((sum, invoice) => sum + Number(invoice.totalAmount || 0), 0)
   const paidAmount = filteredInvoices.reduce((sum, invoice) => sum + Number(invoice.paidAmount || 0), 0)
+  const voucherDiscountAmount = filteredInvoices.reduce((sum, invoice) => sum + Number(invoice.roomDiscountAmount || 0), 0)
   const pendingCount = filteredInvoices.filter(invoice => invoice.latestPaymentStatus === 'PENDING').length
   const totalPages = Math.max(1, Math.ceil(filteredInvoices.length / PAGE_SIZE))
   const safePage = Math.min(page, totalPages)
@@ -211,6 +223,7 @@ function AdminInvoicesPage() {
       <div className="ain-stats">
         <div><span>Tổng hóa đơn</span><strong>{filteredInvoices.length}</strong></div>
         <div><span>Tổng tiền</span><strong>{formatMoney(totalAmount)}</strong></div>
+        <div><span>Voucher đã giảm</span><strong>{formatMoney(voucherDiscountAmount)}</strong></div>
         <div><span>Đã thu thành công</span><strong>{formatMoney(paidAmount)}</strong></div>
         <div><span>Đang chờ</span><strong>{pendingCount}</strong></div>
       </div>
@@ -246,6 +259,7 @@ function AdminInvoicesPage() {
                 <th>Hóa đơn</th>
                 <th>Khách hàng / đoàn</th>
                 <th>Tổng tiền</th>
+                <th>Voucher</th>
                 <th>Thanh toán</th>
                 <th>Trạng thái</th>
                 <th>Ngày lập</th>
@@ -266,6 +280,16 @@ function AdminInvoicesPage() {
                   <td>
                     <strong>{formatMoney(invoice.totalAmount)}</strong>
                     <span>Còn lại {formatMoney(invoice.remainingAmount)}</span>
+                  </td>
+                  <td>
+                    {hasInvoiceVoucher(invoice) ? (
+                      <div className="ain-voucher-cell">
+                        <strong>{invoice.voucherCode || 'Đã áp dụng'}</strong>
+                        <span>Giảm {formatMoney(invoice.roomDiscountAmount)}</span>
+                      </div>
+                    ) : (
+                      <span>Không áp dụng</span>
+                    )}
                   </td>
                   <td>
                     <strong>{methodLabel(invoice.latestPaymentMethod)}</strong>

@@ -49,6 +49,8 @@ public record PublicCreateBookingRequest(
         @Min(value = 0, message = "Số trẻ em không hợp lệ")
         Integer numberOfChildren,
 
+        String voucherCode,
+
         List<@Valid PublicBookingServiceRequest> services
 ) {
 }

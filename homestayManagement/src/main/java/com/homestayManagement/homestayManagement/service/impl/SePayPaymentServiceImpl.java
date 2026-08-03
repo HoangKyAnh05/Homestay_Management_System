@@ -269,7 +269,7 @@ public class SePayPaymentServiceImpl implements SePayPaymentService {
         return invoiceRepository.findByBookingIdForAdmin(booking.getId())
                 .orElseGet(() -> {
                     BigDecimal roomCharge = details.stream()
-                            .map(BookingDetail::getPriceAtBooking)
+                            .map(this::finalRoomAmount)
                             .reduce(BigDecimal.ZERO, BigDecimal::add);
                     List<Long> detailIds = details.stream().map(BookingDetail::getId).toList();
                     BigDecimal serviceCharge = bookingServiceItemRepository.findByBookingDetailIds(detailIds).stream()
@@ -278,6 +278,7 @@ public class SePayPaymentServiceImpl implements SePayPaymentService {
                     return invoiceRepository.save(Invoice.builder()
                             .booking(booking)
                             .roomCharge(roomCharge)
+                            .roomDiscountAmount(zero(booking.getRoomDiscountAmount()))
                             .serviceCharge(serviceCharge)
                             .penaltyCharge(BigDecimal.ZERO)
                             .totalAmount(roomCharge.add(serviceCharge))
@@ -368,7 +369,7 @@ public class SePayPaymentServiceImpl implements SePayPaymentService {
                 .anyMatch(type -> "HOURLY".equals(type) || "BY_HOUR".equals(type));
         if (hourly) {
             return details.stream()
-                    .map(BookingDetail::getPriceAtBooking)
+                    .map(this::finalRoomAmount)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
         }
         DepositPolicy policy = booking.getDepositPolicy();
@@ -559,6 +560,15 @@ public class SePayPaymentServiceImpl implements SePayPaymentService {
 
     private String normalizedPaymentCodePrefix() {
         return normalize(paymentCodePrefix);
+    }
+
+    private BigDecimal finalRoomAmount(BookingDetail detail) {
+        BigDecimal finalAmount = zero(detail.getPriceAtBooking()).subtract(zero(detail.getAllocatedDiscount()));
+        return finalAmount.compareTo(BigDecimal.ZERO) < 0 ? BigDecimal.ZERO : finalAmount;
+    }
+
+    private BigDecimal zero(BigDecimal value) {
+        return value == null ? BigDecimal.ZERO : value;
     }
 
     private String blankToFallback(String value, String fallback) {

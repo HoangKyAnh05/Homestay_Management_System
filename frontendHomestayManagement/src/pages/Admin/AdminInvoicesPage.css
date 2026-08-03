@@ -21,7 +21,7 @@
 
 .ain-stats {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 12px;
   margin-bottom: 18px;
 }
@@ -153,6 +153,29 @@
 .ain-badge--pending {
   background: #fef3c7;
   color: #92400e !important;
+}
+
+.ain-voucher-cell {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  min-width: 118px;
+  padding: 8px 10px;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+  background: #f0fdf4;
+}
+
+.ain-voucher-cell strong {
+  margin: 0 !important;
+  color: #166534 !important;
+  font-size: 13px !important;
+}
+
+.ain-voucher-cell span {
+  color: #15803d !important;
+  font-weight: 700;
 }
 
 .ain-detail-btn {

@@ -10,6 +10,8 @@ public record PublicBookingRoomResponse(
         Integer numberOfAdults,
         Integer numberOfChildren,
         BigDecimal priceAtBooking,
+        BigDecimal allocatedDiscount,
+        BigDecimal finalRoomAmount,
         String rentType
 ) {
 }

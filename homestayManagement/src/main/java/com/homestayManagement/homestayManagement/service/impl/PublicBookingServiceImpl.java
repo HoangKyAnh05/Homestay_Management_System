@@ -42,6 +42,7 @@ public class PublicBookingServiceImpl implements PublicBookingService {
     private final RoomPriceConfigRepository roomPriceConfigRepository;
     private final FacilityServiceRepository facilityServiceRepository;
     private final InventoryServiceRepository inventoryServiceRepository;
+    private final VoucherRepository voucherRepository;
     private final BookingCodeGenerator bookingCodeGenerator;
 
     public PublicBookingServiceImpl(
@@ -58,6 +59,7 @@ public class PublicBookingServiceImpl implements PublicBookingService {
             RoomPriceConfigRepository roomPriceConfigRepository,
             FacilityServiceRepository facilityServiceRepository,
             InventoryServiceRepository inventoryServiceRepository,
+            VoucherRepository voucherRepository,
             BookingCodeGenerator bookingCodeGenerator
     ) {
         this.accountRepository = accountRepository;
@@ -73,6 +75,7 @@ public class PublicBookingServiceImpl implements PublicBookingService {
         this.roomPriceConfigRepository = roomPriceConfigRepository;
         this.facilityServiceRepository = facilityServiceRepository;
         this.inventoryServiceRepository = inventoryServiceRepository;
+        this.voucherRepository = voucherRepository;
         this.bookingCodeGenerator = bookingCodeGenerator;
     }
 
@@ -141,6 +144,11 @@ public class PublicBookingServiceImpl implements PublicBookingService {
                 booking.getBookingCode(),
                 booking.getBookingDate(),
                 booking.getStatus(),
+                booking.getVoucherCode(),
+                booking.getVoucherDiscountType(),
+                booking.getVoucherDiscountValue(),
+                roomChargeBeforeDiscount(booking, details),
+                zero(booking.getRoomDiscountAmount()),
                 roomCharge,
                 serviceCharge,
                 totalAmount,
@@ -196,6 +204,12 @@ public class PublicBookingServiceImpl implements PublicBookingService {
                 .orElseThrow(() -> new IllegalArgumentException("Khong tim thay goi thue"));
         validatePolicyTime(pricePolicy, request.checkInTarget(), request.checkOutTarget());
         String dayType = isWeekend(request.checkInTarget()) ? "WEEKEND" : "WEEKDAY";
+        List<RoomBookingLine> roomLines = buildRoomBookingLines(selectedRooms, roomTypesById, pricePolicy, dayType);
+        BigDecimal roomChargeBeforeDiscount = roomLines.stream()
+                .map(RoomBookingLine::price)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        VoucherDiscount voucherDiscount = resolveVoucherDiscount(request.voucherCode(), roomChargeBeforeDiscount);
+        applyAllocatedDiscounts(roomLines, voucherDiscount.amount());
         DepositPolicy depositPolicy = selectedRooms.stream()
                 .map(selectedRoom -> roomTypesById.get(resolveRoomTypeId(selectedRoom)))
                 .filter(roomType -> roomType != null && roomType.getDepositPolicy() != null)
@@ -211,35 +225,37 @@ public class PublicBookingServiceImpl implements PublicBookingService {
                 .bookingCode(bookingCodeGenerator.generate(bookingDate))
                 .customer(customer)
                 .depositPolicy(depositPolicy)
+                .voucher(voucherDiscount.voucher())
+                .voucherCode(voucherDiscount.code())
+                .voucherDiscountType(voucherDiscount.discountType())
+                .voucherDiscountValue(voucherDiscount.discountValue())
+                .roomChargeBeforeDiscount(roomChargeBeforeDiscount)
+                .roomDiscountAmount(voucherDiscount.amount())
                 .bookingDate(bookingDate)
                 .status(bookingStatus)
                 .build());
+        markVoucherReserved(voucherDiscount.voucher());
 
         List<BookingDetail> savedDetails = new ArrayList<>();
         BigDecimal serviceCharge = BigDecimal.ZERO;
-        for (PublicBookingRoomRequest selectedRoom : selectedRooms) {
-            RoomType roomType = roomTypesById.get(resolveRoomTypeId(selectedRoom));
-            BigDecimal currentRoomPrice = roomPriceConfigRepository
-                    .findByRoomTypeIdAndPricePolicyIdAndDayType(roomType.getId(), pricePolicy.getId(), dayType)
-                    .map(RoomPriceConfig::getPrice)
-                    .orElseThrow(() -> new IllegalArgumentException("Chua cau hinh gia cho loai phong " + roomType.getName() + " va goi thue nay"));
-            for (int index = 0; index < quantityOf(selectedRoom); index++) {
-                BookingDetail savedDetail = bookingDetailRepository.save(BookingDetail.builder()
-                        .booking(booking)
-                        .roomType(roomType)
-                        .room(null)
-                        .checkInTarget(request.checkInTarget())
-                        .checkOutTarget(request.checkOutTarget())
-                        .numberOfAdults(selectedRoom.numberOfAdults())
-                        .numberOfChildren(selectedRoom.numberOfChildren())
-                        .priceAtBooking(currentRoomPrice)
-                        .rentType(pricePolicy.getRentType())
-                        .roomAssignmentStatus("UNASSIGNED")
-                        .status(bookingStatus)
-                        .build());
-                savedDetails.add(savedDetail);
-                serviceCharge = serviceCharge.add(saveServices(savedDetail, selectedRoom.services()));
-            }
+        for (RoomBookingLine line : roomLines) {
+            PublicBookingRoomRequest selectedRoom = line.request();
+            BookingDetail savedDetail = bookingDetailRepository.save(BookingDetail.builder()
+                    .booking(booking)
+                    .roomType(line.roomType())
+                    .room(null)
+                    .checkInTarget(request.checkInTarget())
+                    .checkOutTarget(request.checkOutTarget())
+                    .numberOfAdults(selectedRoom.numberOfAdults())
+                    .numberOfChildren(selectedRoom.numberOfChildren())
+                    .priceAtBooking(line.price())
+                    .allocatedDiscount(line.allocatedDiscount())
+                    .rentType(pricePolicy.getRentType())
+                    .roomAssignmentStatus("UNASSIGNED")
+                    .status(bookingStatus)
+                    .build());
+            savedDetails.add(savedDetail);
+            serviceCharge = serviceCharge.add(saveServices(savedDetail, selectedRoom.services()));
         }
 
         BookingDetail firstDetail = savedDetails.get(0);
@@ -262,6 +278,11 @@ public class PublicBookingServiceImpl implements PublicBookingService {
                 booking.getStatus(),
                 firstDetail.getCheckInTarget(),
                 firstDetail.getCheckOutTarget(),
+                booking.getVoucherCode(),
+                booking.getVoucherDiscountType(),
+                booking.getVoucherDiscountValue(),
+                booking.getRoomChargeBeforeDiscount(),
+                booking.getRoomDiscountAmount(),
                 roomCharge,
                 serviceCharge,
                 totalAmount,
@@ -377,6 +398,8 @@ public class PublicBookingServiceImpl implements PublicBookingService {
                 detail.getNumberOfAdults(),
                 detail.getNumberOfChildren(),
                 detail.getPriceAtBooking(),
+                zero(detail.getAllocatedDiscount()),
+                finalRoomAmount(detail),
                 detail.getRentType()
         );
     }
@@ -460,6 +483,9 @@ public class PublicBookingServiceImpl implements PublicBookingService {
                 firstDetail.getCheckInTarget(),
                 details.stream().map(BookingDetail::getCheckOutTarget).max(LocalDateTime::compareTo).orElse(firstDetail.getCheckOutTarget()),
                 details.size(),
+                booking.getVoucherCode(),
+                roomChargeBeforeDiscount(booking, details),
+                zero(booking.getRoomDiscountAmount()),
                 roomCharge,
                 serviceCharge,
                 totalAmount,
@@ -484,6 +510,8 @@ public class PublicBookingServiceImpl implements PublicBookingService {
                 detail.getNumberOfAdults(),
                 detail.getNumberOfChildren(),
                 detail.getPriceAtBooking(),
+                zero(detail.getAllocatedDiscount()),
+                finalRoomAmount(detail),
                 detail.getRentType(),
                 detail.getStatus()
         );
@@ -528,8 +556,124 @@ public class PublicBookingServiceImpl implements PublicBookingService {
 
     private BigDecimal calculateRoomCharge(List<BookingDetail> details) {
         return details.stream()
+                .map(this::finalRoomAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    private BigDecimal roomChargeBeforeDiscount(Booking booking, List<BookingDetail> details) {
+        if (booking.getRoomChargeBeforeDiscount() != null
+                && booking.getRoomChargeBeforeDiscount().compareTo(BigDecimal.ZERO) > 0) {
+            return booking.getRoomChargeBeforeDiscount();
+        }
+        return details.stream()
                 .map(BookingDetail::getPriceAtBooking)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    private BigDecimal finalRoomAmount(BookingDetail detail) {
+        BigDecimal finalAmount = zero(detail.getPriceAtBooking()).subtract(zero(detail.getAllocatedDiscount()));
+        return finalAmount.compareTo(BigDecimal.ZERO) < 0 ? BigDecimal.ZERO : finalAmount;
+    }
+
+    private BigDecimal zero(BigDecimal value) {
+        return value == null ? BigDecimal.ZERO : value;
+    }
+
+    private List<RoomBookingLine> buildRoomBookingLines(
+            List<PublicBookingRoomRequest> selectedRooms,
+            Map<Long, RoomType> roomTypesById,
+            PricePolicy pricePolicy,
+            String dayType
+    ) {
+        List<RoomBookingLine> lines = new ArrayList<>();
+        for (PublicBookingRoomRequest selectedRoom : selectedRooms) {
+            RoomType roomType = roomTypesById.get(resolveRoomTypeId(selectedRoom));
+            BigDecimal currentRoomPrice = roomPriceConfigRepository
+                    .findByRoomTypeIdAndPricePolicyIdAndDayType(roomType.getId(), pricePolicy.getId(), dayType)
+                    .map(RoomPriceConfig::getPrice)
+                    .orElseThrow(() -> new IllegalArgumentException("Chua cau hinh gia cho loai phong " + roomType.getName() + " va goi thue nay"));
+            for (int index = 0; index < quantityOf(selectedRoom); index++) {
+                lines.add(new RoomBookingLine(selectedRoom, roomType, currentRoomPrice));
+            }
+        }
+        return lines;
+    }
+
+    private VoucherDiscount resolveVoucherDiscount(String voucherCode, BigDecimal roomChargeBeforeDiscount) {
+        if (voucherCode == null || voucherCode.isBlank()) {
+            return VoucherDiscount.empty();
+        }
+        Voucher voucher = voucherRepository.findByCodeIgnoreCase(voucherCode.trim())
+                .orElseThrow(() -> new IllegalArgumentException("Ma voucher khong ton tai"));
+        LocalDateTime now = LocalDateTime.now();
+        if (voucher.getStartDate() != null && voucher.getStartDate().isAfter(now)) {
+            throw new IllegalArgumentException("Voucher chua den thoi gian ap dung");
+        }
+        if (voucher.getEndDate() != null && voucher.getEndDate().isBefore(now)) {
+            throw new IllegalArgumentException("Voucher da het han");
+        }
+        int used = voucher.getUsedCount() == null ? 0 : voucher.getUsedCount();
+        if (voucher.getUsageLimit() != null && used >= voucher.getUsageLimit()) {
+            throw new IllegalArgumentException("Voucher da het luot su dung");
+        }
+        BigDecimal minOrderValue = zero(voucher.getMinOrderValue());
+        if (roomChargeBeforeDiscount.compareTo(minOrderValue) < 0) {
+            throw new IllegalArgumentException("Tong tien phong chua dat dieu kien voucher");
+        }
+        BigDecimal discountAmount = calculateVoucherAmount(voucher, roomChargeBeforeDiscount);
+        if (discountAmount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Voucher khong co gia tri giam hop le");
+        }
+        return new VoucherDiscount(
+                voucher,
+                voucher.getCode(),
+                normalize(voucher.getDiscountType()),
+                voucher.getDiscountValue(),
+                discountAmount
+        );
+    }
+
+    private BigDecimal calculateVoucherAmount(Voucher voucher, BigDecimal roomChargeBeforeDiscount) {
+        BigDecimal discountValue = zero(voucher.getDiscountValue());
+        BigDecimal discountAmount;
+        if ("PERCENT".equals(normalize(voucher.getDiscountType()))) {
+            discountAmount = roomChargeBeforeDiscount.multiply(discountValue)
+                    .divide(BigDecimal.valueOf(100), 0, RoundingMode.HALF_UP);
+        } else {
+            discountAmount = discountValue.setScale(0, RoundingMode.HALF_UP);
+        }
+        BigDecimal maxDiscount = voucher.getMaxDiscountAmount();
+        if (maxDiscount != null && maxDiscount.compareTo(BigDecimal.ZERO) > 0) {
+            discountAmount = discountAmount.min(maxDiscount);
+        }
+        return discountAmount.min(roomChargeBeforeDiscount).setScale(0, RoundingMode.HALF_UP);
+    }
+
+    private void applyAllocatedDiscounts(List<RoomBookingLine> roomLines, BigDecimal discountAmount) {
+        if (roomLines.isEmpty() || discountAmount == null || discountAmount.compareTo(BigDecimal.ZERO) <= 0) {
+            return;
+        }
+        BigDecimal roomTotal = roomLines.stream()
+                .map(RoomBookingLine::price)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal allocated = BigDecimal.ZERO;
+        for (int index = 0; index < roomLines.size(); index++) {
+            RoomBookingLine line = roomLines.get(index);
+            BigDecimal lineDiscount = index == roomLines.size() - 1
+                    ? discountAmount.subtract(allocated)
+                    : discountAmount.multiply(line.price())
+                            .divide(roomTotal, 0, RoundingMode.HALF_UP);
+            line.setAllocatedDiscount(lineDiscount.min(line.price()));
+            allocated = allocated.add(line.allocatedDiscount());
+        }
+    }
+
+    private void markVoucherReserved(Voucher voucher) {
+        if (voucher == null) {
+            return;
+        }
+        voucher.setUsedCount((voucher.getUsedCount() == null ? 0 : voucher.getUsedCount()) + 1);
+        voucherRepository.save(voucher);
     }
 
     private BigDecimal calculateServiceCharge(List<BookingServiceItem> services) {
@@ -545,7 +689,7 @@ public class PublicBookingServiceImpl implements PublicBookingService {
     }
 
     private boolean requiresPayment(Booking booking) {
-        return booking.getDepositPolicy() != null && "PENDING".equals(normalize(booking.getStatus()));
+        return "PENDING".equals(normalize(booking.getStatus()));
     }
 
     private BigDecimal saveServices(BookingDetail detail, List<PublicBookingServiceRequest> services) {
@@ -609,6 +753,51 @@ public class PublicBookingServiceImpl implements PublicBookingService {
 
     private String normalize(String value) {
         return value == null ? "" : value.trim().toUpperCase();
+    }
+
+    private static final class RoomBookingLine {
+        private final PublicBookingRoomRequest request;
+        private final RoomType roomType;
+        private final BigDecimal price;
+        private BigDecimal allocatedDiscount = BigDecimal.ZERO;
+
+        private RoomBookingLine(PublicBookingRoomRequest request, RoomType roomType, BigDecimal price) {
+            this.request = request;
+            this.roomType = roomType;
+            this.price = price;
+        }
+
+        private PublicBookingRoomRequest request() {
+            return request;
+        }
+
+        private RoomType roomType() {
+            return roomType;
+        }
+
+        private BigDecimal price() {
+            return price;
+        }
+
+        private BigDecimal allocatedDiscount() {
+            return allocatedDiscount;
+        }
+
+        private void setAllocatedDiscount(BigDecimal allocatedDiscount) {
+            this.allocatedDiscount = allocatedDiscount;
+        }
+    }
+
+    private record VoucherDiscount(
+            Voucher voucher,
+            String code,
+            String discountType,
+            BigDecimal discountValue,
+            BigDecimal amount
+    ) {
+        private static VoucherDiscount empty() {
+            return new VoucherDiscount(null, null, null, null, BigDecimal.ZERO);
+        }
     }
 }
 

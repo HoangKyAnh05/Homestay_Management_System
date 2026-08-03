@@ -43,6 +43,7 @@ class PublicBookingServiceImplTest {
     @Mock private RoomPriceConfigRepository roomPriceConfigRepository;
     @Mock private FacilityServiceRepository facilityServiceRepository;
     @Mock private InventoryServiceRepository inventoryServiceRepository;
+    @Mock private VoucherRepository voucherRepository;
 
     private PublicBookingServiceImpl service;
 
@@ -62,6 +63,7 @@ class PublicBookingServiceImplTest {
                 roomPriceConfigRepository,
                 facilityServiceRepository,
                 inventoryServiceRepository,
+                voucherRepository,
                 new BookingCodeGenerator(bookingRepository)
         );
     }
@@ -201,6 +203,7 @@ class PublicBookingServiceImplTest {
                 30L,
                 2,
                 0,
+                null,
                 List.of()
         );
 
@@ -244,6 +247,7 @@ class PublicBookingServiceImplTest {
                 30L,
                 1,
                 0,
+                null,
                 List.of(new PublicBookingServiceRequest("FACILITY", 40L, 1))
         );
 

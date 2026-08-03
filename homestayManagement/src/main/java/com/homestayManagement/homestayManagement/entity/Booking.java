@@ -3,6 +3,7 @@ package com.homestayManagement.homestayManagement.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
@@ -35,6 +36,27 @@ public class Booking {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "deposit_policy_id")
     private DepositPolicy depositPolicy;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "voucher_id")
+    private Voucher voucher;
+
+    @Column(name = "voucher_code", length = 20)
+    private String voucherCode;
+
+    @Column(name = "voucher_discount_type", length = 20)
+    private String voucherDiscountType;
+
+    @Column(name = "voucher_discount_value", precision = 10, scale = 2)
+    private BigDecimal voucherDiscountValue;
+
+    @Builder.Default
+    @Column(name = "room_charge_before_discount", nullable = false, precision = 10, scale = 2)
+    private BigDecimal roomChargeBeforeDiscount = BigDecimal.ZERO;
+
+    @Builder.Default
+    @Column(name = "room_discount_amount", nullable = false, precision = 10, scale = 2)
+    private BigDecimal roomDiscountAmount = BigDecimal.ZERO;
 
     @Column(name = "booking_date", nullable = false)
     private LocalDateTime bookingDate;

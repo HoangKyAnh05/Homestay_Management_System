@@ -50,6 +50,10 @@ public class BookingDetail {
     @Column(name = "price_at_booking", nullable = false, precision = 10, scale = 2)
     private BigDecimal priceAtBooking;
 
+    @Builder.Default
+    @Column(name = "allocated_discount", nullable = false, precision = 10, scale = 2)
+    private BigDecimal allocatedDiscount = BigDecimal.ZERO;
+
     @Column(name = "rent_type", nullable = false, length = 20)
     private String rentType;
 
