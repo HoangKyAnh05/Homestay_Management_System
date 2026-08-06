@@ -22,4 +22,17 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
             where b.id = :id
             """)
     Optional<Booking> findByIdForPaymentUpdate(@Param("id") Long id);
+
+    @Query("""
+            select b from Booking b
+            join fetch b.customer c
+            left join fetch c.account a
+            left join fetch b.depositPolicy
+            where b.id = :bookingId
+              and lower(a.email) = lower(:email)
+            """)
+    Optional<Booking> findByIdAndCustomerEmailForPublicUpdate(
+            @Param("bookingId") Long bookingId,
+            @Param("email") String email
+    );
 }

@@ -77,5 +77,31 @@ public class DatabaseSchemaMigration implements ApplicationRunner {
                     """);
             LOGGER.info("Added bookings.payment_hold_expires_at for temporary payment holds");
         }
+
+        addColumnIfMissing("bookings", "voucher_id", "alter table bookings add column voucher_id bigint null");
+        addColumnIfMissing("bookings", "voucher_code", "alter table bookings add column voucher_code varchar(20) null");
+        addColumnIfMissing("bookings", "voucher_discount_type", "alter table bookings add column voucher_discount_type varchar(20) null");
+        addColumnIfMissing("bookings", "voucher_discount_value", "alter table bookings add column voucher_discount_value decimal(10,2) null");
+        addColumnIfMissing("bookings", "room_charge_before_discount", "alter table bookings add column room_charge_before_discount decimal(10,2) not null default 0");
+        addColumnIfMissing("bookings", "room_discount_amount", "alter table bookings add column room_discount_amount decimal(10,2) not null default 0");
+        addColumnIfMissing("bookings", "customer_confirmed", "alter table bookings add column customer_confirmed bit not null default 0");
+        addColumnIfMissing("bookings", "customer_feedback", "alter table bookings add column customer_feedback varchar(1000) null");
+        addColumnIfMissing("bookings", "customer_feedback_at", "alter table bookings add column customer_feedback_at datetime null");
+        addColumnIfMissing("booking_details", "allocated_discount", "alter table booking_details add column allocated_discount decimal(10,2) not null default 0");
+        addColumnIfMissing("invoices", "room_discount_amount", "alter table invoices add column room_discount_amount decimal(10,2) not null default 0");
+    }
+
+    private void addColumnIfMissing(String tableName, String columnName, String ddl) {
+        Integer count = jdbcTemplate.queryForObject("""
+                select count(*)
+                from information_schema.columns
+                where table_schema = database()
+                  and table_name = ?
+                  and column_name = ?
+                """, Integer.class, tableName, columnName);
+        if (count != null && count == 0) {
+            jdbcTemplate.execute(ddl);
+            LOGGER.info("Added {}.{}", tableName, columnName);
+        }
     }
 }

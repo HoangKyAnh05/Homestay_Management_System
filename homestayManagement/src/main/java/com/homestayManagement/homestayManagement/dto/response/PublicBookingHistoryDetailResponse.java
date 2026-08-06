@@ -9,6 +9,11 @@ public record PublicBookingHistoryDetailResponse(
         String bookingCode,
         LocalDateTime bookingDate,
         String status,
+        String voucherCode,
+        String voucherDiscountType,
+        BigDecimal voucherDiscountValue,
+        BigDecimal roomChargeBeforeDiscount,
+        BigDecimal roomDiscountAmount,
         BigDecimal roomCharge,
         BigDecimal serviceCharge,
         BigDecimal totalAmount,
@@ -17,6 +22,9 @@ public record PublicBookingHistoryDetailResponse(
         String depositCalculationType,
         BigDecimal depositPolicyValue,
         BigDecimal depositAmount,
+        boolean customerConfirmed,
+        String customerFeedback,
+        LocalDateTime customerFeedbackAt,
         List<PublicBookingHistoryRoomResponse> rooms,
         List<PublicBookingHistoryServiceResponse> services
 ) {

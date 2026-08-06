@@ -1,6 +1,7 @@
 package com.homestayManagement.homestayManagement.controller;
 
 import com.homestayManagement.homestayManagement.dto.request.PublicCreateBookingRequest;
+import com.homestayManagement.homestayManagement.dto.request.PublicBookingFeedbackRequest;
 import com.homestayManagement.homestayManagement.dto.response.PricePolicyResponse;
 import com.homestayManagement.homestayManagement.dto.response.PublicBookingHistoryDetailResponse;
 import com.homestayManagement.homestayManagement.dto.response.PublicBookingHistoryResponse;
@@ -47,6 +48,23 @@ public class PublicBookingController {
             @PathVariable Long bookingId
     ) {
         return publicBookingService.getMyBookingDetail(authentication.getName(), bookingId);
+    }
+
+    @PostMapping("/my/{bookingId}/confirm")
+    public PublicBookingHistoryDetailResponse confirmMyBooking(
+            Authentication authentication,
+            @PathVariable Long bookingId
+    ) {
+        return publicBookingService.confirmMyBooking(authentication.getName(), bookingId);
+    }
+
+    @PostMapping("/my/{bookingId}/feedback")
+    public PublicBookingHistoryDetailResponse submitMyBookingFeedback(
+            Authentication authentication,
+            @PathVariable Long bookingId,
+            @Valid @RequestBody PublicBookingFeedbackRequest request
+    ) {
+        return publicBookingService.submitMyBookingFeedback(authentication.getName(), bookingId, request);
     }
 
     @PostMapping

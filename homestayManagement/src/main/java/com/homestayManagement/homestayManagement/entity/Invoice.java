@@ -30,6 +30,10 @@ public class Invoice {
     @Column(name = "room_charge", nullable = false, precision = 10, scale = 2)
     private BigDecimal roomCharge;
 
+    @Builder.Default
+    @Column(name = "room_discount_amount", nullable = false, precision = 10, scale = 2)
+    private BigDecimal roomDiscountAmount = BigDecimal.ZERO;
+
     @Column(name = "penalty_charge", nullable = false, precision = 10, scale = 2)
     private BigDecimal penaltyCharge;
 

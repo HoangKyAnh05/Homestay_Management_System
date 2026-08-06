@@ -6,6 +6,7 @@ import '../Home/HomePage.css'
 import './BookingHistoryPage.css'
 
 const API_BASE_URL = 'http://localhost:8080/api'
+const HISTORY_PAGE_SIZE = 3
 
 function bookingDisplay(booking) {
   return booking?.bookingCode || `#${booking?.bookingId || ''}`
@@ -32,6 +33,12 @@ function serviceTypeLabel(type) {
 
 function serviceSourceLabel(source) {
   return source === 'STAY' ? 'Gọi trong kỳ ở' : 'Đặt trước'
+}
+
+function bookingSortTime(booking) {
+  const value = booking?.bookingDate || booking?.createdAt || booking?.checkInTarget
+  const time = value ? new Date(value).getTime() : 0
+  return Number.isNaN(time) ? 0 : time
 }
 
 function canAddService(booking) {
@@ -147,7 +154,73 @@ function BookingHistoryPage() {
   const [paymentState, setPaymentState] = useState('waiting')
   const [paymentError, setPaymentError] = useState('')
   const [error, setError] = useState('')
+  const [customerActionError, setCustomerActionError] = useState('')
+  const [historyPage, setHistoryPage] = useState(1)
+  const [feedbackOpen, setFeedbackOpen] = useState(false)
+  const [feedbackText, setFeedbackText] = useState('')
+  const [feedbackSaving, setFeedbackSaving] = useState(false)
+  const [confirmSaving, setConfirmSaving] = useState(false)
   const token = getStoredToken()
+
+  const updateBookingAfterCustomerAction = (updatedDetail) => {
+    setDetail(updatedDetail)
+    setBookings((current) => current.map((booking) => (
+      booking.bookingId === updatedDetail.bookingId
+        ? {
+            ...booking,
+            customerConfirmed: updatedDetail.customerConfirmed,
+            customerFeedback: updatedDetail.customerFeedback,
+            customerFeedbackAt: updatedDetail.customerFeedbackAt,
+          }
+        : booking
+    )))
+  }
+
+  const handleCustomerConfirm = async () => {
+    if (!detail?.bookingId || detail.customerConfirmed) return
+    setCustomerActionError('')
+    setConfirmSaving(true)
+    try {
+      const response = await fetch(`${API_BASE_URL}/bookings/my/${detail.bookingId}/confirm`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(data.message || 'Không thể xác nhận booking')
+      updateBookingAfterCustomerAction(data)
+    } catch (err) {
+      setCustomerActionError(err.message)
+    } finally {
+      setConfirmSaving(false)
+    }
+  }
+
+  const openFeedback = () => {
+    setFeedbackText(detail?.customerFeedback || '')
+    setFeedbackOpen(true)
+  }
+
+  const submitFeedback = async (event) => {
+    event.preventDefault()
+    if (!detail?.bookingId) return
+    setCustomerActionError('')
+    setFeedbackSaving(true)
+    try {
+      const response = await fetch(`${API_BASE_URL}/bookings/my/${detail.bookingId}/feedback`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ feedback: feedbackText }),
+      })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(data.message || 'Không thể gửi phản hồi')
+      updateBookingAfterCustomerAction(data)
+      setFeedbackOpen(false)
+    } catch (err) {
+      setCustomerActionError(err.message)
+    } finally {
+      setFeedbackSaving(false)
+    }
+  }
 
   const handlePayment = async (bookingId) => {
     setPaymentError('')
@@ -216,8 +289,9 @@ function BookingHistoryPage() {
         return Array.isArray(data) ? data : []
       })
       .then((data) => {
-        setBookings(data)
-        setSelectedBookingId((current) => current || data[0]?.bookingId || null)
+        const sortedData = [...data].sort((first, second) => bookingSortTime(second) - bookingSortTime(first))
+        setBookings(sortedData)
+        setSelectedBookingId((current) => current || sortedData[0]?.bookingId || null)
       })
       .catch((err) => {
         if (err.name !== 'AbortError') setError(err.message)
@@ -231,6 +305,7 @@ function BookingHistoryPage() {
     if (!token || !selectedBookingId) {
       return undefined
     }
+    setDetailLoading(true)
     const controller = new AbortController()
     fetch(`${API_BASE_URL}/bookings/my/${selectedBookingId}`, {
       headers: { Authorization: `Bearer ${token}` },
@@ -254,6 +329,27 @@ function BookingHistoryPage() {
     () => bookings.find((booking) => booking.bookingId === selectedBookingId) || null,
     [bookings, selectedBookingId]
   )
+  const sortedBookings = useMemo(
+    () => [...bookings].sort((first, second) => bookingSortTime(second) - bookingSortTime(first)),
+    [bookings]
+  )
+  const totalHistoryPages = Math.max(1, Math.ceil(sortedBookings.length / HISTORY_PAGE_SIZE))
+  const safeHistoryPage = Math.min(historyPage, totalHistoryPages)
+  const paginatedBookings = sortedBookings.slice(
+    (safeHistoryPage - 1) * HISTORY_PAGE_SIZE,
+    safeHistoryPage * HISTORY_PAGE_SIZE
+  )
+
+  useEffect(() => {
+    if (historyPage > totalHistoryPages) setHistoryPage(totalHistoryPages)
+  }, [historyPage, totalHistoryPages])
+
+  const changeHistoryPage = (nextPage) => {
+    const safeNextPage = Math.min(Math.max(nextPage, 1), totalHistoryPages)
+    const nextFirstBooking = sortedBookings[(safeNextPage - 1) * HISTORY_PAGE_SIZE]
+    setHistoryPage(safeNextPage)
+    if (nextFirstBooking) setSelectedBookingId(nextFirstBooking.bookingId)
+  }
 
   return (
     <div className="booking-history-page">
@@ -276,7 +372,7 @@ function BookingHistoryPage() {
         ) : (
           <section className="history-layout">
             <div className="history-list">
-              {bookings.map((booking) => (
+              {paginatedBookings.map((booking) => (
                 <article
                   key={booking.bookingId}
                   className={`history-booking-card${booking.bookingId === selectedBookingId ? ' is-active' : ''}`}
@@ -312,6 +408,36 @@ function BookingHistoryPage() {
                   </div>
                 </article>
               ))}
+              {totalHistoryPages > 1 && (
+                <nav className="history-pagination" aria-label="Phân trang lịch sử booking">
+                  <button
+                    type="button"
+                    disabled={safeHistoryPage === 1}
+                    onClick={() => changeHistoryPage(safeHistoryPage - 1)}
+                    aria-label="Trang trước"
+                  >
+                    ‹
+                  </button>
+                  {Array.from({ length: totalHistoryPages }, (_, index) => index + 1).map((pageNumber) => (
+                    <button
+                      key={pageNumber}
+                      type="button"
+                      className={pageNumber === safeHistoryPage ? 'is-active' : ''}
+                      onClick={() => changeHistoryPage(pageNumber)}
+                    >
+                      {pageNumber}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    disabled={safeHistoryPage === totalHistoryPages}
+                    onClick={() => changeHistoryPage(safeHistoryPage + 1)}
+                    aria-label="Trang sau"
+                  >
+                    ›
+                  </button>
+                </nav>
+              )}
             </div>
 
             <aside className="history-detail">
@@ -351,6 +477,12 @@ function BookingHistoryPage() {
 
                   <div className="history-summary-grid">
                     <div><span>Ngày đặt</span><strong>{formatAppDateTime(detail.bookingDate, { weekday: 'long' })}</strong></div>
+                    {Number(detail.roomDiscountAmount || 0) > 0 && (
+                      <>
+                        <div><span>Tiền phòng gốc</span><strong>{formatMoney(detail.roomChargeBeforeDiscount)}</strong></div>
+                        <div><span>Voucher {detail.voucherCode}</span><strong>-{formatMoney(detail.roomDiscountAmount)}</strong></div>
+                      </>
+                    )}
                     <div><span>Tổng tiền phòng</span><strong>{formatMoney(detail.roomCharge)}</strong></div>
                     <div><span>Tổng dịch vụ</span><strong>{formatMoney(detail.serviceCharge)}</strong></div>
                     <div><span>Tổng thanh toán</span><strong>{formatMoney(detail.totalAmount)}</strong></div>
@@ -366,7 +498,11 @@ function BookingHistoryPage() {
                             <span>{room.roomTypeName} · {room.numberOfAdults} NL · {room.numberOfChildren} TE</span>
                           </div>
                           <p>{formatAppDateTime(room.checkInTarget, { weekday: 'long' })} → {formatAppDateTime(room.checkOutTarget, { weekday: 'long' })}</p>
-                          <b>{formatMoney(room.priceAtBooking)}</b>
+                          <b>
+                            {Number(room.allocatedDiscount || 0) > 0
+                              ? `${formatMoney(room.finalRoomAmount)} (-${formatMoney(room.allocatedDiscount)})`
+                              : formatMoney(room.priceAtBooking)}
+                          </b>
                         </article>
                       ))}
                     </div>
@@ -386,6 +522,30 @@ function BookingHistoryPage() {
                     ) : (
                       <p className="history-muted">Không có dịch vụ đi kèm.</p>
                     )}
+                  </section>
+
+                  <section className="history-customer-review">
+                    <div>
+                      <span>Kiểm tra thông tin đơn</span>
+                      <strong>{detail.customerConfirmed ? 'Bạn đã xác nhận đơn này' : 'Xác nhận nếu hóa đơn và dịch vụ đã đúng'}</strong>
+                      {detail.customerFeedback && (
+                        <p>Phản hồi đã gửi: {detail.customerFeedback}</p>
+                      )}
+                      {customerActionError && <p className="history-customer-review-error">{customerActionError}</p>}
+                    </div>
+                    <div>
+                      <button
+                        type="button"
+                        className="history-confirm-btn"
+                        disabled={detail.customerConfirmed || confirmSaving}
+                        onClick={handleCustomerConfirm}
+                      >
+                        {detail.customerConfirmed ? 'Đã xác nhận' : confirmSaving ? 'Đang lưu...' : 'Xác nhận'}
+                      </button>
+                      <button type="button" className="history-feedback-btn" onClick={openFeedback}>
+                        Phản hồi
+                      </button>
+                    </div>
                   </section>
                 </>
               ) : selectedBooking ? (
@@ -437,6 +597,30 @@ function BookingHistoryPage() {
               </>
             )}
           </section>
+        </div>
+      )}
+
+      {feedbackOpen && (
+        <div className="history-feedback-backdrop" onClick={(event) => event.target === event.currentTarget && setFeedbackOpen(false)}>
+          <form className="history-feedback-modal" onSubmit={submitFeedback}>
+            <div>
+              <h2>Phản hồi về booking</h2>
+              <p>Nhập nội dung cần hệ thống kiểm tra lại về hóa đơn hoặc dịch vụ.</p>
+            </div>
+            <textarea
+              value={feedbackText}
+              onChange={(event) => setFeedbackText(event.target.value)}
+              maxLength={1000}
+              placeholder="Ví dụ: Hóa đơn đang tính nhầm dịch vụ minibar..."
+              autoFocus
+            />
+            <div className="history-feedback-actions">
+              <button type="button" onClick={() => setFeedbackOpen(false)}>Hủy</button>
+              <button type="submit" disabled={feedbackSaving || !feedbackText.trim()}>
+                {feedbackSaving ? 'Đang lưu...' : 'Lưu phản hồi'}
+              </button>
+            </div>
+          </form>
         </div>
       )}
     </div>

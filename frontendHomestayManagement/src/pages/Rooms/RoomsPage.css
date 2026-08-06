@@ -589,19 +589,286 @@
 
 .multi-room-config-heading {
   display: flex;
-  align-items: flex-end;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: 16px;
+  gap: 18px;
+  margin-bottom: 14px;
+}
+
+.multi-room-config-heading > div:first-child {
+  flex: 0 1 520px;
+  min-width: 280px;
 }
 
 .multi-room-config-heading h3 {
-  margin-bottom: 5px;
+  margin: 0 0 5px;
 }
 
 .multi-room-config-heading p {
-  margin: 0 0 14px;
+  margin: 0;
   color: #6b7280;
   font-size: 13px;
+}
+
+.public-voucher-row {
+  width: min(100%, 430px);
+  margin-top: 12px;
+  padding: 13px 14px;
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) 24px;
+  align-items: center;
+  gap: 12px;
+  color: #111827;
+  background: #ffffff;
+  border: 1px solid #d9dee5;
+  border-radius: 12px;
+  box-shadow: rgba(15, 23, 42, 0.035) 0 6px 14px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.public-voucher-row:hover {
+  border-color: #b6c3d2;
+  background: #fbfcfe;
+}
+
+.public-voucher-ticket {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  color: #176943;
+  background: #ecfdf5;
+  border-radius: 10px;
+}
+
+.public-voucher-ticket svg,
+.public-voucher-chevron svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.public-voucher-row-text {
+  min-width: 0;
+}
+
+.public-voucher-row-text strong,
+.public-voucher-row-text small {
+  display: block;
+}
+
+.public-voucher-row-text strong {
+  color: #111827;
+  font-size: 15px;
+  font-weight: 850;
+}
+
+.public-voucher-row-text small {
+  margin-top: 3px;
+  overflow: hidden;
+  color: #6b7280;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.public-voucher-chevron {
+  display: grid;
+  place-items: center;
+  color: #64748b;
+}
+
+.public-voucher-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.42);
+}
+
+.public-voucher-modal {
+  width: min(100%, 560px);
+  max-height: min(720px, calc(100vh - 48px));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: rgba(15, 23, 42, 0.22) 0 22px 70px;
+}
+
+.public-voucher-modal-head {
+  padding: 18px 20px 14px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid #edf0f3;
+}
+
+.public-voucher-modal-head h3 {
+  margin: 0 0 4px;
+  color: #111827;
+  font-size: 22px;
+}
+
+.public-voucher-modal-head p {
+  margin: 0;
+  color: #64748b;
+  font-size: 13px;
+}
+
+.public-voucher-modal-head button {
+  width: 34px;
+  height: 34px;
+  color: #475569;
+  background: #f1f5f9;
+  border: 0;
+  border-radius: 10px;
+  font-size: 22px;
+  cursor: pointer;
+}
+
+.public-voucher-options {
+  padding: 14px 20px;
+  display: grid;
+  gap: 10px;
+  overflow: auto;
+}
+
+.public-voucher-option {
+  padding: 14px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #fbfdff;
+}
+
+.public-voucher-option.is-selected {
+  border-color: #86efac;
+  background: #f0fdf4;
+}
+
+.public-voucher-option span,
+.public-voucher-option strong,
+.public-voucher-option p {
+  display: block;
+}
+
+.public-voucher-option span {
+  width: fit-content;
+  padding: 4px 8px;
+  color: #166534;
+  background: #dcfce7;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.public-voucher-option strong {
+  margin-top: 8px;
+  color: #111827;
+  font-size: 16px;
+}
+
+.public-voucher-option p {
+  margin: 4px 0 0;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.public-voucher-option button {
+  height: 36px;
+  padding: 0 16px;
+  color: #ffffff;
+  background: #176943;
+  border: 0;
+  border-radius: 10px;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.public-voucher-option.is-selected button {
+  color: #176943;
+  background: #dff7e9;
+}
+
+.public-voucher-empty {
+  padding: 28px 18px;
+  color: #64748b;
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 12px;
+  text-align: center;
+}
+
+.public-voucher-manual {
+  padding: 14px 20px;
+  border-top: 1px solid #edf0f3;
+}
+
+.public-voucher-manual label span,
+.public-voucher-manual small {
+  display: block;
+}
+
+.public-voucher-manual label span {
+  margin-bottom: 7px;
+  color: #111827;
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.public-voucher-manual input {
+  width: 100%;
+  height: 42px;
+  padding: 0 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.public-voucher-manual small {
+  margin-top: 7px;
+  color: #176943;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.public-voucher-modal-actions {
+  padding: 14px 20px 18px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  border-top: 1px solid #edf0f3;
+}
+
+.public-voucher-modal-actions button {
+  height: 42px;
+  padding: 0 16px;
+  color: #334155;
+  background: #f1f5f9;
+  border: 1px solid #dbe3ec;
+  border-radius: 10px;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.public-voucher-modal-actions .public-voucher-confirm {
+  color: #ffffff;
+  background: #ff385c;
+  border-color: #ff385c;
 }
 
 .multi-room-units {
@@ -861,6 +1128,16 @@
   .multi-room-units {
     grid-template-columns: 1fr;
   }
+
+  .multi-room-config-heading {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .public-voucher-row {
+    width: 100%;
+  }
 }
 
 @media (max-width: 620px) {
@@ -888,6 +1165,24 @@
 
   .multi-room-unit-guests {
     grid-template-columns: 1fr;
+  }
+
+  .public-voucher-modal-overlay {
+    padding: 12px;
+    place-items: end center;
+  }
+
+  .public-voucher-modal {
+    max-height: calc(100vh - 24px);
+    border-radius: 16px 16px 0 0;
+  }
+
+  .public-voucher-option {
+    grid-template-columns: 1fr;
+  }
+
+  .public-voucher-option button {
+    width: 100%;
   }
 
   .multi-room-unit-service-head {

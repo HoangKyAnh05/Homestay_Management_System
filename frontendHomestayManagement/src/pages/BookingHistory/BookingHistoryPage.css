@@ -51,6 +51,7 @@
 .history-list {
   display: grid;
   gap: 12px;
+  align-content: start;
 }
 
 .history-booking-card {
@@ -172,6 +173,44 @@
   min-height: 32px;
   padding: 0 12px;
   font-size: 12px;
+}
+
+.history-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 0 2px;
+}
+
+.history-pagination button {
+  min-width: 34px;
+  height: 34px;
+  padding: 0 10px;
+  color: #374151;
+  background: #ffffff;
+  border: 1px solid #d7ded4;
+  border-radius: 10px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.history-pagination button:hover:not(:disabled) {
+  border-color: #1f4328;
+  color: #1f4328;
+}
+
+.history-pagination button.is-active {
+  color: #ffffff;
+  background: #1f4328;
+  border-color: #1f4328;
+}
+
+.history-pagination button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
 }
 
 .history-detail-actions {
@@ -345,8 +384,6 @@
 }
 
 .history-detail {
-  position: sticky;
-  top: 84px;
   min-height: 360px;
   padding: 22px;
   background: #ffffff;
@@ -478,6 +515,168 @@
   font-size: 14px;
 }
 
+.history-customer-review {
+  margin-top: 24px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: #f8fafc;
+  border: 1px solid #dbe4ef;
+  border-radius: 14px;
+}
+
+.history-customer-review span,
+.history-customer-review strong,
+.history-customer-review p {
+  display: block;
+}
+
+.history-customer-review span {
+  margin-bottom: 5px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.history-customer-review strong {
+  color: #15191f;
+  font-size: 15px;
+}
+
+.history-customer-review p {
+  margin: 8px 0 0;
+  color: #475569;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.history-customer-review .history-customer-review-error {
+  color: #b91c1c;
+  font-weight: 800;
+}
+
+.history-customer-review > div:last-child {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.history-confirm-btn,
+.history-feedback-btn {
+  min-height: 40px;
+  padding: 0 16px;
+  border-radius: 10px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.history-confirm-btn {
+  color: #ffffff;
+  background: #1f4328;
+  border: 1px solid #1f4328;
+}
+
+.history-confirm-btn:disabled {
+  color: #166534;
+  background: #dcfce7;
+  border-color: #bbf7d0;
+  cursor: default;
+}
+
+.history-feedback-btn {
+  color: #1f4328;
+  background: #ffffff;
+  border: 1px solid #1f4328;
+}
+
+.history-feedback-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  padding: 20px;
+  display: grid;
+  place-items: center;
+  background: rgba(15, 23, 42, 0.56);
+}
+
+.history-feedback-modal {
+  width: min(460px, 100%);
+  padding: 22px;
+  display: grid;
+  gap: 16px;
+  background: #ffffff;
+  border-radius: 18px;
+  box-shadow: rgba(0, 0, 0, 0.24) 0 24px 70px;
+}
+
+.history-feedback-modal h2 {
+  margin: 0 0 6px;
+  color: #15191f;
+  font-size: 22px;
+}
+
+.history-feedback-modal p {
+  margin: 0;
+  color: #6b7280;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.history-feedback-modal textarea {
+  min-height: 118px;
+  resize: vertical;
+  padding: 12px 13px;
+  color: #111827;
+  border: 1px solid #cfd8e3;
+  border-radius: 12px;
+  font: inherit;
+  font-size: 14px;
+  outline: none;
+}
+
+.history-feedback-modal textarea:focus {
+  border-color: #1f4328;
+  box-shadow: 0 0 0 3px rgba(31, 67, 40, 0.12);
+}
+
+.history-feedback-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.history-feedback-actions button {
+  min-height: 40px;
+  padding: 0 16px;
+  border-radius: 10px;
+  font: inherit;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.history-feedback-actions button:first-child {
+  color: #111827;
+  background: #ffffff;
+  border: 1px solid #cfd6df;
+}
+
+.history-feedback-actions button:last-child {
+  color: #ffffff;
+  background: #ff385c;
+  border: 1px solid #ff385c;
+}
+
+.history-feedback-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 .history-state {
   padding: 28px;
   color: #6b7280;
@@ -510,9 +709,19 @@
 
   .history-heading,
   .history-card-bottom,
-  .history-detail-head {
+  .history-detail-head,
+  .history-customer-review,
+  .history-feedback-actions {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .history-customer-review > div:last-child,
+  .history-feedback-actions,
+  .history-confirm-btn,
+  .history-feedback-btn,
+  .history-feedback-actions button {
+    width: 100%;
   }
 
   .history-summary-grid,

@@ -314,6 +314,16 @@ public class AdminBookingServiceImpl implements AdminBookingService {
                 detail.getNumberOfAdults(),
                 detail.getNumberOfChildren(),
                 detail.getPriceAtBooking(),
+                safeAmount(detail.getAllocatedDiscount()),
+                finalRoomAmount(detail),
+                booking.getVoucherCode(),
+                booking.getVoucherDiscountType(),
+                booking.getVoucherDiscountValue(),
+                safeAmount(booking.getRoomChargeBeforeDiscount()),
+                safeAmount(booking.getRoomDiscountAmount()),
+                booking.isCustomerConfirmed(),
+                booking.getCustomerFeedback(),
+                booking.getCustomerFeedbackAt(),
                 detail.getRentType(),
                 toCustomerResponse(customer),
                 bookingGuestRepository.findByBookingDetailIds(List.of(detail.getId())).stream()
@@ -712,7 +722,7 @@ public class AdminBookingServiceImpl implements AdminBookingService {
 
         BigDecimal roomCharge = bookingDetailRepository.findByBookingId(booking.getId()).stream()
                 .filter(item -> !"CANCELLED".equalsIgnoreCase(item.getStatus()))
-                .map(BookingDetail::getPriceAtBooking)
+                .map(this::finalRoomAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         BigDecimal serviceCharge = calculateServiceCharge(booking.getId());
@@ -723,6 +733,7 @@ public class AdminBookingServiceImpl implements AdminBookingService {
                 .orElseGet(() -> Invoice.builder().booking(booking).createdAt(LocalDateTime.now()).build());
         invoice.setEmployee(getCurrentEmployee());
         invoice.setRoomCharge(roomCharge);
+        invoice.setRoomDiscountAmount(safeAmount(booking.getRoomDiscountAmount()));
         invoice.setServiceCharge(serviceCharge);
         invoice.setPenaltyCharge(penaltyCharge);
         invoice.setTotalAmount(totalAmount);
@@ -989,7 +1000,7 @@ public class AdminBookingServiceImpl implements AdminBookingService {
                 ))
                 .toList();
         BigDecimal totalAmount = details.stream()
-                .map(BookingDetail::getPriceAtBooking)
+                .map(this::finalRoomAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         int checkedInDetails = (int) detailResponses.stream()
                 .filter(detail -> detail.checkInRecord() != null)
@@ -1147,7 +1158,7 @@ public class AdminBookingServiceImpl implements AdminBookingService {
     ) {
         BigDecimal roomCharge = "CANCELLED".equalsIgnoreCase(detail.getStatus())
                 ? BigDecimal.ZERO
-                : safeAmount(detail.getPriceAtBooking());
+                : finalRoomAmount(detail);
         BigDecimal serviceCharge = serviceItems.stream()
                 .map(AdminInvoiceServiceItemResponse::totalPrice)
                 .map(this::safeAmount)
@@ -1298,7 +1309,7 @@ public class AdminBookingServiceImpl implements AdminBookingService {
                 .map(item -> safeAmount(item.getPriceAtBooking())
                         .multiply(BigDecimal.valueOf(item.getQuantity())))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-        return safeAmount(detail.getPriceAtBooking()).add(bookedServices);
+        return finalRoomAmount(detail).add(bookedServices);
     }
 
     private BigDecimal calculateDetailTotalCharge(BookingDetail detail) {
@@ -1313,19 +1324,24 @@ public class AdminBookingServiceImpl implements AdminBookingService {
                 .map(AppliedPenalty::getActualFine)
                 .map(this::safeAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-        return safeAmount(detail.getPriceAtBooking()).add(serviceCharge).add(timePenalty).add(rulePenalty);
+        return finalRoomAmount(detail).add(serviceCharge).add(timePenalty).add(rulePenalty);
     }
 
     private BigDecimal calculateTotalCharge(Long bookingId) {
         BigDecimal roomCharge = bookingDetailRepository.findByBookingId(bookingId).stream()
                 .filter(item -> !"CANCELLED".equalsIgnoreCase(item.getStatus()))
-                .map(BookingDetail::getPriceAtBooking)
+                .map(this::finalRoomAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         return roomCharge.add(calculateServiceCharge(bookingId)).add(calculatePenaltyCharge(bookingId));
     }
 
     private BigDecimal safeAmount(BigDecimal value) {
         return value != null ? value : BigDecimal.ZERO;
+    }
+
+    private BigDecimal finalRoomAmount(BookingDetail detail) {
+        BigDecimal finalAmount = safeAmount(detail.getPriceAtBooking()).subtract(safeAmount(detail.getAllocatedDiscount()));
+        return finalAmount.compareTo(BigDecimal.ZERO) < 0 ? BigDecimal.ZERO : finalAmount;
     }
 
     private void requireInspectionComplete(CheckInRecord record) {

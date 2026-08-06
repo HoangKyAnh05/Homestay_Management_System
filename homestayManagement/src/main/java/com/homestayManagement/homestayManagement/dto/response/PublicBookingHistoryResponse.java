@@ -13,6 +13,9 @@ public record PublicBookingHistoryResponse(
         LocalDateTime checkInTarget,
         LocalDateTime checkOutTarget,
         Integer roomCount,
+        String voucherCode,
+        BigDecimal roomChargeBeforeDiscount,
+        BigDecimal roomDiscountAmount,
         BigDecimal roomCharge,
         BigDecimal serviceCharge,
         BigDecimal totalAmount,
@@ -20,6 +23,9 @@ public record PublicBookingHistoryResponse(
         String depositPolicyName,
         String depositCalculationType,
         BigDecimal depositPolicyValue,
-        BigDecimal depositAmount
+        BigDecimal depositAmount,
+        boolean customerConfirmed,
+        String customerFeedback,
+        LocalDateTime customerFeedbackAt
 ) {
 }
