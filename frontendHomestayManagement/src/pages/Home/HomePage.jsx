@@ -1,6 +1,6 @@
-﻿import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import HomeSearch from '../../components/HomeSearch/HomeSearch'
-import { getStoredUser, logout } from '../../services/authService'
+import { getStoredUser, getStoredToken, logout } from '../../services/authService'
 import { resolveImageUrl } from '../../utils/imageUrl'
 import './HomePage.css'
 
@@ -8,6 +8,26 @@ const API_BASE_URL = 'http://localhost:8080/api'
 
 function formatPrice(price) {
   return new Intl.NumberFormat('vi-VN').format(Number(price || 0)) + 'đ'
+}
+
+function getFallbackRoomImage(roomTypeName, roomTypeId) {
+  const name = String(roomTypeName || '').toLowerCase()
+  if (name.includes('studio')) return '/home_1/image.png'
+  if (name.includes('vip') || name.includes('suite')) return '/home_2/image_1.jpg'
+  if (name.includes('deluxe')) return '/home_3/image_3.jpg'
+  if (name.includes('family') || name.includes('gia đình')) return '/home_4/image_1.jpg'
+  if (name.includes('connecting') || name.includes('kết nối')) return '/home_5/image_1.jpg'
+
+  const fallbacks = [
+    '/home_1/image.png',
+    '/home_2/image_1.jpg',
+    '/home_3/image_3.jpg',
+    '/home_4/image_1.jpg',
+    '/home_5/image_1.jpg'
+  ]
+  const idNum = Math.max(1, Number(roomTypeId) || 1)
+  const idx = (idNum - 1) % fallbacks.length
+  return fallbacks[idx]
 }
 
 function formatVoucherMoney(value) {
@@ -96,6 +116,43 @@ function buildBookingUrl(room, criteria) {
 
 function RoomCard({ room, criteria }) {
   const [priceMode, setPriceMode] = useState('weekday')
+  const [isLiked, setIsLiked] = useState(false)
+  const token = getStoredToken()
+  const roomTypeId = roomTypeIdOf(room)
+
+  useEffect(() => {
+    if (!token || !roomTypeId) return
+    fetch(`${API_BASE_URL}/customer/wishlist/check/${roomTypeId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => (res.ok ? res.json() : false))
+      .then(setIsLiked)
+      .catch(() => {})
+  }, [roomTypeId, token])
+
+  const toggleHeart = async (event) => {
+    event.preventDefault()
+    event.stopPropagation()
+    if (!token) {
+      window.location.assign('/login')
+      return
+    }
+    const nextState = !isLiked
+    setIsLiked(nextState)
+    try {
+      const res = await fetch(`${API_BASE_URL}/customer/wishlist/toggle/${roomTypeId}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const data = await res.json().catch(() => ({}))
+      if (res.ok && typeof data.isWishlisted === 'boolean') {
+        setIsLiked(data.isWishlisted)
+      }
+    } catch {
+      // Retain optimistic UI state
+    }
+  }
+
   const title = room.name || room.roomTypeName || 'Loại phòng'
   const description = room.description || 'Không gian nghỉ dưỡng tiện nghi, phù hợp cho kỳ lưu trú của bạn.'
   const hasRotatingPrice = Number(room.weekdayPrice || 0) > 0 && Number(room.weekendPrice || 0) > 0
@@ -117,15 +174,28 @@ function RoomCard({ room, criteria }) {
   return (
     <article className="room-card">
       <div className="room-card-img">
-        {room.primaryImageUrl ? (
-          <img src={resolveImageUrl(room.primaryImageUrl)} alt={title} loading="lazy" />
-        ) : (
-          <div className="room-card-img-placeholder" />
-        )}
+        <img
+          src={resolveImageUrl(room.primaryImageUrl) || getFallbackRoomImage(title, roomTypeId)}
+          alt={title}
+          loading="lazy"
+          onError={(e) => {
+            e.target.onerror = null;
+            e.target.src = getFallbackRoomImage(title, roomTypeId);
+          }}
+        />
         <span className="room-card-badge">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
           4.9
         </span>
+        <button
+          type="button"
+          className={`public-room-heart-btn${isLiked ? ' is-liked' : ''}`}
+          style={{ position: 'absolute', top: 12, right: 12, zIndex: 3, border: 0, borderRadius: '50%', width: 36, height: 36, display: 'grid', placeItems: 'center', background: '#ffffff', cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}
+          title={isLiked ? 'Bỏ yêu thích' : 'Thêm vào yêu thích'}
+          onClick={toggleHeart}
+        >
+          {isLiked ? '❤️' : '♡'}
+        </button>
       </div>
       <div className="room-card-body">
         <h3>{title}</h3>
@@ -555,6 +625,7 @@ function HomePage() {
         <nav className="home-nav" aria-label="Điều hướng chính">
           <a href="/home" className="home-nav-active">Trang chủ</a>
           <a href="/rooms">Phòng</a>
+          <a href="/wishlist">Yêu thích</a>
           <a href="/amenities">Tiện nghi</a>
           <a href="#contact">Liên hệ</a>
           <a href="#about">Giới thiệu</a>
@@ -577,8 +648,9 @@ function HomePage() {
                 {currentUser.role === 'ROLE_ADMIN' && (
                   <a href="/admin">Quản lí Home Stays</a>
                 )}
-                <a href="/booking-history">Lịch sử đặt phòng</a>
-                <a href="/profile">Thông tin cá nhân</a>
+                <a href="/wishlist" onClick={(e) => { e.preventDefault(); setIsUserMenuOpen(false); window.location.assign('/wishlist'); }}>Danh sách yêu thích</a>
+                <a href="/booking-history" onClick={(e) => { e.preventDefault(); setIsUserMenuOpen(false); window.location.assign('/booking-history'); }}>Lịch sử đặt phòng</a>
+                <a href="/profile" onClick={(e) => { e.preventDefault(); setIsUserMenuOpen(false); window.location.assign('/profile'); }}>Thông tin cá nhân</a>
                 <button type="button" onClick={handleLogout}>Đăng xuất</button>
               </div>
             )}

@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { getStoredToken, getStoredUser, logout } from '../../services/authService'
 import SePayQrPayment from '../../components/SePayQrPayment/SePayQrPayment'
 import { clearBookingCart, readBookingCart } from '../../utils/bookingCart'
@@ -178,6 +178,7 @@ function PublicHeader() {
       <nav className="home-nav" aria-label="Điều hướng chính">
         <a href="/home">Trang chủ</a>
         <a href="/rooms" className="home-nav-active">Phòng</a>
+        <a href="/wishlist">Yêu thích</a>
         <a href="/amenities">Tiện nghi</a>
         <a href="/home#contact">Liên hệ</a>
         <a href="/home#about">Giới thiệu</a>
@@ -192,11 +193,13 @@ function PublicHeader() {
           </button>
           {isOpen && (
             <div className="home-user-dropdown">
-              <a href="/booking-history">Lịch sử đặt phòng</a>
-              <a href="/profile">Thông tin cá nhân</a>
+              <a href="/wishlist" onClick={(e) => { e.preventDefault(); setIsOpen(false); window.location.assign('/wishlist'); }}>Danh sách yêu thích</a>
+              <a href="/booking-history" onClick={(e) => { e.preventDefault(); setIsOpen(false); window.location.assign('/booking-history'); }}>Lịch sử đặt phòng</a>
+              <a href="/profile" onClick={(e) => { e.preventDefault(); setIsOpen(false); window.location.assign('/profile'); }}>Thông tin cá nhân</a>
               <button type="button" onClick={handleLogout}>Đăng xuất</button>
             </div>
           )}
+
         </div>
       ) : (
         <div className="home-actions">
@@ -632,6 +635,52 @@ function RoomDetailPage({ roomId }) {
     setBookingModalOpen(true)
   }
 
+  const [reviews, setReviews] = useState([])
+  const [isWishlisted, setIsWishlisted] = useState(false)
+  const token = getStoredToken()
+
+  useEffect(() => {
+    if (!room?.roomTypeId) return
+    // Fetch public reviews
+    fetch(`${API_BASE_URL}/public/reviews/room-type/${room.roomTypeId}`)
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data) => setReviews(Array.isArray(data) ? data : []))
+      .catch(() => setReviews([]))
+
+    // Check wishlist status
+    if (token) {
+      fetch(`${API_BASE_URL}/customer/wishlist/check/${room.roomTypeId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+        .then((res) => (res.ok ? res.json() : false))
+        .then(setIsWishlisted)
+        .catch(() => {})
+    }
+  }, [room?.roomTypeId, token])
+
+  const toggleWishlist = async () => {
+    if (!token) {
+      window.location.assign('/login')
+      return
+    }
+    const nextState = !isWishlisted
+    setIsWishlisted(nextState)
+    try {
+      const res = await fetch(`${API_BASE_URL}/customer/wishlist/toggle/${room.roomTypeId}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const data = await res.json().catch(() => ({}))
+      if (res.ok) {
+        setIsWishlisted(Boolean(data.isWishlisted))
+      } else {
+        setIsWishlisted(!nextState)
+      }
+    } catch {
+      setIsWishlisted(!nextState)
+    }
+  }
+
   return (
     <div className="rooms-page room-detail-page">
       <PublicHeader />
@@ -645,12 +694,37 @@ function RoomDetailPage({ roomId }) {
           <div className="rooms-state rooms-state-error">{error}</div>
         ) : room ? (
           <>
-            <section className="room-detail-heading">
+            <section className="room-detail-heading" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <p>{room.roomTypeName}</p>
                 <h1>{room.roomTypeName}</h1>
               </div>
-              <div className="room-detail-rating">★ 4.9</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <button
+                  type="button"
+                  onClick={toggleWishlist}
+                  style={{
+                    width: '42px',
+                    height: '42px',
+                    borderRadius: '50%',
+                    border: '1px solid #e2e8f0',
+                    background: '#fff',
+                    fontSize: '20px',
+                    cursor: 'pointer',
+                    display: 'grid',
+                    placeItems: 'center',
+                    color: isWishlisted ? '#ff385c' : '#64748b',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                    transition: 'transform 0.2s',
+                  }}
+                  title={isWishlisted ? 'Bỏ yêu thích' : 'Thêm vào yêu thích'}
+                >
+                  {isWishlisted ? '❤️' : '♡'}
+                </button>
+                <div className="room-detail-rating">
+                  ★ {room.averageRating ? Number(room.averageRating).toFixed(1) : '5.0'} ({reviews.length} đánh giá)
+                </div>
+              </div>
             </section>
 
             <section className="room-detail-layout">
@@ -722,8 +796,55 @@ function RoomDetailPage({ roomId }) {
                     ))}
                   </div>
                 </section>
+
+                {/* Section Đánh giá từ khách hàng */}
+                <section className="room-info-section" style={{ marginTop: '28px' }}>
+                  <h2>Đánh giá từ khách hàng (★ {room.averageRating ? Number(room.averageRating).toFixed(1) : '5.0'})</h2>
+                  {reviews.length === 0 ? (
+                    <p style={{ color: '#64748b', fontSize: '14px', marginTop: '10px' }}>Hạng phòng này chưa có đánh giá nào. Hãy là người đầu tiên trải nghiệm và để lại đánh giá!</p>
+                  ) : (
+                    <div style={{ display: 'grid', gap: '16px', marginTop: '14px' }}>
+                      {reviews.map((rev) => (
+                        <div key={rev.reviewId} style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                            <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#e2e8f0', display: 'grid', placeItems: 'center', overflow: 'hidden', fontWeight: 'bold' }}>
+                              {rev.customerAvatar ? (
+                                <img src={resolveImageUrl(rev.customerAvatar)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                              ) : (
+                                rev.customerName?.charAt(0) || 'K'
+                              )}
+                            </div>
+                            <div>
+                              <strong style={{ fontSize: '14px', color: '#1e293b' }}>{rev.customerName}</strong>
+                              <div style={{ fontSize: '12px', color: '#f59e0b' }}>
+                                {'★'.repeat(rev.ratingStars || 5)} <span style={{ color: '#94a3b8', marginLeft: '6px' }}>{rev.createdAt ? new Date(rev.createdAt).toLocaleDateString('vi-VN') : ''}</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <p style={{ margin: '6px 0', fontSize: '14px', color: '#334155', lineHeight: '1.5' }}>"{rev.comment}"</p>
+
+                          {rev.imageUrls && rev.imageUrls.length > 0 && (
+                            <div style={{ display: 'flex', gap: '8px', marginTop: '10px', flexWrap: 'wrap' }}>
+                              {rev.imageUrls.map((url, i) => (
+                                <a key={i} href={resolveImageUrl(url)} target="_blank" rel="noreferrer">
+                                  <img
+                                    src={resolveImageUrl(url)}
+                                    alt="Ảnh đánh giá"
+                                    style={{ width: '72px', height: '72px', borderRadius: '8px', objectFit: 'cover', border: '1px solid #cbd5e1', cursor: 'pointer' }}
+                                  />
+                                </a>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </section>
               </div>
             </section>
+
 
             {createdBooking && (
               <div className={`room-created-toast${createdBooking.requiresDeposit ? ' room-created-toast--pending' : ''}`}>

@@ -26,6 +26,7 @@ import RoomDetailPage from './pages/Rooms/RoomDetailPage'
 import RoomsPage from './pages/Rooms/RoomsPage'
 import StayPage from './pages/Stay/StayPage'
 import StayActivationPage from './pages/Stay/StayActivationPage'
+import WishlistPage from './pages/Wishlist/WishlistPage'
 import { getStoredUser } from './services/authService'
 import { STAFF_ROLES, roleCanAccess, roleDefaultPath } from './utils/roleUtils'
 
@@ -107,6 +108,7 @@ function App() {
   if (currentPath === '/profile') return <CustomerSurface><ProfilePage /></CustomerSurface>
   if (currentPath === '/booking-history') return <CustomerSurface><BookingHistoryPage /></CustomerSurface>
   if (currentPath === '/amenities') return <CustomerSurface><AmenitiesPage /></CustomerSurface>
+  if (currentPath === '/wishlist') return <CustomerSurface><WishlistPage /></CustomerSurface>
   if (currentPath === '/stay/activate') return <StayActivationPage />
   if (currentPath === '/stay') return <CustomerSurface><StayPage /></CustomerSurface>
   if (currentPath === '/rooms') return <CustomerSurface><RoomsPage /></CustomerSurface>

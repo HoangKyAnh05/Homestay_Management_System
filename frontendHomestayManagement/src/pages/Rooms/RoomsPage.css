@@ -232,6 +232,39 @@
   font-weight: 750;
 }
 
+.public-room-heart-btn {
+  position: absolute;
+  right: 12px;
+  top: 12px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.92);
+  border: none;
+  font-size: 18px;
+  color: #484848;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.16);
+  transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  z-index: 2;
+}
+
+.public-room-heart-btn:hover {
+  transform: scale(1.15);
+  background: #ffffff;
+}
+
+.public-room-heart-btn.is-liked {
+  background: #ffffff;
+  color: #ff385c;
+  transform: scale(1.08);
+}
+
+
+
 .public-room-body {
   padding: 13px 2px 0;
 }
