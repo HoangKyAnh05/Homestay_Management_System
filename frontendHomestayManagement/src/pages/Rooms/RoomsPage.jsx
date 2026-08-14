@@ -77,7 +77,14 @@ function serviceTypeLabel(type) {
 }
 
 function roomPrice(room) {
-  return Number(room.price ?? room.weekdayPrice ?? room.weekendPrice ?? 0)
+  if (room.price != null && Number(room.price) > 0) return Number(room.price)
+  if (room.weekdayPrice != null && Number(room.weekdayPrice) > 0) return Number(room.weekdayPrice)
+  if (room.weekendPrice != null && Number(room.weekendPrice) > 0) return Number(room.weekendPrice)
+  if (Array.isArray(room.prices) && room.prices.length > 0) {
+    const validPrices = room.prices.map(p => Number(p.price || 0)).filter(p => p > 0)
+    if (validPrices.length > 0) return Math.min(...validPrices)
+  }
+  return 0
 }
 
 function toDateTimeLocal(date = new Date()) {

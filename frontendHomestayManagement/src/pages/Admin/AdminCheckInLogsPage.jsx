@@ -44,6 +44,57 @@ function formatDate(value) {
   return new Date(value).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
+function parseDateString(dateStr) {
+  if (!dateStr) return null
+  if (typeof dateStr !== 'string') dateStr = String(dateStr)
+  dateStr = dateStr.trim()
+  if (!dateStr) return null
+
+  // Match YYYY-MM-DD or YYYY/MM/DD
+  let match = dateStr.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/)
+  if (match) {
+    const year = parseInt(match[1], 10)
+    const month = parseInt(match[2], 10) - 1
+    const day = parseInt(match[3], 10)
+    return new Date(year, month, day)
+  }
+
+  // Match DD/MM/YYYY or DD-MM-YYYY
+  match = dateStr.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/)
+  if (match) {
+    const day = parseInt(match[1], 10)
+    const month = parseInt(match[2], 10) - 1
+    const year = parseInt(match[3], 10)
+    return new Date(year, month, day)
+  }
+
+  const parsed = new Date(dateStr)
+  if (!isNaN(parsed.getTime())) return parsed
+
+  return null
+}
+
+function calculateAge(dateOfBirth) {
+  const dob = parseDateString(dateOfBirth)
+  if (!dob) return null
+  const today = new Date()
+  let age = today.getFullYear() - dob.getFullYear()
+  const m = today.getMonth() - dob.getMonth()
+  if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) {
+    age--
+  }
+  return age
+}
+
+function toIsoDateString(dateStr) {
+  const dob = parseDateString(dateStr)
+  if (!dob) return dateStr || ''
+  const yyyy = dob.getFullYear()
+  const mm = String(dob.getMonth() + 1).padStart(2, '0')
+  const dd = String(dob.getDate()).padStart(2, '0')
+  return `${yyyy}-${mm}-${dd}`
+}
+
 function formatMoney(value) {
   return new Intl.NumberFormat('vi-VN').format(Number(value || 0)) + 'đ'
 }
@@ -207,7 +258,7 @@ function createGuestForms(preparation) {
     return preparation.registeredGuests.map(guest => ({
       fullName: guest.fullName || '',
       identityDocumentNumber: guest.identityDocumentNumber || '',
-      dateOfBirth: guest.dateOfBirth || '',
+      dateOfBirth: toIsoDateString(guest.dateOfBirth) || '',
       email: guest.email || '',
       phone: guest.phone || '',
       address: guest.address || '',
@@ -219,7 +270,7 @@ function createGuestForms(preparation) {
   return Array.from({ length: total }, (_, index) => ({
     fullName: index === 0 ? preparation.customer?.fullName || '' : '',
     identityDocumentNumber: index === 0 ? preparation.customerIdentityDocumentNumber || '' : '',
-    dateOfBirth: index === 0 ? preparation.customer?.dateOfBirth || '' : '',
+    dateOfBirth: index === 0 ? toIsoDateString(preparation.customer?.dateOfBirth) || '' : '',
     email: index === 0 ? preparation.customer?.email || '' : '',
     phone: index === 0 ? preparation.customer?.phone || '' : '',
     address: index === 0 ? preparation.customer?.address || '' : '',
@@ -721,7 +772,7 @@ function CheckInModal({ bookingDetailId, onClose, onCompleted }) {
           ...guest,
           fullName: data.fullName || guest.fullName,
           identityDocumentNumber: data.identityDocumentNumber || guest.identityDocumentNumber,
-          dateOfBirth: data.dateOfBirth || guest.dateOfBirth,
+          dateOfBirth: toIsoDateString(data.dateOfBirth) || guest.dateOfBirth,
           gender: data.gender || guest.gender,
           nationality: data.nationality || guest.nationality || 'VIETNAM',
           address: data.address || guest.address,
@@ -753,7 +804,8 @@ function CheckInModal({ bookingDetailId, onClose, onCompleted }) {
           representativeEmail: guests[0]?.email?.trim() || '',
           guests: guests.map(guest => ({
             ...guest,
-            dateOfBirth: guest.dateOfBirth || null,
+            identityDocumentNumber: guest.identityDocumentNumber?.trim() || null,
+            dateOfBirth: toIsoDateString(guest.dateOfBirth) || null,
             email: guest.email || null,
             phone: guest.phone || null,
             address: guest.address || null,
@@ -833,6 +885,8 @@ function CheckInModal({ bookingDetailId, onClose, onCompleted }) {
                 {guests.map((guest, index) => {
                   const isAdult = index < Number(preparation.numberOfAdults || 0)
                   const selectedIdentityImages = identityImages[index] || {}
+                  const age = calculateAge(guest.dateOfBirth)
+                  const isUnder10 = age !== null && age < 10
                   return (
                     <article className="acl-guest-form" key={index}>
                       <div className="acl-guest-form-title">
@@ -886,16 +940,16 @@ function CheckInModal({ bookingDetailId, onClose, onCompleted }) {
                               Chụp
                             </button>
                           </div>
-                          <span>{index === 0 ? 'Người đại diện phòng' : isAdult ? 'Người lớn' : 'Trẻ em'}</span>
+                          <span>{index === 0 ? 'Người đại diện phòng' : isUnder10 ? 'Trẻ em (<10 tuổi)' : isAdult ? 'Người lớn' : 'Trẻ em'}</span>
                         </div>
                       </div>
                       <div className="acl-guest-fields">
                         <label><span>Họ và tên *</span><input required maxLength="100" value={guest.fullName}
                           onChange={event => updateGuest(index, 'fullName', event.target.value)} /></label>
-                        <label><span>Căn cước công dân *</span><input required inputMode="numeric" pattern="[0-9]{12}" maxLength="12"
-                          title="Căn cước công dân phải gồm đúng 12 chữ số" value={guest.identityDocumentNumber}
+                        <label><span>Căn cước công dân {isUnder10 ? '' : '*'}</span><input required={!isUnder10} inputMode="numeric" pattern={isUnder10 ? undefined : "[0-9]{12}"} maxLength="12"
+                          title={isUnder10 ? "Trẻ em dưới 10 tuổi không bắt buộc nhập căn cước công dân" : "Căn cước công dân phải gồm đúng 12 chữ số"} value={guest.identityDocumentNumber}
                           onChange={event => updateGuest(index, 'identityDocumentNumber', event.target.value.replace(/\D/g, ''))} /></label>
-                        <label><span>Ngày sinh</span><input type="date" value={guest.dateOfBirth}
+                        <label><span>Ngày sinh</span><input type="date" value={guest.dateOfBirth || ''}
                           onChange={event => updateGuest(index, 'dateOfBirth', event.target.value)} /></label>
                         <label><span>Email {index === 0 ? '*' : ''}</span><input type="email" required={index === 0} maxLength={index === 0 ? 50 : 100}
                           title={index === 0 ? 'Email này sẽ nhận link truy cập dịch vụ của phòng' : 'Vui lòng nhập đúng định dạng email'} value={guest.email}

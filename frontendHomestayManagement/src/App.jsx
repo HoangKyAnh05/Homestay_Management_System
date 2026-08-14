@@ -10,6 +10,7 @@ import AdminRulesPenaltiesPage from './pages/Admin/AdminRulesPenaltiesPage'
 import AdminServiceCategoriesPage from './pages/Admin/AdminServiceCategoriesPage'
 import AdminSurchargesPage from './pages/Admin/AdminSurchargesPage'
 import AdminUsersPage from './pages/Admin/AdminUsersPage'
+import AdminReviewsPage from './pages/Admin/AdminReviewsPage'
 import CustomerAiChat from './components/CustomerAiChat/CustomerAiChat'
 import DashboardPage from './pages/Admin/DashboardPage'
 import HousekeepingPage from './pages/Admin/HousekeepingPage'
@@ -157,6 +158,7 @@ function App() {
     if (currentPath === '/admin/services/surcharges') return <AdminSurchargesPage />
     if (currentPath === '/admin/rules-penalties') return <AdminRulesPenaltiesPage />
     if (currentPath === '/admin/invoices') return <AdminInvoicesPage />
+    if (currentPath === '/admin/reviews') return <AdminReviewsPage />
     if (currentPath === '/admin/housekeeping') {
       window.location.replace('/admin/housekeeping/tasks')
       return null

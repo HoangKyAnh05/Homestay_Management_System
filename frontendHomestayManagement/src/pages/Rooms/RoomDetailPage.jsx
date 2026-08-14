@@ -644,7 +644,7 @@ function RoomDetailPage({ roomId }) {
     // Fetch public reviews
     fetch(`${API_BASE_URL}/public/reviews/room-type/${room.roomTypeId}`)
       .then((res) => (res.ok ? res.json() : []))
-      .then((data) => setReviews(Array.isArray(data) ? data : []))
+      .then((data) => setReviews(Array.isArray(data) ? data.filter((r) => (r.status || 'APPROVED').toUpperCase() !== 'HIDDEN') : []))
       .catch(() => setReviews([]))
 
     // Check wishlist status
