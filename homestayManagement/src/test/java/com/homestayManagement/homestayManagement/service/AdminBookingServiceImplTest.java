@@ -46,7 +46,9 @@ import com.homestayManagement.homestayManagement.dto.request.AdminDirectBookingR
 import com.homestayManagement.homestayManagement.dto.request.AdminDirectBookingServiceRequest;
 import com.homestayManagement.homestayManagement.dto.response.SePayPaymentResponse;
 import com.homestayManagement.homestayManagement.service.impl.AdminBookingServiceImpl;
+import com.homestayManagement.homestayManagement.service.event.CheckoutInvoiceEmailEvent;
 import com.homestayManagement.homestayManagement.service.support.BookingCodeGenerator;
+import org.springframework.context.ApplicationEventPublisher;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -101,6 +103,7 @@ class AdminBookingServiceImplTest {
     @Mock private SePayPaymentService sePayPaymentService;
     @Mock private BookingCodeGenerator bookingCodeGenerator;
     @Mock private StayAccessService stayAccessService;
+    @Mock private ApplicationEventPublisher eventPublisher;
 
     private AdminBookingServiceImpl service;
 
@@ -132,7 +135,8 @@ class AdminBookingServiceImplTest {
                 sePayPaymentService,
                 housekeepingTaskRepository,
                 bookingCodeGenerator,
-                stayAccessService
+                stayAccessService,
+                eventPublisher
         );
     }
 
@@ -439,6 +443,7 @@ class AdminBookingServiceImplTest {
         verify(bookingDetailRepository).save(detail);
         verify(bookingRepository).save(booking);
         verify(stayAccessService).expireAccess(6L);
+        verify(eventPublisher).publishEvent(new CheckoutInvoiceEmailEvent(13L));
     }
 
     @Test

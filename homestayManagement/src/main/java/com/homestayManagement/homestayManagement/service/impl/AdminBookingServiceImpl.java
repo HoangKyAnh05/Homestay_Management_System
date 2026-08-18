@@ -79,8 +79,10 @@ import com.homestayManagement.homestayManagement.repository.ServiceUsageReposito
 import com.homestayManagement.homestayManagement.service.AdminBookingService;
 import com.homestayManagement.homestayManagement.service.SePayPaymentService;
 import com.homestayManagement.homestayManagement.service.StayAccessService;
+import com.homestayManagement.homestayManagement.service.event.CheckoutInvoiceEmailEvent;
 import com.homestayManagement.homestayManagement.service.support.BookingCodeGenerator;
 import com.homestayManagement.homestayManagement.service.support.BookingInventoryPolicy;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
@@ -135,6 +137,7 @@ public class AdminBookingServiceImpl implements AdminBookingService {
     private final HousekeepingTaskRepository housekeepingTaskRepository;
     private final BookingCodeGenerator bookingCodeGenerator;
     private final StayAccessService stayAccessService;
+    private final ApplicationEventPublisher eventPublisher;
 
     public AdminBookingServiceImpl(
             BookingDetailRepository bookingDetailRepository,
@@ -162,7 +165,8 @@ public class AdminBookingServiceImpl implements AdminBookingService {
             SePayPaymentService sePayPaymentService,
             HousekeepingTaskRepository housekeepingTaskRepository,
             BookingCodeGenerator bookingCodeGenerator,
-            StayAccessService stayAccessService
+            StayAccessService stayAccessService,
+            ApplicationEventPublisher eventPublisher
     ) {
         this.bookingDetailRepository = bookingDetailRepository;
         this.bookingGuestRepository = bookingGuestRepository;
@@ -190,6 +194,7 @@ public class AdminBookingServiceImpl implements AdminBookingService {
         this.housekeepingTaskRepository = housekeepingTaskRepository;
         this.bookingCodeGenerator = bookingCodeGenerator;
         this.stayAccessService = stayAccessService;
+        this.eventPublisher = eventPublisher;
     }
 
     @Override
@@ -583,6 +588,9 @@ public class AdminBookingServiceImpl implements AdminBookingService {
         stayAccessService.expireAccess(detail.getId());
         bookingDetailRepository.save(detail);
         updateBookingCompletionStatus(detail.getBooking());
+        if (firstCheckout) {
+            publishCheckoutInvoiceEmail(detail.getBooking());
+        }
         return getBookingDetail(bookingDetailId);
     }
 
@@ -1362,6 +1370,15 @@ public class AdminBookingServiceImpl implements AdminBookingService {
                 .allMatch(item -> Set.of("COMPLETED", "CANCELLED").contains(normalizeStatus(item.getStatus())));
         booking.setStatus(allClosed ? "COMPLETED" : "CHECKED_IN");
         bookingRepository.save(booking);
+    }
+
+    private void publishCheckoutInvoiceEmail(Booking booking) {
+        if (eventPublisher == null || booking == null || booking.getId() == null) {
+            return;
+        }
+        invoiceRepository.findByBookingIdForAdmin(booking.getId())
+                .map(Invoice::getId)
+                .ifPresent(invoiceId -> eventPublisher.publishEvent(new CheckoutInvoiceEmailEvent(invoiceId)));
     }
 
     private Employee getCurrentEmployee() {
