@@ -1,0 +1,52 @@
+@startuml
+actor Marketer
+boundary "SocialMediaIntegrationPage" as Page
+control "SocialMediaIntegrationController" as Controller
+control "SocialMediaIntegrationServiceImpl" as Service
+entity "SocialAccountRepository" as SocialRepo
+database "Database" as Database
+entity "FacebookOAuth" as OAuth
+
+autonumber
+
+Marketer -> Page : Click "Connect Facebook Account"
+activate Page
+
+Page -> Page : Redirect Marketer to Facebook OAuth permissions page
+Marketer -> Page : Log in & authorize homestay app permissions
+
+Page -> Controller : POST /api/marketing/social/connect (SocialConnectRequest: code) [Bearer Token]
+activate Controller
+
+Controller -> Service : connectAccount(request)
+activate Service
+
+Service -> OAuth : exchangeAuthCodeForToken(request.code())
+activate OAuth
+OAuth --> Service : Return access token, scopes & user profile info
+deactivate OAuth
+
+alt Token exchange fails
+    Service --> Controller : Throw OAuthException("Không thể xác thực với Facebook")
+    Controller --> Page : Return HTTP 400 Bad Request
+    Page --> Marketer : Display oauth integration error message
+else Token exchanged successfully
+    Service -> SocialRepo : save(SocialAccountConnection)
+    activate SocialRepo
+    SocialRepo -> Database : Save profile name & tokens (access, refresh)
+    activate Database
+    Database --> SocialRepo : Success
+    deactivate Database
+    SocialRepo --> Service : Return SocialAccountConnection
+    deactivate SocialRepo
+
+    Service --> Controller : Return SocialProfileResponse
+    deactivate Service
+
+    Controller --> Page : Return HTTP 200 OK (Social profile details)
+    deactivate Controller
+
+    Page --> Marketer : Display Facebook page connected & show channel active badge
+    deactivate Page
+end
+@endum

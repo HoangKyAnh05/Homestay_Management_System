@@ -82,6 +82,7 @@ function PublicHeader() {
       <nav className="home-nav" aria-label="Điều hướng chính">
         <a href="/home">Trang chủ</a>
         <a href="/rooms">Phòng</a>
+        <a href="/wishlist">Yêu thích</a>
         <a href="/amenities">Tiện nghi</a>
         <a href="/home#contact">Liên hệ</a>
         <a href="/home#about">Giới thiệu</a>
@@ -96,11 +97,13 @@ function PublicHeader() {
           </button>
           {isOpen && (
             <div className="home-user-dropdown">
-              <a href="/booking-history">Lịch sử đặt phòng</a>
-              <a href="/profile">Thông tin cá nhân</a>
+              <a href="/wishlist" onClick={(e) => { e.preventDefault(); setIsOpen(false); window.location.assign('/wishlist'); }}>Danh sách yêu thích</a>
+              <a href="/booking-history" onClick={(e) => { e.preventDefault(); setIsOpen(false); window.location.assign('/booking-history'); }}>Lịch sử đặt phòng</a>
+              <a href="/profile" onClick={(e) => { e.preventDefault(); setIsOpen(false); window.location.assign('/profile'); }}>Thông tin cá nhân</a>
               <button type="button" onClick={handleLogout}>Đăng xuất</button>
             </div>
           )}
+
         </div>
       ) : (
         <div className="home-actions">
@@ -160,7 +163,68 @@ function BookingHistoryPage() {
   const [feedbackText, setFeedbackText] = useState('')
   const [feedbackSaving, setFeedbackSaving] = useState(false)
   const [confirmSaving, setConfirmSaving] = useState(false)
+  
+  // Review & Rating State
+  const [reviewOpen, setReviewOpen] = useState(false)
+  const [reviewStars, setReviewStars] = useState(5)
+  const [reviewComment, setReviewComment] = useState('')
+  const [reviewImages, setReviewImages] = useState([])
+  const [reviewImageInput, setReviewImageInput] = useState('')
+  const [reviewSubmitting, setReviewSubmitting] = useState(false)
+  const [reviewError, setReviewError] = useState('')
+  const [reviewData, setReviewData] = useState(null)
+
   const token = getStoredToken()
+
+  const handleFileUpload = (e) => {
+    const files = Array.from(e.target.files || [])
+    files.forEach((file) => {
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setReviewImages((prev) => [...prev, reader.result])
+      }
+      reader.readAsDataURL(file)
+    })
+  }
+
+  const addImageUrl = () => {
+    if (reviewImageInput.trim()) {
+      setReviewImages((prev) => [...prev, reviewImageInput.trim()])
+      setReviewImageInput('')
+    }
+  }
+
+  const removeReviewImage = (index) => {
+    setReviewImages((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  const submitReview = async (event) => {
+    event.preventDefault()
+    if (!detail?.bookingId) return
+    setReviewError('')
+    setReviewSubmitting(true)
+    try {
+      const response = await fetch(`${API_BASE_URL}/customer/reviews`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          bookingId: detail.bookingId,
+          ratingStars: reviewStars,
+          comment: reviewComment,
+          imageUrls: reviewImages,
+        }),
+      })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(data.message || 'Không thể gửi đánh giá')
+      setReviewData(data)
+      setReviewOpen(false)
+    } catch (err) {
+      setReviewError(err.message)
+    } finally {
+      setReviewSubmitting(false)
+    }
+  }
+
 
   const updateBookingAfterCustomerAction = (updatedDetail) => {
     setDetail(updatedDetail)
@@ -316,7 +380,15 @@ function BookingHistoryPage() {
         if (!response.ok) throw new Error(data.message || 'Không thể tải chi tiết đơn')
         return data
       })
-      .then(setDetail)
+      .then((data) => {
+        setDetail(data)
+        fetch(`${API_BASE_URL}/customer/reviews/booking/${selectedBookingId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+          .then((res) => (res.ok ? res.json() : null))
+          .then(setReviewData)
+          .catch(() => setReviewData(null))
+      })
       .catch((err) => {
         if (err.name !== 'AbortError') setError(err.message)
       })
@@ -526,14 +598,42 @@ function BookingHistoryPage() {
 
                   <section className="history-customer-review">
                     <div>
-                      <span>Kiểm tra thông tin đơn</span>
+                      <span>Kiểm tra & Đánh giá chuyến đi</span>
                       <strong>{detail.customerConfirmed ? 'Bạn đã xác nhận đơn này' : 'Xác nhận nếu hóa đơn và dịch vụ đã đúng'}</strong>
-                      {detail.customerFeedback && (
-                        <p>Phản hồi đã gửi: {detail.customerFeedback}</p>
+                      {reviewData && (
+                        <div>
+                          <p className="history-review-done-text">⭐ Bạn đã đánh giá: {reviewData.ratingStars} Sao — "{reviewData.comment}"</p>
+                          {reviewData.imageUrls && reviewData.imageUrls.length > 0 && (
+                            <div style={{ display: 'flex', gap: '6px', marginTop: '6px', flexWrap: 'wrap' }}>
+                              {reviewData.imageUrls.map((url, i) => (
+                                <img
+                                  key={i}
+                                  src={resolveImageUrl(url)}
+                                  alt="Ảnh review"
+                                  style={{ width: '50px', height: '50px', borderRadius: '6px', objectFit: 'cover', border: '1px solid #e2e8f0' }}
+                                />
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       )}
                       {customerActionError && <p className="history-customer-review-error">{customerActionError}</p>}
+
                     </div>
-                    <div>
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                      {['CHECKED_OUT', 'COMPLETED'].includes(String(detail.status || '').toUpperCase()) && (
+                        <button
+                          type="button"
+                          className="history-review-star-btn"
+                          onClick={() => {
+                            setReviewStars(reviewData?.ratingStars || 5)
+                            setReviewComment(reviewData?.comment || '')
+                            setReviewOpen(true)
+                          }}
+                        >
+                          {reviewData ? `⭐ ${reviewData.ratingStars} Sao (Sửa)` : '⭐ Đánh giá ngay'}
+                        </button>
+                      )}
                       <button
                         type="button"
                         className="history-confirm-btn"
@@ -547,6 +647,7 @@ function BookingHistoryPage() {
                       </button>
                     </div>
                   </section>
+
                 </>
               ) : selectedBooking ? (
                 <div className="history-state">Chọn booking để xem chi tiết.</div>
@@ -623,8 +724,99 @@ function BookingHistoryPage() {
           </form>
         </div>
       )}
+
+      {reviewOpen && (
+        <div className="history-feedback-backdrop" onClick={(event) => event.target === event.currentTarget && setReviewOpen(false)}>
+          <form className="history-feedback-modal" onSubmit={submitReview}>
+            <div>
+              <h2>⭐ Đánh giá chuyến đi</h2>
+              <p>Hãy chia sẻ cảm nhận của bạn về trải nghiệm kỳ nghỉ tại Homestay.</p>
+            </div>
+
+            {reviewError && <p className="history-customer-review-error">{reviewError}</p>}
+
+            <div style={{ display: 'flex', gap: '8px', fontSize: '2rem', justifyContent: 'center', cursor: 'pointer', margin: '16px 0' }}>
+              {[1, 2, 3, 4, 5].map((star) => (
+                <span
+                  key={star}
+                  onClick={() => setReviewStars(star)}
+                  style={{ color: star <= reviewStars ? '#f59e0b' : '#cbd5e1', transition: 'color 0.2s' }}
+                >
+                  ★
+                </span>
+              ))}
+            </div>
+
+            <textarea
+              value={reviewComment}
+              onChange={(event) => setReviewComment(event.target.value)}
+              maxLength={1000}
+              placeholder="Nhập trải nghiệm thực tế của bạn (phòng sạch đẹp, dịch vụ tốt, không khí thoáng mát...)"
+              rows={4}
+              required
+            />
+
+            <div style={{ marginTop: '14px' }}>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '700', marginBottom: '6px', color: '#334155' }}>
+                📷 Thêm hình ảnh đánh giá (Tải tệp từ máy hoặc dán URL ảnh)
+              </label>
+              
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleFileUpload}
+                style={{ display: 'block', marginBottom: '8px', fontSize: '13px' }}
+              />
+
+              <div style={{ display: 'flex', gap: '6px' }}>
+                <input
+                  type="text"
+                  placeholder="https://example.com/anh-phong.jpg"
+                  value={reviewImageInput}
+                  onChange={(e) => setReviewImageInput(e.target.value)}
+                  style={{ flex: 1, padding: '6px 10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+                />
+                <button
+                  type="button"
+                  onClick={addImageUrl}
+                  style={{ padding: '6px 12px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px' }}
+                >
+                  Thêm URL
+                </button>
+              </div>
+
+              {reviewImages.length > 0 && (
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '10px' }}>
+                  {reviewImages.map((url, idx) => (
+                    <div key={idx} style={{ position: 'relative', width: '60px', height: '60px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #cbd5e1' }}>
+                      <img src={url} alt="Review thumb" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <button
+                        type="button"
+                        onClick={() => removeReviewImage(idx)}
+                        style={{ position: 'absolute', top: 2, right: 2, background: 'rgba(239, 68, 68, 0.9)', color: '#fff', border: 'none', borderRadius: '50%', width: '18px', height: '18px', cursor: 'pointer', fontSize: '11px', display: 'grid', placeItems: 'center' }}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="history-feedback-actions" style={{ marginTop: '16px' }}>
+              <button type="button" onClick={() => setReviewOpen(false)}>Hủy</button>
+              <button type="submit" disabled={reviewSubmitting || !reviewComment.trim()}>
+                {reviewSubmitting ? 'Đang gửi...' : 'Gửi đánh giá'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
     </div>
   )
 }
+
 
 export default BookingHistoryPage

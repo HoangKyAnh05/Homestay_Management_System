@@ -1,0 +1,100 @@
+@startuml
+actor Receptionist
+boundary "CheckInCheckOutPage" as Page
+control "AdminBookingController" as Controller
+control "AdminCheckInRegistrationService" as RegService
+control "AdminBookingServiceImpl" as BookingService
+entity "BookingDetailRepository" as DetailRepo
+entity "CheckInRecordRepository" as RecordRepo
+entity "BookingGuestRepository" as GuestRepo
+database "Database" as Database
+
+autonumber
+
+== Complete Check-in Registration ==
+Receptionist -> Page : Verify customer identities, input guest lists & confirm check-in
+activate Page
+
+Page -> Controller : POST /api/admin/bookings/details/{id}/complete-check-in (AdminCompleteCheckInRequest)
+activate Controller
+
+Controller -> RegService : complete(bookingDetailId, request)
+activate RegService
+
+RegService -> DetailRepo : findById(bookingDetailId)
+activate DetailRepo
+DetailRepo -> Database : Query BookingDetail details
+activate Database
+Database --> DetailRepo : Return BookingDetail
+deactivate Database
+DetailRepo --> RegService : Return BookingDetail
+deactivate DetailRepo
+
+alt Guest details invalid or list empty
+    RegService --> Controller : Throw IllegalArgumentException
+    Controller --> Page : Return HTTP 400 Bad Request
+    Page --> Receptionist : Display validation error
+else Valid check-in registration
+    RegService -> RecordRepo : save(CheckInRecord)
+    activate RecordRepo
+    RecordRepo -> Database : Insert CheckInRecord details
+    activate Database
+    Database --> RecordRepo : Return CheckInRecord
+    deactivate Database
+    RecordRepo --> RegService : Return CheckInRecord
+    deactivate RecordRepo
+
+    RegService -> GuestRepo : saveAll(guestsList)
+    activate GuestRepo
+    GuestRepo -> Database : Insert actual staying guests
+    activate Database
+    Database --> GuestRepo : Success
+    deactivate Database
+    GuestRepo --> RegService : Success
+    deactivate GuestRepo
+
+    RegService --> Controller : Return AdminCompleteCheckInResponse
+    deactivate RegService
+
+    Controller --> Page : Return HTTP 200 OK (AdminCompleteCheckInResponse)
+    deactivate Controller
+
+    Page --> Receptionist : Show check-in complete & print registration card
+    deactivate Page
+end
+
+== Process Check-out Preparation ==
+Receptionist -> Page : Click "Prepare Checkout" button
+activate Page
+
+Page -> Controller : POST /api/admin/bookings/details/{id}/prepare-check-out
+activate Controller
+
+Controller -> BookingService : prepareCheckOut(bookingDetailId)
+activate BookingService
+
+BookingService -> RecordRepo : findByBookingDetailId(bookingDetailId)
+activate RecordRepo
+RecordRepo -> Database : Query CheckInRecord
+activate Database
+Database --> RecordRepo : Return CheckInRecord
+deactivate Database
+RecordRepo --> BookingService : Return CheckInRecord
+deactivate RecordRepo
+
+alt Room inspection checklist incomplete
+    BookingService --> Controller : Throw IllegalArgumentException("Chưa hoàn thành kiểm phòng")
+    Controller --> Page : Return HTTP 400 Bad Request
+    Page --> Receptionist : Display inspection check warning
+else Ready for checkout calculation
+    BookingService -> BookingService : Calculate extra charges & penalty fees
+    BookingService --> Controller : Return AdminCheckoutResponse (with payment details)
+    deactivate BookingService
+
+    Controller --> Page : Return HTTP 200 OK (AdminCheckoutResponse)
+    deactivate Controller
+
+    Page --> Receptionist : Show final bill, extra charges & payment QR code
+    deactivate Page
+end
+@endum

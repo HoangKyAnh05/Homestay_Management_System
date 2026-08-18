@@ -1,0 +1,52 @@
+@startuml
+title System Configuration Class Diagram
+skinparam classAttributeIconSize 0
+
+package "controller" {
+  class AdminRulesPenaltyController {
+    + getAllRulesPenalties(): List<RulesPenaltyResponse>
+    + createRulesPenalty(request: RulesPenaltyRequest): ResponseEntity<RulesPenaltyResponse>
+    + updateRulesPenalty(id: Long, request: RulesPenaltyRequest): RulesPenaltyResponse
+    + deleteRulesPenalty(id: Long): ResponseEntity<Void>
+  }
+}
+
+package "service" {
+  interface AdminRulesPenaltyService {
+    + getAllRulesPenalties(): List<RulesPenaltyResponse>
+    + createRulesPenalty(request: RulesPenaltyRequest): RulesPenaltyResponse
+    + updateRulesPenalty(id: Long, request: RulesPenaltyRequest): RulesPenaltyResponse
+    + deleteRulesPenalty(id: Long): void
+  }
+  class AdminRulesPenaltyServiceImpl {
+    - rulesPenaltyRepository: RulesPenaltyRepository
+  }
+}
+
+package "repository" {
+  interface RulesPenaltyRepository
+  interface DepositPolicyRepository
+}
+
+package "entity" {
+  class RulesPenalty {
+    - id: Long
+    - title: String
+    - penaltyAmount: BigDecimal
+  }
+  class DepositPolicy {
+    - id: Long
+    - policyName: String
+    - calculationType: String
+    - policyValue: BigDecimal
+    - description: String
+  }
+}
+
+AdminRulesPenaltyController --> AdminRulesPenaltyService
+AdminRulesPenaltyServiceImpl ..|> AdminRulesPenaltyService
+AdminRulesPenaltyServiceImpl --> RulesPenaltyRepository
+
+RulesPenaltyRepository ..> RulesPenalty
+DepositPolicyRepository ..> DepositPolicy
+@enduml

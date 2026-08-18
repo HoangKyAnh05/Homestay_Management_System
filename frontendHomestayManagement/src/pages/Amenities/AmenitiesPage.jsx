@@ -213,6 +213,7 @@ function AmenitiesHeader() {
       <nav className="home-nav" aria-label="Điều hướng chính">
         <a href="/home">Trang chủ</a>
         <a href="/rooms">Phòng</a>
+        <a href="/wishlist">Yêu thích</a>
         <a href="/amenities" className="home-nav-active">Tiện nghi</a>
         <a href="/home#contact">Liên hệ</a>
         <a href="/home#about">Giới thiệu</a>
@@ -226,8 +227,9 @@ function AmenitiesHeader() {
           </button>
           {isOpen && (
             <div className="home-user-dropdown">
-              <a href="/booking-history">Lịch sử đặt phòng</a>
-              <a href="/profile">Thông tin cá nhân</a>
+              <a href="/wishlist" onClick={(e) => { e.preventDefault(); setIsOpen(false); window.location.assign('/wishlist'); }}>Danh sách yêu thích</a>
+              <a href="/booking-history" onClick={(e) => { e.preventDefault(); setIsOpen(false); window.location.assign('/booking-history'); }}>Lịch sử đặt phòng</a>
+              <a href="/profile" onClick={(e) => { e.preventDefault(); setIsOpen(false); window.location.assign('/profile'); }}>Thông tin cá nhân</a>
               <button type="button" onClick={handleLogout}>Đăng xuất</button>
             </div>
           )}

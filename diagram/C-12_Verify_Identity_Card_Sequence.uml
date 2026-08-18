@@ -1,0 +1,56 @@
+@startuml
+actor Customer
+boundary "ProfilePage" as Page
+control "UserController" as Controller
+control "UserServiceImpl" as Service
+entity "CustomerRepository" as CustomerRepo
+database "Database" as Database
+
+autonumber
+
+Customer -> Page : Upload front & back identity card images and click "Verify Identity"
+activate Page
+
+Page -> Controller : PUT /api/users/me/identity-card (MultipartFiles: front, back) [Bearer Token]
+activate Controller
+
+Controller -> Service : verifyIdentityCard(email, frontFile, backFile)
+activate Service
+
+Service -> CustomerRepo : findByAccountEmail(email)
+activate CustomerRepo
+CustomerRepo -> Database : Query Customer by account email
+activate Database
+Database --> CustomerRepo : Return Customer entity
+deactivate Database
+CustomerRepo --> Service : Return Customer
+deactivate CustomerRepo
+
+alt Invalid files or Customer profile not found
+    Service --> Controller : Throw IllegalArgumentException
+    Controller --> Page : Return HTTP 400 Bad Request / 404 Not Found
+    Page --> Customer : Display error message
+else Valid files & Customer profile found
+    note over Service: Process OCR extraction locally or via helper\n(Extract fullName, identityDocumentNumber, DOB, gender)
+
+    Service -> Service : Update Customer fields with OCR values
+    
+    Service -> CustomerRepo : save(Customer)
+    activate CustomerRepo
+    CustomerRepo -> Database : Update Customer details in DB
+    activate Database
+    Database --> CustomerRepo : Success
+    deactivate Database
+    CustomerRepo --> Service : Return saved Customer
+    deactivate CustomerRepo
+
+    Service --> Controller : Return UserResponse
+    deactivate Service
+
+    Controller --> Page : Return HTTP 200 OK (UserResponse)
+    deactivate Controller
+
+    Page --> Customer : Render updated profile & show verification success
+    deactivate Page
+end
+@endum

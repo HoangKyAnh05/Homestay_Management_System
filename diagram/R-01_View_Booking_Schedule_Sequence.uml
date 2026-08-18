@@ -1,0 +1,47 @@
+@startuml
+actor Receptionist
+boundary "BookingSchedulePage" as Page
+control "AdminBookingController" as Controller
+control "AdminBookingServiceImpl" as Service
+entity "RoomRepository" as RoomRepo
+entity "BookingDetailRepository" as DetailRepo
+database "Database" as Database
+
+autonumber
+
+Receptionist -> Page : Access Booking Schedule page (select week start date)
+activate Page
+
+Page -> Controller : GET /api/admin/bookings/schedule (weekStart) [Bearer Token]
+activate Controller
+
+Controller -> Service : getWeeklySchedule(weekStart)
+activate Service
+
+Service -> RoomRepo : findAll()
+activate RoomRepo
+RoomRepo -> Database : Fetch all rooms ordered by roomNumber
+activate Database
+Database --> RoomRepo : Return Rooms list
+deactivate Database
+RoomRepo --> Service : Return Rooms list
+deactivate RoomRepo
+
+Service -> DetailRepo : findOverlappingSchedule(startInclusive, endExclusive)
+activate DetailRepo
+DetailRepo -> Database : Query BookingDetails within the selected week range
+activate Database
+Database --> DetailRepo : Return BookingDetails list
+deactivate Database
+DetailRepo --> Service : Return BookingDetails list
+deactivate DetailRepo
+
+Service --> Controller : Return AdminBookingScheduleResponse
+deactivate Service
+
+Controller --> Page : Return HTTP 200 OK (AdminBookingScheduleResponse)
+deactivate Controller
+
+Page --> Receptionist : Render calendar schedule grid showing room occupation status
+deactivate Page
+@endum

@@ -1,0 +1,83 @@
+@startuml
+actor HousekeepingStaff
+boundary "RoomInspectionPage" as Page
+control "HousekeepingController" as Controller
+control "HousekeepingServiceImpl" as Service
+entity "HousekeepingTaskRepository" as TaskRepo
+entity "RulesPenaltyRepository" as PenaltyRepo
+entity "AppliedPenaltyRepository" as AppliedRepo
+database "Database" as Database
+
+autonumber
+
+HousekeepingStaff -> Page : Select guest-damaged item rules (penalties), enter note & click "Submit Inspection"
+activate Page
+
+Page -> Controller : PUT /api/housekeeping/tasks/{taskId}/inspection (HousekeepingInspectionRequest) [Bearer Token]
+activate Controller
+
+Controller -> Service : submitInspection(taskId, request)
+activate Service
+
+Service -> TaskRepo : findByIdForDetail(taskId)
+activate TaskRepo
+TaskRepo -> Database : Fetch task details
+activate Database
+Database --> TaskRepo : Return HousekeepingTask
+deactivate Database
+TaskRepo --> Service : Return HousekeepingTask
+deactivate TaskRepo
+
+alt Task has not been started yet
+    Service --> Controller : Throw IllegalArgumentException("Vui lòng bắt đầu công việc trước khi gửi kết quả kiểm tra")
+    Controller --> Page : Return HTTP 400 Bad Request
+    Page --> HousekeepingStaff : Display task start warning message
+else Task in progress
+    Service -> PenaltyRepo : findAll()
+    activate PenaltyRepo
+    PenaltyRepo -> Database : Fetch penalty/damage rules definitions
+    activate Database
+    Database --> PenaltyRepo : Return penalty catalog list
+    deactivate Database
+    PenaltyRepo --> Service : Return penalty catalog list
+    deactivate PenaltyRepo
+
+    Service -> AppliedRepo : deleteByCheckRecordId(checkInRecordId)
+    activate AppliedRepo
+    AppliedRepo -> Database : Clear old applied damage logs
+    activate Database
+    Database --> AppliedRepo : Success
+    deactivate Database
+    AppliedRepo --> Service : Success
+    deactivate AppliedRepo
+
+    Service -> AppliedRepo : saveAll(List<AppliedPenalty>)
+    activate AppliedRepo
+    AppliedRepo -> Database : Save new guest-caused damaged item penalties
+    activate Database
+    Database --> AppliedRepo : Success
+    deactivate Database
+    AppliedRepo --> Service : Success
+    deactivate AppliedRepo
+
+    Service -> Service : Set inspection status = 'COMPLETED' & record completion timestamp
+
+    Service -> TaskRepo : save(HousekeepingTask)
+    activate TaskRepo
+    TaskRepo -> Database : Update task details in DB
+    activate Database
+    Database --> TaskRepo : Return saved HousekeepingTask
+    deactivate Database
+    TaskRepo --> Service : Return HousekeepingTask
+    deactivate TaskRepo
+
+    Service --> Controller : Return HousekeepingTaskResponse
+    deactivate Service
+
+    Controller --> Page : Return HTTP 200 OK (Updated inspection status)
+    deactivate Controller
+
+    Page --> HousekeepingStaff : Display inspection details submitted & updated penalty logs
+    deactivate Page
+end
+@endum

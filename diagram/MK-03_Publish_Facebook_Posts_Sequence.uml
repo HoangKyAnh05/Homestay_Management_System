@@ -1,0 +1,59 @@
+@startuml
+actor Marketer
+boundary "SocialPublishingPage" as Page
+control "SocialPublishingController" as Controller
+control "SocialPublishingServiceImpl" as Service
+entity "SocialAccountRepository" as SocialRepo
+entity "MarketingPostRepository" as PostRepo
+database "Database" as Database
+entity "FacebookGraphAPI" as FB_API
+
+autonumber
+
+Marketer -> Page : Enter post body message, upload image attachment & click "Publish"
+activate Page
+
+Page -> Controller : POST /api/marketing/facebook/publish (PublishPostRequest) [Bearer Token]
+activate Controller
+
+Controller -> Service : publishToFacebook(request)
+activate Service
+
+Service -> SocialRepo : findByChannelTypeAndMarketerId("FACEBOOK", marketerId)
+activate SocialRepo
+SocialRepo -> Database : Fetch Facebook integration credentials
+activate Database
+Database --> SocialRepo : Return SocialAccountConnection
+deactivate Database
+SocialRepo --> Service : Return SocialAccountConnection
+deactivate SocialRepo
+
+alt Facebook OAuth Token is expired
+    Service --> Controller : Throw UnauthorizedException("Phiên kết nối Facebook đã hết hạn")
+    Controller --> Page : Return HTTP 401 Unauthorized
+    Page --> Marketer : Prompt marketer to reconnect Facebook channel account
+else Token is valid
+    Service -> FB_API : publishFeed(accessToken, message, imageUrl)
+    activate FB_API
+    FB_API --> Service : Return external postId
+    deactivate FB_API
+
+    Service -> PostRepo : save(MarketingPost)
+    activate PostRepo
+    PostRepo -> Database : Insert marketing post logs (URL, external postId)
+    activate Database
+    Database --> PostRepo : Return saved MarketingPost
+    deactivate Database
+    PostRepo --> Service : Return MarketingPost
+    deactivate PostRepo
+
+    Service --> Controller : Return success response
+    deactivate Service
+
+    Controller --> Page : Return HTTP 200 OK (Post details status)
+    deactivate Controller
+
+    Page --> Marketer : Display success alert & show live Facebook post reference link
+    deactivate Page
+end
+@endum

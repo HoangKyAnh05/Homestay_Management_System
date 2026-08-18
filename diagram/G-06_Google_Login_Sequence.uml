@@ -1,0 +1,92 @@
+@startuml
+actor Guest
+boundary "LoginPage" as Page
+control "AuthController" as Controller
+control "AuthServiceImpl" as Service
+entity "AccountRepository" as AccountRepo
+entity "CustomerRepository" as CustomerRepo
+entity "RoleRepository" as RoleRepo
+database "Database" as Database
+
+autonumber
+
+Guest -> Page : Click "Login with Google"
+activate Page
+
+Page -> Page : Authenticate & retrieve Google token info
+
+Page -> Controller : POST /api/auth/google (GoogleLoginRequest)
+activate Controller
+
+Controller -> Service : loginWithGoogle(request)
+activate Service
+
+Service -> Service : Verify Google Token & email
+alt Token invalid or email not verified
+    Service --> Controller : Throw IllegalArgumentException
+    Controller --> Page : Return HTTP 401 Unauthorized
+    Page --> Guest : Display "Đăng nhập Google thất bại"
+else Token verified & email valid
+    Service -> AccountRepo : findByEmail(googleEmail)
+    activate AccountRepo
+    AccountRepo -> Database : Query Account by Google Email
+    activate Database
+    Database --> AccountRepo : Return Account
+    deactivate Database
+    AccountRepo --> Service : Return Account
+    deactivate AccountRepo
+
+    alt Account not found (First-time user)
+        Service -> RoleRepo : findByName("ROLE_CUSTOMER")
+        activate RoleRepo
+        RoleRepo -> Database : Query Customer role
+        activate Database
+        Database --> RoleRepo : Return Role
+        deactivate Database
+        RoleRepo --> Service : Return Role
+        deactivate RoleRepo
+
+        Service -> AccountRepo : save(newAccount)
+        activate AccountRepo
+        AccountRepo -> Database : Insert new Account
+        activate Database
+        Database --> AccountRepo : Return Account
+        deactivate Database
+        AccountRepo --> Service : Return Account
+        deactivate AccountRepo
+    else Account is inactive / locked
+        Service --> Controller : Throw LockedException
+        Controller --> Page : Return HTTP 403 Forbidden
+        Page --> Guest : Display "Tài khoản Google này đã bị khóa"
+    end
+
+    Service -> CustomerRepo : findByAccountId(accountId)
+    activate CustomerRepo
+    CustomerRepo -> Database : Query Customer details
+    activate Database
+    Database --> CustomerRepo : Return Customer
+    deactivate Database
+    CustomerRepo --> Service : Return Customer
+    deactivate CustomerRepo
+
+    Service -> CustomerRepo : save(customer)
+    activate CustomerRepo
+    CustomerRepo -> Database : Sync/Update Google Profile info
+    activate Database
+    Database --> CustomerRepo : Return Customer
+    deactivate Database
+    CustomerRepo --> Service : Return Customer
+    deactivate CustomerRepo
+
+    Service -> Service : generateToken(account)
+
+    Service --> Controller : Return AuthResponse(jwtToken, userResponse)
+    deactivate Service
+
+    Controller --> Page : Return HTTP 200 OK (AuthResponse)
+    deactivate Controller
+
+    Page --> Guest : Store JWT & redirect to Homepage
+    deactivate Page
+end
+@endum

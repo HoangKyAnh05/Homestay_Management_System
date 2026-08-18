@@ -1,0 +1,117 @@
+@startuml
+title User, Employee & CRM Management Class Diagram
+skinparam classAttributeIconSize 0
+
+package "controller" {
+  class UserController {
+    + getCurrentUserProfile(auth: Authentication): UserResponse
+    + updateCurrentUserProfile(auth: Authentication, request: UpdateProfileRequest): UserResponse
+    + updateCurrentUserAvatar(auth: Authentication, avatar: MultipartFile): UserResponse
+  }
+  class AdminUserController {
+    + getAllUsers(): List<AdminUserResponse>
+    + getAllRoles(): List<Role>
+    + getUserById(id: Long): AdminUserResponse
+    + getCustomerBookingHistory(id: Long): AdminCustomerBookingHistoryResponse
+    + createUser(request: AdminCreateUserRequest): ResponseEntity<AdminUserResponse>
+    + updateUser(id: Long, request: AdminUpdateUserRequest): AdminUserResponse
+    + deleteUser(id: Long): ResponseEntity<Void>
+    + toggleActive(id: Long, request: ToggleActiveRequest): AdminUserResponse
+  }
+}
+
+package "service" {
+  interface UserService {
+    + getCurrentUserProfile(email: String): UserResponse
+    + updateCurrentUserProfile(email: String, request: UpdateProfileRequest): UserResponse
+    + updateCurrentUserAvatar(email: String, avatar: MultipartFile): UserResponse
+  }
+  class UserServiceImpl {
+    - accountRepository: AccountRepository
+    - customerRepository: CustomerRepository
+  }
+  
+  interface AdminUserService {
+    + getAllUsers(): List<AdminUserResponse>
+    + getUserById(id: Long): AdminUserResponse
+    + createUser(request: AdminCreateUserRequest): AdminUserResponse
+    + updateUser(id: Long, request: AdminUpdateUserRequest): AdminUserResponse
+    + deleteUser(id: Long): void
+    + toggleActive(id: Long, isActive: boolean): AdminUserResponse
+  }
+  class AdminUserServiceImpl {
+    - accountRepository: AccountRepository
+    - customerRepository: CustomerRepository
+    - employeeRepository: EmployeeRepository
+    - roleRepository: RoleRepository
+  }
+
+  interface AdminCustomerHistoryService {
+    + getBookingHistory(customerId: Long): AdminCustomerBookingHistoryResponse
+  }
+  class AdminCustomerHistoryServiceImpl {
+    - customerRepository: CustomerRepository
+    - bookingRepository: BookingRepository
+  }
+}
+
+package "repository" {
+  interface AccountRepository
+  interface CustomerRepository
+  interface EmployeeRepository
+  interface RoleRepository
+}
+
+package "entity" {
+  class Account {
+    - id: Long
+    - email: String
+    - password: String
+    - isActive: boolean
+  }
+  class Customer {
+    - id: Long
+    - fullName: String
+    - phone: String
+    - address: String
+    - avatarUrl: String
+    - dateOfBirth: LocalDate
+  }
+  class Employee {
+    - id: Long
+    - fullName: String
+    - phone: String
+    - address: String
+    - avatarUrl: String
+    - status: String
+    - dateOfBirth: LocalDate
+  }
+  class Role {
+    - id: Long
+    - name: String
+    - description: String
+  }
+}
+
+UserController --> UserService
+AdminUserController --> AdminUserService
+AdminUserController --> AdminCustomerHistoryService
+UserServiceImpl ..|> UserService
+AdminUserServiceImpl ..|> AdminUserService
+AdminCustomerHistoryServiceImpl ..|> AdminCustomerHistoryService
+
+UserServiceImpl --> AccountRepository
+UserServiceImpl --> CustomerRepository
+AdminUserServiceImpl --> AccountRepository
+AdminUserServiceImpl --> CustomerRepository
+AdminUserServiceImpl --> EmployeeRepository
+AdminUserServiceImpl --> RoleRepository
+
+AccountRepository ..> Account
+CustomerRepository ..> Customer
+EmployeeRepository ..> Employee
+RoleRepository ..> Role
+Account --> Role
+Customer "many" --> "1" Account
+Employee "many" --> "1" Account
+@enduml

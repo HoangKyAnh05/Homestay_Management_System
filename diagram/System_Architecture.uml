@@ -1,0 +1,98 @@
+@startuml
+title Software Architecture - Homestay Management System
+footer Page 1 of 1
+
+' Style settings
+skinparam handwritten false
+skinparam shadow 2
+skinparam roundCorner 10
+skinparam defaultFontName "Helvetica Neue", Arial, sans-serif
+skinparam defaultFontSize 12
+skinparam defaultFontColor #222222
+skinparam BackgroundColor #FFFFFF
+
+' System Architecture colors (Airbnb-inspired palette)
+!define PRIMARY #FF385C
+!define PRIMARY_LIGHT #FFF0F2
+!define INK #222222
+!define BORDER #C1C1C1
+!define SURFACE_CARD #FFFFFF
+!define SURFACE_SOFT #F7F7F7
+!define SYSTEM_BG #F5EBF7
+
+skinparam ArrowColor PRIMARY
+skinparam ArrowThickness 1.2
+skinparam ArrowFontColor INK
+skinparam ArrowFontSize 10
+
+skinparam package {
+    BackgroundColor SYSTEM_BG
+    BorderColor #A88AB3
+    FontColor #460479
+    FontSize 14
+    FontStyle bold
+}
+
+skinparam rectangle {
+    BackgroundColor SURFACE_CARD
+    BorderColor BORDER
+    FontColor INK
+    FontSize 11
+}
+
+skinparam database {
+    BackgroundColor SURFACE_CARD
+    BorderColor PRIMARY
+    FontColor INK
+}
+
+' Elements
+
+' Top: Web Browser (React SPA client)
+rectangle "Web Browser\n(React 19 / Vite 8)" as Browser #FFFFFF {
+    rectangle "User Interface (SPA Pages)\n(Home, Rooms, BookingHistory,\nForgotPassword, Profile, Login)" as UI #FFFFFF
+}
+
+' System Architecture Box (Spring Boot Backend API)
+package "System Architecture (Spring Boot Backend API)" as System {
+    rectangle "Common & Config Classes\n(GlobalExceptionHandler, AppConfig,\nSecurityConfig, JWT Utilities)" as Common
+    
+    rectangle "Presentation Layer\n(RestControllers: AuthController,\nRoomController, PublicBookingController,\nAdminBookingController, etc.)" as Controller
+    
+    rectangle "Service Layer\n(Spring Services: AuthService, RoomService,\nPublicBookingService, AdminBookingService,\nSePayPaymentService, etc.)" as Service
+    
+    rectangle "Data Access Layer (JPA / Hibernate)\n(Spring Data JPA Repositories:\nAccountRepository, RoomRepository,\nBookingRepository, InvoiceRepository, etc.)" as DAL
+    
+    rectangle "Data Transfer Objects (DTOs)\n(LoginRequest, BookingDto,\nForgotPasswordRequest, ResponseObject)" as DTO
+    
+    rectangle "JPA Entities (Domain Model)\n(Account, Room, Booking,\nInvoice, Voucher, Role, etc.)" as Entities
+}
+
+' Database
+database "MySQL 8 Database" as DB
+
+' Connections
+UI -down-> Controller : "HTTP REST Request\n(JSON + JWT Header)"
+Controller -up.> UI : "HTTP Response\n(JSON DTO / status)"
+
+' Layout and connections within System Architecture
+Controller <.left.> Common : "Utilizes"
+Controller -down-> Service : "Delegates business logic"
+Controller -right-> DTO : "Validates & maps"
+
+Service <.left.> Common : "Utilizes"
+Service -down-> DAL : "Invokes CRUD operations"
+Service -right-> Entities : "Maps to/from DTOs"
+Service .up.> Controller : "Returns DTOs / results"
+
+DAL <.left.> Common : "Utilizes"
+DAL -right-> Entities : "Manages"
+DAL .up.> Service : "Returns entities"
+
+DTO -down-> Entities : "Transforms to"
+
+' DB Connections
+DAL -down-> DB : "Hibernate SQL Queries"
+DB .up.> DAL : "Returns records"
+
+@endum

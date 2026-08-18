@@ -1,0 +1,76 @@
+@startuml
+actor Customer
+boundary "BookingHistoryPage" as Page
+control "ReviewController" as Controller
+control "ReviewServiceImpl" as Service
+entity "BookingDetailRepository" as DetailRepo
+entity "ReviewRepository" as ReviewRepo
+database "Database" as Database
+
+autonumber
+
+Customer -> Page : Select a completed room in history and click "Write Review"
+activate Page
+
+Page --> Customer : Display review modal (stars, comment field)
+deactivate Page
+
+Customer -> Page : Fill comment, select stars, and click "Submit Review"
+activate Page
+
+Page -> Controller : POST /api/reviews (CreateReviewRequest) [Bearer Token]
+activate Controller
+
+Controller -> Service : submitReview(email, request)
+activate Service
+
+Service -> DetailRepo : findById(bookingDetailId)
+activate DetailRepo
+DetailRepo -> Database : Query BookingDetail details
+activate Database
+Database --> DetailRepo : Return BookingDetail entity
+deactivate Database
+DetailRepo --> Service : Return BookingDetail
+deactivate DetailRepo
+
+alt BookingDetail not found OR not completed OR doesn't belong to Customer
+    Service --> Controller : Throw IllegalArgumentException
+    Controller --> Page : Return HTTP 400 Bad Request
+    Page --> Customer : Display error message
+else BookingDetail is valid
+    Service -> ReviewRepo : findByBookingDetailId(bookingDetailId)
+    activate ReviewRepo
+    ReviewRepo -> Database : Query existing reviews for this booking detail
+    activate Database
+    Database --> ReviewRepo : Return Review (or null)
+    deactivate Database
+    ReviewRepo --> Service : Return Review (or null)
+    deactivate ReviewRepo
+
+    alt Review already exists for this booking detail
+        Service --> Controller : Throw IllegalArgumentException("Bạn đã đánh giá phòng này rồi")
+        Controller --> Page : Return HTTP 400 Bad Request
+        Page --> Customer : Display warning message
+    else No existing review
+        Service -> Service : Create new Review entity (bookingDetail, rating, comment, status='PENDING')
+        
+        Service -> ReviewRepo : save(Review)
+        activate ReviewRepo
+        ReviewRepo -> Database : Insert Review
+        activate Database
+        Database --> ReviewRepo : Return saved Review
+        deactivate Database
+        ReviewRepo --> Service : Return saved Review
+        deactivate ReviewRepo
+
+        Service --> Controller : Return success response
+        deactivate Service
+
+        Controller --> Page : Return HTTP 200 OK (Success)
+        deactivate Controller
+
+        Page --> Customer : Close modal & show thank you notification
+        deactivate Page
+    end
+end
+@endum

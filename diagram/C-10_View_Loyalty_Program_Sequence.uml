@@ -1,0 +1,53 @@
+@startuml
+actor Customer
+boundary "LoyaltyDashboardPage" as Page
+control "LoyaltyController" as Controller
+control "LoyaltyServiceImpl" as Service
+entity "CustomerLoyaltyRepository" as LoyaltyRepo
+database "Database" as Database
+
+autonumber
+
+Customer -> Page : Navigate to Loyalty Program section
+activate Page
+
+Page -> Controller : GET /api/loyalty/me [Bearer Token]
+activate Controller
+
+Controller -> Service : getMyLoyaltyProfile(email)
+activate Service
+
+Service -> LoyaltyRepo : findByCustomerEmail(email)
+activate LoyaltyRepo
+LoyaltyRepo -> Database : Query CustomerLoyalty record
+activate Database
+Database --> LoyaltyRepo : Return CustomerLoyalty entity
+deactivate Database
+LoyaltyRepo --> Service : Return CustomerLoyalty
+deactivate LoyaltyRepo
+
+alt Profile not found
+    Service -> Service : Initialize default CustomerLoyalty (points = 0)
+    Service -> LoyaltyRepo : save(CustomerLoyalty)
+    activate LoyaltyRepo
+    LoyaltyRepo -> Database : Insert default CustomerLoyalty
+    activate Database
+    Database --> LoyaltyRepo : Return saved CustomerLoyalty
+    deactivate Database
+    LoyaltyRepo --> Service : Return CustomerLoyalty
+    deactivate LoyaltyRepo
+else
+    note right: Profile exists, dùng dữ liệu có sẵn
+end
+
+note over Service: Calculate loyalty tier (Silver/Gold/Platinum)\nbased on totalEarnedPoints.
+
+Service --> Controller : Return LoyaltyResponse (points, totalEarned, tier)
+deactivate Service
+
+Controller --> Page : Return HTTP 200 OK (LoyaltyResponse)
+deactivate Controller
+
+Page --> Customer : Render points balance, tier level, and rewards progress bar
+deactivate Page
+@enduml

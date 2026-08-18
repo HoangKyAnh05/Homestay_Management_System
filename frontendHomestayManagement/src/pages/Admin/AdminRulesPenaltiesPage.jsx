@@ -51,7 +51,7 @@ function RulesPenaltyModal({ item, onClose, onSave }) {
     <div className="asc-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="asc-modal">
         <div className="asc-modal-head">
-          <h3>{isEdit ? 'Chỉnh sửa' : 'Thêm'} nội quy & phạt</h3>
+          <h3>{isEdit ? 'Chỉnh sửa' : 'Thêm'} nội quy, phạt & phụ thu</h3>
           <button type="button" className="asc-modal-close" onClick={onClose}>×</button>
         </div>
 
@@ -173,23 +173,19 @@ function AdminRulesPenaltiesPage() {
     <AdminLayout activePage="rules">
       <div className="asc-header">
         <div>
-          <h1>Cấu hình Nội quy & Phạt</h1>
-          <p>Quản lý danh mục nội quy và mức phạt mặc định khi khách vi phạm.</p>
+          <h1>Cấu hình Nội quy & Phạt & Phụ thu</h1>
+          <p>Quản lý danh mục nội quy, mức phạt mặc định và phụ thu khi khách vi phạm.</p>
         </div>
         <button type="button" className="asc-btn asc-btn--primary" onClick={openCreate}>
-          + Thêm nội quy
+          + Thêm nội quy & phụ thu
         </button>
       </div>
 
       <div className="asc-tabs">
         <button type="button" className="asc-tab asc-tab--active">
-          Nội quy & phạt
+          Nội quy & phạt & phụ thu
           <span>{items.length}</span>
         </button>
-        {/*<button type="button" className="asc-tab" disabled>*/}
-        {/*  Tổng mức phạt mẫu*/}
-        {/*  <span>{formatPrice(totalPenaltyAmount)}</span>*/}
-        {/*</button>*/}
       </div>
 
       <div className="asc-toolbar">

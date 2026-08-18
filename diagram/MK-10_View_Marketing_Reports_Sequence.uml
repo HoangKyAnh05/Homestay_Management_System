@@ -1,0 +1,55 @@
+@startuml
+actor Marketer
+boundary "MarketingReportsPage" as Page
+control "MarketingAnalyticsController" as Controller
+control "MarketingAnalyticsServiceImpl" as Service
+entity "MarketingPostRepository" as PostRepo
+entity "VoucherRepository" as VoucherRepo
+database "Database" as Database
+
+autonumber
+
+Marketer -> Page : Select report period (e.g. Month, Quarter) & click "Generate Report"
+activate Page
+
+Page -> Controller : GET /api/marketing/analytics/report (periodParams) [Bearer Token]
+activate Controller
+
+Controller -> Service : generateMarketingReport(request)
+activate Service
+
+alt Period parameters invalid
+    Service --> Controller : Throw IllegalArgumentException("Thời gian báo cáo không hợp lệ")
+    Controller --> Page : Return HTTP 400 Bad Request
+    Page --> Marketer : Display validation warning alert
+else Parameters valid
+    Service -> PostRepo : findCampaignPostPerformance(startDate, endDate)
+    activate PostRepo
+    PostRepo -> Database : Fetch post interaction summaries
+    activate Database
+    Database --> PostRepo : Return list
+    deactivate Database
+    PostRepo --> Service : Return list
+    deactivate PostRepo
+
+    Service -> VoucherRepo : findCampaignVoucherPerformance(startDate, endDate)
+    activate VoucherRepo
+    VoucherRepo -> Database : Fetch voucher use summaries
+    activate Database
+    Database --> VoucherRepo : Return list
+    deactivate Database
+    VoucherRepo --> Service : Return list
+    deactivate VoucherRepo
+
+    Service -> Service : Calculate campaign ROI, clicks & total conversion value
+
+    Service --> Controller : Return MarketingReportResponse
+    deactivate Service
+
+    Controller --> Page : Return HTTP 200 OK (MarketingReportResponse)
+    deactivate Controller
+
+    Page --> Marketer : Display report preview, metrics tables & enable download (PDF/Excel)
+    deactivate Page
+end
+@endum

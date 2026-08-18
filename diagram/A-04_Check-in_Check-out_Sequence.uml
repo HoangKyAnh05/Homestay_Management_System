@@ -1,0 +1,134 @@
+@startuml
+actor Admin
+boundary "BookingDetailPage" as Page
+control "AdminBookingController" as Controller
+control "AdminBookingServiceImpl" as Service
+entity "BookingDetailRepository" as DetailRepo
+entity "CheckInRecordRepository" as RecordRepo
+entity "RoomRepository" as RoomRepo
+database "Database" as Database
+
+autonumber
+
+== Process Check-in ==
+Admin -> Page : Click "Check-in" button
+activate Page
+
+Page -> Controller : POST /api/admin/bookings/details/{id}/check-in
+activate Controller
+
+Controller -> Service : checkIn(bookingDetailId)
+activate Service
+
+Service -> DetailRepo : findByIdForAdminDetail(bookingDetailId)
+activate DetailRepo
+DetailRepo -> Database : Query BookingDetail details
+activate Database
+Database --> DetailRepo : Return BookingDetail
+deactivate Database
+DetailRepo --> Service : Return BookingDetail
+deactivate DetailRepo
+
+alt Booking already cancelled
+    Service --> Controller : Throw IllegalArgumentException("Không thể check-in đơn đã hủy")
+    Controller --> Page : Return HTTP 400 Bad Request
+    Page --> Admin : Display error message
+else Booking is valid
+    Service -> RecordRepo : save(CheckInRecord)
+    activate RecordRepo
+    RecordRepo -> Database : Insert CheckInRecord with actualCheckIn time
+    activate Database
+    Database --> RecordRepo : Return CheckInRecord
+    deactivate Database
+    RecordRepo --> Service : Return CheckInRecord
+    deactivate RecordRepo
+
+    Service -> RoomRepo : save(room)
+    activate RoomRepo
+    RoomRepo -> Database : Update Room status to OCCUPIED
+    activate Database
+    Database --> RoomRepo : Success
+    deactivate Database
+    RoomRepo --> Service : Return updated Room
+    deactivate RoomRepo
+
+    Service -> DetailRepo : save(detail)
+    activate DetailRepo
+    DetailRepo -> Database : Update BookingDetail status to CHECKED_IN
+    activate Database
+    Database --> DetailRepo : Success
+    deactivate Database
+    DetailRepo --> Service : Return BookingDetail
+    deactivate DetailRepo
+
+    Service --> Controller : Return AdminBookingDetailResponse
+    deactivate Service
+
+    Controller --> Page : Return HTTP 200 OK (Booking detail)
+    deactivate Controller
+
+    Page --> Admin : Show check-in success badge & update room status
+    deactivate Page
+end
+
+== Process Check-out ==
+Admin -> Page : Click "Check-out" button
+activate Page
+
+Page -> Controller : POST /api/admin/bookings/details/{id}/check-out
+activate Controller
+
+Controller -> Service : checkOut(bookingDetailId)
+activate Service
+
+Service -> DetailRepo : findByIdForAdminDetail(bookingDetailId)
+activate DetailRepo
+DetailRepo -> Database : Query BookingDetail details
+activate Database
+Database --> DetailRepo : Return BookingDetail
+deactivate Database
+DetailRepo --> Service : Return BookingDetail
+deactivate DetailRepo
+
+Service -> RecordRepo : findByBookingDetailId(bookingDetailId)
+activate RecordRepo
+RecordRepo -> Database : Fetch CheckInRecord details
+activate Database
+Database --> RecordRepo : Return CheckInRecord
+deactivate Database
+RecordRepo --> Service : Return CheckInRecord
+deactivate RecordRepo
+
+alt Extra charges unpaid / Inspection incomplete
+    Service --> Controller : Throw IllegalArgumentException
+    Controller --> Page : Return HTTP 400 Bad Request
+    Page --> Admin : Display outstanding payments / inspection checklist warning
+else All clean & paid
+    Service -> RecordRepo : save(record)
+    activate RecordRepo
+    RecordRepo -> Database : Save actualCheckOut time
+    activate Database
+    Database --> RecordRepo : Success
+    deactivate Database
+    RecordRepo --> Service : Return CheckInRecord
+    deactivate RecordRepo
+
+    Service -> DetailRepo : save(detail)
+    activate DetailRepo
+    DetailRepo -> Database : Update BookingDetail status to COMPLETED
+    activate Database
+    Database --> DetailRepo : Success
+    deactivate Database
+    DetailRepo --> Service : Return BookingDetail
+    deactivate DetailRepo
+
+    Service --> Controller : Return AdminBookingDetailResponse
+    deactivate Service
+
+    Controller --> Page : Return HTTP 200 OK (Booking detail)
+    deactivate Controller
+
+    Page --> Admin : Show check-out complete & clean up UI
+    deactivate Page
+end
+@endum

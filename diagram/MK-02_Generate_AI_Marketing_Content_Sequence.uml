@@ -1,0 +1,49 @@
+@startuml
+actor Marketer
+boundary "AIMarketingPage" as Page
+control "AIMarketingController" as Controller
+control "AIMarketingServiceImpl" as Service
+entity "AIContentLogRepository" as LogRepo
+database "Database" as Database
+entity "AIServiceAPI" as AIService
+
+autonumber
+
+Marketer -> Page : Enter generation prompt & click "Generate Content"
+activate Page
+
+Page -> Controller : POST /api/marketing/ai/generate (AIPromptRequest) [Bearer Token]
+activate Controller
+
+Controller -> Service : generateMarketingContent(request)
+activate Service
+
+Service -> AIService : callGenerativeAPI(request.prompt())
+activate AIService
+AIService --> Service : Return generated text copy
+deactivate AIService
+
+alt AI API quota exceeded / service offline
+    Service --> Controller : Throw AIServiceException("AI Service tạm thời không hoạt động")
+    Controller --> Page : Return HTTP 503 Service Unavailable
+    Page --> Marketer : Display AI service busy warning message
+else Generation successful
+    Service -> LogRepo : save(AIContentLog)
+    activate LogRepo
+    LogRepo -> Database : Save prompt history & output logs
+    activate Database
+    Database --> LogRepo : Return saved log
+    deactivate Database
+    LogRepo --> Service : Return saved log
+    deactivate LogRepo
+
+    Service --> Controller : Return AIGeneratedContentResponse
+    deactivate Service
+
+    Controller --> Page : Return HTTP 200 OK (Generated copy)
+    deactivate Controller
+
+    Page --> Marketer : Render generated post copy onto preview card & allow edit/copy
+    deactivate Page
+end
+@endum

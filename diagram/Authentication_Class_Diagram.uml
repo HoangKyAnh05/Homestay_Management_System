@@ -1,0 +1,54 @@
+@startuml
+title Authentication Class Diagram
+skinparam classAttributeIconSize 0
+
+package "controller" {
+  class AuthController
+}
+
+package "service" {
+  interface AuthService
+  interface PasswordResetService
+  class AuthServiceImpl
+  class PasswordResetServiceImpl
+}
+
+package "repository" {
+  class AccountRepository
+  class CustomerRepository
+  class RoleRepository
+  class EmployeeRepository
+  class OtpTokenRepository
+}
+
+package "entity" {
+  class Account
+  class Customer
+  class Employee
+  class Role
+}
+
+AuthController --> AuthService
+AuthController --> PasswordResetService
+AuthServiceImpl ..|> AuthService
+PasswordResetServiceImpl ..|> PasswordResetService
+AuthServiceImpl --> AccountRepository
+AuthServiceImpl --> CustomerRepository
+AuthServiceImpl --> RoleRepository
+AuthServiceImpl --> EmployeeRepository
+AuthServiceImpl --> OtpTokenRepository
+PasswordResetServiceImpl --> AccountRepository
+PasswordResetServiceImpl --> OtpTokenRepository
+AccountRepository ..> Account
+CustomerRepository ..> Customer
+RoleRepository ..> Role
+EmployeeRepository ..> Employee
+Customer "many" --> "1" Account
+Employee "many" --> "1" Account
+Account "many" --> "1" Role
+
+note right of Employee
+  See User_Employee_Class_Diagram.uml
+  for full Employee management details
+end note
+@enduml

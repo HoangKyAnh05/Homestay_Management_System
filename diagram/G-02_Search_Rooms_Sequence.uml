@@ -1,0 +1,96 @@
+@startuml
+actor Guest
+boundary "HomePage / RoomsPage" as Page
+control "RoomController" as Controller
+control "RoomServiceImpl" as Service
+entity "BookingDetailRepository" as DetailRepo
+entity "RoomRepository" as RoomRepo
+entity "RoomTypeRepository" as TypeRepo
+entity "RoomPriceConfigRepository" as PriceConfigRepo
+entity "RoomImageRepository" as ImageRepo
+database "Database" as Database
+
+autonumber
+
+Guest -> Page : Enter check-in, check-out dates, guest counts, and click "Search"
+activate Page
+
+Page -> Controller : GET /api/rooms/search (checkInDate, checkOutDate, rooms, adults, children, maxPrice)
+activate Controller
+
+Controller -> Service : searchAvailableRooms(...)
+activate Service
+
+alt checkOutDate <= checkInDate or invalid inputs
+    Service --> Controller : Throw IllegalArgumentException
+    Controller --> Page : Return HTTP 400 Bad Request (Error message)
+    Page --> Guest : Display error message
+else Valid inputs
+    Service -> DetailRepo : findOverlappingSchedule(startInclusive, endExclusive)
+    activate DetailRepo
+    DetailRepo -> Database : Query overlapping BookingDetails
+    activate Database
+    Database --> DetailRepo : Return BookingDetails list
+    deactivate Database
+    DetailRepo --> Service : Return BookingDetails
+    deactivate DetailRepo
+
+    Service -> RoomRepo : findAllWithRoomType()
+    activate RoomRepo
+    RoomRepo -> Database : Query all Rooms with RoomTypes
+    activate Database
+    Database --> RoomRepo : Return Rooms list
+    deactivate Database
+    RoomRepo --> Service : Return Room list
+    deactivate RoomRepo
+
+    Service -> TypeRepo : findAll()
+    activate TypeRepo
+    TypeRepo -> Database : Query all RoomTypes
+    activate Database
+    Database --> TypeRepo : Return RoomTypes list
+    deactivate Database
+    TypeRepo --> Service : Return RoomType list
+    deactivate TypeRepo
+
+    loop For each RoomType
+        Service -> PriceConfigRepo : findByRoomTypeIdWithPolicy(roomTypeId)
+        activate PriceConfigRepo
+        PriceConfigRepo -> Database : Query RoomPriceConfigs
+        activate Database
+        Database --> PriceConfigRepo : Return RoomPriceConfigs
+        deactivate Database
+        PriceConfigRepo --> Service : Return RoomPriceConfigs
+        deactivate PriceConfigRepo
+        
+        Service -> RoomRepo : findByRoomTypeId(roomTypeId)
+        activate RoomRepo
+        RoomRepo -> Database : Query Rooms
+        activate Database
+        Database --> RoomRepo : Return Rooms
+        deactivate Database
+        RoomRepo --> Service : Return Rooms
+        deactivate RoomRepo
+        
+        loop For each Room
+            Service -> ImageRepo : findByRoomId(roomId)
+            activate ImageRepo
+            ImageRepo -> Database : Query RoomImages
+            activate Database
+            Database --> ImageRepo : Return RoomImages
+            deactivate Database
+            ImageRepo --> Service : Return RoomImages
+            deactivate ImageRepo
+        end
+    end
+
+    Service --> Controller : Return List<RoomSearchResponse>
+    deactivate Service
+
+    Controller --> Page : Return HTTP 200 OK (List of RoomSearchResponse)
+    deactivate Controller
+
+    Page --> Guest : Render search results with room cards
+    deactivate Page
+end
+@endum

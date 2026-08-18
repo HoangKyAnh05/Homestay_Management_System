@@ -51,7 +51,7 @@ const NAV_ITEMS = [
   },
   {
     key: 'rooms',
-    label: 'Quản lí phòng',
+    label: 'Quản lý Phòng / Nhà',
     path: '/admin/rooms',
     icon: ICONS.rooms,
   },
@@ -73,7 +73,8 @@ const NAV_ITEMS = [
       { key: 'surcharges', label: 'Phụ phí', path: '/admin/services/surcharges' },
     ],
   },
-  { key: 'rules', label: 'Cấu hình Nội quy & Phạt', path: '/admin/rules-penalties', icon: ICONS.rules },
+  { key: 'rules', label: 'Cấu hình Nội quy & Phạt & Phụ thu', path: '/admin/rules-penalties', icon: ICONS.rules },
+  { key: 'reviews', label: 'Quản lý Đánh giá', path: '/admin/reviews', icon: ICONS.rules },
   { key: 'invoices', label: 'Quản lý Hóa đơn', path: '/admin/invoices', icon: ICONS.invoices },
   {
     key: 'housekeeping',
@@ -167,7 +168,7 @@ function AdminLayout({ activePage, children }) {
           <span className="admin-sidebar-logo-icon">
             <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
           </span>
-          {!collapsed && <span className="admin-sidebar-logo-text">Home Stays</span>}
+          {!collapsed && <span className="admin-sidebar-logo-text">Nhà Ba Gian</span>}
         </div>
 
         <nav className="admin-nav">
@@ -234,12 +235,12 @@ function AdminLayout({ activePage, children }) {
             type="button"
             className="admin-nav-item admin-nav-item--home"
             onClick={() => navigate('/home')}
-            title={collapsed ? 'Home Stays' : undefined}
+            title={collapsed ? 'Nhà Ba Gian' : undefined}
           >
             <span className="admin-nav-icon">
               <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
             </span>
-            {!collapsed && <span>Home Stays</span>}
+            {!collapsed && <span>Nhà Ba Gian</span>}
           </button>
 
           <button

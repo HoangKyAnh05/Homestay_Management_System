@@ -1,0 +1,54 @@
+@startuml
+title Wishlist Management Class Diagram
+skinparam classAttributeIconSize 0
+
+package "controller" {
+  class WishlistController {
+    + addToWishlist(auth: Authentication, request: WishlistRequest): ResponseEntity<Void>
+    + getMyWishlist(auth: Authentication): List<WishlistResponse>
+    + removeFromWishlist(auth: Authentication, roomId: Long): ResponseEntity<Void>
+  }
+}
+
+package "service" {
+  interface WishlistService {
+    + addToWishlist(email: String, roomId: Long): void
+    + getMyWishlist(email: String): List<WishlistResponse>
+    + removeFromWishlist(email: String, roomId: Long): void
+  }
+  class WishlistServiceImpl {
+    - wishlistRepository: WishlistRepository
+    - roomRepository: RoomRepository
+    - customerRepository: CustomerRepository
+  }
+}
+
+package "repository" {
+  interface WishlistRepository
+  interface RoomRepository
+}
+
+package "entity" {
+  class WishlistItem {
+    - id: Long
+    - customerId: Long
+    - roomId: Long
+    - addedAt: LocalDateTime
+  }
+  class Room {
+    - id: Long
+    - roomNumber: String
+    - status: String
+  }
+}
+
+WishlistController --> WishlistService
+WishlistServiceImpl ..|> WishlistService
+
+WishlistServiceImpl --> WishlistRepository
+WishlistServiceImpl --> RoomRepository
+
+WishlistRepository ..> WishlistItem
+RoomRepository ..> Room
+WishlistItem "many" --> "1" Room
+@enduml

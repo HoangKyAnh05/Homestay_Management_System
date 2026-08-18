@@ -1,0 +1,72 @@
+@startuml
+actor Receptionist
+boundary "CheckoutPage" as Page
+control "AdminBookingController" as Controller
+control "AdminBookingServiceImpl" as Service
+entity "BookingRepository" as BookingRepo
+entity "InvoiceRepository" as InvoiceRepo
+entity "PaymentRepository" as PaymentRepo
+database "Database" as Database
+
+autonumber
+
+Receptionist -> Page : Input cash amount received from guest & click "Confirm Cash Payment"
+activate Page
+
+Page -> Controller : POST /api/admin/bookings/details/{bookingDetailId}/confirm-cash-payment [Bearer Token]
+activate Controller
+
+Controller -> Service : confirmCashPayment(bookingDetailId)
+activate Service
+
+Service -> BookingRepo : findByBookingDetailId(bookingDetailId)
+activate BookingRepo
+BookingRepo -> Database : Query Booking details
+activate Database
+Database --> BookingRepo : Return Booking
+deactivate Database
+BookingRepo --> Service : Return Booking
+deactivate BookingRepo
+
+alt Booking not found OR already paid
+    Service --> Controller : Throw IllegalArgumentException("Đơn đặt phòng không hợp lệ hoặc đã thanh toán")
+    Controller --> Page : Return HTTP 400 Bad Request
+    Page --> Receptionist : Display payment validation error message
+else Booking unpaid & valid
+    Service -> InvoiceRepo : findByBookingId(bookingId)
+    activate InvoiceRepo
+    InvoiceRepo -> Database : Query Invoice details
+    activate Database
+    Database --> InvoiceRepo : Return Invoice
+    deactivate Database
+    InvoiceRepo --> Service : Return Invoice
+    deactivate InvoiceRepo
+
+    Service -> PaymentRepo : save(Payment)
+    activate PaymentRepo
+    PaymentRepo -> Database : Save new Payment (method = 'CASH', status = 'SUCCESS')
+    activate Database
+    Database --> PaymentRepo : Return saved Payment
+    deactivate Database
+    PaymentRepo --> Service : Return Payment
+    deactivate PaymentRepo
+
+    Service -> BookingRepo : save(Booking)
+    activate BookingRepo
+    BookingRepo -> Database : Update Booking status = 'SUCCESS'
+    activate Database
+    Database --> BookingRepo : Success
+    deactivate Database
+    BookingRepo --> Service : Return updated Booking
+    deactivate BookingRepo
+
+    Service --> Controller : Return success response (updated Booking details)
+    deactivate Service
+
+    Controller --> Page : Return HTTP 200 OK (Success details)
+    deactivate Controller
+
+    Page --> Receptionist : Print receipt invoice & show checkout/payment success message
+    deactivate Page
+end
+@endum

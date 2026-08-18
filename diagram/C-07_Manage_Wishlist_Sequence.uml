@@ -1,0 +1,71 @@
+@startuml
+actor Customer
+boundary "RoomDetailPage" as Page
+control "WishlistController" as Controller
+control "WishlistServiceImpl" as Service
+entity "RoomRepository" as RoomRepo
+entity "WishlistRepository" as WishlistRepo
+database "Database" as Database
+
+autonumber
+
+== Add Room to Wishlist ==
+Customer -> Page : Click "Add to Wishlist" (heart icon)
+activate Page
+
+Page -> Controller : POST /api/wishlist (WishlistRequest) [Bearer Token]
+activate Controller
+
+Controller -> Service : addToWishlist(email, roomId)
+activate Service
+
+Service -> RoomRepo : findById(roomId)
+activate RoomRepo
+RoomRepo -> Database : Query Room details
+activate Database
+Database --> RoomRepo : Return Room entity
+deactivate Database
+RoomRepo --> Service : Return Room
+deactivate RoomRepo
+
+alt Room not found
+    Service --> Controller : Throw IllegalArgumentException
+    Controller --> Page : Return HTTP 404 Not Found
+    Page --> Customer : Display error message
+else Room is valid
+    Service -> WishlistRepo : findByCustomerEmailAndRoomId(email, roomId)
+    activate WishlistRepo
+    WishlistRepo -> Database : Query existing wishlist item
+    activate Database
+    Database --> WishlistRepo : Return WishlistItem (or null)
+    deactivate Database
+    WishlistRepo --> Service : Return WishlistItem
+    deactivate WishlistRepo
+
+    alt Room already in wishlist
+        Service --> Controller : Throw IllegalArgumentException("Phòng đã có trong danh sách yêu thích")
+        Controller --> Page : Return HTTP 400 Bad Request
+        Page --> Customer : Display warning message
+    else Room not in wishlist
+        Service -> Service : Create new WishlistItem entity
+        
+        Service -> WishlistRepo : save(WishlistItem)
+        activate WishlistRepo
+        WishlistRepo -> Database : Insert WishlistItem
+        activate Database
+        Database --> WishlistRepo : Return saved item
+        deactivate Database
+        WishlistRepo --> Service : Return saved item
+        deactivate WishlistRepo
+
+        Service --> Controller : Return success response
+        deactivate Service
+
+        Controller --> Page : Return HTTP 200 OK (Success)
+        deactivate Controller
+
+        Page --> Customer : Toggle heart icon state to active (red)
+        deactivate Page
+    end
+end
+@endum

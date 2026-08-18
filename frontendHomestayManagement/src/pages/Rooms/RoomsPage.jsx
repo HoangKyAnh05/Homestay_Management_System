@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRef } from 'react'
 import { getStoredToken, getStoredUser, logout } from '../../services/authService'
 import SePayQrPayment from '../../components/SePayQrPayment/SePayQrPayment'
@@ -13,6 +13,26 @@ const API_BASE_URL = 'http://localhost:8080/api'
 
 function formatPrice(price) {
   return new Intl.NumberFormat('vi-VN').format(Number(price || 0)) + 'đ'
+}
+
+function getFallbackRoomImage(roomTypeName, roomTypeId) {
+  const name = String(roomTypeName || '').toLowerCase()
+  if (name.includes('studio')) return '/home_1/image.png'
+  if (name.includes('vip') || name.includes('suite')) return '/home_2/image_1.jpg'
+  if (name.includes('deluxe')) return '/home_3/image_3.jpg'
+  if (name.includes('family') || name.includes('gia đình')) return '/home_4/image_1.jpg'
+  if (name.includes('connecting') || name.includes('kết nối')) return '/home_5/image_1.jpg'
+
+  const fallbacks = [
+    '/home_1/image.png',
+    '/home_2/image_1.jpg',
+    '/home_3/image_3.jpg',
+    '/home_4/image_1.jpg',
+    '/home_5/image_1.jpg'
+  ]
+  const idNum = Math.max(1, Number(roomTypeId) || 1)
+  const idx = (idNum - 1) % fallbacks.length
+  return fallbacks[idx]
 }
 
 function serviceKey(service) {
@@ -57,7 +77,14 @@ function serviceTypeLabel(type) {
 }
 
 function roomPrice(room) {
-  return Number(room.price ?? room.weekdayPrice ?? room.weekendPrice ?? 0)
+  if (room.price != null && Number(room.price) > 0) return Number(room.price)
+  if (room.weekdayPrice != null && Number(room.weekdayPrice) > 0) return Number(room.weekdayPrice)
+  if (room.weekendPrice != null && Number(room.weekendPrice) > 0) return Number(room.weekendPrice)
+  if (Array.isArray(room.prices) && room.prices.length > 0) {
+    const validPrices = room.prices.map(p => Number(p.price || 0)).filter(p => p > 0)
+    if (validPrices.length > 0) return Math.min(...validPrices)
+  }
+  return 0
 }
 
 function toDateTimeLocal(date = new Date()) {
@@ -435,6 +462,7 @@ function PublicHeader() {
       <nav className="home-nav" aria-label="Điều hướng chính">
         <a href="/home">Trang chủ</a>
         <a href="/rooms" className="home-nav-active">Phòng</a>
+        <a href="/wishlist">Yêu thích</a>
         <a href="/amenities">Tiện nghi</a>
         <a href="/home#contact">Liên hệ</a>
         <a href="/home#about">Giới thiệu</a>
@@ -449,11 +477,13 @@ function PublicHeader() {
           </button>
           {isOpen && (
             <div className="home-user-dropdown">
-              <a href="/booking-history">Lịch sử đặt phòng</a>
-              <a href="/profile">Thông tin cá nhân</a>
+              <a href="/wishlist" onClick={(e) => { e.preventDefault(); setIsOpen(false); window.location.assign('/wishlist'); }}>Danh sách yêu thích</a>
+              <a href="/booking-history" onClick={(e) => { e.preventDefault(); setIsOpen(false); window.location.assign('/booking-history'); }}>Lịch sử đặt phòng</a>
+              <a href="/profile" onClick={(e) => { e.preventDefault(); setIsOpen(false); window.location.assign('/profile'); }}>Thông tin cá nhân</a>
               <button type="button" onClick={handleLogout}>Đăng xuất</button>
             </div>
           )}
+
         </div>
       ) : (
         <div className="home-actions">
@@ -472,25 +502,75 @@ function RoomCard({ room, selected, onToggle }) {
   const price = roomPrice(room)
   const detailRoomId = room.roomId || room.representativeRoomId
   const detailUrl = detailRoomId ? `/rooms/${detailRoomId}${window.location.search || ''}` : null
+  const roomTypeId = room.roomTypeId || room.id
+
+  const [isLiked, setIsLiked] = useState(false)
+  const token = getStoredToken()
+
+  useEffect(() => {
+    if (!token || !roomTypeId) return
+    fetch(`${API_BASE_URL}/customer/wishlist/check/${roomTypeId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => (res.ok ? res.json() : false))
+      .then(setIsLiked)
+      .catch(() => {})
+  }, [roomTypeId, token])
+
+  const toggleHeart = async (event) => {
+    event.preventDefault()
+    event.stopPropagation()
+    if (!token) {
+      window.location.assign('/login')
+      return
+    }
+    const nextState = !isLiked
+    setIsLiked(nextState)
+    try {
+      const res = await fetch(`${API_BASE_URL}/customer/wishlist/toggle/${roomTypeId}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const data = await res.json().catch(() => ({}))
+      if (res.ok && typeof data.isWishlisted === 'boolean') {
+        setIsLiked(data.isWishlisted)
+      }
+    } catch {
+      // Retain optimistic UI state
+    }
+  }
+
 
   return (
     <article className={`public-room-card${selected ? ' is-selected' : ''}`}>
       <a className="public-room-card-link" href={detailUrl || window.location.href} onClick={(event) => !detailUrl && event.preventDefault()}>
         <div className="public-room-photo">
-          {imageUrl ? (
-            <img src={resolveImageUrl(imageUrl)} alt={title} loading="lazy" />
-          ) : (
-            <div className="public-room-photo-empty">Home Stays</div>
-          )}
+          <img
+            src={resolveImageUrl(imageUrl) || getFallbackRoomImage(title, roomTypeId)}
+            alt={title}
+            loading="lazy"
+            onError={(e) => {
+              e.target.onerror = null;
+              e.target.src = getFallbackRoomImage(title, roomTypeId);
+            }}
+          />
           <span className="public-room-badge">
             {typeOnly ? `Còn ${room.availableRooms || 0} phòng` : 'Sẵn sàng đặt'}
           </span>
+          <button
+            type="button"
+            className={`public-room-heart-btn${isLiked ? ' is-liked' : ''}`}
+            title={isLiked ? 'Bỏ yêu thích' : 'Thêm vào yêu thích'}
+            onClick={toggleHeart}
+          >
+            {isLiked ? '❤️' : '♡'}
+          </button>
         </div>
       </a>
       <div className="public-room-body">
         <div className="public-room-title-row">
           <h3>{title}</h3>
-          <span>4.9</span>
+          <span>⭐ {room.averageRating || 4.9}</span>
         </div>
         <p>{room.description || 'Không gian nghỉ dưỡng tiện nghi, phù hợp cho kỳ lưu trú của bạn.'}</p>
         <div className="public-room-meta">
@@ -518,6 +598,7 @@ function RoomCard({ room, selected, onToggle }) {
     </article>
   )
 }
+
 
 function BookingVoucherControl({
   voucherCode,

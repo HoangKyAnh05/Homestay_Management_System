@@ -1,0 +1,83 @@
+@startuml
+actor Marketer
+boundary "MarketerVouchersPage" as Page
+control "MarketerVoucherController" as Controller
+control "VoucherServiceImpl" as Service
+entity "VoucherRepository" as VoucherRepo
+database "Database" as Database
+
+autonumber
+
+== View Vouchers List ==
+Marketer -> Page : Navigate to Vouchers Management panel
+activate Page
+
+Page -> Controller : GET /api/marketer/vouchers [Bearer Token]
+activate Controller
+
+Controller -> Service : getAllVouchers()
+activate Service
+
+Service -> VoucherRepo : findAll()
+activate VoucherRepo
+VoucherRepo -> Database : Query all Vouchers
+activate Database
+Database --> VoucherRepo : Return Vouchers list
+deactivate Database
+VoucherRepo --> Service : Return list of Vouchers
+deactivate VoucherRepo
+
+Service --> Controller : Return List<VoucherResponse>
+deactivate Service
+
+Controller --> Page : Return HTTP 200 OK (List of VoucherResponse)
+deactivate Controller
+
+Page --> Marketer : Render vouchers list grid
+deactivate Page
+
+== Create New Voucher ==
+Marketer -> Page : Click "Create Voucher", fill form fields and click "Save"
+activate Page
+
+Page -> Controller : POST /api/marketer/vouchers (CreateVoucherRequest) [Bearer Token]
+activate Controller
+
+Controller -> Service : createVoucher(request)
+activate Service
+
+Service -> VoucherRepo : findByCode(request.code())
+activate VoucherRepo
+VoucherRepo -> Database : Query Voucher by code
+activate Database
+Database --> VoucherRepo : Return Voucher (or null)
+deactivate Database
+VoucherRepo --> Service : Return Voucher
+deactivate VoucherRepo
+
+alt Voucher code already exists
+    Service --> Controller : Throw IllegalArgumentException("Mã Voucher đã tồn tại")
+    Controller --> Page : Return HTTP 400 Bad Request
+    Page --> Marketer : Display duplicate error message
+else Voucher code is unique
+    Service -> Service : Create and build Voucher entity
+    
+    Service -> VoucherRepo : save(Voucher)
+    activate VoucherRepo
+    VoucherRepo -> Database : Insert Voucher into DB
+    activate Database
+    Database --> VoucherRepo : Return saved Voucher
+    deactivate Database
+    VoucherRepo --> Service : Return saved Voucher
+    deactivate VoucherRepo
+
+    Service --> Controller : Return saved Voucher details
+    deactivate Service
+
+    Controller --> Page : Return HTTP 201 Created (VoucherResponse)
+    deactivate Controller
+
+    Page --> Marketer : Add new Voucher to list, show success alert & close modal
+    deactivate Page
+end
+@endum

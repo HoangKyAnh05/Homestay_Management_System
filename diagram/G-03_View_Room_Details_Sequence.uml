@@ -1,0 +1,73 @@
+@startuml
+actor Guest
+boundary "RoomDetailPage" as Page
+control "RoomController" as Controller
+control "RoomServiceImpl" as Service
+entity "RoomRepository" as RoomRepo
+entity "RoomPriceConfigRepository" as PriceConfigRepo
+entity "RoomImageRepository" as ImageRepo
+entity "BookingDetailRepository" as DetailRepo
+database "Database" as Database
+
+autonumber
+
+Guest -> Page : Click on a room to view details
+activate Page
+
+Page -> Controller : GET /api/rooms/{roomId} (fromDate, toDate)
+activate Controller
+
+Controller -> Service : getPublicRoomDetail(roomId, fromDate, toDate)
+activate Service
+
+alt Room not found OR invalid date range
+    Service --> Controller : Throw IllegalArgumentException
+    Controller --> Page : Return HTTP 400 Bad Request
+    Page --> Guest : Display error message
+else Valid request
+    Service -> RoomRepo : findById(roomId)
+    activate RoomRepo
+    RoomRepo -> Database : Query Room by ID
+    activate Database
+    Database --> RoomRepo : Return Room
+    deactivate Database
+    RoomRepo --> Service : Return Room
+    deactivate RoomRepo
+
+    Service -> PriceConfigRepo : findByRoomTypeIdWithPolicy(roomType.getId())
+    activate PriceConfigRepo
+    PriceConfigRepo -> Database : Query RoomPriceConfigs
+    activate Database
+    Database --> PriceConfigRepo : Return RoomPriceConfigs
+    deactivate Database
+    PriceConfigRepo --> Service : Return RoomPriceConfigs
+    deactivate PriceConfigRepo
+
+    Service -> ImageRepo : findByRoomId(roomId)
+    activate ImageRepo
+    ImageRepo -> Database : Query RoomImages by roomId
+    activate Database
+    Database --> ImageRepo : Return RoomImages
+    deactivate Database
+    ImageRepo --> Service : Return RoomImages
+    deactivate ImageRepo
+
+    Service -> DetailRepo : findPublicBusySlotsByRoom(...)
+    activate DetailRepo
+    DetailRepo -> Database : Query BookingDetails for busy slots
+    activate Database
+    Database --> DetailRepo : Return BookingDetails list
+    deactivate Database
+    DetailRepo --> Service : Return busy slots
+    deactivate DetailRepo
+
+    Service --> Controller : Return RoomDetailPublicResponse
+    deactivate Service
+
+    Controller --> Page : Return HTTP 200 OK (RoomDetailPublicResponse)
+    deactivate Controller
+
+    Page --> Guest : Render room details and calendar
+    deactivate Page
+end
+@endum

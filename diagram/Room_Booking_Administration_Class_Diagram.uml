@@ -1,0 +1,148 @@
+@startuml
+title Room & Booking Administration Class Diagram
+skinparam classAttributeIconSize 0
+
+package "controller" {
+  class AdminRoomController {
+    + getAllDepositPolicies(): List<DepositPolicyResponse>
+    + createDepositPolicy(request: DepositPolicyRequest): ResponseEntity<DepositPolicyResponse>
+    + updateDepositPolicy(id: Long, request: DepositPolicyRequest): DepositPolicyResponse
+    + deleteDepositPolicy(id: Long): ResponseEntity<Void>
+    + getAllRoomTypes(): List<AdminRoomTypeResponse>
+    + createRoomType(request: RoomTypeRequest): ResponseEntity<AdminRoomTypeResponse>
+    + updateRoomType(id: Long, request: RoomTypeRequest): AdminRoomTypeResponse
+    + deleteRoomType(id: Long): ResponseEntity<Void>
+    + getAllRooms(): List<AdminRoomResponse>
+    + createRoom(request: RoomRequest): ResponseEntity<AdminRoomResponse>
+    + updateRoom(id: Long, request: RoomRequest): AdminRoomResponse
+    + deleteRoom(id: Long): ResponseEntity<Void>
+    + addImages(roomId: Long, files: List<MultipartFile>, primaryImageId: Long): AdminRoomResponse
+    + deleteImage(roomId: Long, imageId: Long): AdminRoomResponse
+    + setPrimaryImage(roomId: Long, imageId: Long): AdminRoomResponse
+  }
+  class AdminPriceConfigController {
+    + getAllPolicies(): List<PricePolicyResponse>
+    + createPolicy(request: PricePolicyRequest): ResponseEntity<PricePolicyResponse>
+    + updatePolicy(id: Long, request: PricePolicyRequest): PricePolicyResponse
+    + deletePolicy(id: Long): ResponseEntity<Void>
+    + getAllConfigs(): List<RoomPriceConfigResponse>
+    + getConfigsByRoomType(roomTypeId: Long): List<RoomPriceConfigResponse>
+    + createConfig(request: RoomPriceConfigRequest): ResponseEntity<RoomPriceConfigResponse>
+    + updateConfig(id: Long, request: RoomPriceConfigRequest): RoomPriceConfigResponse
+    + deleteConfig(id: Long): ResponseEntity<Void>
+  }
+}
+
+package "service" {
+  interface AdminRoomService {
+    + getAllDepositPolicies(): List<DepositPolicyResponse>
+    + createDepositPolicy(request: DepositPolicyRequest): DepositPolicyResponse
+    + updateDepositPolicy(id: Long, request: DepositPolicyRequest): DepositPolicyResponse
+    + deleteDepositPolicy(id: Long): void
+    + getAllRoomTypes(): List<AdminRoomTypeResponse>
+    + createRoomType(request: RoomTypeRequest): AdminRoomTypeResponse
+    + updateRoomType(id: Long, request: RoomTypeRequest): AdminRoomTypeResponse
+    + deleteRoomType(id: Long): void
+    + getAllRooms(): List<AdminRoomResponse>
+    + createRoom(request: RoomRequest): AdminRoomResponse
+    + updateRoom(id: Long, request: RoomRequest): AdminRoomResponse
+    + deleteRoom(id: Long): void
+    + addImages(roomId: Long, files: List<MultipartFile>, primaryImageId: Long): AdminRoomResponse
+    + deleteImage(roomId: Long, imageId: Long): AdminRoomResponse
+    + setPrimaryImage(roomId: Long, imageId: Long): AdminRoomResponse
+  }
+  class AdminRoomServiceImpl {
+    - roomRepository: RoomRepository
+    - roomTypeRepository: RoomTypeRepository
+    - depositPolicyRepository: DepositPolicyRepository
+    - roomImageRepository: RoomImageRepository
+  }
+
+  interface PriceConfigService {
+    + getAllPolicies(): List<PricePolicyResponse>
+    + createPolicy(request: PricePolicyRequest): PricePolicyResponse
+    + updatePolicy(id: Long, request: PricePolicyRequest): PricePolicyResponse
+    + deletePolicy(id: Long): void
+    + getAllConfigs(): List<RoomPriceConfigResponse>
+    + getConfigsByRoomType(roomTypeId: Long): List<RoomPriceConfigResponse>
+    + createConfig(request: RoomPriceConfigRequest): RoomPriceConfigResponse
+    + updateConfig(id: Long, request: RoomPriceConfigRequest): RoomPriceConfigResponse
+    + deleteConfig(id: Long): void
+  }
+  class PriceConfigServiceImpl {
+    - roomPriceConfigRepository: RoomPriceConfigRepository
+    - roomTypeRepository: RoomTypeRepository
+    - pricePolicyRepository: PricePolicyRepository
+  }
+}
+
+package "repository" {
+  interface RoomRepository
+  interface RoomTypeRepository
+  interface DepositPolicyRepository
+  interface RoomImageRepository
+  interface RoomPriceConfigRepository
+  interface PricePolicyRepository
+}
+
+package "entity" {
+  class Room {
+    - id: Long
+    - roomNumber: String
+    - status: String
+  }
+  class RoomType {
+    - id: Long
+    - name: String
+    - maxAdults: int
+    - maxChildren: int
+    - description: String
+  }
+  class DepositPolicy {
+    - id: Long
+    - policyName: String
+    - calculationType: String
+    - policyValue: BigDecimal
+    - description: String
+  }
+  class RoomPriceConfig {
+    - id: Long
+    - dayType: String
+    - price: BigDecimal
+  }
+  class PricePolicy {
+    - id: Long
+    - policyName: String
+    - rentType: String
+    - standardCheckIn: LocalTime
+    - standardCheckOut: LocalTime
+    - limitHours: Integer
+  }
+}
+
+AdminRoomController --> AdminRoomService
+AdminPriceConfigController --> PriceConfigService
+
+AdminRoomServiceImpl ..|> AdminRoomService
+PriceConfigServiceImpl ..|> PriceConfigService
+
+AdminRoomServiceImpl --> RoomRepository
+AdminRoomServiceImpl --> RoomTypeRepository
+AdminRoomServiceImpl --> DepositPolicyRepository
+AdminRoomServiceImpl --> RoomImageRepository
+
+PriceConfigServiceImpl --> RoomPriceConfigRepository
+PriceConfigServiceImpl --> RoomTypeRepository
+PriceConfigServiceImpl --> PricePolicyRepository
+
+RoomRepository ..> Room
+RoomTypeRepository ..> RoomType
+DepositPolicyRepository ..> DepositPolicy
+RoomImageRepository ..> RoomImage
+RoomPriceConfigRepository ..> RoomPriceConfig
+PricePolicyRepository ..> PricePolicy
+Room --> RoomType
+RoomType --> DepositPolicy
+RoomPriceConfig --> RoomType
+RoomPriceConfig --> PricePolicy
+@enduml

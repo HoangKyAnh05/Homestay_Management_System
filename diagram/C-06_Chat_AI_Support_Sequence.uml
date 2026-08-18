@@ -1,0 +1,38 @@
+@startuml
+actor Customer
+boundary "ChatAiModal" as Page
+control "ChatAiController" as Controller
+control "ChatAiServiceImpl" as Service
+control "GeminiApiService" as GeminiService
+database "Database" as Database
+
+autonumber
+
+Customer -> Page : Open chat widget and type message ("Is Deluxe room available tomorrow?")
+activate Page
+
+Page -> Controller : POST /api/chat/messages (ChatMessageRequest) [Bearer Token]
+activate Controller
+
+Controller -> Service : processChatMessage(email, request)
+activate Service
+
+Service -> GeminiService : generateResponse(promptContext)
+activate GeminiService
+GeminiService --> Service : Return generated answer
+deactivate GeminiService
+
+Service -> Database : Save chat log message (ChatHistory)
+activate Database
+Database --> Service : Success
+deactivate Database
+
+Service --> Controller : Return ChatMessageResponse (AI reply)
+deactivate Service
+
+Controller --> Page : Return HTTP 200 OK (ChatMessageResponse)
+deactivate Controller
+
+Page --> Customer : Render AI reply in the chat widget window
+deactivate Page
+@endum

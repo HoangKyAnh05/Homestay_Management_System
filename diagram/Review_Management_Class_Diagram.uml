@@ -1,0 +1,58 @@
+@startuml
+title Review Management Class Diagram
+skinparam classAttributeIconSize 0
+
+package "controller" {
+  class ReviewController {
+    + submitReview(auth: Authentication, request: CreateReviewRequest): ResponseEntity<Void>
+  }
+  class AdminReviewController {
+    + getAllReviews(): List<ReviewResponse>
+    + updateReviewStatus(reviewId: Long, request: UpdateReviewStatusRequest): ResponseEntity<Void>
+  }
+}
+
+package "service" {
+  interface ReviewService {
+    + submitReview(email: String, request: CreateReviewRequest): void
+    + getAllReviews(): List<ReviewResponse>
+    + updateReviewStatus(reviewId: Long, request: UpdateReviewStatusRequest): void
+  }
+  class ReviewServiceImpl {
+    - reviewRepository: ReviewRepository
+    - bookingDetailRepository: BookingDetailRepository
+    - customerRepository: CustomerRepository
+  }
+}
+
+package "repository" {
+  interface ReviewRepository
+  interface BookingDetailRepository
+}
+
+package "entity" {
+  class Review {
+    - id: Long
+    - rating: int
+    - comment: String
+    - status: String
+    - createdAt: LocalDateTime
+  }
+  class BookingDetail {
+    - id: Long
+    - checkInTarget: LocalDateTime
+    - checkOutTarget: LocalDateTime
+  }
+}
+
+ReviewController --> ReviewService
+AdminReviewController --> ReviewService
+ReviewServiceImpl ..|> ReviewService
+
+ReviewServiceImpl --> ReviewRepository
+ReviewServiceImpl --> BookingDetailRepository
+
+ReviewRepository ..> Review
+BookingDetailRepository ..> BookingDetail
+Review "1" -- "1" BookingDetail
+@enduml

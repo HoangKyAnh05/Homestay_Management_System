@@ -1,0 +1,81 @@
+@startuml
+actor Customer
+boundary "BookingHistoryPage" as Page
+control "PublicBookingController" as Controller
+control "PublicBookingServiceImpl" as Service
+entity "BookingRepository" as BookingRepo
+entity "BookingDetailRepository" as DetailRepo
+database "Database" as Database
+
+autonumber
+
+Customer -> Page : Click "Cancel Booking" on active booking card
+activate Page
+
+Page -> Controller : PUT /api/bookings/my/{bookingId}/cancel [Bearer Token]
+activate Controller
+
+Controller -> Service : cancelBooking(email, bookingId)
+activate Service
+
+Service -> BookingRepo : findById(bookingId)
+activate BookingRepo
+BookingRepo -> Database : Query Booking
+activate Database
+Database --> BookingRepo : Return Booking entity
+deactivate Database
+BookingRepo --> Service : Return Booking
+deactivate BookingRepo
+
+alt Booking not found OR doesn't belong to Customer
+    Service --> Controller : Throw IllegalArgumentException
+    Controller --> Page : Return HTTP 404 Not Found
+    Page --> Customer : Display error message
+else Booking belongs to Customer
+    Service -> DetailRepo : findByBookingId(bookingId)
+    activate DetailRepo
+    DetailRepo -> Database : Query BookingDetails
+    activate Database
+    Database --> DetailRepo : Return BookingDetails list
+    deactivate Database
+    DetailRepo --> Service : Return list of BookingDetails
+    deactivate DetailRepo
+
+    alt Booking status is not PENDING or CONFIRMED (already CHECKED_IN or COMPLETED)
+        Service --> Controller : Throw IllegalArgumentException
+        Controller --> Page : Return HTTP 400 Bad Request
+        Page --> Customer : Display error message
+    else Booking status is valid for cancellation
+        Service -> Service : Update Booking & BookingDetail status to 'CANCELLED'
+        
+        Service -> BookingRepo : save(Booking)
+        activate BookingRepo
+        BookingRepo -> Database : Update Booking status = 'CANCELLED'
+        activate Database
+        Database --> BookingRepo : Success
+        deactivate Database
+        BookingRepo --> Service : Return saved Booking
+        deactivate BookingRepo
+
+        loop For each BookingDetail
+            Service -> DetailRepo : save(BookingDetail)
+            activate DetailRepo
+            DetailRepo -> Database : Update BookingDetail status = 'CANCELLED'
+            activate Database
+            Database --> DetailRepo : Success
+            deactivate Database
+            DetailRepo --> Service : Return saved BookingDetail
+            deactivate DetailRepo
+        end
+
+        Service --> Controller : Return success message
+        deactivate Service
+
+        Controller --> Page : Return HTTP 200 OK (Success)
+        deactivate Controller
+
+        Page --> Customer : Refresh page and display cancellation success message
+        deactivate Page
+    end
+end
+@endum

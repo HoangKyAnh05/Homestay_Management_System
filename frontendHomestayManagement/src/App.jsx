@@ -10,6 +10,7 @@ import AdminRulesPenaltiesPage from './pages/Admin/AdminRulesPenaltiesPage'
 import AdminServiceCategoriesPage from './pages/Admin/AdminServiceCategoriesPage'
 import AdminSurchargesPage from './pages/Admin/AdminSurchargesPage'
 import AdminUsersPage from './pages/Admin/AdminUsersPage'
+import AdminReviewsPage from './pages/Admin/AdminReviewsPage'
 import CustomerAiChat from './components/CustomerAiChat/CustomerAiChat'
 import DashboardPage from './pages/Admin/DashboardPage'
 import HousekeepingPage from './pages/Admin/HousekeepingPage'
@@ -26,6 +27,7 @@ import RoomDetailPage from './pages/Rooms/RoomDetailPage'
 import RoomsPage from './pages/Rooms/RoomsPage'
 import StayPage from './pages/Stay/StayPage'
 import StayActivationPage from './pages/Stay/StayActivationPage'
+import WishlistPage from './pages/Wishlist/WishlistPage'
 import { getStoredUser } from './services/authService'
 import { STAFF_ROLES, roleCanAccess, roleDefaultPath } from './utils/roleUtils'
 
@@ -107,6 +109,7 @@ function App() {
   if (currentPath === '/profile') return <CustomerSurface><ProfilePage /></CustomerSurface>
   if (currentPath === '/booking-history') return <CustomerSurface><BookingHistoryPage /></CustomerSurface>
   if (currentPath === '/amenities') return <CustomerSurface><AmenitiesPage /></CustomerSurface>
+  if (currentPath === '/wishlist') return <CustomerSurface><WishlistPage /></CustomerSurface>
   if (currentPath === '/stay/activate') return <StayActivationPage />
   if (currentPath === '/stay') return <CustomerSurface><StayPage /></CustomerSurface>
   if (currentPath === '/rooms') return <CustomerSurface><RoomsPage /></CustomerSurface>
@@ -155,6 +158,7 @@ function App() {
     if (currentPath === '/admin/services/surcharges') return <AdminSurchargesPage />
     if (currentPath === '/admin/rules-penalties') return <AdminRulesPenaltiesPage />
     if (currentPath === '/admin/invoices') return <AdminInvoicesPage />
+    if (currentPath === '/admin/reviews') return <AdminReviewsPage />
     if (currentPath === '/admin/housekeeping') {
       window.location.replace('/admin/housekeeping/tasks')
       return null

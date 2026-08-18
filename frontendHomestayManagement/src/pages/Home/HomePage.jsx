@@ -1,6 +1,6 @@
-﻿import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import HomeSearch from '../../components/HomeSearch/HomeSearch'
-import { getStoredUser, logout } from '../../services/authService'
+import { getStoredUser, getStoredToken, logout } from '../../services/authService'
 import { resolveImageUrl } from '../../utils/imageUrl'
 import './HomePage.css'
 
@@ -8,6 +8,26 @@ const API_BASE_URL = 'http://localhost:8080/api'
 
 function formatPrice(price) {
   return new Intl.NumberFormat('vi-VN').format(Number(price || 0)) + 'đ'
+}
+
+function getFallbackRoomImage(roomTypeName, roomTypeId) {
+  const name = String(roomTypeName || '').toLowerCase()
+  if (name.includes('studio')) return '/home_1/image.png'
+  if (name.includes('vip') || name.includes('suite')) return '/home_2/image_1.jpg'
+  if (name.includes('deluxe')) return '/home_3/image_3.jpg'
+  if (name.includes('family') || name.includes('gia đình')) return '/home_4/image_1.jpg'
+  if (name.includes('connecting') || name.includes('kết nối')) return '/home_5/image_1.jpg'
+
+  const fallbacks = [
+    '/home_1/image.png',
+    '/home_2/image_1.jpg',
+    '/home_3/image_3.jpg',
+    '/home_4/image_1.jpg',
+    '/home_5/image_1.jpg'
+  ]
+  const idNum = Math.max(1, Number(roomTypeId) || 1)
+  const idx = (idNum - 1) % fallbacks.length
+  return fallbacks[idx]
 }
 
 function formatVoucherMoney(value) {
@@ -24,13 +44,20 @@ function voucherDiscountText(voucher) {
 
 function voucherConditionText(voucher) {
   if (!voucher?.minOrderValue || Number(voucher.minOrderValue) <= 0) {
-    return 'Áp dụng cho kỳ nghỉ của bạn tại Home Stays.'
+    return 'Áp dụng cho kỳ nghỉ của bạn tại Nhà Ba Gian.'
   }
   return `Cho đơn từ ${formatVoucherMoney(voucher.minOrderValue)}.`
 }
 
 function roomPrice(room) {
-  return Number(room.price ?? room.basePrice ?? 0)
+  if (room.price != null && Number(room.price) > 0) return Number(room.price)
+  if (room.weekdayPrice != null && Number(room.weekdayPrice) > 0) return Number(room.weekdayPrice)
+  if (room.weekendPrice != null && Number(room.weekendPrice) > 0) return Number(room.weekendPrice)
+  if (Array.isArray(room.prices) && room.prices.length > 0) {
+    const validPrices = room.prices.map(p => Number(p.price || 0)).filter(p => p > 0)
+    if (validPrices.length > 0) return Math.min(...validPrices)
+  }
+  return 0
 }
 
 function roomTypeIdOf(room) {
@@ -96,6 +123,43 @@ function buildBookingUrl(room, criteria) {
 
 function RoomCard({ room, criteria }) {
   const [priceMode, setPriceMode] = useState('weekday')
+  const [isLiked, setIsLiked] = useState(false)
+  const token = getStoredToken()
+  const roomTypeId = roomTypeIdOf(room)
+
+  useEffect(() => {
+    if (!token || !roomTypeId) return
+    fetch(`${API_BASE_URL}/customer/wishlist/check/${roomTypeId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => (res.ok ? res.json() : false))
+      .then(setIsLiked)
+      .catch(() => {})
+  }, [roomTypeId, token])
+
+  const toggleHeart = async (event) => {
+    event.preventDefault()
+    event.stopPropagation()
+    if (!token) {
+      window.location.assign('/login')
+      return
+    }
+    const nextState = !isLiked
+    setIsLiked(nextState)
+    try {
+      const res = await fetch(`${API_BASE_URL}/customer/wishlist/toggle/${roomTypeId}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const data = await res.json().catch(() => ({}))
+      if (res.ok && typeof data.isWishlisted === 'boolean') {
+        setIsLiked(data.isWishlisted)
+      }
+    } catch {
+      // Retain optimistic UI state
+    }
+  }
+
   const title = room.name || room.roomTypeName || 'Loại phòng'
   const description = room.description || 'Không gian nghỉ dưỡng tiện nghi, phù hợp cho kỳ lưu trú của bạn.'
   const hasRotatingPrice = Number(room.weekdayPrice || 0) > 0 && Number(room.weekendPrice || 0) > 0
@@ -117,15 +181,28 @@ function RoomCard({ room, criteria }) {
   return (
     <article className="room-card">
       <div className="room-card-img">
-        {room.primaryImageUrl ? (
-          <img src={resolveImageUrl(room.primaryImageUrl)} alt={title} loading="lazy" />
-        ) : (
-          <div className="room-card-img-placeholder" />
-        )}
+        <img
+          src={resolveImageUrl(room.primaryImageUrl) || getFallbackRoomImage(title, roomTypeId)}
+          alt={title}
+          loading="lazy"
+          onError={(e) => {
+            e.target.onerror = null;
+            e.target.src = getFallbackRoomImage(title, roomTypeId);
+          }}
+        />
         <span className="room-card-badge">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
           4.9
         </span>
+        <button
+          type="button"
+          className={`public-room-heart-btn${isLiked ? ' is-liked' : ''}`}
+          style={{ position: 'absolute', top: 12, right: 12, zIndex: 3, border: 0, borderRadius: '50%', width: 36, height: 36, display: 'grid', placeItems: 'center', background: '#ffffff', cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}
+          title={isLiked ? 'Bỏ yêu thích' : 'Thêm vào yêu thích'}
+          onClick={toggleHeart}
+        >
+          {isLiked ? '❤️' : '♡'}
+        </button>
       </div>
       <div className="room-card-body">
         <h3>{title}</h3>
@@ -384,7 +461,10 @@ function HomeFooter() {
     <footer className="home-footer" id="contact">
       <div className="home-footer-inner">
         <div className="footer-brand">
-          <h3>Home Stays</h3>
+          <h3>Nhà Ba Gian</h3>
+          <p style={{ fontStyle: 'italic', fontWeight: 600, color: '#1f4328', marginBottom: '6px', fontSize: '13px' }}>
+            Garden Villa in Tiến Xuân
+          </p>
           <p>Mang tâm hồn của kiến trúc truyền thống Việt Nam vào cuộc sống hiện đại. Ngôi nhà thứ hai của bạn.</p>
           <div className="footer-social">
             <a href="#" aria-label="Facebook">
@@ -397,13 +477,18 @@ function HomeFooter() {
         </div>
 
         <div className="footer-links">
-          <h4>QUICK LINKS</h4>
-          <ul>
-            <li><a href="/rooms">Phòng &amp; Suites</a></li>
-            <li><a href="#about">Về chúng tôi</a></li>
-            <li><a href="/amenities">Tiện nghi</a></li>
-            <li><a href="#contact">Liên hệ</a></li>
-          </ul>
+          <h4>VỊ TRÍ</h4>
+          <p style={{ fontSize: '13.5px', color: '#4b5563', lineHeight: '1.5', margin: '0 0 12px' }}>
+            📍 Thung lũng Ngọc Linh, Trại Mới, Tiến Xuân, Thạch Thất, Hà Nội
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <span style={{ background: '#e2e8f0', padding: '6px 10px', borderRadius: '6px', fontSize: '12px', fontWeight: '700', color: '#1e293b', width: 'fit-content' }}>
+              🚗 35km - Cách Hà Nội
+            </span>
+            <span style={{ background: '#e2e8f0', padding: '6px 10px', borderRadius: '6px', fontSize: '12px', fontWeight: '700', color: '#1e293b', width: 'fit-content' }}>
+              ⏱️ 40' - Thời gian di chuyển từ nội thành
+            </span>
+          </div>
         </div>
 
         <div className="footer-links">
@@ -416,24 +501,28 @@ function HomeFooter() {
         </div>
 
         <div className="footer-contact">
-          <h4>LIÊN HỆ</h4>
+          <h4>LIÊN HỆ ĐẶT PHÒNG</h4>
           <p>
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-            123 Đường Homestay, Đà Lạt, Lâm Đồng
+            Thung lũng Ngọc Linh, Trại Mới, Tiến Xuân, Thạch Thất, Hà Nội
           </p>
           <p>
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 1.27h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.91a16 16 0 0 0 6 6l.91-.91a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.73 16.92z"/></svg>
-            0968311855
+            0869 544 586 - Cô Hải
           </p>
           <p>
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-            homestay.work1@gmail.com
+            thungsimngoclinh@gmail.com
+          </p>
+          <p>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+            Nhà ba gian.
           </p>
         </div>
       </div>
 
       <div className="home-footer-bottom">
-        <p>© 2026 Home Stays. All rights reserved.</p>
+        <p>© 2026 Nhà Ba Gian - Garden Villa in Tiến Xuân. All rights reserved.</p>
       </div>
     </footer>
   )
@@ -551,10 +640,11 @@ function HomePage() {
   return (
     <div className="home-page">
       <header className="home-header">
-        <a className="home-logo" href="/home">Home Stays</a>
+        <a className="home-logo" href="/home">Nhà Ba Gian</a>
         <nav className="home-nav" aria-label="Điều hướng chính">
           <a href="/home" className="home-nav-active">Trang chủ</a>
           <a href="/rooms">Phòng</a>
+          <a href="/wishlist">Yêu thích</a>
           <a href="/amenities">Tiện nghi</a>
           <a href="#contact">Liên hệ</a>
           <a href="#about">Giới thiệu</a>
@@ -575,10 +665,11 @@ function HomePage() {
             {isUserMenuOpen && (
               <div className="home-user-dropdown">
                 {currentUser.role === 'ROLE_ADMIN' && (
-                  <a href="/admin">Quản lí Home Stays</a>
+                  <a href="/admin">Quản lý Nhà Ba Gian</a>
                 )}
-                <a href="/booking-history">Lịch sử đặt phòng</a>
-                <a href="/profile">Thông tin cá nhân</a>
+                <a href="/wishlist" onClick={(e) => { e.preventDefault(); setIsUserMenuOpen(false); window.location.assign('/wishlist'); }}>Danh sách yêu thích</a>
+                <a href="/booking-history" onClick={(e) => { e.preventDefault(); setIsUserMenuOpen(false); window.location.assign('/booking-history'); }}>Lịch sử đặt phòng</a>
+                <a href="/profile" onClick={(e) => { e.preventDefault(); setIsUserMenuOpen(false); window.location.assign('/profile'); }}>Thông tin cá nhân</a>
                 <button type="button" onClick={handleLogout}>Đăng xuất</button>
               </div>
             )}
@@ -591,12 +682,12 @@ function HomePage() {
         )}
       </header>
 
-      <section className="home-hero" aria-label="Home Stays">
-        <img src="/banner.png" alt="Không gian nghỉ dưỡng Home Stays" />
+      <section className="home-hero" aria-label="Nhà Ba Gian">
+        <img src="/banner.png" alt="Không gian nghỉ dưỡng Nhà Ba Gian" />
         <div className="home-hero-shade" />
         <div className="home-hero-copy">
           <p>Nghỉ dưỡng cân bằng</p>
-          <h1>Home Stays</h1>
+          <h1>Nhà Ba Gian</h1>
         </div>
       </section>
 

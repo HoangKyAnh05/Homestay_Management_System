@@ -1,0 +1,81 @@
+@startuml
+actor Marketer
+boundary "MarketerLoyaltyPage" as Page
+control "MarketerLoyaltyController" as Controller
+control "LoyaltyServiceImpl" as Service
+entity "LoyaltyConfigRepository" as ConfigRepo
+database "Database" as Database
+
+autonumber
+
+Marketer -> Page : Access Loyalty Configuration panel
+activate Page
+
+Page -> Controller : GET /api/marketer/loyalty/config [Bearer Token]
+activate Controller
+
+Controller -> Service : getLoyaltyConfiguration()
+activate Service
+
+Service -> ConfigRepo : findActiveConfig()
+activate ConfigRepo
+ConfigRepo -> Database : Query active loyalty settings
+activate Database
+Database --> ConfigRepo : Return LoyaltyConfig
+deactivate Database
+ConfigRepo --> Service : Return LoyaltyConfig entity
+deactivate ConfigRepo
+
+Service --> Controller : Return LoyaltyConfigResponse
+deactivate Service
+
+Controller --> Page : Return HTTP 200 OK
+deactivate Controller
+
+Page --> Marketer : Render configuration form (point rates, tier thresholds)
+deactivate Page
+
+Marketer -> Page : Edit point conversion rate and tier thresholds, then click "Save"
+activate Page
+
+Page -> Controller : PUT /api/marketer/loyalty/config (UpdateLoyaltyConfigRequest) [Bearer Token]
+activate Controller
+
+Controller -> Service : updateLoyaltyConfiguration(request)
+activate Service
+
+alt Validation Fails (Points conversion rate <= 0)
+    Service --> Controller : Throw IllegalArgumentException
+    Controller --> Page : Return HTTP 400 Bad Request
+    Page --> Marketer : Display validation warning
+else Validation Passes
+    Service -> ConfigRepo : findActiveConfig()
+    activate ConfigRepo
+    ConfigRepo -> Database : Query active config
+    activate Database
+    Database --> ConfigRepo : Return LoyaltyConfig
+    deactivate Database
+    ConfigRepo --> Service : Return LoyaltyConfig
+    deactivate ConfigRepo
+
+    Service -> Service : Update configuration properties
+    
+    Service -> ConfigRepo : save(LoyaltyConfig)
+    activate ConfigRepo
+    ConfigRepo -> Database : Update LoyaltyConfig in DB
+    activate Database
+    Database --> ConfigRepo : Success
+    deactivate Database
+    ConfigRepo --> Service : Return saved LoyaltyConfig
+    deactivate ConfigRepo
+
+    Service --> Controller : Return success response
+    deactivate Service
+
+    Controller --> Page : Return HTTP 200 OK (Success)
+    deactivate Controller
+
+    Page --> Marketer : Display "Loyalty configuration saved successfully" notification
+    deactivate Page
+end
+@endum

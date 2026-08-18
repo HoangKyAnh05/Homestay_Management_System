@@ -1,0 +1,55 @@
+@startuml
+actor Marketer
+boundary "MarketingDashboardPage" as Page
+control "MarketingAnalyticsController" as Controller
+control "MarketingAnalyticsServiceImpl" as Service
+entity "MarketingPostRepository" as PostRepo
+entity "VoucherRepository" as VoucherRepo
+database "Database" as Database
+
+autonumber
+
+Marketer -> Page : Open Marketing Analytics Dashboard
+activate Page
+
+Page -> Controller : GET /api/marketing/analytics/dashboard [Bearer Token]
+activate Controller
+
+Controller -> Service : getMarketingDashboard()
+activate Service
+
+Service -> PostRepo : countTotalReachAndInteractions()
+activate PostRepo
+PostRepo -> Database : Sum reach, likes, shares across channel posts
+activate Database
+Database --> PostRepo : Return totals
+deactivate Database
+PostRepo --> Service : Return reach statistics
+deactivate PostRepo
+
+Service -> VoucherRepo : findCampaignConversionMetrics()
+activate VoucherRepo
+VoucherRepo -> Database : Fetch total voucher redemptions and booking values
+activate Database
+Database --> VoucherRepo : Return conversion values
+deactivate Database
+VoucherRepo --> Service : Return conversion statistics
+deactivate VoucherRepo
+
+alt Database retrieval failure / empty data
+    Service --> Controller : Throw AnalyticsException("Không thể kết xuất dữ liệu")
+    Controller --> Page : Return HTTP 500 Internal Server Error
+    Page --> Marketer : Display dashboard error alert
+else Aggregation successful
+    Service -> Service : Calculate cost-per-acquisition (CPA) & conversion rate (CVR)
+
+    Service --> Controller : Return MarketingDashboardResponse
+    deactivate Service
+
+    Controller --> Page : Return HTTP 200 OK (MarketingDashboardResponse)
+    deactivate Controller
+
+    Page --> Marketer : Render graphs of visitor trends, voucher conversions & channel reach stats
+    deactivate Page
+end
+@endum

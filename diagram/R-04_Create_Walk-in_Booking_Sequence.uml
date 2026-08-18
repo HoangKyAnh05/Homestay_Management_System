@@ -1,0 +1,116 @@
+@startuml
+actor Receptionist
+boundary "AdminBookingsPage / DirectBookingModal" as Page
+control "AdminBookingController" as Controller
+control "AdminBookingServiceImpl" as Service
+entity "RoomRepository" as RoomRepo
+entity "BookingDetailRepository" as DetailRepo
+entity "BookingRepository" as BookingRepo
+database "Database" as Database
+
+autonumber
+
+== Check Room Availability (Interactive Modal) ==
+Receptionist -> Page : Enter check-in & check-out dates
+activate Page
+
+Page -> Controller : GET /api/admin/bookings/direct/rooms?checkInTarget=...&checkOutTarget=... [Bearer Token]
+activate Controller
+
+Controller -> Service : getDirectBookingRooms(checkInTarget, checkOutTarget)
+activate Service
+
+Service -> RoomRepo : findAll()
+activate RoomRepo
+RoomRepo -> Database : Query all rooms
+activate Database
+Database --> RoomRepo : Return rooms list
+deactivate Database
+RoomRepo --> Service : Return Room entities
+deactivate RoomRepo
+
+Service -> DetailRepo : findOverlappingSchedule(checkInTarget, checkOutTarget)
+activate DetailRepo
+DetailRepo -> Database : Query overlapping details
+activate Database
+Database --> DetailRepo : Return details list
+deactivate Database
+DetailRepo --> Service : Return BookingDetails
+deactivate DetailRepo
+
+Service --> Controller : Return List<AdminDirectBookingRoomResponse>
+deactivate Service
+
+Controller --> Page : Return HTTP 200 OK (List of Room responses with availability status)
+deactivate Controller
+
+Page --> Receptionist : Display available rooms in picker panel
+deactivate Page
+
+== Create Walk-in Booking ==
+Receptionist -> Page : Select room(s), enter Customer info, select Price Policy and submit
+activate Page
+
+Page -> Controller : POST /api/admin/bookings/direct (AdminDirectBookingRequest) [Bearer Token]
+activate Controller
+
+Controller -> Service : createDirectBooking(request)
+activate Service
+
+Service -> Service : validateBookingRange(checkIn, checkOut)
+
+Service -> RoomRepo : findAllById(selectedRoomIds)
+activate RoomRepo
+RoomRepo -> Database : Query rooms
+activate Database
+Database --> RoomRepo : Return rooms
+deactivate Database
+RoomRepo --> Service : Return Room entities map
+deactivate RoomRepo
+
+Service -> DetailRepo : findOverlappingSchedule(checkIn, checkOut)
+activate DetailRepo
+DetailRepo -> Database : Query overlapping details
+activate Database
+Database --> DetailRepo : Return details
+deactivate Database
+DetailRepo --> Service : Return list of BookingDetails
+deactivate DetailRepo
+
+alt Selected room(s) already booked
+    Service --> Controller : Throw IllegalArgumentException
+    Controller --> Page : Return HTTP 400 Bad Request
+    Page --> Receptionist : Display overlapping error message
+else Selected room(s) available
+    Service -> Service : findOrCreateWalkInCustomer(request)
+    
+    Service -> BookingRepo : save(Booking)
+    activate BookingRepo
+    BookingRepo -> Database : Insert Booking (Status: PENDING or CONFIRMED)
+    activate Database
+    Database --> BookingRepo : Return saved Booking
+    deactivate Database
+    BookingRepo --> Service : Return Booking entity
+    deactivate BookingRepo
+
+    loop For each selected room
+        Service -> DetailRepo : save(BookingDetail)
+        activate DetailRepo
+        DetailRepo -> Database : Insert BookingDetail (Status: PENDING or CONFIRMED, roomAssignmentStatus: ASSIGNED)
+        activate Database
+        Database --> DetailRepo : Return saved BookingDetail
+        deactivate Database
+        DetailRepo --> Service : Return BookingDetail entity
+        deactivate DetailRepo
+    end
+
+    Service --> Controller : Return AdminDirectBookingResponse
+    deactivate Service
+
+    Controller --> Page : Return HTTP 200 OK (AdminDirectBookingResponse)
+    deactivate Controller
+
+    Page --> Receptionist : Refresh weekly schedule grid & close modal
+    deactivate Page
+end
+@endum

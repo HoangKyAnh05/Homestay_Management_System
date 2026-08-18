@@ -140,23 +140,23 @@ Lưu ý quan trọng:
 
 ---
 
-## AI số 1 — Hướng dẫn setup AI Chat Box bằng OpenRouter
+## AI số 1 — Hướng dẫn setup AI Chat Box bằng FPT AI Factory
 
 Customer AI Chat gồm 3 phần:
 
 1. Frontend React hiển thị icon chat và gọi backend tại `http://localhost:8080/api/ai/customer/chat`.
 2. Backend Spring Boot xác thực request, gom context phòng/booking và gọi Python sidecar tại `http://127.0.0.1:8001/customer/chat`.
-3. Python sidecar trong `openchatbi/customer_assistant` gọi OpenRouter bằng API key.
+3. Python sidecar trong `openchatbi/customer_assistant` gọi FPT AI Factory bằng API key.
 
 API key chỉ được đặt trong file `.env` của sidecar. Không đặt API key trong React, `VITE_*`, localStorage, Git hoặc request từ trình duyệt.
 
-### Bước 1 - Lấy API key OpenRouter
+### Bước 1 - Lấy API key FPT AI Factory
 
-1. Truy cập [OpenRouter](https://openrouter.ai/).
-2. Đăng nhập hoặc tạo tài khoản.
-3. Vào phần API Keys: [https://openrouter.ai/settings/keys](https://openrouter.ai/settings/keys).
-4. Tạo key mới và sao chép key ngay sau khi tạo.
-5. Kiểm tra tài khoản còn credit hoặc model bạn chọn có thể sử dụng được.
+1. Truy cập [FPT AI Factory Marketplace](https://fpt.ai/factory/marketplace).
+2. Đăng nhập hoặc tạo tài khoản FPT.
+3. Vào phần API Keys hoặc Marketplace để lấy API key cho model GLM-5.2.
+4. Sao chép API key và endpoint URL được cung cấp.
+5. Đảm bảo tài khoản có đủ credit hoặc model được kích hoạt.
 
 ### Bước 2 - Tạo file cấu hình cho AI sidecar
 
@@ -168,10 +168,15 @@ Copy-Item customer_assistant\.env.example customer_assistant\.env
 Mở `openchatbi/customer_assistant/.env` và điền:
 
 ```dotenv
-OPENAI_API_KEY=sk-or-your-openrouter-api-key
-OPENAI_BASE_URL=https://openrouter.ai/api/v1
-OPENAI_MODEL=openrouter/auto
+FPT_AI_API_KEY=your_fpt_marketplace_api_key
+FPT_AI_BASE_URL=https://your-fpt-marketplace-endpoint/v1
+FPT_AI_MODEL=GLM-5.2
 AI_INTERNAL_TOKEN=replace-with-a-long-random-secret
+
+# For backward compatibility with OpenAI SDK
+OPENAI_API_KEY=${FPT_AI_API_KEY}
+OPENAI_BASE_URL=${FPT_AI_BASE_URL}
+OPENAI_MODEL=${FPT_AI_MODEL}
 ```
 
 Tạo `AI_INTERNAL_TOKEN` ngẫu nhiên:
@@ -180,7 +185,7 @@ Tạo `AI_INTERNAL_TOKEN` ngẫu nhiên:
 ([guid]::NewGuid().ToString("N") + [guid]::NewGuid().ToString("N"))
 ```
 
-`OPENAI_MODEL` có thể để `openrouter/auto` hoặc đổi sang model cụ thể trên OpenRouter, ví dụ `openai/gpt-4o-mini`.
+`FPT_AI_MODEL` mặc định là `GLM-5.2`. Nếu sử dụng model khác từ FPT AI Factory, hãy thay đổi cho phù hợp.
 
 ### Bước 3 - Cấu hình backend
 
@@ -239,9 +244,10 @@ Kết quả đúng:
 {
   "status": "UP",
   "api_key_configured": true,
+  "api_key_provider": "FPT AI Factory",
   "internal_token_configured": true,
-  "model": "openrouter/auto",
-  "base_url": "https://openrouter.ai/api/v1"
+  "model": "GLM-5.2",
+  "base_url": "https://your-fpt-marketplace-endpoint/v1"
 }
 ```
 
@@ -249,7 +255,7 @@ Kết quả đúng:
 
 `AI chat chưa được cấu hình API key`
 
-- Sidecar chưa nhận được `OPENAI_API_KEY`.
+- Sidecar chưa nhận được `FPT_AI_API_KEY`.
 - Kiểm tra `.env`, restart backend, và bảo đảm không còn process Python cũ đang giữ port `8001`.
 
 Kiểm tra process port `8001`:
@@ -271,20 +277,21 @@ Stop-Process -Id <PID> -Force
 
 `Model AI không hợp lệ`
 
-- `OPENAI_MODEL` không tồn tại hoặc tài khoản OpenRouter không được dùng model đó.
-- Dùng tạm `OPENAI_MODEL=openrouter/auto` để kiểm tra.
+- `FPT_AI_MODEL` không tồn tại hoặc tài khoản FPT AI Factory không được dùng model đó.
+- Kiểm tra lại model name trong FPT Marketplace (ví dụ: `GLM-5.2`).
+- Đảm bảo model đã được kích hoạt trong tài khoản FPT của bạn.
 
 Lỗi credit/quota
 
-- Tài khoản OpenRouter hết credit hoặc bị giới hạn.
-- Kiểm tra billing/credits trên OpenRouter.
+- Tài khoản FPT AI Factory hết credit hoặc bị giới hạn.
+- Kiểm tra usage/credits trên FPT AI Factory Marketplace.
 
 ### Lưu ý bảo mật
 
 - Không commit `openchatbi/customer_assistant/.env`.
 - Không commit `homestayManagement/src/main/resources/application-local.properties`.
 - Không đặt API key trong frontend hoặc `VITE_*`.
-- Nếu nghi ngờ key bị lộ, hãy revoke key trên OpenRouter và tạo key mới.
+- Nếu nghi ngờ key bị lộ, hãy revoke key trên FPT AI Factory và tạo key mới.
 
 ---
 

@@ -59,10 +59,30 @@ function primaryImage(images) {
   return images?.find(i => i.primary) || images?.[0]
 }
 
+function getFallbackRoomImage(roomTypeName, roomTypeId) {
+  const name = String(roomTypeName || '').toLowerCase()
+  if (name.includes('studio')) return '/home_1/image.png'
+  if (name.includes('vip') || name.includes('suite')) return '/home_2/image_1.jpg'
+  if (name.includes('deluxe')) return '/home_3/image_3.jpg'
+  if (name.includes('family') || name.includes('gia đình')) return '/home_4/image_1.jpg'
+  if (name.includes('connecting') || name.includes('kết nối')) return '/home_5/image_1.jpg'
+
+  const fallbacks = [
+    '/home_1/image.png',
+    '/home_2/image_1.jpg',
+    '/home_3/image_3.jpg',
+    '/home_4/image_1.jpg',
+    '/home_5/image_1.jpg'
+  ]
+  const idNum = Math.max(1, Number(roomTypeId) || 1)
+  const idx = (idNum - 1) % fallbacks.length
+  return fallbacks[idx]
+}
+
 // ─────────────────────────────────────────────────────────────────────
 // Modal loại phòng (tạo / sửa)
 // ─────────────────────────────────────────────────────────────────────
-function RoomTypeModal({ roomType, depositPolicies, onClose, onSave }) {
+function RoomTypeModal({ roomType, depositPolicies, rooms = [], onClose, onSave }) {
   const isEdit = !!roomType
   const [form, setForm] = useState({
     name:           roomType?.name || '',
@@ -71,9 +91,109 @@ function RoomTypeModal({ roomType, depositPolicies, onClose, onSave }) {
     depositPolicyId:roomType?.depositPolicyId || '',
     description:    roomType?.description || '',
   })
+
+  const typeRooms = isEdit ? rooms.filter(r => r.roomTypeId === roomType.id) : []
+  const repRoom = typeRooms[0] || null
+  const [images, setImages] = useState(repRoom?.images || [])
+  const [pendingFiles, setPendingFiles] = useState([])
+  const [uploading, setUploading] = useState(false)
   const [error, setSaving] = useState('')
   const [saving, setSavingState] = useState(false)
+  const fileRef = useRef()
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
+
+  const processFiles = async (files) => {
+    const fileList = Array.from(files).filter(f => f.type.startsWith('image/'))
+    if (!fileList.length) return
+
+    if (!repRoom) {
+      setPendingFiles(prev => [...prev, ...fileList])
+      return
+    }
+
+    setUploading(true)
+    setSaving('')
+    try {
+      const formData = new FormData()
+      fileList.forEach(f => formData.append('files', f))
+      const res = await fetch(`${API}/${repRoom.id}/images`, {
+        method: 'POST',
+        headers: authHeaders(true),
+        body: formData,
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.message || 'Upload thất bại')
+      setImages(data.images || [])
+    } catch (err) {
+      setSaving(err.message)
+    } finally {
+      setUploading(false)
+      if (fileRef.current) fileRef.current.value = ''
+    }
+  }
+
+  const handleFileUpload = (e) => {
+    processFiles(e.target.files)
+  }
+
+  const handlePaste = (e) => {
+    const items = e.clipboardData?.items
+    if (!items) return
+    const pastedFiles = []
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf('image') !== -1) {
+        const file = items[i].getAsFile()
+        if (file) pastedFiles.push(file)
+      }
+    }
+    if (pastedFiles.length > 0) {
+      e.preventDefault()
+      processFiles(pastedFiles)
+    }
+  }
+
+  const handleDrop = (e) => {
+    e.preventDefault()
+    if (e.dataTransfer?.files?.length) {
+      processFiles(e.dataTransfer.files)
+    }
+  }
+
+  const handleDragOver = (e) => {
+    e.preventDefault()
+  }
+
+  const handleDeleteImage = async (imageId) => {
+    if (!repRoom) return
+    setSaving('')
+    try {
+      const res = await fetch(`${API}/${repRoom.id}/images/${imageId}`, {
+        method: 'DELETE',
+        headers: authHeaders(),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.message || 'Lỗi xoá ảnh')
+      setImages(data.images || [])
+    } catch (err) {
+      setSaving(err.message)
+    }
+  }
+
+  const handleSetPrimary = async (imageId) => {
+    if (!repRoom) return
+    setSaving('')
+    try {
+      const res = await fetch(`${API}/${repRoom.id}/images/${imageId}/primary`, {
+        method: 'PATCH',
+        headers: authHeaders(),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.message || 'Lỗi đổi ảnh chính')
+      setImages(data.images || [])
+    } catch (err) {
+      setSaving(err.message)
+    }
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -90,8 +210,36 @@ function RoomTypeModal({ roomType, depositPolicies, onClose, onSave }) {
           depositPolicyId: form.depositPolicyId ? Number(form.depositPolicyId) : null,
         }),
       })
-      const data = await res.json()
+      let data = await res.json()
       if (!res.ok) throw new Error(data.message || 'Lỗi')
+
+      if (pendingFiles.length > 0) {
+        let targetRoomId = repRoom?.id
+        if (!targetRoomId) {
+          const createRoomRes = await fetch(API, {
+            method: 'POST',
+            headers: authHeaders(),
+            body: JSON.stringify({
+              roomNumber: `AUTO-${Math.floor(100 + Math.random() * 900)}`,
+              roomTypeId: data.id,
+              status: 'AVAILABLE',
+            }),
+          })
+          const newRoom = await createRoomRes.json()
+          if (createRoomRes.ok) targetRoomId = newRoom.id
+        }
+
+        if (targetRoomId) {
+          const formData = new FormData()
+          pendingFiles.forEach(f => formData.append('files', f))
+          await fetch(`${API}/${targetRoomId}/images`, {
+            method: 'POST',
+            headers: authHeaders(true),
+            body: formData,
+          })
+        }
+      }
+
       onSave(data, isEdit)
     } catch (err) { setSaving(err.message) }
     finally { setSavingState(false) }
@@ -99,12 +247,12 @@ function RoomTypeModal({ roomType, depositPolicies, onClose, onSave }) {
 
   return (
     <div className="arm-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="arm-modal">
+      <div className="arm-modal arm-modal--wide">
         <div className="arm-modal-head">
           <h3>{isEdit ? 'Chỉnh sửa loại phòng' : 'Thêm loại phòng mới'}</h3>
           <button type="button" className="arm-modal-close" onClick={onClose}>✕</button>
         </div>
-        <form className="arm-modal-body" onSubmit={handleSubmit}>
+        <form className="arm-modal-body" onSubmit={handleSubmit} onPaste={handlePaste}>
           <label className="arm-field"><span>Tên loại phòng</span>
             <input value={form.name} onChange={e => set('name', e.target.value)} required placeholder="Phòng Studio, Deluxe..." />
           </label>
@@ -127,10 +275,54 @@ function RoomTypeModal({ roomType, depositPolicies, onClose, onSave }) {
           <label className="arm-field"><span>Mô tả</span>
             <textarea value={form.description} onChange={e => set('description', e.target.value)} rows={3} placeholder="Mô tả loại phòng..." />
           </label>
+
+          <div className="arm-field">
+            <span>Hình ảnh đại diện loại phòng (Hỗ trợ Dán ảnh Ctrl + V hoặc Kéo thả)</span>
+            <label
+              className="arm-upload-zone"
+              style={{ margin: '6px 0 12px', padding: '14px', borderRadius: '8px', border: '2px dashed #94a3b8', cursor: 'pointer' }}
+              onDragOver={handleDragOver}
+              onDrop={handleDrop}
+            >
+              <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={handleFileUpload} hidden />
+              <svg viewBox="0 0 24 24" style={{ width: 22, height: 22 }}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              <span>
+                {uploading ? '⏳ Đang tải ảnh...' : '📋 Nhấn để chọn, Dán ảnh (Ctrl + V) hoặc Kéo thả ảnh vào đây'}
+              </span>
+            </label>
+
+            {images.length > 0 && (
+              <div className="arm-images-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))', gap: '8px' }}>
+                {images.map(img => (
+                  <div key={img.id} className={`arm-img-card${img.primary ? ' arm-img-card--primary' : ''}`} style={{ height: 70 }}>
+                    <img src={resolveImageUrl(img.imageUrl)} alt="" loading="lazy" />
+                    {img.primary && <span className="arm-img-primary-badge" style={{ fontSize: 9, padding: '2px 4px' }}>Chính</span>}
+                    <div className="arm-img-actions">
+                      {!img.primary && (
+                        <button type="button" title="Đặt làm ảnh chính" onClick={() => handleSetPrimary(img.id)}>
+                          <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                        </button>
+                      )}
+                      <button type="button" className="arm-img-del" title="Xoá ảnh" onClick={() => handleDeleteImage(img.id)}>
+                        <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {!repRoom && pendingFiles.length > 0 && (
+              <p style={{ fontSize: 13, color: '#15573a', margin: '4px 0 0', fontWeight: 600 }}>
+                ✓ Đã chọn {pendingFiles.length} file ảnh (sẽ được tự động tải lên sau khi lưu loại phòng)
+              </p>
+            )}
+          </div>
+
           {error && <p className="arm-error">{error}</p>}
           <div className="arm-modal-actions">
             <button type="button" className="arm-btn arm-btn--ghost" onClick={onClose}>Huỷ</button>
-            <button type="submit" className="arm-btn arm-btn--primary" disabled={saving}>
+            <button type="submit" className="arm-btn arm-btn--primary" disabled={saving || uploading}>
               {saving ? 'Đang lưu...' : isEdit ? 'Lưu thay đổi' : 'Tạo loại phòng'}
             </button>
           </div>
@@ -149,19 +341,50 @@ function ImagesModal({ room, onClose, onUpdate }) {
   const [error, setError] = useState('')
   const fileRef = useRef()
 
-  const handleUpload = async (e) => {
-    const files = Array.from(e.target.files)
-    if (!files.length) return
+  const uploadFiles = async (files) => {
+    const fileList = Array.from(files).filter(f => f.type.startsWith('image/'))
+    if (!fileList.length) return
     setUploading(true); setError('')
     try {
       const formData = new FormData()
-      files.forEach(f => formData.append('files', f))
+      fileList.forEach(f => formData.append('files', f))
       const res = await fetch(`${API}/${room.id}/images`, { method:'POST', headers:authHeaders(true), body:formData })
       const data = await res.json()
       if (!res.ok) throw new Error(data.message || 'Upload thất bại')
       setImages(data.images); onUpdate(data)
     } catch (err) { setError(err.message) }
-    finally { setUploading(false); fileRef.current.value = '' }
+    finally { setUploading(false); if (fileRef.current) fileRef.current.value = '' }
+  }
+
+  const handleUpload = (e) => {
+    uploadFiles(e.target.files)
+  }
+
+  const handlePaste = (e) => {
+    const items = e.clipboardData?.items
+    if (!items) return
+    const pastedFiles = []
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf('image') !== -1) {
+        const file = items[i].getAsFile()
+        if (file) pastedFiles.push(file)
+      }
+    }
+    if (pastedFiles.length > 0) {
+      e.preventDefault()
+      uploadFiles(pastedFiles)
+    }
+  }
+
+  const handleDrop = (e) => {
+    e.preventDefault()
+    if (e.dataTransfer?.files?.length) {
+      uploadFiles(e.dataTransfer.files)
+    }
+  }
+
+  const handleDragOver = (e) => {
+    e.preventDefault()
   }
 
   const handleDelete = async (imageId) => {
@@ -191,11 +414,18 @@ function ImagesModal({ room, onClose, onUpdate }) {
           <h3>Ảnh phòng — #{room.roomNumber}</h3>
           <button type="button" className="arm-modal-close" onClick={onClose}>✕</button>
         </div>
-        <div className="arm-modal-body">
-          <label className="arm-upload-zone">
+        <div className="arm-modal-body" onPaste={handlePaste}>
+          <label
+            className="arm-upload-zone"
+            style={{ margin: '6px 0 12px', padding: '14px', borderRadius: '8px', border: '2px dashed #94a3b8', cursor: 'pointer' }}
+            onDragOver={handleDragOver}
+            onDrop={handleDrop}
+          >
             <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={handleUpload} hidden />
-            <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-            <span>{uploading ? 'Đang tải lên...' : 'Nhấn để tải ảnh lên (JPG, PNG, WEBP)'}</span>
+            <svg viewBox="0 0 24 24" style={{ width: 22, height: 22 }}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <span>
+              {uploading ? '⏳ Đang tải ảnh...' : '📋 Nhấn để chọn, Dán ảnh (Ctrl + V) hoặc Kéo thả ảnh vào đây'}
+            </span>
           </label>
           {error && <p className="arm-error">{error}</p>}
           {images.length === 0 ? <p className="arm-no-images">Chưa có ảnh nào.</p> : (
@@ -237,32 +467,150 @@ function RoomModal({ room, roomTypes, onClose, onSave }) {
     roomTypeId: room?.roomTypeId || roomTypes[0]?.id || '',
     status:     room?.status || 'AVAILABLE',
   })
+  const [images, setImages] = useState(room?.images || [])
+  const [pendingFiles, setPendingFiles] = useState([])
+  const [uploading, setUploading] = useState(false)
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
+  const fileRef = useRef()
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
-  const handleSubmit = async (e) => {
-    e.preventDefault(); setError(''); setSaving(true)
+  const processFiles = async (files) => {
+    const fileList = Array.from(files).filter(f => f.type.startsWith('image/'))
+    if (!fileList.length) return
+
+    if (!isEdit) {
+      setPendingFiles(prev => [...prev, ...fileList])
+      return
+    }
+
+    setUploading(true)
+    setError('')
     try {
-      const res = await fetch(isEdit ? `${API}/${room.id}` : API, {
-        method: isEdit ? 'PUT' : 'POST', headers: authHeaders(),
-        body: JSON.stringify({ ...form, roomTypeId: Number(form.roomTypeId) }),
+      const formData = new FormData()
+      fileList.forEach(f => formData.append('files', f))
+      const res = await fetch(`${API}/${room.id}/images`, {
+        method: 'POST',
+        headers: authHeaders(true),
+        body: formData,
       })
       const data = await res.json()
+      if (!res.ok) throw new Error(data.message || 'Upload thất bại')
+      setImages(data.images || [])
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setUploading(false)
+      if (fileRef.current) fileRef.current.value = ''
+    }
+  }
+
+  const handleFileUpload = (e) => {
+    processFiles(e.target.files)
+  }
+
+  const handlePaste = (e) => {
+    const items = e.clipboardData?.items
+    if (!items) return
+    const pastedFiles = []
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf('image') !== -1) {
+        const file = items[i].getAsFile()
+        if (file) pastedFiles.push(file)
+      }
+    }
+    if (pastedFiles.length > 0) {
+      e.preventDefault()
+      processFiles(pastedFiles)
+    }
+  }
+
+  const handleDrop = (e) => {
+    e.preventDefault()
+    if (e.dataTransfer?.files?.length) {
+      processFiles(e.dataTransfer.files)
+    }
+  }
+
+  const handleDragOver = (e) => {
+    e.preventDefault()
+  }
+
+  const handleDeleteImage = async (imageId) => {
+    if (!isEdit) return
+    setError('')
+    try {
+      const res = await fetch(`${API}/${room.id}/images/${imageId}`, {
+        method: 'DELETE',
+        headers: authHeaders(),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.message || 'Lỗi xoá ảnh')
+      setImages(data.images || [])
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
+  const handleSetPrimary = async (imageId) => {
+    if (!isEdit) return
+    setError('')
+    try {
+      const res = await fetch(`${API}/${room.id}/images/${imageId}/primary`, {
+        method: 'PATCH',
+        headers: authHeaders(),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.message || 'Lỗi đổi ảnh chính')
+      setImages(data.images || [])
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setError('')
+    setSaving(true)
+    try {
+      const res = await fetch(isEdit ? `${API}/${room.id}` : API, {
+        method: isEdit ? 'PUT' : 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({ ...form, roomTypeId: Number(form.roomTypeId) }),
+      })
+      let data = await res.json()
       if (!res.ok) throw new Error(data.message || 'Lỗi')
+
+      if (!isEdit && pendingFiles.length > 0) {
+        const formData = new FormData()
+        pendingFiles.forEach(f => formData.append('files', f))
+        const uploadRes = await fetch(`${API}/${data.id}/images`, {
+          method: 'POST',
+          headers: authHeaders(true),
+          body: formData,
+        })
+        const uploadData = await uploadRes.json()
+        if (uploadRes.ok) {
+          data = uploadData
+        }
+      }
+
       onSave(data, isEdit)
-    } catch (err) { setError(err.message) }
-    finally { setSaving(false) }
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
     <div className="arm-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="arm-modal">
+      <div className="arm-modal arm-modal--wide">
         <div className="arm-modal-head">
           <h3>{isEdit ? 'Chỉnh sửa phòng' : 'Thêm phòng mới'}</h3>
           <button type="button" className="arm-modal-close" onClick={onClose}>✕</button>
         </div>
-        <form className="arm-modal-body" onSubmit={handleSubmit}>
+        <form className="arm-modal-body" onSubmit={handleSubmit} onPaste={handlePaste}>
           <label className="arm-field"><span>Số phòng</span>
             <input value={form.roomNumber} onChange={e => set('roomNumber', e.target.value)} required placeholder="101, 202..." maxLength={10} />
           </label>
@@ -276,10 +624,54 @@ function RoomModal({ room, roomTypes, onClose, onSave }) {
               {STATUS_OPTIONS.map(s => <option key={s} value={s}>{STATUS_LABEL[s]}</option>)}
             </select>
           </label>
+
+          <div className="arm-field">
+            <span>Hình ảnh phòng (Hỗ trợ Dán ảnh Ctrl + V hoặc Kéo thả)</span>
+            <label
+              className="arm-upload-zone"
+              style={{ margin: '6px 0 12px', padding: '14px', borderRadius: '8px', border: '2px dashed #94a3b8', cursor: 'pointer' }}
+              onDragOver={handleDragOver}
+              onDrop={handleDrop}
+            >
+              <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={handleFileUpload} hidden />
+              <svg viewBox="0 0 24 24" style={{ width: 22, height: 22 }}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              <span>
+                {uploading ? '⏳ Đang tải ảnh...' : '📋 Nhấn để chọn, Dán ảnh (Ctrl + V) hoặc Kéo thả ảnh vào đây'}
+              </span>
+            </label>
+
+            {images.length > 0 && (
+              <div className="arm-images-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))', gap: '8px' }}>
+                {images.map(img => (
+                  <div key={img.id} className={`arm-img-card${img.primary ? ' arm-img-card--primary' : ''}`} style={{ height: 70 }}>
+                    <img src={resolveImageUrl(img.imageUrl)} alt="" loading="lazy" />
+                    {img.primary && <span className="arm-img-primary-badge" style={{ fontSize: 9, padding: '2px 4px' }}>Chính</span>}
+                    <div className="arm-img-actions">
+                      {!img.primary && (
+                        <button type="button" title="Đặt làm ảnh chính" onClick={() => handleSetPrimary(img.id)}>
+                          <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                        </button>
+                      )}
+                      <button type="button" className="arm-img-del" title="Xoá ảnh" onClick={() => handleDeleteImage(img.id)}>
+                        <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {!isEdit && pendingFiles.length > 0 && (
+              <p style={{ fontSize: 13, color: '#15573a', margin: '4px 0 0', fontWeight: 600 }}>
+                ✓ Đã chọn {pendingFiles.length} file ảnh (sẽ được tự động tải lên sau khi tạo phòng)
+              </p>
+            )}
+          </div>
+
           {error && <p className="arm-error">{error}</p>}
           <div className="arm-modal-actions">
             <button type="button" className="arm-btn arm-btn--ghost" onClick={onClose}>Huỷ</button>
-            <button type="submit" className="arm-btn arm-btn--primary" disabled={saving}>
+            <button type="submit" className="arm-btn arm-btn--primary" disabled={saving || uploading}>
               {saving ? 'Đang lưu...' : isEdit ? 'Lưu thay đổi' : 'Tạo phòng'}
             </button>
           </div>
@@ -621,7 +1013,7 @@ function DepositPoliciesTab({ depositPolicies, setDepositPolicies, showToast }) 
 // ─────────────────────────────────────────────────────────────────────
 // Tab: Loại phòng  — với dropdown lọc giá theo gói thuê
 // ─────────────────────────────────────────────────────────────────────
-function RoomTypesTab({ roomTypes, setRoomTypes, depositPolicies, pricePolicies, priceConfigs, showToast }) {
+function RoomTypesTab({ roomTypes, setRoomTypes, depositPolicies, pricePolicies, priceConfigs, rooms = [], setRooms, showToast }) {
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   // ID của gói thuê đang được chọn để hiển thị giá ('' = hiển thị placeholder)
@@ -701,6 +1093,7 @@ function RoomTypesTab({ roomTypes, setRoomTypes, depositPolicies, pricePolicies,
         {filtered.length === 0 ? <div className="arm-empty">Không có loại phòng nào.</div> : (
           <table className="arm-table">
             <thead><tr>
+              <th>Ảnh đại diện</th>
               <th>Tên loại phòng</th>
               <th>
                 {priceColLabel}
@@ -714,8 +1107,15 @@ function RoomTypesTab({ roomTypes, setRoomTypes, depositPolicies, pricePolicies,
             <tbody>
               {paginated.map(t => {
                 const prices = getPriceForType(t.id)
+                const typeRoom = rooms.find(r => r.roomTypeId === t.id && r.images && r.images.length > 0) || rooms.find(r => r.roomTypeId === t.id)
+                const thumb = typeRoom ? primaryImage(typeRoom.images) : null
+                const thumbUrl = thumb ? resolveImageUrl(thumb.imageUrl) : getFallbackRoomImage(t.name, t.id)
+
                 return (
                   <tr key={t.id}>
+                    <td>
+                      <img src={thumbUrl} alt={t.name} className="arm-thumb" style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 6 }} />
+                    </td>
                     <td className="arm-fw">{t.name}</td>
                     <td>
                       {!selectedPolicyId ? (
@@ -770,16 +1170,23 @@ function RoomTypesTab({ roomTypes, setRoomTypes, depositPolicies, pricePolicies,
       )}
 
       {modalType !== undefined && (
-        <RoomTypeModal roomType={modalType} depositPolicies={depositPolicies} onClose={() => setModalType(undefined)}
-          onSave={(saved, isEdit) => {
+        <RoomTypeModal roomType={modalType} depositPolicies={depositPolicies} rooms={rooms} onClose={() => setModalType(undefined)}
+          onSave={async (saved, isEdit) => {
             setRoomTypes(prev => isEdit ? prev.map(t => t.id===saved.id ? { ...saved, roomCount:t.roomCount } : t) : [...prev, saved])
             setModalType(undefined)
             showToast(isEdit ? 'Đã cập nhật loại phòng' : 'Đã tạo loại phòng mới')
+            try {
+              const res = await fetch(API, { headers: authHeaders() })
+              if (res.ok) {
+                const rms = await res.json()
+                if (Array.isArray(rms) && setRooms) setRooms(rms)
+              }
+            } catch {}
           }} />
       )}
       {deleteTarget && (
         <ConfirmDeleteModal title="Xoá loại phòng"
-          desc={`Xoá loại phòng "${deleteTarget.name}"? Chỉ xoá được khi không còn phòng vật lý nào.`}
+          desc={`Xoá loại phòng "${deleteTarget.name}" và tất cả phòng thuộc loại phòng này?`}
           onClose={() => setDeleteTarget(null)} onConfirm={handleDelete} loading={deleting} />
       )}
     </>
@@ -1179,8 +1586,8 @@ function AdminRoomsPage({ activePage = 'rooms' }) {
     <AdminLayout activePage={activePage}>
       <div className="arm-header">
         <div>
-          <h1>Quản lí Phòng</h1>
-          <p>{roomTypes.length} loại phòng · {rooms.length} phòng vật lý · {pricePolicies.length} gói thuê</p>
+          <h1>Quản lý Phòng / Nhà</h1>
+          <p>{roomTypes.length} loại phòng / nhà · {rooms.length} phòng vật lý · {pricePolicies.length} gói thuê</p>
         </div>
       </div>
 
@@ -1209,6 +1616,7 @@ function AdminRoomsPage({ activePage = 'rooms' }) {
           depositPolicies={depositPolicies}
           pricePolicies={pricePolicies}
           priceConfigs={priceConfigs}
+          rooms={rooms} setRooms={setRooms}
           showToast={showToast} />
       ) : tab === 'rooms' ? (
         <RoomsTab rooms={rooms} setRooms={setRooms} setRoomTypes={setRoomTypes} roomTypes={roomTypes} showToast={showToast} />

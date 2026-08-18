@@ -1,0 +1,66 @@
+@startuml
+actor HousekeepingStaff
+boundary "ReportMaintenancePage" as Page
+control "MaintenanceController" as Controller
+control "MaintenanceServiceImpl" as Service
+entity "RoomRepository" as RoomRepo
+entity "MaintenanceRequestRepository" as MaintenanceRepo
+database "Database" as Database
+
+autonumber
+
+HousekeepingStaff -> Page : Select room, describe facility damage/malfunction & click "Submit Request"
+activate Page
+
+Page -> Controller : POST /api/maintenance/requests (MaintenanceRequest) [Bearer Token]
+activate Controller
+
+Controller -> Service : submitMaintenanceRequest(request)
+activate Service
+
+Service -> RoomRepo : findById(request.roomId())
+activate RoomRepo
+RoomRepo -> Database : Query Room details
+activate Database
+Database --> RoomRepo : Return Room (or empty)
+deactivate Database
+RoomRepo --> Service : Return Room details
+deactivate RoomRepo
+
+alt Room is currently occupied by guests
+    Service --> Controller : Throw IllegalStateException("Không thể bảo trì phòng đang có khách ở")
+    Controller --> Page : Return HTTP 400 Bad Request
+    Page --> HousekeepingStaff : Display occupied room warning dialog
+else Room is vacant / ready
+    Service -> Service : Build MaintenanceRequest entity
+
+    Service -> MaintenanceRepo : save(MaintenanceRequest)
+    activate MaintenanceRepo
+    MaintenanceRepo -> Database : Insert maintenance request logs into DB
+    activate Database
+    Database --> MaintenanceRepo : Return saved MaintenanceRequest
+    deactivate Database
+    MaintenanceRepo --> Service : Return MaintenanceRequest
+    deactivate MaintenanceRepo
+
+    Service -> Service : Update room status to 'MAINTENANCE'
+
+    Service -> RoomRepo : save(Room)
+    activate RoomRepo
+    RoomRepo -> Database : Save room status update in DB
+    activate Database
+    Database --> RoomRepo : Return updated Room
+    deactivate Database
+    RoomRepo --> Service : Return Room
+    deactivate RoomRepo
+
+    Service --> Controller : Return success confirmation
+    deactivate Service
+
+    Controller --> Page : Return HTTP 201 Created (Success status)
+    deactivate Controller
+
+    Page --> HousekeepingStaff : Display maintenance ticket created & redirect to dashboard
+    deactivate Page
+end
+@endum

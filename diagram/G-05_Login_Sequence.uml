@@ -1,0 +1,59 @@
+@startuml
+actor Guest
+boundary "LoginPage" as Page
+control "AuthController" as Controller
+control "AuthServiceImpl" as Service
+entity "AccountRepository" as AccountRepo
+entity "CustomerRepository" as CustomerRepo
+database "Database" as Database
+
+autonumber
+
+Guest -> Page : Enter email, password and click "Login"
+activate Page
+
+Page -> Controller : POST /api/auth/login (LoginRequest)
+activate Controller
+
+Controller -> Service : login(request)
+activate Service
+
+Service -> AccountRepo : findByEmail(email)
+activate AccountRepo
+AccountRepo -> Database : Query Account by email
+activate Database
+Database --> AccountRepo : Return Account
+deactivate Database
+AccountRepo --> Service : Return Account
+deactivate AccountRepo
+
+alt Account not found OR Password incorrect
+    Service --> Controller : Throw BadCredentialsException
+    Controller --> Page : Return HTTP 401 Unauthorized
+    Page --> Guest : Display "Email hoặc mật khẩu không đúng"
+else Account is inactive / locked
+    Service --> Controller : Throw DisabledException
+    Controller --> Page : Return HTTP 403 Forbidden
+    Page --> Guest : Display "Tài khoản chưa kích hoạt hoặc bị khóa"
+else Account active & authenticated
+    Service -> CustomerRepo : findCustomerByAccountId(accountId)
+    activate CustomerRepo
+    CustomerRepo -> Database : Query Customer profile details
+    activate Database
+    Database --> CustomerRepo : Return Customer
+    deactivate Database
+    CustomerRepo --> Service : Return Customer
+    deactivate CustomerRepo
+
+    Service -> Service : generateToken(account)
+    
+    Service --> Controller : Return AuthResponse (jwtToken, userResponse)
+    deactivate Service
+
+    Controller --> Page : Return HTTP 200 OK (AuthResponse)
+    deactivate Controller
+
+    Page --> Guest : Store JWT token & redirect to Homepage
+    deactivate Page
+end
+@endum
