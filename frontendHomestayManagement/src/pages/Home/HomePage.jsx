@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import HomeSearch from '../../components/HomeSearch/HomeSearch'
 import { getStoredUser, getStoredToken, logout } from '../../services/authService'
+import { houseTypeName } from '../../utils/houseType'
 import { resolveImageUrl } from '../../utils/imageUrl'
 import './HomePage.css'
 
@@ -160,7 +161,7 @@ function RoomCard({ room, criteria }) {
     }
   }
 
-  const title = room.name || room.roomTypeName || 'Loại phòng'
+  const title = houseTypeName(room)
   const description = room.description || 'Không gian nghỉ dưỡng tiện nghi, phù hợp cho kỳ lưu trú của bạn.'
   const hasRotatingPrice = Number(room.weekdayPrice || 0) > 0 && Number(room.weekendPrice || 0) > 0
   const price = hasRotatingPrice
@@ -254,14 +255,14 @@ function SearchResultsSection({ criteria, rooms, loading, error, maxPrice, onMax
       <div className="home-section-inner">
         <div className="home-section-head">
           <div>
-            <h2>Loại phòng còn trống</h2>
+            <h2>Loại nhà còn trống</h2>
             <p>
               {criteria
                 ? `Từ ${criteria.checkInDate} đến ${criteria.checkOutDate} · ${criteria.adults} người lớn · ${criteria.rooms} phòng`
-                : 'Kết quả tìm kiếm theo loại phòng.'}
+                : 'Kết quả tìm kiếm theo loại nhà.'}
             </p>
           </div>
-          <span className="search-result-count">{visibleRooms.length} loại phòng</span>
+          <span className="search-result-count">{visibleRooms.length} loại nhà</span>
         </div>
 
         <div className="search-results-layout">
@@ -286,7 +287,7 @@ function SearchResultsSection({ criteria, rooms, loading, error, maxPrice, onMax
 
           <div className="search-results-content">
             {loading ? (
-              <div className="rooms-loading">Đang tìm loại phòng còn trống...</div>
+              <div className="rooms-loading">Đang tìm loại nhà còn trống...</div>
             ) : error ? (
               <div className="rooms-loading rooms-loading--error">{error}</div>
             ) : visibleRooms.length ? (
@@ -294,7 +295,7 @@ function SearchResultsSection({ criteria, rooms, loading, error, maxPrice, onMax
                 {visibleRooms.map(room => <RoomCard key={room.roomTypeId || room.id} room={room} criteria={criteria} />)}
               </div>
             ) : (
-              <div className="rooms-loading">Không có loại phòng đủ số lượng và sức chứa trong thời gian này.</div>
+              <div className="rooms-loading">Không có loại nhà đủ số lượng và sức chứa trong thời gian này.</div>
             )}
           </div>
         </div>
@@ -311,10 +312,10 @@ function RoomsSection({ rooms, loading }) {
       <div className="home-section-inner">
         <div className="home-section-head">
           <div>
-            <h2 id="rooms-title">Phòng nổi bật</h2>
+            <h2 id="rooms-title">Loại nhà nổi bật</h2>
             <p>Không gian nghỉ dưỡng được chọn lọc dành cho bạn.</p>
           </div>
-          <a href="/rooms" className="home-view-all">Xem tất cả phòng →</a>
+          <a href="/rooms" className="home-view-all">Xem tất cả loại nhà →</a>
         </div>
 
         {loading ? (

@@ -37,4 +37,19 @@ public interface CheckInRecordRepository extends JpaRepository<CheckInRecord, Lo
             where bd.id in :bookingDetailIds
             """)
     List<CheckInRecord> findByBookingDetailIdsForAdmin(@Param("bookingDetailIds") Collection<Long> bookingDetailIds);
+
+    @Query("""
+            select cr from CheckInRecord cr
+            join fetch cr.bookingDetail bd
+            join fetch bd.booking b
+            left join fetch bd.room r
+            left join fetch bd.roomType rt
+            where cr.actualCheckIn >= :startInclusive
+              and cr.actualCheckIn < :endExclusive
+            order by cr.actualCheckIn asc, b.bookingCode asc, r.roomNumber asc, cr.id asc
+            """)
+    List<CheckInRecord> findByActualCheckInRangeForTemporaryResidence(
+            @Param("startInclusive") java.time.LocalDateTime startInclusive,
+            @Param("endExclusive") java.time.LocalDateTime endExclusive
+    );
 }

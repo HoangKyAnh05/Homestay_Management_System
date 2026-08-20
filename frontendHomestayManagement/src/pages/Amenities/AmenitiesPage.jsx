@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { getStoredToken, getStoredUser, logout } from '../../services/authService'
+import { houseTypeName } from '../../utils/houseType'
 import { resolveImageUrl } from '../../utils/imageUrl'
 import '../Home/HomePage.css'
 import './AmenitiesPage.css'
@@ -100,7 +101,7 @@ const amenities = [
     categoryLabel: 'Trong phòng',
     price: 0,
     schedule: 'Phục vụ 24/7',
-    location: 'Tất cả hạng phòng',
+    location: 'Tất cả loại nhà',
     description: 'Hệ thống điều hòa và nước nóng riêng, được kiểm tra trước mỗi lượt khách nhận phòng.',
     image: '/home_5/image_2.jpg',
     icon: 'temperature',
@@ -510,7 +511,7 @@ function AmenitiesPage() {
                   {eligibleBookings.map(booking => (
                     <label className={String(booking.bookingId) === selectedBookingId ? 'selected' : ''} key={booking.bookingId}>
                       <input type="radio" name="booking" value={booking.bookingId} checked={String(booking.bookingId) === selectedBookingId} onChange={event => setSelectedBookingId(event.target.value)} />
-                      <span><strong>Booking {bookingDisplay(booking)} · {booking.roomTypeName}</strong><small>{formatDateTime(booking.checkInTarget)} → {formatDateTime(booking.checkOutTarget)} · {booking.roomCount} phòng</small></span>
+                      <span><strong>Booking {bookingDisplay(booking)} · {houseTypeName(booking)}</strong><small>{formatDateTime(booking.checkInTarget)} → {formatDateTime(booking.checkOutTarget)} · {booking.roomCount} loại nhà</small></span>
                       <b>{booking.status}</b>
                     </label>
                   ))}

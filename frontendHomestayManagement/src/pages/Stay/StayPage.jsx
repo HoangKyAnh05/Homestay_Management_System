@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { getStoredToken, getStoredUser, logout } from '../../services/authService'
+import { houseTypeName } from '../../utils/houseType'
 import { resolveImageUrl } from '../../utils/imageUrl'
 import './StayPage.css'
 
@@ -235,7 +236,7 @@ function StayPage() {
                   <div className="stay-room-card-content">
                     <div className="stay-room-card-top">
                       <span><i /> ĐANG LƯU TRÚ</span>
-                      <b>{selectedStay.roomTypeName}</b>
+                      <b>{houseTypeName(selectedStay)}</b>
                     </div>
                     <div className="stay-room-title">
                       <small>PHÒNG CỦA BẠN</small>

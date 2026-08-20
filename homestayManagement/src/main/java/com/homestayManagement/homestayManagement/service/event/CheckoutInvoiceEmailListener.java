@@ -16,6 +16,7 @@ import org.springframework.transaction.event.TransactionalEventListener;
 import org.springframework.web.util.HtmlUtils;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.text.NumberFormat;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
@@ -68,7 +69,11 @@ public class CheckoutInvoiceEmailListener {
                 Số hóa đơn: %s
                 Booking: %s
                 Người bán: %s - %s - %s
-                Người mua: %s - %s
+                Điện thoại: %s
+                Website: %s
+                Số tài khoản: %s - Ngân hàng: %s
+                Họ tên người mua hàng: %s
+                Email người mua: %s
                 Thời điểm lập hóa đơn: %s
                 Mã cơ quan thuế/dữ liệu truy xuất: %s
 
@@ -76,8 +81,9 @@ public class CheckoutInvoiceEmailListener {
                 %s
 
                 Giá chưa thuế: %s
-                VAT 8%%: %s
+                VAT %s: %s
                 Tổng thanh toán đã bao gồm VAT: %s
+                Số tiền viết bằng chữ: %s
 
                 Trân trọng,
                 Home Stays
@@ -88,14 +94,20 @@ public class CheckoutInvoiceEmailListener {
                 invoice.sellerName(),
                 invoice.sellerAddress(),
                 invoice.sellerTaxCode(),
+                defaultText(invoice.sellerPhone(), "Chưa cấu hình"),
+                defaultText(invoice.sellerWebsite(), "Chưa cấu hình"),
+                defaultText(invoice.sellerAccountNo(), "Chưa cấu hình"),
+                defaultText(invoice.sellerBankName(), "Chưa cấu hình"),
                 invoice.buyerName(),
                 invoice.buyerEmail(),
                 invoice.issuedAt() != null ? invoice.issuedAt().format(DATE_TIME_FORMAT) : "",
                 invoice.taxAuthorityCode(),
                 buildPlainLineItems(invoice),
                 money(invoice.taxableAmount()),
+                percent(invoice.vatRate()),
                 money(invoice.vatAmount()),
-                money(invoice.totalAmount())
+                money(invoice.totalAmount()),
+                amountInWords(invoice.totalAmount())
         );
     }
 
@@ -108,96 +120,115 @@ public class CheckoutInvoiceEmailListener {
                   <meta name="viewport" content="width=device-width,initial-scale=1">
                   <title>%s</title>
                 </head>
-                <body style="margin:0;padding:0;background:#eef2f0;font-family:Arial,'Helvetica Neue',sans-serif;color:#17211d;">
-                  <table role="presentation" width="100%%" cellspacing="0" cellpadding="0" style="background:#eef2f0;">
+                <body style="margin:0;padding:0;background:#e8e8e8;font-family:'Times New Roman',Times,serif;color:#111111;">
+                  <table role="presentation" width="100%%" cellspacing="0" cellpadding="0" style="background:#e8e8e8;">
                     <tr>
-                      <td align="center" style="padding:30px 12px;">
-                        <table role="presentation" width="100%%" cellspacing="0" cellpadding="0" style="max-width:760px;background:#ffffff;border:1px solid #d8e0db;border-radius:18px;overflow:hidden;box-shadow:0 18px 50px rgba(20,42,34,.12);">
+                      <td align="center" style="padding:24px 10px;">
+                        <table role="presentation" width="100%%" cellspacing="0" cellpadding="0" style="max-width:820px;background:#ffffff;border:3px solid #111111;">
                           <tr>
-                            <td style="padding:28px 34px;background:#0f4a3a;color:#ffffff;">
+                            <td style="padding:14px 20px 10px;border-bottom:3px solid #111111;">
                               <table role="presentation" width="100%%" cellspacing="0" cellpadding="0">
                                 <tr>
-                                  <td style="vertical-align:top;">
-                                    <div style="font-family:Georgia,serif;font-size:26px;font-weight:700;">Home Stays</div>
-                                    <div style="margin-top:8px;font-size:12px;letter-spacing:1.8px;font-weight:700;color:#f1c66d;">HÓA ĐƠN CHECKOUT</div>
+                                  <td style="width:190px;vertical-align:middle;text-align:center;">
+                                    <div style="font-family:Arial,'Helvetica Neue',sans-serif;font-size:36px;font-weight:800;color:#d71920;letter-spacing:.5px;">HOME<br>STAY</div>
                                   </td>
-                                  <td align="right" style="vertical-align:top;font-size:13px;line-height:1.7;color:#d7eee5;">
-                                    Ký hiệu: <strong style="color:#ffffff;">%s</strong><br>
-                                    Mẫu số: <strong style="color:#ffffff;">%s</strong><br>
-                                    Số: <strong style="color:#ffffff;">%s</strong>
+                                  <td style="vertical-align:top;font-size:15px;line-height:1.35;">
+                                    <div style="font-size:21px;font-weight:800;text-transform:uppercase;">%s</div>
+                                    <div>Mã số thuế <em>(Tax code)</em>: <strong>%s</strong></div>
+                                    <div>Địa chỉ <em>(Address)</em>: %s</div>
+                                    <div>Điện thoại <em>(Tel)</em>: %s</div>
+                                    <div>Website: %s &nbsp;&nbsp; Email: %s</div>
+                                    <div>Số tài khoản <em>(Account No.)</em>: %s &nbsp;&nbsp; Tại %s</div>
                                   </td>
                                 </tr>
                               </table>
-                              <h1 style="margin:22px 0 0;font-family:Georgia,serif;font-size:31px;line-height:1.2;">%s</h1>
                             </td>
                           </tr>
                           <tr>
-                            <td style="padding:24px 34px 10px;">
+                            <td style="padding:16px 20px 8px;">
                               <table role="presentation" width="100%%" cellspacing="0" cellpadding="0">
                                 <tr>
-                                  <td style="width:50%%;padding:16px;border:1px solid #dfe7e2;border-radius:12px;vertical-align:top;">
-                                    <div style="font-size:11px;letter-spacing:1px;font-weight:700;color:#7c8a84;">NGƯỜI BÁN</div>
-                                    <div style="margin-top:8px;font-size:15px;font-weight:700;color:#143d31;">%s</div>
-                                    <div style="margin-top:6px;font-size:13px;line-height:1.55;color:#5e6d66;">%s<br>MST: %s</div>
+                                  <td style="width:68%%;text-align:center;vertical-align:top;">
+                                    <div style="font-size:25px;font-weight:800;">HÓA ĐƠN GIÁ TRỊ GIA TĂNG</div>
+                                    <div style="font-size:18px;font-weight:700;font-style:italic;">(VAT INVOICE)</div>
+                                    <div style="margin-top:4px;font-size:17px;font-weight:700;">Bản thể hiện của hóa đơn điện tử</div>
+                                    <div style="font-size:15px;font-style:italic;">(Electronic invoice display)</div>
+                                    <div style="margin-top:8px;font-size:15px;">Ngày <em>(date)</em> %s tháng <em>(month)</em> %s năm <em>(year)</em> %s</div>
                                   </td>
-                                  <td style="width:12px;"></td>
-                                  <td style="width:50%%;padding:16px;border:1px solid #dfe7e2;border-radius:12px;vertical-align:top;">
-                                    <div style="font-size:11px;letter-spacing:1px;font-weight:700;color:#7c8a84;">NGƯỜI MUA</div>
-                                    <div style="margin-top:8px;font-size:15px;font-weight:700;color:#143d31;">%s</div>
-                                    <div style="margin-top:6px;font-size:13px;line-height:1.55;color:#5e6d66;">%s<br>%s</div>
+                                  <td style="width:32%%;vertical-align:top;font-size:15px;line-height:1.45;">
+                                    <div>Mẫu số <em>(Form)</em>: <strong>%s</strong></div>
+                                    <div>Ký hiệu <em>(Serial)</em>: <strong>%s</strong></div>
+                                    <div>Số <em>(Invoice No)</em>: <strong>%s</strong></div>
                                   </td>
                                 </tr>
                               </table>
                             </td>
                           </tr>
                           <tr>
-                            <td style="padding:8px 34px 18px;">
-                              <table role="presentation" width="100%%" cellspacing="0" cellpadding="0" style="background:#f7faf8;border:1px solid #dfe7e2;border-radius:12px;">
-                                <tr>
-                                  <td style="padding:14px 16px;font-size:13px;color:#5e6d66;">Booking<br><strong style="font-size:15px;color:#143d31;">%s</strong></td>
-                                  <td style="padding:14px 16px;font-size:13px;color:#5e6d66;">Thời điểm lập<br><strong style="font-size:15px;color:#143d31;">%s</strong></td>
-                                  <td style="padding:14px 16px;font-size:13px;color:#5e6d66;">Mã cơ quan thuế / truy xuất<br><strong style="font-size:15px;color:#143d31;">%s</strong></td>
-                                </tr>
-                              </table>
+                            <td style="padding:8px 20px 10px;font-size:15px;line-height:1.45;">
+                              <div>Họ tên người mua hàng <em>(Attention)</em>: <strong>%s</strong></div>
+                              <div>Email: %s</div>
+                              <div>Địa chỉ <em>(Address)</em>: %s</div>
+                              <div>Mã booking <em>(Booking code)</em>: <strong>%s</strong> &nbsp;&nbsp; Phương thức thanh toán <em>(Payment method)</em>: TM/CK</div>
+                              <div>Ghi chú <em>(Note)</em>: Hóa đơn thuê homestay, bao gồm phòng và dịch vụ đã sử dụng.</div>
                             </td>
                           </tr>
                           <tr>
-                            <td style="padding:0 34px 20px;">
-                              <table role="presentation" width="100%%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;border:1px solid #dfe7e2;border-radius:12px;overflow:hidden;">
+                            <td style="padding:0 20px 0;">
+                              <table role="presentation" width="100%%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;border:2px solid #111111;font-size:15px;">
                                 <thead>
-                                  <tr style="background:#edf4f0;color:#143d31;">
-                                    <th align="left" style="padding:12px 10px;font-size:12px;">Hàng hóa, dịch vụ</th>
-                                    <th align="center" style="padding:12px 8px;font-size:12px;">SL</th>
-                                    <th align="right" style="padding:12px 8px;font-size:12px;">Đơn giá</th>
-                                    <th align="right" style="padding:12px 10px;font-size:12px;">Thành tiền</th>
+                                  <tr>
+                                    <th align="center" style="width:52px;padding:8px 6px;border:1px solid #111111;font-weight:800;">STT<br><em>(No.)</em></th>
+                                    <th align="center" style="padding:8px 8px;border:1px solid #111111;font-weight:800;">Tên hàng hóa, dịch vụ<br><em>(Description)</em></th>
+                                    <th align="center" style="width:82px;padding:8px 6px;border:1px solid #111111;font-weight:800;">Đơn vị tính<br><em>(Unit)</em></th>
+                                    <th align="center" style="width:80px;padding:8px 6px;border:1px solid #111111;font-weight:800;">Số lượng<br><em>(Quantity)</em></th>
+                                    <th align="center" style="width:110px;padding:8px 6px;border:1px solid #111111;font-weight:800;">Đơn giá<br><em>(Unit price)</em></th>
+                                    <th align="center" style="width:120px;padding:8px 6px;border:1px solid #111111;font-weight:800;">Thành tiền<br><em>(Amount)</em></th>
                                   </tr>
                                 </thead>
                                 <tbody>
                                   %s
+                                  %s
+                                  <tr>
+                                    <td colspan="5" align="right" style="padding:8px 10px;border:1px solid #111111;font-weight:800;">Cộng tiền hàng <em>(Sub total)</em>:</td>
+                                    <td align="right" style="padding:8px 10px;border:1px solid #111111;">%s</td>
+                                  </tr>
+                                  <tr>
+                                    <td colspan="3" style="padding:8px 10px;border:1px solid #111111;font-weight:800;">Thuế suất GTGT <em>(VAT rate)</em>: %s</td>
+                                    <td colspan="2" align="right" style="padding:8px 10px;border:1px solid #111111;font-weight:800;">Tiền thuế GTGT <em>(VAT amount)</em>:</td>
+                                    <td align="right" style="padding:8px 10px;border:1px solid #111111;">%s</td>
+                                  </tr>
+                                  <tr>
+                                    <td colspan="5" align="right" style="padding:8px 10px;border:1px solid #111111;font-weight:800;">Tổng cộng tiền thanh toán<br><em>(Total amount)</em>:</td>
+                                    <td align="right" style="padding:8px 10px;border:1px solid #111111;">%s</td>
+                                  </tr>
+                                  <tr>
+                                    <td colspan="6" style="padding:8px 10px;border:1px solid #111111;"><strong>Số tiền viết bằng chữ <em>(Amount in words)</em>:</strong> %s</td>
+                                  </tr>
                                 </tbody>
                               </table>
                             </td>
                           </tr>
                           <tr>
-                            <td style="padding:0 34px 30px;">
+                            <td style="padding:24px 20px 26px;">
                               <table role="presentation" width="100%%" cellspacing="0" cellpadding="0">
                                 <tr>
-                                  <td style="width:52%%;padding:16px;background:#fff8e8;border:1px solid #f0dfb9;border-radius:12px;color:#6c5525;font-size:12px;line-height:1.65;vertical-align:top;">
-                                    Hóa đơn đã bao gồm toàn bộ phòng trong booking, dịch vụ đặt trước, dịch vụ phát sinh, mini-bar và các khoản phí tại thời điểm checkout.
+                                  <td align="center" style="width:50%%;font-size:17px;font-weight:800;vertical-align:top;">
+                                    Người mua hàng <em>(Client)</em>
                                   </td>
-                                  <td style="width:16px;"></td>
-                                  <td style="padding:0;vertical-align:top;">
-                                    <table role="presentation" width="100%%" cellspacing="0" cellpadding="0" style="font-size:14px;color:#4e5f57;">
-                                      <tr><td style="padding:7px 0;">Tiền phòng</td><td align="right" style="padding:7px 0;font-weight:700;">%s</td></tr>
-                                      <tr><td style="padding:7px 0;">Dịch vụ</td><td align="right" style="padding:7px 0;font-weight:700;">%s</td></tr>
-                                      <tr><td style="padding:7px 0;">Phí phát sinh</td><td align="right" style="padding:7px 0;font-weight:700;">%s</td></tr>
-                                      <tr><td style="padding:10px 0;border-top:1px solid #dfe7e2;">Giá bán chưa thuế GTGT</td><td align="right" style="padding:10px 0;border-top:1px solid #dfe7e2;font-weight:700;">%s</td></tr>
-                                      <tr><td style="padding:7px 0;">Thuế GTGT 8%%</td><td align="right" style="padding:7px 0;font-weight:700;">%s</td></tr>
-                                      <tr><td style="padding:14px 0 0;font-size:16px;font-weight:700;color:#143d31;">Tổng thanh toán</td><td align="right" style="padding:14px 0 0;font-size:19px;font-weight:800;color:#0f4a3a;">%s</td></tr>
-                                    </table>
+                                  <td align="center" style="width:50%%;font-size:17px;font-weight:800;vertical-align:top;">
+                                    Người bán hàng <em>(Seller)</em>
+                                    <div style="margin-top:16px;font-size:15px;font-weight:400;color:#555555;">Signature valid <span style="color:#22863a;font-size:20px;">✓</span></div>
+                                    <div style="margin-top:6px;font-size:14px;font-weight:400;color:#c00000;">Ký bởi %s</div>
+                                    <div style="font-size:14px;font-weight:400;color:#c00000;">Ký ngày %s</div>
                                   </td>
                                 </tr>
                               </table>
+                            </td>
+                          </tr>
+                          <tr>
+                            <td align="center" style="padding:10px 20px 14px;border-top:1px dotted #111111;font-size:14px;line-height:1.45;font-style:italic;">
+                              Tra cứu hóa đơn điện tử tại Website: %s . Mã số bí mật: %s%s
                             </td>
                           </tr>
                         </table>
@@ -208,55 +239,74 @@ public class CheckoutInvoiceEmailListener {
                 </html>
                 """.formatted(
                 escape(invoice.invoiceName()),
-                escape(invoice.invoiceSymbol()),
-                escape(invoice.invoiceTemplateSymbol()),
-                escape(invoice.invoiceNumber()),
-                escape(invoice.invoiceName()),
                 escape(invoice.sellerName()),
-                escape(invoice.sellerAddress()),
                 escape(invoice.sellerTaxCode()),
+                escape(invoice.sellerAddress()),
+                escape(defaultText(invoice.sellerPhone(), "Chưa cấu hình")),
+                escape(defaultText(invoice.sellerWebsite(), "Chưa cấu hình")),
+                escape(mailFrom),
+                escape(defaultText(invoice.sellerAccountNo(), "Chưa cấu hình")),
+                escape(defaultText(invoice.sellerBankName(), "Chưa cấu hình")),
+                issuedDay(invoice),
+                issuedMonth(invoice),
+                issuedYear(invoice),
+                escape(invoice.invoiceTemplateSymbol()),
+                escape(invoice.invoiceSymbol()),
+                escape(invoice.invoiceNumber()),
                 escape(invoice.buyerName()),
                 escape(invoice.buyerEmail()),
                 escape(defaultText(invoice.buyerAddress(), "Chưa cung cấp địa chỉ")),
                 escape(invoice.bookingCode()),
-                invoice.issuedAt() != null ? escape(invoice.issuedAt().format(DATE_TIME_FORMAT)) : "",
-                escape(invoice.taxAuthorityCode()),
                 buildLineRows(invoice),
-                money(invoice.roomCharge()),
-                money(invoice.serviceCharge()),
-                money(invoice.penaltyCharge()),
+                buildEmptyRows(invoice.lines().size()),
                 money(invoice.taxableAmount()),
+                percent(invoice.vatRate()),
                 money(invoice.vatAmount()),
-                money(invoice.totalAmount())
+                money(invoice.totalAmount()),
+                escape(amountInWords(invoice.totalAmount())),
+                escape(invoice.sellerName()),
+                issuedDate(invoice),
+                escape(defaultText(invoice.sellerWebsite(), "")),
+                escape(invoice.invoiceSymbol()),
+                escape(invoice.invoiceNumber())
         );
     }
 
     private String buildLineRows(CheckoutInvoiceEmailSnapshot invoice) {
         StringBuilder rows = new StringBuilder();
-        int index = 0;
+        int index = 1;
         for (CheckoutInvoiceEmailLine line : invoice.lines()) {
-            String background = index++ % 2 == 0 ? "#ffffff" : "#fbfdfc";
             rows.append("""
-                    <tr style="background:%s;">
-                      <td style="padding:12px 10px;border-top:1px solid #e7ede9;vertical-align:top;">
-                        <div style="font-size:13px;font-weight:700;color:#17211d;">%s</div>
-                        <div style="margin-top:4px;font-size:11px;color:#74827b;">%s · %s</div>
+                    <tr>
+                      <td align="center" style="padding:7px 6px;border:1px solid #111111;">%d</td>
+                      <td style="padding:7px 8px;border:1px solid #111111;vertical-align:top;">
+                        <div>%s</div>
+                        <div style="font-size:12px;color:#444444;font-style:italic;">%s - %s</div>
                       </td>
-                      <td align="center" style="padding:12px 8px;border-top:1px solid #e7ede9;font-size:13px;">%d</td>
-                      <td align="right" style="padding:12px 8px;border-top:1px solid #e7ede9;font-size:13px;">%s</td>
-                      <td align="right" style="padding:12px 10px;border-top:1px solid #e7ede9;font-size:13px;font-weight:700;">%s</td>
+                      <td align="center" style="padding:7px 6px;border:1px solid #111111;">%s</td>
+                      <td align="right" style="padding:7px 6px;border:1px solid #111111;">%d</td>
+                      <td align="right" style="padding:7px 6px;border:1px solid #111111;">%s</td>
+                      <td align="right" style="padding:7px 8px;border:1px solid #111111;">%s</td>
                     </tr>
                     """.formatted(
-                    background,
+                    index++,
                     escape(line.name()),
                     escape(line.category()),
                     escape(defaultText(line.description(), "Theo booking")),
+                    escape(defaultText(line.unit(), "Lần")),
                     line.quantity(),
                     money(line.unitPrice()),
                     money(line.totalPrice())
             ));
         }
         return rows.toString();
+    }
+
+    private String buildEmptyRows(int itemCount) {
+        int emptyCount = Math.max(0, 8 - itemCount);
+        return """
+                <tr><td colspan="6" style="height:24px;border:1px solid #111111;">&nbsp;</td></tr>
+                """.repeat(emptyCount);
     }
 
     private String buildPlainLineItems(CheckoutInvoiceEmailSnapshot invoice) {
@@ -268,6 +318,8 @@ public class CheckoutInvoiceEmailListener {
                     .append(defaultText(line.category(), "Hàng hóa, dịch vụ"))
                     .append(" | ")
                     .append(defaultText(line.description(), "Theo booking"))
+                    .append(" | ĐVT: ")
+                    .append(defaultText(line.unit(), "Lần"))
                     .append(" | SL: ")
                     .append(line.quantity())
                     .append(" | Đơn giá: ")
@@ -284,6 +336,106 @@ public class CheckoutInvoiceEmailListener {
         format.setMaximumFractionDigits(0);
         format.setMinimumFractionDigits(0);
         return format.format(value == null ? BigDecimal.ZERO : value);
+    }
+
+    private String percent(BigDecimal value) {
+        BigDecimal percentValue = (value == null ? BigDecimal.ZERO : value).multiply(new BigDecimal("100"));
+        return percentValue.stripTrailingZeros().toPlainString() + " %";
+    }
+
+    private String amountInWords(BigDecimal value) {
+        long amount = (value == null ? BigDecimal.ZERO : value)
+                .setScale(0, RoundingMode.HALF_UP)
+                .longValue();
+        if (amount == 0) {
+            return "Không đồng chẵn.";
+        }
+        return capitalize(readNumber(amount)) + " đồng chẵn.";
+    }
+
+    private String readNumber(long number) {
+        String[] units = {"", " nghìn", " triệu", " tỷ"};
+        StringBuilder result = new StringBuilder();
+        int unitIndex = 0;
+        boolean hasHigher = false;
+        while (number > 0 && unitIndex < units.length) {
+            int group = (int) (number % 1000);
+            if (group > 0) {
+                String groupText = readThreeDigits(group, hasHigher);
+                result.insert(0, groupText + units[unitIndex] + (result.isEmpty() ? "" : " "));
+                hasHigher = true;
+            }
+            number /= 1000;
+            unitIndex++;
+        }
+        if (number > 0) {
+            result.insert(0, readNumber(number) + " tỷ ");
+        }
+        return result.toString().trim();
+    }
+
+    private String readThreeDigits(int number, boolean full) {
+        String[] digitWords = {"không", "một", "hai", "ba", "bốn", "năm", "sáu", "bảy", "tám", "chín"};
+        int hundreds = number / 100;
+        int tens = (number % 100) / 10;
+        int ones = number % 10;
+        StringBuilder text = new StringBuilder();
+        if (hundreds > 0 || full) {
+            text.append(digitWords[hundreds]).append(" trăm");
+            if (tens == 0 && ones > 0) {
+                text.append(" linh");
+            }
+        }
+        if (tens > 1) {
+            appendSpace(text).append(digitWords[tens]).append(" mươi");
+            if (ones == 1) {
+                text.append(" mốt");
+            } else if (ones == 5) {
+                text.append(" lăm");
+            } else if (ones > 0) {
+                text.append(" ").append(digitWords[ones]);
+            }
+        } else if (tens == 1) {
+            appendSpace(text).append("mười");
+            if (ones == 5) {
+                text.append(" lăm");
+            } else if (ones > 0) {
+                text.append(" ").append(digitWords[ones]);
+            }
+        } else if (ones > 0) {
+            appendSpace(text).append(digitWords[ones]);
+        }
+        return text.toString();
+    }
+
+    private StringBuilder appendSpace(StringBuilder text) {
+        if (!text.isEmpty()) {
+            text.append(" ");
+        }
+        return text;
+    }
+
+    private String capitalize(String value) {
+        if (value == null || value.isBlank()) {
+            return "";
+        }
+        return value.substring(0, 1).toUpperCase(VIETNAM) + value.substring(1);
+    }
+
+    private String issuedDay(CheckoutInvoiceEmailSnapshot invoice) {
+        return invoice.issuedAt() != null ? String.format("%02d", invoice.issuedAt().getDayOfMonth()) : "";
+    }
+
+    private String issuedMonth(CheckoutInvoiceEmailSnapshot invoice) {
+        return invoice.issuedAt() != null ? String.format("%02d", invoice.issuedAt().getMonthValue()) : "";
+    }
+
+    private String issuedYear(CheckoutInvoiceEmailSnapshot invoice) {
+        return invoice.issuedAt() != null ? String.valueOf(invoice.issuedAt().getYear()) : "";
+    }
+
+    private String issuedDate(CheckoutInvoiceEmailSnapshot invoice) {
+        return invoice.issuedAt() != null ? invoice.issuedAt().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) : "";
     }
 
     private String defaultText(String value, String fallback) {

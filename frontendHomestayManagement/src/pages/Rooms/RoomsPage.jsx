@@ -4,6 +4,7 @@ import { getStoredToken, getStoredUser, logout } from '../../services/authServic
 import SePayQrPayment from '../../components/SePayQrPayment/SePayQrPayment'
 import { clearBookingCart, readBookingCart, writeBookingCart } from '../../utils/bookingCart'
 import { formatDateTime as formatAppDateTime } from '../../utils/dateTimeFormat'
+import { houseTypeName } from '../../utils/houseType'
 import { resolveImageUrl } from '../../utils/imageUrl'
 import '../Home/HomePage.css'
 import './RoomsPage.css'
@@ -497,7 +498,7 @@ function PublicHeader() {
 
 function RoomCard({ room, selected, onToggle }) {
   const typeOnly = isRoomTypeSearchResult(room)
-  const title = room.roomTypeName || room.name || 'Loại phòng'
+  const title = houseTypeName(room)
   const imageUrl = room.primaryImageUrl || room.imageUrls?.[0]
   const price = roomPrice(room)
   const detailRoomId = room.roomId || room.representativeRoomId
@@ -576,7 +577,7 @@ function RoomCard({ room, selected, onToggle }) {
         <div className="public-room-meta">
           <span>{room.maxAdults || 0} người lớn</span>
           <span>{room.maxChildren || 0} trẻ em</span>
-          {typeOnly && <span>Đặt theo loại phòng</span>}
+          {typeOnly && <span>Đặt theo loại nhà</span>}
         </div>
         <div className="public-room-price-row">
           <strong>{formatPrice(price)}</strong>
@@ -908,7 +909,7 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
         .then((items) => {
           const conflict = items.find((item) => findOverlappingSlot(item.busySlots, form.checkInTarget, form.checkOutTarget))
           if (conflict) {
-            setScheduleError(`${conflict.room.roomTypeName || 'Loại phòng này'} đã có lịch đặt trong khung giờ này. Vui lòng chọn giờ khác.`)
+            setScheduleError(`${houseTypeName(conflict.room, 'Loại nhà này')} đã có lịch đặt trong khung giờ này. Vui lòng chọn giờ khác.`)
             setScheduleNotice('')
             return
           }
@@ -931,7 +932,7 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
 
           const latestCheckout = new Date(nextBusy.slot.checkInTarget)
           latestCheckout.setHours(latestCheckout.getHours() - 1)
-          const message = `${nextBusy.room.roomTypeName || 'Loại phòng này'} đã có lịch đặt từ ${formatNoticeTime(nextBusy.slot.checkInTarget)}. Quý khách vui lòng check out trước ${formatNoticeTime(latestCheckout)}.`
+          const message = `${houseTypeName(nextBusy.room, 'Loại nhà này')} đã có lịch đặt từ ${formatNoticeTime(nextBusy.slot.checkInTarget)}. Quý khách vui lòng check out trước ${formatNoticeTime(latestCheckout)}.`
           if (checkOut > latestCheckout) {
             setScheduleError(message)
             setScheduleNotice('')
@@ -1107,7 +1108,7 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
       return
     }
     if (!selectedRooms.length) {
-      setError('Vui lòng chọn ít nhất một loại phòng.')
+      setError('Vui lòng chọn ít nhất một loại nhà.')
       return
     }
     if (timeError) {
@@ -1195,7 +1196,7 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
                 return (
                   <div key={room.bookingDetailId}>
                     <span>
-                      {room.roomTypeName} · Phòng {configuredRoom?.unitIndex || index + 1}
+                      {houseTypeName(room)} · Phòng {configuredRoom?.unitIndex || index + 1}
                       <small>
                         {configuredRoom?.services.length
                           ? configuredRoom.services.map((service) => `${service.name} × ${service.quantity}`).join(', ')
@@ -1307,13 +1308,13 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
           </section>
 
           <section className="multi-selected-section">
-            <h3>Loại phòng trong booking này</h3>
+            <h3>Loại nhà trong booking này</h3>
             <div className="multi-selected-rooms">
               {selectedRooms.map((room) => (
                 <article key={roomKey(room)}>
                   <div>
-                    <strong>{room.roomTypeName || room.name || 'Loại phòng'}</strong>
-                    <span>{room.roomTypeName} · tối đa {room.maxAdults || 0} NL · {room.maxChildren || 0} TE</span>
+                    <strong>{houseTypeName(room)}</strong>
+                    <span>{houseTypeName(room)} · tối đa {room.maxAdults || 0} NL · {room.maxChildren || 0} TE</span>
                   </div>
                   <b>{formatPrice(roomPriceItems.find((item) => roomKey(item.room) === roomKey(room))?.price || roomPrice(room))}{isHourlyPolicy(selectedPolicy) && <small>/giờ</small>}</b>
                   <label className="room-quantity-field">
@@ -1355,7 +1356,7 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
                     <div className="multi-room-unit-head">
                       <div>
                         <span>Phòng {unit.unitIndex}</span>
-                        <strong>{unit.room.roomTypeName || unit.room.name || 'Loại phòng'}</strong>
+                        <strong>{houseTypeName(unit.room)}</strong>
                       </div>
                       <b>{formatPrice(roomPriceItems.find((item) => roomKey(item.room) === unit.typeKey)?.price || roomPrice(unit.room))}</b>
                     </div>
@@ -1441,7 +1442,7 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
               <div className="public-service-dialog" role="dialog" aria-modal="true" aria-labelledby="service-dialog-title">
                 <div className="public-service-dialog-head">
                   <div>
-                    <h3 id="service-dialog-title">Dịch vụ cho {serviceDialogRoom.room.roomTypeName || serviceDialogRoom.room.name} – Phòng {serviceDialogRoom.unitIndex}</h3>
+                    <h3 id="service-dialog-title">Dịch vụ cho {houseTypeName(serviceDialogRoom.room)} – Phòng {serviceDialogRoom.unitIndex}</h3>
                     <p>Dịch vụ được ghi nhận và thanh toán riêng cho phòng này.</p>
                   </div>
                   <button type="button" onClick={() => setServiceDialogRoomKey(null)} aria-label="Đóng">×</button>
@@ -1530,18 +1531,18 @@ function BookingCart({ selectedRooms, requestedRooms, onRemove, onOpenBooking })
       <div className="rooms-booking-cart-head">
         <div>
           <h2>Booking của bạn</h2>
-          <p>Đã chọn {selectedRooms.length} loại · {selectedCount}/{requestedRooms} loại phòng</p>
+          <p>Đã chọn {selectedRooms.length} loại · {selectedCount}/{requestedRooms} loại nhà</p>
         </div>
         <span className={isEnough ? 'is-ready' : ''}>{isEnough ? 'Đủ phòng' : 'Chưa đủ'}</span>
       </div>
       <div className="rooms-booking-cart-list">
         {selectedRooms.length ? selectedRooms.map((room) => (
           <div key={roomKey(room)}>
-            <span>{room.roomTypeName || room.name || 'Loại phòng'} × {selectedQuantity(room)}</span>
+            <span>{houseTypeName(room)} × {selectedQuantity(room)}</span>
             <strong>{formatPrice(roomPrice(room))}</strong>
-            <button type="button" onClick={() => onRemove(roomKey(room))} aria-label="Bỏ loại phòng">×</button>
+            <button type="button" onClick={() => onRemove(roomKey(room))} aria-label="Bỏ loại nhà">×</button>
           </div>
-        )) : <p>Chọn loại phòng từ danh sách để tạo booking.</p>}
+        )) : <p>Chọn loại nhà từ danh sách để tạo booking.</p>}
       </div>
       <div className="rooms-booking-cart-total">
         <span>Tạm tính</span>
@@ -1708,11 +1709,11 @@ function RoomsPage() {
           <section className="rooms-results-panel">
             <div className="rooms-results-head">
               <div>
-                <h2>{searchCriteria?.isDefaultRoomTypeList ? 'Tất cả loại phòng' : 'Loại phòng trống phù hợp'}</h2>
+                <h2>{searchCriteria?.isDefaultRoomTypeList ? 'Tất cả loại nhà' : 'Loại nhà trống phù hợp'}</h2>
                 <p>
                   {!searchCriteria?.isDefaultRoomTypeList
                     ? `Từ ${searchCriteria.checkInDate} đến ${searchCriteria.checkOutDate} · cần ${searchCriteria.rooms} phòng`
-                    : 'Khách chọn loại phòng, lễ tân sẽ gán phòng cụ thể khi check-in.'}
+                    : 'Khách chọn loại nhà, lễ tân sẽ gán phòng cụ thể khi check-in.'}
                 </p>
               </div>
               <span>{visibleRooms.length} phù hợp</span>

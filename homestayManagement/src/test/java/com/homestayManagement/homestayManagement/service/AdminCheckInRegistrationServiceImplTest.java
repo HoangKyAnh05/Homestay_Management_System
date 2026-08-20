@@ -17,6 +17,8 @@ import com.homestayManagement.homestayManagement.repository.CheckInRecordReposit
 import com.homestayManagement.homestayManagement.repository.EmployeeRepository;
 import com.homestayManagement.homestayManagement.repository.RoomRepository;
 import com.homestayManagement.homestayManagement.service.impl.AdminCheckInRegistrationServiceImpl;
+import com.homestayManagement.homestayManagement.service.event.TemporaryResidenceExcelExportEvent;
+import org.springframework.context.ApplicationEventPublisher;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -28,6 +30,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -51,6 +54,7 @@ class AdminCheckInRegistrationServiceImplTest {
     @Mock private RoomRepository roomRepository;
     @Mock private EmployeeRepository employeeRepository;
     @Mock private StayAccessService stayAccessService;
+    @Mock private ApplicationEventPublisher eventPublisher;
 
     private AdminCheckInRegistrationServiceImpl service;
 
@@ -58,7 +62,8 @@ class AdminCheckInRegistrationServiceImplTest {
     void setUp() {
         service = new AdminCheckInRegistrationServiceImpl(
                 bookingDetailRepository, bookingRepository, bookingGuestRepository,
-                checkInRecordRepository, roomRepository, employeeRepository, stayAccessService
+                checkInRecordRepository, roomRepository, employeeRepository, stayAccessService,
+                eventPublisher
         );
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken("staff@example.com", "password")
@@ -163,6 +168,11 @@ class AdminCheckInRegistrationServiceImplTest {
         verify(stayAccessService).grantAccess(
                 eq(data.detail()), any(), eq("Người đặt"), eq("booker@example.com")
         );
+        ArgumentCaptor<TemporaryResidenceExcelExportEvent> eventCaptor =
+                ArgumentCaptor.forClass(TemporaryResidenceExcelExportEvent.class);
+        verify(eventPublisher).publishEvent(eventCaptor.capture());
+        assertEquals(response.actualCheckIn().toLocalDate(), eventCaptor.getValue().date());
+        assertEquals(40L, eventCaptor.getValue().bookingDetailId());
         assertEquals(81L, response.stayAccessId());
     }
 

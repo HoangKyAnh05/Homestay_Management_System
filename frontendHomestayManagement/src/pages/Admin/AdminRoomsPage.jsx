@@ -80,7 +80,7 @@ function getFallbackRoomImage(roomTypeName, roomTypeId) {
 }
 
 // ─────────────────────────────────────────────────────────────────────
-// Modal loại phòng (tạo / sửa)
+// Modal loại nhà (tạo / sửa)
 // ─────────────────────────────────────────────────────────────────────
 function RoomTypeModal({ roomType, depositPolicies, rooms = [], onClose, onSave }) {
   const isEdit = !!roomType
@@ -249,11 +249,11 @@ function RoomTypeModal({ roomType, depositPolicies, rooms = [], onClose, onSave 
     <div className="arm-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="arm-modal arm-modal--wide">
         <div className="arm-modal-head">
-          <h3>{isEdit ? 'Chỉnh sửa loại phòng' : 'Thêm loại phòng mới'}</h3>
+          <h3>{isEdit ? 'Chỉnh sửa loại nhà' : 'Thêm loại nhà mới'}</h3>
           <button type="button" className="arm-modal-close" onClick={onClose}>✕</button>
         </div>
         <form className="arm-modal-body" onSubmit={handleSubmit} onPaste={handlePaste}>
-          <label className="arm-field"><span>Tên loại phòng</span>
+          <label className="arm-field"><span>Tên loại nhà</span>
             <input value={form.name} onChange={e => set('name', e.target.value)} required placeholder="Phòng Studio, Deluxe..." />
           </label>
           <div className="arm-field-row">
@@ -273,11 +273,11 @@ function RoomTypeModal({ roomType, depositPolicies, rooms = [], onClose, onSave 
             </select>
           </label>
           <label className="arm-field"><span>Mô tả</span>
-            <textarea value={form.description} onChange={e => set('description', e.target.value)} rows={3} placeholder="Mô tả loại phòng..." />
+            <textarea value={form.description} onChange={e => set('description', e.target.value)} rows={3} placeholder="Mô tả loại nhà..." />
           </label>
 
           <div className="arm-field">
-            <span>Hình ảnh đại diện loại phòng (Hỗ trợ Dán ảnh Ctrl + V hoặc Kéo thả)</span>
+            <span>Hình ảnh đại diện loại nhà (Hỗ trợ Dán ảnh Ctrl + V hoặc Kéo thả)</span>
             <label
               className="arm-upload-zone"
               style={{ margin: '6px 0 12px', padding: '14px', borderRadius: '8px', border: '2px dashed #94a3b8', cursor: 'pointer' }}
@@ -314,7 +314,7 @@ function RoomTypeModal({ roomType, depositPolicies, rooms = [], onClose, onSave 
 
             {!repRoom && pendingFiles.length > 0 && (
               <p style={{ fontSize: 13, color: '#15573a', margin: '4px 0 0', fontWeight: 600 }}>
-                ✓ Đã chọn {pendingFiles.length} file ảnh (sẽ được tự động tải lên sau khi lưu loại phòng)
+                ✓ Đã chọn {pendingFiles.length} file ảnh (sẽ được tự động tải lên sau khi lưu loại nhà)
               </p>
             )}
           </div>
@@ -323,7 +323,7 @@ function RoomTypeModal({ roomType, depositPolicies, rooms = [], onClose, onSave 
           <div className="arm-modal-actions">
             <button type="button" className="arm-btn arm-btn--ghost" onClick={onClose}>Huỷ</button>
             <button type="submit" className="arm-btn arm-btn--primary" disabled={saving || uploading}>
-              {saving ? 'Đang lưu...' : isEdit ? 'Lưu thay đổi' : 'Tạo loại phòng'}
+              {saving ? 'Đang lưu...' : isEdit ? 'Lưu thay đổi' : 'Tạo loại nhà'}
             </button>
           </div>
         </form>
@@ -614,7 +614,7 @@ function RoomModal({ room, roomTypes, onClose, onSave }) {
           <label className="arm-field"><span>Số phòng</span>
             <input value={form.roomNumber} onChange={e => set('roomNumber', e.target.value)} required placeholder="101, 202..." maxLength={10} />
           </label>
-          <label className="arm-field"><span>Loại phòng</span>
+          <label className="arm-field"><span>Loại nhà</span>
             <select value={form.roomTypeId} onChange={e => set('roomTypeId', e.target.value)}>
               {roomTypes.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
             </select>
@@ -900,7 +900,7 @@ function PriceConfigModal({ config, roomTypes, policies, onClose, onSave }) {
           <button type="button" className="arm-modal-close" onClick={onClose}>✕</button>
         </div>
         <form className="arm-modal-body" onSubmit={handleSubmit}>
-          <label className="arm-field"><span>Loại phòng</span>
+          <label className="arm-field"><span>Loại nhà</span>
             <select value={form.roomTypeId} onChange={e => set('roomTypeId', e.target.value)}>
               {roomTypes.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
             </select>
@@ -1011,7 +1011,7 @@ function DepositPoliciesTab({ depositPolicies, setDepositPolicies, showToast }) 
 }
 
 // ─────────────────────────────────────────────────────────────────────
-// Tab: Loại phòng  — với dropdown lọc giá theo gói thuê
+// Tab: Loại nhà  — với dropdown lọc giá theo gói thuê
 // ─────────────────────────────────────────────────────────────────────
 function RoomTypesTab({ roomTypes, setRoomTypes, depositPolicies, pricePolicies, priceConfigs, rooms = [], setRooms, showToast }) {
   const [search, setSearch] = useState('')
@@ -1031,7 +1031,7 @@ function RoomTypesTab({ roomTypes, setRoomTypes, depositPolicies, pricePolicies,
   const paginated = filtered.slice((page-1)*PAGE_SIZE, page*PAGE_SIZE)
 
   /**
-   * Lấy giá từ priceConfigs cho 1 loại phòng + 1 gói thuê.
+   * Lấy giá từ priceConfigs cho 1 loại nhà + 1 gói thuê.
    * Trả về object { WEEKDAY: price, WEEKEND: price } hoặc null.
    */
   const getPriceForType = (roomTypeId) => {
@@ -1051,7 +1051,7 @@ function RoomTypesTab({ roomTypes, setRoomTypes, depositPolicies, pricePolicies,
       const res = await fetch(`${API}/types/${deleteTarget.id}`, { method:'DELETE', headers:authHeaders() })
       if (!res.ok) { const d = await res.json(); throw new Error(d.message) }
       setRoomTypes(prev => prev.filter(t => t.id !== deleteTarget.id))
-      showToast('Đã xoá loại phòng'); setDeleteTarget(null)
+      showToast('Đã xoá loại nhà'); setDeleteTarget(null)
     } catch (err) { showToast(err.message) }
     finally { setDeleting(false) }
   }
@@ -1064,7 +1064,7 @@ function RoomTypesTab({ roomTypes, setRoomTypes, depositPolicies, pricePolicies,
   return (
     <>
       <div className="arm-toolbar">
-        <input className="arm-search" placeholder="Tìm loại phòng..." value={search} onChange={e => setSearch(e.target.value)} />
+        <input className="arm-search" placeholder="Tìm loại nhà..." value={search} onChange={e => setSearch(e.target.value)} />
 
         {/* ── Dropdown lọc gói giá ── */}
         <div className="arm-price-filter">
@@ -1085,16 +1085,16 @@ function RoomTypesTab({ roomTypes, setRoomTypes, depositPolicies, pricePolicies,
         </div>
 
         <button className="arm-btn arm-btn--primary" type="button" onClick={() => setModalType(null)}>
-          + Thêm loại phòng
+          + Thêm loại nhà
         </button>
       </div>
 
       <div className="arm-table-wrap">
-        {filtered.length === 0 ? <div className="arm-empty">Không có loại phòng nào.</div> : (
+        {filtered.length === 0 ? <div className="arm-empty">Không có loại nhà nào.</div> : (
           <table className="arm-table">
             <thead><tr>
               <th>Ảnh đại diện</th>
-              <th>Tên loại phòng</th>
+              <th>Tên loại nhà</th>
               <th>
                 {priceColLabel}
                 {selectedPolicy && <span className="arm-price-col-sub"> — chọn gói ở trên để xem giá</span>}
@@ -1174,7 +1174,7 @@ function RoomTypesTab({ roomTypes, setRoomTypes, depositPolicies, pricePolicies,
           onSave={async (saved, isEdit) => {
             setRoomTypes(prev => isEdit ? prev.map(t => t.id===saved.id ? { ...saved, roomCount:t.roomCount } : t) : [...prev, saved])
             setModalType(undefined)
-            showToast(isEdit ? 'Đã cập nhật loại phòng' : 'Đã tạo loại phòng mới')
+            showToast(isEdit ? 'Đã cập nhật loại nhà' : 'Đã tạo loại nhà mới')
             try {
               const res = await fetch(API, { headers: authHeaders() })
               if (res.ok) {
@@ -1185,8 +1185,8 @@ function RoomTypesTab({ roomTypes, setRoomTypes, depositPolicies, pricePolicies,
           }} />
       )}
       {deleteTarget && (
-        <ConfirmDeleteModal title="Xoá loại phòng"
-          desc={`Xoá loại phòng "${deleteTarget.name}" và tất cả phòng thuộc loại phòng này?`}
+        <ConfirmDeleteModal title="Xoá loại nhà"
+          desc={`Xoá loại nhà "${deleteTarget.name}" và tất cả phòng thuộc loại nhà này?`}
           onClose={() => setDeleteTarget(null)} onConfirm={handleDelete} loading={deleting} />
       )}
     </>
@@ -1233,13 +1233,13 @@ function RoomsTab({ rooms, setRooms, setRoomTypes, roomTypes, showToast }) {
   return (
     <>
       <div className="arm-toolbar">
-        <input className="arm-search" placeholder="Tìm số phòng, loại phòng..." value={search} onChange={e => setSearch(e.target.value)} />
+        <input className="arm-search" placeholder="Tìm số phòng, loại nhà..." value={search} onChange={e => setSearch(e.target.value)} />
         <select className="arm-select" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
           <option value="">Tất cả trạng thái</option>
           {STATUS_OPTIONS.map(s => <option key={s} value={s}>{STATUS_LABEL[s]}</option>)}
         </select>
         <button className="arm-btn arm-btn--primary" type="button"
-          disabled={roomTypes.length === 0} title={roomTypes.length === 0 ? 'Cần tạo loại phòng trước' : undefined}
+          disabled={roomTypes.length === 0} title={roomTypes.length === 0 ? 'Cần tạo loại nhà trước' : undefined}
           onClick={() => setModalRoom(null)}>
           + Thêm phòng
         </button>
@@ -1248,7 +1248,7 @@ function RoomsTab({ rooms, setRooms, setRoomTypes, roomTypes, showToast }) {
       <div className="arm-table-wrap">
         {filtered.length === 0 ? <div className="arm-empty">Không có phòng nào.</div> : (
           <table className="arm-table">
-            <thead><tr><th>Ảnh đại diện</th><th>Số phòng</th><th>Loại phòng</th><th>Trạng thái</th><th>Ảnh</th><th></th></tr></thead>
+            <thead><tr><th>Ảnh đại diện</th><th>Số phòng</th><th>Loại nhà</th><th>Trạng thái</th><th>Ảnh</th><th></th></tr></thead>
             <tbody>
               {paginated.map(r => {
                 const thumb = primaryImage(r.images)
@@ -1394,7 +1394,7 @@ function PriceConfigTab({ roomTypes, pricePolicies, setPricePolicies, priceConfi
         <>
           <div className="arm-toolbar">
             <select className="arm-select" value={filterRoomType} onChange={e => setFilterRoomType(e.target.value)}>
-              <option value="">Tất cả loại phòng</option>
+              <option value="">Tất cả loại nhà</option>
               {roomTypes.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
             </select>
             <select className="arm-select" value={filterPolicy} onChange={e => setFilterPolicy(e.target.value)}>
@@ -1403,7 +1403,7 @@ function PriceConfigTab({ roomTypes, pricePolicies, setPricePolicies, priceConfi
             </select>
             <button className="arm-btn arm-btn--primary" type="button"
               disabled={roomTypes.length === 0 || pricePolicies.length === 0}
-              title={roomTypes.length === 0 ? 'Cần tạo loại phòng trước' : pricePolicies.length === 0 ? 'Cần tạo gói thuê trước' : undefined}
+              title={roomTypes.length === 0 ? 'Cần tạo loại nhà trước' : pricePolicies.length === 0 ? 'Cần tạo gói thuê trước' : undefined}
               onClick={() => setModalConfig(null)}>
               + Thêm cấu hình giá
             </button>
@@ -1411,7 +1411,7 @@ function PriceConfigTab({ roomTypes, pricePolicies, setPricePolicies, priceConfi
 
           {(roomTypes.length === 0 || pricePolicies.length === 0) && (
             <div className="arm-info-banner">
-              💡 Cần có ít nhất 1 <strong>loại phòng</strong> và 1 <strong>gói thuê</strong> trước khi cấu hình giá.
+              💡 Cần có ít nhất 1 <strong>loại nhà</strong> và 1 <strong>gói thuê</strong> trước khi cấu hình giá.
             </div>
           )}
 
@@ -1421,7 +1421,7 @@ function PriceConfigTab({ roomTypes, pricePolicies, setPricePolicies, priceConfi
             ) : (
               <table className="arm-table">
                 <thead><tr>
-                  <th>Loại phòng</th>
+                  <th>Loại nhà</th>
                   <th>Gói thuê</th>
                   <th>Loại hình</th>
                   <th>Loại ngày</th>
@@ -1536,7 +1536,7 @@ function PriceConfigTab({ roomTypes, pricePolicies, setPricePolicies, priceConfi
       )}
       {deleteConfigTarget && (
         <ConfirmDeleteModal title="Xoá cấu hình giá"
-          desc={`Xoá giá "${deleteConfigTarget.policyName} · ${DAY_TYPE_LABEL[deleteConfigTarget.dayType]}" cho phòng ${deleteConfigTarget.roomTypeName}?`}
+          desc={`Xoá giá "${deleteConfigTarget.policyName} · ${DAY_TYPE_LABEL[deleteConfigTarget.dayType]}" cho loại nhà ${deleteConfigTarget.roomTypeName}?`}
           onClose={() => setDeleteConfigTarget(null)} onConfirm={handleDeleteConfig} loading={deletingConfig} />
       )}
     </>
@@ -1587,14 +1587,14 @@ function AdminRoomsPage({ activePage = 'rooms' }) {
       <div className="arm-header">
         <div>
           <h1>Quản lý Phòng / Nhà</h1>
-          <p>{roomTypes.length} loại phòng / nhà · {rooms.length} phòng vật lý · {pricePolicies.length} gói thuê</p>
+          <p>{roomTypes.length} loại nhà · {rooms.length} phòng vật lý · {pricePolicies.length} gói thuê</p>
         </div>
       </div>
 
       <div className="arm-tabs">
         {[
           { key:'deposit', label:'Chính sách đặt cọc' },
-          { key:'types',   label:'Loại phòng' },
+          { key:'types',   label:'Loại nhà' },
           { key:'rooms',   label:'Phòng vật lý' },
           { key:'pricing', label:'Cấu hình giá 💰' },
         ].map(t => (

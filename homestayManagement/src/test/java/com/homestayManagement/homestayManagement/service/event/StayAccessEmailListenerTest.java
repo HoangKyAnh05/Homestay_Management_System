@@ -15,6 +15,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Properties;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.*;
 
@@ -57,13 +58,17 @@ class StayAccessEmailListenerTest {
         when(mailSender.createMimeMessage()).thenReturn(message);
         when(invoiceEmailService.buildSnapshot(1L)).thenReturn(new CheckoutInvoiceEmailSnapshot(
                 1L,
-                "HÓA ĐƠN DỊCH VỤ LƯU TRÚ",
+                "Hóa đơn thuê homestay",
                 "HD/HMS",
                 "01HMS",
                 "HD01",
-                "Nguyễn Văn A",
+                "Hóa đơn thuê homestay",
                 "Thạch Hòa, Thạch Thất, Hà Nội",
                 "MST001",
+                "02439999999",
+                "https://homestay.example.com",
+                "123456789",
+                "VCB",
                 "Khách hàng",
                 "guest@example.com",
                 "Hà Nội",
@@ -82,6 +87,7 @@ class StayAccessEmailListenerTest {
                                 "Phòng",
                                 "Phòng 101",
                                 "Deluxe | 18/08/2026 14:00 - 19/08/2026 12:00 | Theo ngày",
+                                "Phòng",
                                 1,
                                 BigDecimal.valueOf(1_000_000),
                                 BigDecimal.valueOf(1_000_000)
@@ -90,6 +96,7 @@ class StayAccessEmailListenerTest {
                                 "Dịch vụ phát sinh",
                                 "Bữa sáng",
                                 "Phòng 101",
+                                "Lần",
                                 2,
                                 BigDecimal.valueOf(40_000),
                                 BigDecimal.valueOf(80_000)
@@ -109,10 +116,14 @@ class StayAccessEmailListenerTest {
         assertTrue(content.contains("<!doctype html>"));
         assertTrue(content.contains("HD01"));
         assertTrue(content.contains("MST001"));
-        assertTrue(content.contains("MST01"));
-        assertTrue(content.contains("Thuế GTGT 8%"));
+        assertTrue(content.contains("123456789"));
+        assertTrue(content.contains("VCB"));
+        assertTrue(content.contains("Thuế suất GTGT"));
+        assertTrue(content.contains("8 %"));
         assertTrue(content.contains("Phòng 101"));
         assertTrue(content.contains("Bữa sáng"));
+        assertTrue(content.contains("Họ tên người mua hàng"));
+        assertFalse(content.contains("Tên công ty (Company)"));
     }
 
     private String extractText(Part part) throws Exception {

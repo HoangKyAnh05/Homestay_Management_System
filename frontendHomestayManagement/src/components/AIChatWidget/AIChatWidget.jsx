@@ -16,7 +16,7 @@ const INITIAL_MESSAGES = [{
 
 const DEMO_RESPONSES = {
   'Tìm phòng cho 2 người': 'Tuyệt quá! Bạn dự định nhận phòng và trả phòng vào ngày nào? Mình sẽ gợi ý không gian phù hợp cho 2 người.',
-  'Homestay có tiện nghi gì?': 'Home Stays có Wi-Fi, bữa sáng, khu vực thư giãn, hỗ trợ 24/7 và nhiều tiện nghi riêng theo từng hạng phòng.',
+  'Homestay có tiện nghi gì?': 'Home Stays có Wi-Fi, bữa sáng, khu vực thư giãn, hỗ trợ 24/7 và nhiều tiện nghi riêng theo từng loại nhà.',
   'Chính sách nhận phòng': 'Thời gian nhận phòng tiêu chuẩn là từ 14:00 và trả phòng trước 12:00. Bạn có thể gửi yêu cầu nếu cần nhận sớm hoặc trả muộn.',
 }
 

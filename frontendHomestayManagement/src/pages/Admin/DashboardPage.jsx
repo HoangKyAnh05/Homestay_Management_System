@@ -300,7 +300,7 @@ function DashboardPage() {
 
           <div className="dash-grid">
             <RankingPanel title="Top phòng theo doanh thu" subtitle="Doanh thu đặt phòng ước tính theo booking detail." items={summary.topRooms || []} />
-            <RankingPanel title="Loại phòng được đặt nhiều" subtitle="Số lượt đặt theo từng loại phòng." items={roomTypeItems} valueType="count" />
+            <RankingPanel title="Loại nhà được đặt nhiều" subtitle="Số lượt đặt theo từng loại nhà." items={roomTypeItems} valueType="count" />
           </div>
         </>
       ) : (

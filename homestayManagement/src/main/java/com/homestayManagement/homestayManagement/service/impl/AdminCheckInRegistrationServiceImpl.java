@@ -22,6 +22,8 @@ import com.homestayManagement.homestayManagement.repository.EmployeeRepository;
 import com.homestayManagement.homestayManagement.repository.RoomRepository;
 import com.homestayManagement.homestayManagement.service.AdminCheckInRegistrationService;
 import com.homestayManagement.homestayManagement.service.StayAccessService;
+import com.homestayManagement.homestayManagement.service.event.TemporaryResidenceExcelExportEvent;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -45,6 +47,7 @@ public class AdminCheckInRegistrationServiceImpl implements AdminCheckInRegistra
     private final RoomRepository roomRepository;
     private final EmployeeRepository employeeRepository;
     private final StayAccessService stayAccessService;
+    private final ApplicationEventPublisher eventPublisher;
 
     public AdminCheckInRegistrationServiceImpl(
             BookingDetailRepository bookingDetailRepository,
@@ -53,7 +56,8 @@ public class AdminCheckInRegistrationServiceImpl implements AdminCheckInRegistra
             CheckInRecordRepository checkInRecordRepository,
             RoomRepository roomRepository,
             EmployeeRepository employeeRepository,
-            StayAccessService stayAccessService
+            StayAccessService stayAccessService,
+            ApplicationEventPublisher eventPublisher
     ) {
         this.bookingDetailRepository = bookingDetailRepository;
         this.bookingRepository = bookingRepository;
@@ -62,6 +66,7 @@ public class AdminCheckInRegistrationServiceImpl implements AdminCheckInRegistra
         this.roomRepository = roomRepository;
         this.employeeRepository = employeeRepository;
         this.stayAccessService = stayAccessService;
+        this.eventPublisher = eventPublisher;
     }
 
     @Override
@@ -104,7 +109,7 @@ public class AdminCheckInRegistrationServiceImpl implements AdminCheckInRegistra
         }
         if (detail.getRoomType() == null || room.getRoomType() == null
                 || !detail.getRoomType().getId().equals(room.getRoomType().getId())) {
-            throw new IllegalArgumentException("Phòng được chọn không đúng loại phòng khách đã đặt");
+            throw new IllegalArgumentException("Phòng được chọn không đúng loại nhà khách đã đặt");
         }
         if (!isRoomAvailable(room.getId(), detail)) {
             throw new IllegalArgumentException("Phòng vừa được gán cho booking khác, vui lòng chọn phòng khác");
@@ -144,6 +149,7 @@ public class AdminCheckInRegistrationServiceImpl implements AdminCheckInRegistra
                 request.guests().getFirst().fullName(),
                 request.representativeEmail()
         );
+        eventPublisher.publishEvent(new TemporaryResidenceExcelExportEvent(now.toLocalDate(), detail.getId()));
 
         return new AdminCompleteCheckInResponse(
                 detail.getBooking().getId(), detail.getBooking().getBookingCode(), detail.getId(), room.getId(), room.getRoomNumber(),
@@ -163,7 +169,7 @@ public class AdminCheckInRegistrationServiceImpl implements AdminCheckInRegistra
             throw new IllegalArgumentException("Phòng này đã được check-in");
         }
         if (detail.getRoomType() == null) {
-            throw new IllegalArgumentException("Booking chưa có loại phòng");
+            throw new IllegalArgumentException("Booking chưa có loại nhà");
         }
         return detail;
     }

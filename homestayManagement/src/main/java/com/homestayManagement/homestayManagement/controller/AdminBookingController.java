@@ -19,14 +19,20 @@ import com.homestayManagement.homestayManagement.dto.response.IdentityOcrRespons
 import com.homestayManagement.homestayManagement.service.AdminBookingService;
 import com.homestayManagement.homestayManagement.service.AdminCheckInRegistrationService;
 import com.homestayManagement.homestayManagement.service.IdentityOcrService;
+import com.homestayManagement.homestayManagement.service.TemporaryResidenceExcelService;
 import jakarta.validation.Valid;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -39,15 +45,18 @@ public class AdminBookingController {
     private final AdminBookingService adminBookingService;
     private final AdminCheckInRegistrationService adminCheckInRegistrationService;
     private final IdentityOcrService identityOcrService;
+    private final TemporaryResidenceExcelService temporaryResidenceExcelService;
 
     public AdminBookingController(
             AdminBookingService adminBookingService,
             AdminCheckInRegistrationService adminCheckInRegistrationService,
-            IdentityOcrService identityOcrService
+            IdentityOcrService identityOcrService,
+            TemporaryResidenceExcelService temporaryResidenceExcelService
     ) {
         this.adminBookingService = adminBookingService;
         this.adminCheckInRegistrationService = adminCheckInRegistrationService;
         this.identityOcrService = identityOcrService;
+        this.temporaryResidenceExcelService = temporaryResidenceExcelService;
     }
 
     @GetMapping("/schedule")
@@ -69,6 +78,21 @@ public class AdminBookingController {
             LocalDate toDate
     ) {
         return adminBookingService.getCheckInLogs(fromDate, toDate);
+    }
+
+    @GetMapping("/temporary-residence/export")
+    public ResponseEntity<Resource> exportTemporaryResidence(
+            @RequestParam(value = "date", required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            LocalDate date
+    ) {
+        LocalDate exportDate = date != null ? date : LocalDate.now();
+        Path file = temporaryResidenceExcelService.exportByDate(exportDate);
+        String filename = file.getFileName().toString();
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment().filename(filename).build().toString())
+                .body(new FileSystemResource(file));
     }
 
     @GetMapping("/details/{bookingDetailId}")

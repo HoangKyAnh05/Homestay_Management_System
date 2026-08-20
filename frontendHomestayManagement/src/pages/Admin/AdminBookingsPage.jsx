@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { getStoredToken } from '../../services/authService'
 import { formatClockTime, formatDateTime as formatAppDateTime } from '../../utils/dateTimeFormat'
+import { houseTypeName } from '../../utils/houseType'
 import SePayQrPayment from '../../components/SePayQrPayment/SePayQrPayment'
 import AdminLayout from './AdminLayout'
 import './AdminBookingsPage.css'
@@ -270,7 +271,7 @@ function InvoicePreviewModal({ detail, onClose }) {
               <DetailField label="Khách đặt" value={detail?.customer?.fullName} />
               <DetailField label="Điện thoại" value={detail?.customer?.phone} />
               <DetailField label="Email" value={detail?.customer?.email} />
-              <DetailField label="Phòng" value={`${detail?.roomNumber ? `Phòng ${detail.roomNumber}` : 'Chưa gán phòng'} · ${detail?.roomTypeName || 'Chưa phân loại'}`} />
+              <DetailField label="Phòng" value={`${detail?.roomNumber ? `Phòng ${detail.roomNumber}` : 'Chưa gán phòng'} · ${houseTypeName(detail, 'Chưa phân loại')}`} />
               <DetailField label="Nhận phòng" value={formatAppDateTime(detail?.checkInTarget)} />
               <DetailField label="Trả phòng" value={formatAppDateTime(detail?.checkOutTarget)} />
               <DetailField label="Số khách" value={`${Number(detail?.numberOfAdults || 0)} người lớn · ${Number(detail?.numberOfChildren || 0)} trẻ em`} />
@@ -817,7 +818,7 @@ function BookingDetailModal({ detail, loading, error, actionLoading, actionError
                 {!editBooking ? (
                   <>
                     <div className="abk-detail-grid">
-                      <DetailField label="Phòng"            value={`${detail.roomNumber ? `Phòng ${detail.roomNumber}` : 'Chưa gán phòng'} · ${detail.roomTypeName || 'Chưa phân loại'}`} />
+                      <DetailField label="Phòng"            value={`${detail.roomNumber ? `Phòng ${detail.roomNumber}` : 'Chưa gán phòng'} · ${houseTypeName(detail, 'Chưa phân loại')}`} />
                       <DetailField label="Ngày đặt"         value={formatAppDateTime(detail.bookingDate)} />
                       <DetailField label="Nhận phòng"       value={formatAppDateTime(detail.checkInTarget)} />
                       <DetailField label="Trả phòng"        value={formatAppDateTime(detail.checkOutTarget)} />
@@ -1222,7 +1223,7 @@ function DirectBookingModal({ onClose, onCreated }) {
     return d === 0 || d === 6
   }, [form.checkInTarget])
 
-  // Tìm giá cho một loại phòng theo gói thuê và day_type đang chọn
+  // Tìm giá cho một loại nhà theo gói thuê và day_type đang chọn
   const getPriceForRoomType = (roomTypeId) => {
     if (!form.pricePolicyId || !roomTypeId) return null
     const dayType = isWeekend ? 'WEEKEND' : 'WEEKDAY'
@@ -1580,7 +1581,7 @@ function DirectBookingModal({ onClose, onCreated }) {
                     <div className="abk-selected-room" key={room.roomId}>
                       <div className="abk-selected-room-info">
                         <strong>Phòng {room.roomNumber}</strong>
-                        <span>{room.roomTypeName || 'Chưa phân loại'} · Tối đa {room.maxAdults || 0} người lớn, {room.maxChildren || 0} trẻ em</span>
+                        <span>{houseTypeName(room, 'Chưa phân loại')} · Tối đa {room.maxAdults || 0} người lớn, {room.maxChildren || 0} trẻ em</span>
                         <span className="abk-selected-room-deposit">{formatDeposit(room)}</span>
                         {price != null && (
                           <span className="abk-selected-room-price">
@@ -1678,7 +1679,7 @@ function DirectBookingModal({ onClose, onCreated }) {
                       >
                         <div className="abk-room-option-main">
                           <strong>Phòng {room.roomNumber}</strong>
-                          <span>{room.roomTypeName || 'Chưa phân loại'}</span>
+                          <span>{houseTypeName(room, 'Chưa phân loại')}</span>
                           <span>Tối đa {room.maxAdults || 0} NL · {room.maxChildren || 0} TE</span>
                           {room.depositPolicyName && (
                             <span className="abk-room-deposit-hint">
@@ -2003,7 +2004,7 @@ function AdminBookingsPage() {
           className="abk-search"
           value={search}
           onChange={e => setSearch(e.target.value)}
-          placeholder="Tìm phòng, loại phòng, khách hàng, số điện thoại..."
+          placeholder="Tìm phòng, loại nhà, khách hàng, số điện thoại..."
         />
         <input
           className="abk-date"
@@ -2048,7 +2049,7 @@ function AdminBookingsPage() {
                 <div className="abk-row" key={room.id}>
                   <div className="abk-room-cell">
                     <strong>Phòng {room.roomNumber}</strong>
-                    <span>{room.roomTypeName || 'Chưa phân loại'}</span>
+                    <span>{houseTypeName(room, 'Chưa phân loại')}</span>
                   </div>
                   {weekDays.map(day => {
                     const dayBookings = visibleBookings

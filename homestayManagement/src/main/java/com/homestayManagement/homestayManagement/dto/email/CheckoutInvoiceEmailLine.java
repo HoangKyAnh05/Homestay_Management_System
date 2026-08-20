@@ -6,6 +6,7 @@ public record CheckoutInvoiceEmailLine(
         String category,
         String name,
         String description,
+        String unit,
         int quantity,
         BigDecimal unitPrice,
         BigDecimal totalPrice

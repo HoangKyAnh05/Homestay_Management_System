@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { getStoredToken } from '../../services/authService'
+import { houseTypeName } from '../../utils/houseType'
 import AdminLayout from './AdminLayout'
 import './AdminUsersPage.css'
 
@@ -385,7 +386,7 @@ function CustomerHistoryModal({ user, onClose }) {
                       <span className="aum-room-index">{index + 1}</span>
                       <div>
                         <h4>{room.roomNumber ? `Phòng ${room.roomNumber}` : 'Chưa gán phòng'}</h4>
-                        <p>{room.roomTypeName || 'Chưa phân loại'} · {room.rentType || '—'}</p>
+                        <p>{houseTypeName(room, 'Chưa phân loại')} · {room.rentType || '—'}</p>
                       </div>
                       <strong>{formatMoney(room.priceAtBooking)}</strong>
                     </div>

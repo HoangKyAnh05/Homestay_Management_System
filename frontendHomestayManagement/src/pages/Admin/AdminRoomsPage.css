@@ -539,7 +539,7 @@
   cursor: not-allowed;
 }
 
-/* ── Price filter (toolbar trong tab Loại phòng) ── */
+/* ── Price filter (toolbar trong tab Loại nhà) ── */
 .arm-price-filter {
   display: flex;
   align-items: center;
@@ -553,7 +553,7 @@
   white-space: nowrap;
 }
 
-/* ── Hiển thị giá trong bảng Loại phòng ── */
+/* ── Hiển thị giá trong bảng Loại nhà ── */
 .arm-price-cell {
   display: flex;
   flex-wrap: wrap;

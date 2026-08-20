@@ -8,6 +8,8 @@ import com.homestayManagement.homestayManagement.service.AdminBookingService;
 import com.homestayManagement.homestayManagement.service.AdminCheckInRegistrationService;
 import com.homestayManagement.homestayManagement.service.AdminInvoiceService;
 import com.homestayManagement.homestayManagement.service.HousekeepingService;
+import com.homestayManagement.homestayManagement.service.IdentityOcrService;
+import com.homestayManagement.homestayManagement.service.TemporaryResidenceExcelService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -40,6 +42,8 @@ class ReceptionistAuthorizationTest {
     @MockitoBean private CustomUserDetailsService customUserDetailsService;
     @MockitoBean private AdminBookingService adminBookingService;
     @MockitoBean private AdminCheckInRegistrationService adminCheckInRegistrationService;
+    @MockitoBean private IdentityOcrService identityOcrService;
+    @MockitoBean private TemporaryResidenceExcelService temporaryResidenceExcelService;
     @MockitoBean private AdminInvoiceService adminInvoiceService;
     @MockitoBean private HousekeepingService housekeepingService;
 

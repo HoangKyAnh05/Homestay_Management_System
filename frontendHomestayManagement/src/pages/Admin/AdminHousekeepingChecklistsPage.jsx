@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { getStoredToken } from '../../services/authService'
+import { houseTypeName } from '../../utils/houseType'
 import AdminLayout from './AdminLayout'
 import './AdminHousekeepingChecklistsPage.css'
 
@@ -156,7 +157,7 @@ function AdminHousekeepingChecklistsPage() {
   }
 
   const resetRoom = async () => {
-    if (!selectedRoom?.hasOverride || !window.confirm(`Đặt phòng ${selectedRoom.roomNumber} về checklist mặc định của loại phòng?`)) return
+    if (!selectedRoom?.hasOverride || !window.confirm(`Đặt phòng ${selectedRoom.roomNumber} về checklist mặc định của loại nhà?`)) return
     setSaving(true)
     setError('')
     try {
@@ -182,13 +183,13 @@ function AdminHousekeepingChecklistsPage() {
           <div>
             <span className="hkc-eyebrow">TIÊU CHUẨN VỆ SINH</span>
             <h1>Cấu hình checklist</h1>
-            <p>Thiết lập tiêu chuẩn theo loại phòng và tùy chỉnh riêng khi một phòng có yêu cầu đặc biệt.</p>
+            <p>Thiết lập tiêu chuẩn theo loại nhà và tùy chỉnh riêng khi một phòng có yêu cầu đặc biệt.</p>
           </div>
           <button type="button" className="hkc-refresh" disabled={loading || saving} onClick={() => loadData(selectedTypeId, selectedRoomId)}>↻ Làm mới</button>
         </header>
 
         <div className="hkc-stats">
-          <div><span>Loại phòng đã cấu hình</span><strong>{configuredTypes}/{roomTypes.length}</strong></div>
+          <div><span>Loại nhà đã cấu hình</span><strong>{configuredTypes}/{roomTypes.length}</strong></div>
           <div><span>Tổng phòng vật lý</span><strong>{totalRooms}</strong></div>
           <div><span>Phòng có tùy chỉnh</span><strong>{customRooms}</strong></div>
           <div><span>Hạng mục đang áp dụng</span><strong>{activeItemCount}</strong></div>
@@ -199,16 +200,16 @@ function AdminHousekeepingChecklistsPage() {
 
         <div className="hkc-workspace">
           <aside className="hkc-types">
-            <div className="hkc-panel-title"><span>Loại phòng</span><b>{roomTypes.length}</b></div>
+            <div className="hkc-panel-title"><span>Loại nhà</span><b>{roomTypes.length}</b></div>
             {loading ? <div className="hkc-empty-small">Đang tải...</div> : roomTypes.length === 0 ? (
-              <div className="hkc-empty-small">Chưa có loại phòng.</div>
+              <div className="hkc-empty-small">Chưa có loại nhà.</div>
             ) : roomTypes.map(type => {
               const active = type.roomTypeId === selectedType?.roomTypeId
               const customized = type.rooms?.filter(room => room.hasOverride).length || 0
               return (
                 <button type="button" key={type.roomTypeId} className={`hkc-type${active ? ' is-active' : ''}`} onClick={() => selectScope(type)}>
-                  <span className="hkc-type-icon">{type.roomTypeName?.charAt(0)?.toUpperCase()}</span>
-                  <span><strong>{type.roomTypeName}</strong><small>{type.rooms?.length || 0} phòng · {customized} tùy chỉnh</small></span>
+                  <span className="hkc-type-icon">{String(type.roomTypeId || type.id || '').slice(-1) || 'N'}</span>
+                  <span><strong>{houseTypeName(type)}</strong><small>{type.rooms?.length || 0} phòng · {customized} tùy chỉnh</small></span>
                   <i className={type.defaultTemplate ? 'is-ready' : ''}>{type.defaultTemplate ? '✓' : '!'}</i>
                 </button>
               )
@@ -217,12 +218,12 @@ function AdminHousekeepingChecklistsPage() {
 
           <main className="hkc-editor">
             {!selectedType ? (
-              <div className="hkc-editor-empty"><b>Chưa có loại phòng để cấu hình</b><span>Hãy tạo loại phòng trong mục Quản lý phòng trước.</span></div>
+              <div className="hkc-editor-empty"><b>Chưa có loại nhà để cấu hình</b><span>Hãy tạo loại nhà trong mục Quản lý phòng trước.</span></div>
             ) : (
               <>
                 <div className="hkc-scope-head">
                   <div>
-                    <span className="hkc-eyebrow">{selectedType.roomTypeName}</span>
+                    <span className="hkc-eyebrow">{houseTypeName(selectedType)}</span>
                     <h2>{selectedRoom ? `Phòng ${selectedRoom.roomNumber}` : 'Checklist mặc định'}</h2>
                     <p>{selectedRoom ? 'Cấu hình áp dụng riêng cho phòng vật lý này.' : 'Tất cả phòng thuộc loại này sẽ kế thừa checklist bên dưới.'}</p>
                   </div>
@@ -231,7 +232,7 @@ function AdminHousekeepingChecklistsPage() {
 
                 <div className="hkc-scope-tabs">
                   <button type="button" className={!selectedRoomId ? 'is-active' : ''} onClick={() => selectScope(selectedType)}>
-                    <b>Mặc định</b><span>Cho loại phòng</span>
+                    <b>Mặc định</b><span>Cho loại nhà</span>
                   </button>
                   {selectedType.rooms?.map(room => (
                     <button type="button" key={room.roomId} className={selectedRoomId === room.roomId ? 'is-active' : ''} onClick={() => selectScope(selectedType, room.roomId)}>

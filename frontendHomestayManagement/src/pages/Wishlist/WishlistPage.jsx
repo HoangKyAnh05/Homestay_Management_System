@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { getStoredToken, getStoredUser, logout } from '../../services/authService'
+import { houseTypeName } from '../../utils/houseType'
 import { resolveImageUrl } from '../../utils/imageUrl'
 import '../Home/HomePage.css'
 import './WishlistPage.css'
@@ -136,9 +137,9 @@ export default function WishlistPage() {
         <section className="wishlist-heading">
           <div>
             <p>Tài khoản của tôi</p>
-            <h1>Danh sách phòng yêu thích ❤️</h1>
+            <h1>Danh sách loại nhà yêu thích ❤️</h1>
           </div>
-          <span>{items.length} phòng đã lưu</span>
+          <span>{items.length} loại nhà đã lưu</span>
         </section>
 
         {loading ? (
@@ -147,8 +148,8 @@ export default function WishlistPage() {
           <div className="wishlist-state wishlist-state--error">{error}</div>
         ) : items.length === 0 ? (
           <div className="wishlist-state">
-            <p>Bạn chưa lưu phòng yêu thích nào.</p>
-            <a href="/rooms" className="wishlist-browse-btn">Khám phá các loại phòng ngay</a>
+            <p>Bạn chưa lưu loại nhà yêu thích nào.</p>
+            <a href="/rooms" className="wishlist-browse-btn">Khám phá các loại nhà ngay</a>
           </div>
         ) : (
           <div className="wishlist-grid">
@@ -157,7 +158,7 @@ export default function WishlistPage() {
                 <div className="wishlist-photo">
                   <img
                     src={resolveImageUrl(item.primaryImageUrl || item.imageUrls?.[0]) || getFallbackRoomImage(item.roomTypeName, item.roomTypeId)}
-                    alt={item.roomTypeName}
+                    alt={houseTypeName(item)}
                     style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                     onError={(e) => {
                       e.target.onerror = null;
@@ -176,7 +177,7 @@ export default function WishlistPage() {
 
                 <div className="wishlist-card-body">
                   <div className="wishlist-card-title">
-                    <h3>{item.roomTypeName}</h3>
+                    <h3>{houseTypeName(item)}</h3>
                     <span>⭐ {item.averageRating || 5.0} ({item.totalReviews || 0})</span>
                   </div>
                   <p>{item.description || 'Không gian nghỉ dưỡng tiện nghi, ấm cúng.'}</p>

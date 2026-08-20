@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { getStoredToken, getStoredUser, logout } from '../../services/authService'
 import { formatDateTime as formatAppDateTime } from '../../utils/dateTimeFormat'
+import { houseTypeName } from '../../utils/houseType'
 import { resolveImageUrl } from '../../utils/imageUrl'
 import '../Home/HomePage.css'
 import './BookingHistoryPage.css'
@@ -464,7 +465,7 @@ function BookingHistoryPage() {
                       {statusLabel(booking.status)}
                     </span>
                   </div>
-                  <h2>Phòng {booking.firstRoomNumber} · {booking.firstRoomTypeName}</h2>
+                  <h2>{booking.firstRoomNumber ? `Phòng ${booking.firstRoomNumber}` : 'Chưa gán phòng'} · {houseTypeName({ roomTypeId: booking.firstRoomTypeId || booking.roomTypeId, roomTypeName: booking.firstRoomTypeName })}</h2>
                   <p>{formatAppDateTime(booking.checkInTarget, { weekday: 'long' })}</p>
                   <div className="history-card-bottom">
                     <span>{booking.roomCount} phòng · {formatMoney(booking.totalAmount)}</span>
@@ -561,13 +562,13 @@ function BookingHistoryPage() {
                   </div>
 
                   <section className="history-detail-section">
-                    <h3>Phòng đã đặt</h3>
+                    <h3>Loại nhà đã đặt</h3>
                     <div className="history-room-list">
                       {detail.rooms.map((room) => (
                         <article key={room.bookingDetailId}>
                           <div>
                             <strong>Phòng {room.roomNumber}</strong>
-                            <span>{room.roomTypeName} · {room.numberOfAdults} NL · {room.numberOfChildren} TE</span>
+                            <span>{houseTypeName(room)} · {room.numberOfAdults} NL · {room.numberOfChildren} TE</span>
                           </div>
                           <p>{formatAppDateTime(room.checkInTarget, { weekday: 'long' })} → {formatAppDateTime(room.checkOutTarget, { weekday: 'long' })}</p>
                           <b>

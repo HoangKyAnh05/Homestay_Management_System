@@ -21,6 +21,7 @@ import com.homestayManagement.homestayManagement.repository.InvoiceRepository;
 import com.homestayManagement.homestayManagement.repository.RoomAmenitiesUsageRepository;
 import com.homestayManagement.homestayManagement.repository.ServiceUsageRepository;
 import com.homestayManagement.homestayManagement.service.CheckoutInvoiceEmailService;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,8 +34,6 @@ import java.util.List;
 @Service
 public class CheckoutInvoiceEmailServiceImpl implements CheckoutInvoiceEmailService {
 
-    private static final BigDecimal VAT_RATE = new BigDecimal("0.08");
-    private static final BigDecimal VAT_DIVISOR = new BigDecimal("1.08");
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
     private final InvoiceRepository invoiceRepository;
@@ -44,6 +43,18 @@ public class CheckoutInvoiceEmailServiceImpl implements CheckoutInvoiceEmailServ
     private final RoomAmenitiesUsageRepository roomAmenitiesUsageRepository;
     private final AppliedPenaltyRepository appliedPenaltyRepository;
     private final CheckInRecordRepository checkInRecordRepository;
+    private final String invoiceName;
+    private final String invoiceSymbol;
+    private final String invoiceTemplateSymbol;
+    private final String sellerName;
+    private final String sellerAddress;
+    private final String sellerTaxCode;
+    private final String sellerPhone;
+    private final String sellerWebsite;
+    private final String sellerAccountNo;
+    private final String sellerBankName;
+    private final String taxAuthorityCode;
+    private final BigDecimal vatRate;
 
     public CheckoutInvoiceEmailServiceImpl(
             InvoiceRepository invoiceRepository,
@@ -52,7 +63,19 @@ public class CheckoutInvoiceEmailServiceImpl implements CheckoutInvoiceEmailServ
             ServiceUsageRepository serviceUsageRepository,
             RoomAmenitiesUsageRepository roomAmenitiesUsageRepository,
             AppliedPenaltyRepository appliedPenaltyRepository,
-            CheckInRecordRepository checkInRecordRepository
+            CheckInRecordRepository checkInRecordRepository,
+            @Value("${app.invoice.name:Hóa đơn thuê homestay}") String invoiceName,
+            @Value("${app.invoice.symbol:HD/HMS}") String invoiceSymbol,
+            @Value("${app.invoice.template-symbol:01HMS}") String invoiceTemplateSymbol,
+            @Value("${app.invoice.seller-name:Hóa đơn thuê homestay}") String sellerName,
+            @Value("${app.invoice.seller-address:Thạch Hòa, Thạch Thất, Hà Nội}") String sellerAddress,
+            @Value("${app.invoice.seller-tax-code:MST001}") String sellerTaxCode,
+            @Value("${app.invoice.seller-phone:}") String sellerPhone,
+            @Value("${app.invoice.seller-website:}") String sellerWebsite,
+            @Value("${app.invoice.seller-account-no:}") String sellerAccountNo,
+            @Value("${app.invoice.seller-bank-name:}") String sellerBankName,
+            @Value("${app.invoice.tax-authority-code:MST01}") String taxAuthorityCode,
+            @Value("${app.invoice.vat-rate:0.08}") BigDecimal vatRate
     ) {
         this.invoiceRepository = invoiceRepository;
         this.bookingDetailRepository = bookingDetailRepository;
@@ -61,6 +84,18 @@ public class CheckoutInvoiceEmailServiceImpl implements CheckoutInvoiceEmailServ
         this.roomAmenitiesUsageRepository = roomAmenitiesUsageRepository;
         this.appliedPenaltyRepository = appliedPenaltyRepository;
         this.checkInRecordRepository = checkInRecordRepository;
+        this.invoiceName = invoiceName;
+        this.invoiceSymbol = invoiceSymbol;
+        this.invoiceTemplateSymbol = invoiceTemplateSymbol;
+        this.sellerName = sellerName;
+        this.sellerAddress = sellerAddress;
+        this.sellerTaxCode = sellerTaxCode;
+        this.sellerPhone = sellerPhone;
+        this.sellerWebsite = sellerWebsite;
+        this.sellerAccountNo = sellerAccountNo;
+        this.sellerBankName = sellerBankName;
+        this.taxAuthorityCode = taxAuthorityCode;
+        this.vatRate = normalizeVatRate(vatRate);
     }
 
     @Override
@@ -97,29 +132,33 @@ public class CheckoutInvoiceEmailServiceImpl implements CheckoutInvoiceEmailServ
                 .forEach(lines::add);
 
         BigDecimal totalAmount = money(invoice.getTotalAmount());
-        BigDecimal taxableAmount = totalAmount.divide(VAT_DIVISOR, 2, RoundingMode.HALF_UP);
+        BigDecimal taxableAmount = totalAmount.divide(BigDecimal.ONE.add(vatRate), 2, RoundingMode.HALF_UP);
         BigDecimal vatAmount = totalAmount.subtract(taxableAmount).setScale(2, RoundingMode.HALF_UP);
 
         return new CheckoutInvoiceEmailSnapshot(
                 invoice.getId(),
-                "HÓA ĐƠN DỊCH VỤ LƯU TRÚ",
-                "HD/HMS",
-                "01HMS",
+                invoiceName,
+                invoiceSymbol,
+                invoiceTemplateSymbol,
                 "HD" + String.format("%02d", invoice.getId()),
-                "Nguyễn Văn A",
-                "Thạch Hòa, Thạch Thất, Hà Nội",
-                "MST001",
+                sellerName,
+                sellerAddress,
+                sellerTaxCode,
+                sellerPhone,
+                sellerWebsite,
+                sellerAccountNo,
+                sellerBankName,
                 customer.getFullName(),
                 customer.getAccount() != null ? customer.getAccount().getEmail() : null,
                 customer.getAddress(),
                 booking.getBookingCode(),
                 invoice.getCreatedAt(),
-                "MST01",
+                taxAuthorityCode,
                 money(invoice.getRoomCharge()),
                 money(invoice.getServiceCharge()),
                 money(invoice.getPenaltyCharge()),
                 taxableAmount,
-                VAT_RATE,
+                vatRate,
                 vatAmount,
                 totalAmount,
                 lines
@@ -136,7 +175,7 @@ public class CheckoutInvoiceEmailServiceImpl implements CheckoutInvoiceEmailServ
         if (total.compareTo(BigDecimal.ZERO) < 0) {
             total = BigDecimal.ZERO;
         }
-        return new CheckoutInvoiceEmailLine("Phòng", roomName, description, 1, total, total);
+        return new CheckoutInvoiceEmailLine("Phòng", roomName, description, "Phòng", 1, total, total);
     }
 
     private CheckoutInvoiceEmailLine toBookedServiceLine(BookingServiceItem item) {
@@ -148,6 +187,7 @@ public class CheckoutInvoiceEmailServiceImpl implements CheckoutInvoiceEmailServ
                 "Dịch vụ đặt trước",
                 name,
                 roomText,
+                "Lần",
                 quantity,
                 unitPrice,
                 unitPrice.multiply(BigDecimal.valueOf(quantity))
@@ -162,6 +202,7 @@ public class CheckoutInvoiceEmailServiceImpl implements CheckoutInvoiceEmailServ
                 "Dịch vụ phát sinh",
                 name,
                 roomText(usage.getCheckInRecord().getBookingDetail()),
+                usage.getInventoryService() != null ? "Sản phẩm" : "Lần",
                 quantity,
                 unitPrice,
                 unitPrice.multiply(BigDecimal.valueOf(quantity))
@@ -175,6 +216,7 @@ public class CheckoutInvoiceEmailServiceImpl implements CheckoutInvoiceEmailServ
                 "Mini-bar",
                 usage.getItem().getName(),
                 roomText(usage.getCheckInRecord().getBookingDetail()),
+                "Sản phẩm",
                 quantity,
                 unitPrice,
                 unitPrice.multiply(BigDecimal.valueOf(quantity))
@@ -186,6 +228,7 @@ public class CheckoutInvoiceEmailServiceImpl implements CheckoutInvoiceEmailServ
                 "Phí phát sinh",
                 penalty.getRulesPenalty().getTitle(),
                 roomText(penalty.getCheckRecord().getBookingDetail()),
+                "Khoản",
                 1,
                 money(penalty.getActualFine()),
                 money(penalty.getActualFine())
@@ -205,6 +248,7 @@ public class CheckoutInvoiceEmailServiceImpl implements CheckoutInvoiceEmailServ
                 "Phí thời gian",
                 name,
                 roomText(record.getBookingDetail()),
+                "Khoản",
                 1,
                 money(amount),
                 money(amount)
@@ -238,6 +282,14 @@ public class CheckoutInvoiceEmailServiceImpl implements CheckoutInvoiceEmailServ
 
     private BigDecimal money(BigDecimal value) {
         return (value != null ? value : BigDecimal.ZERO).setScale(2, RoundingMode.HALF_UP);
+    }
+
+    private BigDecimal normalizeVatRate(BigDecimal configuredRate) {
+        BigDecimal rate = configuredRate != null ? configuredRate : new BigDecimal("0.08");
+        if (rate.compareTo(BigDecimal.ONE) > 0) {
+            rate = rate.divide(new BigDecimal("100"), 4, RoundingMode.HALF_UP);
+        }
+        return rate;
     }
 
     private int quantity(Integer quantity) {

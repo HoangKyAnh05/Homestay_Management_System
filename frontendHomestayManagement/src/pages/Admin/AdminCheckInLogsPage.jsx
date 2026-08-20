@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { getStoredToken } from '../../services/authService'
 import { formatDateTime as formatAppDateTime } from '../../utils/dateTimeFormat'
+import { houseTypeName } from '../../utils/houseType'
 import SePayQrPayment from '../../components/SePayQrPayment/SePayQrPayment'
 import AdminLayout from './AdminLayout'
 import './AdminCheckInLogsPage.css'
@@ -209,7 +210,7 @@ function DetailCard({ detail, actionLoading, housekeepingRequested, onAction }) 
       <div className="acl-detail-main">
         <div className="acl-room-badge">
           <strong>{detail.roomNumber || '—'}</strong>
-          <span>{detail.roomTypeName || 'Chưa phân loại'}</span>
+          <span>{houseTypeName(detail, 'Chưa phân loại')}</span>
         </div>
         <div>
           <div className="acl-detail-title">
@@ -445,7 +446,7 @@ function CheckOutModal({ bookingDetailId, onClose, onCompleted }) {
                 <h2 id="aco-title">
                   {detail ? `Booking ${bookingDisplay(detail)}` : 'Đang tải...'}
                 </h2>
-                <p>{detail ? `${detail.customer?.fullName || '—'} · ${detail.roomNumber ? `Phòng ${detail.roomNumber}` : 'Chưa gán phòng'} · ${detail.roomTypeName || ''}` : ''}</p>
+                <p>{detail ? `${detail.customer?.fullName || '—'} · ${detail.roomNumber ? `Phòng ${detail.roomNumber}` : 'Chưa gán phòng'} · ${houseTypeName(detail, '')}` : ''}</p>
               </div>
               <button type="button" className="aco-close" onClick={onClose} aria-label="Đóng">×</button>
             </div>
@@ -472,7 +473,7 @@ function CheckOutModal({ bookingDetailId, onClose, onCompleted }) {
                       <div className="aco-info-item">
                         <span>Phòng</span>
                         <strong>{detail.roomNumber ? `Phòng ${detail.roomNumber}` : 'Chưa gán'}</strong>
-                        <small>{detail.roomTypeName}</small>
+                        <small>{houseTypeName(detail)}</small>
                       </div>
                       <div className="aco-info-item">
                         <span>Nhận phòng</span>
@@ -831,7 +832,7 @@ function CheckInModal({ bookingDetailId, onClose, onCompleted }) {
           <div>
             <span>Tiếp nhận lưu trú</span>
             <h2 id="acl-checkin-title">Check-in booking {bookingDisplay(preparation)}</h2>
-            <p>{preparation ? `${preparation.customer?.fullName} · ${preparation.roomTypeName}` : 'Đang tải thông tin...'}</p>
+            <p>{preparation ? `${preparation.customer?.fullName} · ${houseTypeName(preparation)}` : 'Đang tải thông tin...'}</p>
           </div>
           <button type="button" onClick={onClose} aria-label="Đóng">×</button>
         </header>
@@ -861,7 +862,7 @@ function CheckInModal({ bookingDetailId, onClose, onCompleted }) {
                 <div className="acl-room-options">
                   <label className="is-selected acl-room-option--readonly">
                     <input type="radio" checked readOnly />
-                    <span>Phòng</span><strong>{preparation.assignedRoom.roomNumber}</strong><small>{preparation.assignedRoom.roomTypeName}</small>
+                    <span>Phòng</span><strong>{preparation.assignedRoom.roomNumber}</strong><small>{houseTypeName(preparation.assignedRoom)}</small>
                   </label>
                 </div>
               ) : preparation.availableRooms.length ? (
@@ -870,11 +871,11 @@ function CheckInModal({ bookingDetailId, onClose, onCompleted }) {
                     <label key={room.id} className={String(room.id) === roomId ? 'is-selected' : ''}>
                       <input type="radio" name="room" value={room.id} checked={String(room.id) === roomId}
                         onChange={event => setRoomId(event.target.value)} />
-                      <span>Phòng</span><strong>{room.roomNumber}</strong><small>{room.roomTypeName}</small>
+                      <span>Phòng</span><strong>{room.roomNumber}</strong><small>{houseTypeName(room)}</small>
                     </label>
                   ))}
                 </div>
-              ) : <div className="acl-checkin-warning">Không còn phòng {preparation.roomTypeName} trống trong thời gian này.</div>}
+              ) : <div className="acl-checkin-warning">Không còn phòng thuộc {houseTypeName(preparation)} trống trong thời gian này.</div>}
             </section>
 
             <section className="acl-checkin-section">

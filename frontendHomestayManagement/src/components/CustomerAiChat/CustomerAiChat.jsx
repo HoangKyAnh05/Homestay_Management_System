@@ -22,7 +22,7 @@ function getSessionId() {
 function quickQuestions(authenticated) {
   return authenticated
     ? ['Booking gần nhất của tôi?', 'Tôi còn phải thanh toán bao nhiêu?', 'Có những dịch vụ nào?']
-    : ['Có những loại phòng nào?', 'Có những dịch vụ nào?', 'Hướng dẫn tôi đặt phòng']
+    : ['Có những loại nhà nào?', 'Có những dịch vụ nào?', 'Hướng dẫn tôi đặt phòng']
 }
 
 export default function CustomerAiChat() {

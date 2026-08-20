@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { getStoredToken } from '../../services/authService'
+import { houseTypeName } from '../../utils/houseType'
 import AdminLayout from './AdminLayout'
 import './AdminHousekeepingCalendarPage.css'
 
@@ -82,7 +83,7 @@ function AdminHousekeepingCalendarPage() {
   const allRoomTypes = useMemo(() => {
     const map = new Map()
     ;(data?.rooms || []).forEach(room => map.set(room.roomTypeId, room.roomTypeName))
-    return [...map.entries()].map(([id, name]) => ({ id, name }))
+    return [...map.entries()].map(([id, name]) => ({ id, name: houseTypeName({ roomTypeId: id, roomTypeName: name }) }))
   }, [data])
 
   const dates = data?.rooms?.[0]?.days?.map(day => day.date) || Array.from({ length: 7 }, (_, index) => addDays(startDate, index))
@@ -137,7 +138,7 @@ function AdminHousekeepingCalendarPage() {
         <div className="hkr-toolbar">
           <div className="hkr-search"><span>⌕</span><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Tìm số phòng..." /></div>
           <select value={roomTypeId} onChange={event => setRoomTypeId(event.target.value)}>
-            <option value="ALL">Tất cả loại phòng</option>
+            <option value="ALL">Tất cả loại nhà</option>
             {allRoomTypes.map(type => <option key={type.id} value={type.id}>{type.name}</option>)}
           </select>
           <select value={status} onChange={event => setStatus(event.target.value)}>
@@ -159,7 +160,7 @@ function AdminHousekeepingCalendarPage() {
 
             {loading ? <div className="hkr-loading">Đang tải lịch phòng...</div> : visibleRooms.length === 0 ? <div className="hkr-loading">Không có phòng phù hợp bộ lọc.</div> : visibleRooms.map(room => (
               <div className="hkr-row" key={room.roomId}>
-                <div className="hkr-room"><span>{room.roomNumber}</span><div><strong>Phòng {room.roomNumber}</strong><small>{room.roomTypeName}</small></div></div>
+                <div className="hkr-room"><span>{room.roomNumber}</span><div><strong>Phòng {room.roomNumber}</strong><small>{houseTypeName(room)}</small></div></div>
                 {room.days.map(day => {
                   const meta = STATUS[day.status] || STATUS.AVAILABLE
                   return (
@@ -185,7 +186,7 @@ function AdminHousekeepingCalendarPage() {
             <aside className="hkr-detail">
               <button type="button" className="hkr-close" onClick={() => setSelected(null)}>×</button>
               <span className="hkr-eyebrow">{weekday(selected.day.date)} · {shortDate(selected.day.date)}</span>
-              <h2>Phòng {selected.room.roomNumber}</h2><p>{selected.room.roomTypeName}</p>
+              <h2>Phòng {selected.room.roomNumber}</h2><p>{houseTypeName(selected.room)}</p>
               <div className={`hkr-detail-status is-${STATUS[selected.day.status]?.className}`}><i />{STATUS[selected.day.status]?.label}</div>
               {selected.day.customerName && <div className="hkr-detail-block"><span>Khách lưu trú</span><strong>{selected.day.customerName}</strong><small>Booking {bookingDisplay(selected.day)}</small></div>}
               {selected.day.bookingId && <div className="hkr-detail-grid"><div><span>Nhận phòng</span><strong>{dateTime(selected.day.checkInTarget)}</strong></div><div><span>Trả phòng</span><strong>{dateTime(selected.day.checkOutTarget)}</strong></div></div>}

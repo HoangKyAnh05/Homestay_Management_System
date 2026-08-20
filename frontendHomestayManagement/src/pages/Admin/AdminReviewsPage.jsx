@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { getStoredToken } from '../../services/authService'
+import { houseTypeName } from '../../utils/houseType'
 import AdminLayout from './AdminLayout'
 import './AdminRoomsPage.css'
 
@@ -193,9 +194,9 @@ export default function AdminReviewsPage() {
                     </span>
                   </div>
 
-                  {/* Room Type */}
+                  {/* House Type */}
                   <div style={{ fontSize: '12.5px', color: '#2563eb', fontWeight: '600', marginBottom: '8px' }}>
-                    🏨 {r.roomTypeName} (Đơn #{r.bookingId})
+                    🏨 {houseTypeName(r)} (Đơn #{r.bookingId})
                   </div>
 
                   {/* Stars */}
