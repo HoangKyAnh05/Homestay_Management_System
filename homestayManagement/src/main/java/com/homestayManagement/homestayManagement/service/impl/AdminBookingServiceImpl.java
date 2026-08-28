@@ -21,6 +21,7 @@ import com.homestayManagement.homestayManagement.dto.response.AdminDirectBooking
 import com.homestayManagement.homestayManagement.dto.request.AdminBookingAddMiniBarRequest;
 import com.homestayManagement.homestayManagement.dto.request.AdminBookingAddPenaltyRequest;
 import com.homestayManagement.homestayManagement.dto.request.AdminBookingAddServiceRequest;
+import com.homestayManagement.homestayManagement.dto.request.AdminCheckoutPaymentRequest;
 import com.homestayManagement.homestayManagement.dto.request.AdminDirectBookingServiceRequest;
 import com.homestayManagement.homestayManagement.dto.response.FacilityServiceResponse;
 import com.homestayManagement.homestayManagement.dto.response.InventoryServiceResponse;
@@ -621,6 +622,40 @@ public class AdminBookingServiceImpl implements AdminBookingService {
                 remainingBalance
         );
         return new AdminCheckoutResponse(false, getBookingDetail(bookingDetailId), payment);
+    }
+
+    @Override
+    @Transactional
+    public AdminCheckoutResponse recordCheckoutPayment(Long bookingDetailId, AdminCheckoutPaymentRequest request) {
+        String paymentMethod = normalizeCounterPaymentMethod(request.paymentMethod());
+        BookingDetail detail = bookingDetailRepository.findByIdForAdminDetail(bookingDetailId)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đơn đặt phòng"));
+        CheckInRecord record = checkInRecordRepository.findByBookingDetailId(bookingDetailId)
+                .orElseThrow(() -> new IllegalArgumentException("Phòng này chưa check-in"));
+        if (record.getActualCheckOut() != null || "COMPLETED".equalsIgnoreCase(detail.getStatus())) {
+            return new AdminCheckoutResponse(true, getBookingDetail(bookingDetailId), null);
+        }
+
+        requireInspectionComplete(record);
+        generateInvoice(bookingDetailId);
+        Invoice invoice = invoiceRepository.findByBookingIdForAdmin(detail.getBooking().getId())
+                .orElseThrow(() -> new IllegalArgumentException("Không thể tạo hóa đơn checkout"));
+        BigDecimal remainingBalance = calculateDetailOutstandingBalance(detail);
+        if (remainingBalance.compareTo(BigDecimal.ZERO) == 0) {
+            return new AdminCheckoutResponse(true, checkOut(bookingDetailId), null);
+        }
+
+        paymentRepository.save(Payment.builder()
+                .invoice(invoice)
+                .bookingDetail(detail)
+                .paymentMethod(paymentMethod)
+                .paymentPurpose("CHECKOUT")
+                .amount(remainingBalance)
+                .status("SUCCESS")
+                .transactionNo(paymentMethod + "-" + bookingDetailId + "-" + System.currentTimeMillis())
+                .paymentTime(LocalDateTime.now())
+                .build());
+        return new AdminCheckoutResponse(true, checkOut(bookingDetailId), null);
     }
 
     @Override
@@ -1318,6 +1353,17 @@ public class AdminBookingServiceImpl implements AdminBookingService {
                         .multiply(BigDecimal.valueOf(item.getQuantity())))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         return finalRoomAmount(detail).add(bookedServices);
+    }
+
+    private String normalizeCounterPaymentMethod(String paymentMethod) {
+        if (paymentMethod == null) {
+            throw new IllegalArgumentException("Vui lòng chọn phương thức thanh toán");
+        }
+        String normalized = paymentMethod.trim().toUpperCase();
+        if (!Set.of("CASH", "CARD").contains(normalized)) {
+            throw new IllegalArgumentException("Phương thức thanh toán tại quầy không hợp lệ");
+        }
+        return normalized;
     }
 
     private BigDecimal calculateDetailTotalCharge(BookingDetail detail) {

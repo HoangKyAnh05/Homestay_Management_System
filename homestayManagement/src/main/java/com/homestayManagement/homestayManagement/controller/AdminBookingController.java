@@ -3,6 +3,7 @@ package com.homestayManagement.homestayManagement.controller;
 import com.homestayManagement.homestayManagement.dto.request.AdminBookingAddMiniBarRequest;
 import com.homestayManagement.homestayManagement.dto.request.AdminBookingAddPenaltyRequest;
 import com.homestayManagement.homestayManagement.dto.request.AdminBookingAddServiceRequest;
+import com.homestayManagement.homestayManagement.dto.request.AdminCheckoutPaymentRequest;
 import com.homestayManagement.homestayManagement.dto.request.AdminDirectBookingRequest;
 import com.homestayManagement.homestayManagement.dto.request.AdminUpdateBookingCustomerRequest;
 import com.homestayManagement.homestayManagement.dto.request.AdminUpdateBookingDetailRequest;
@@ -168,6 +169,14 @@ public class AdminBookingController {
     @PostMapping("/details/{bookingDetailId}/prepare-check-out")
     public AdminCheckoutResponse prepareCheckOut(@PathVariable Long bookingDetailId) {
         return adminBookingService.prepareCheckOut(bookingDetailId);
+    }
+
+    @PostMapping("/details/{bookingDetailId}/checkout-payment")
+    public AdminCheckoutResponse recordCheckoutPayment(
+            @PathVariable Long bookingDetailId,
+            @Valid @RequestBody AdminCheckoutPaymentRequest request
+    ) {
+        return adminBookingService.recordCheckoutPayment(bookingDetailId, request);
     }
 
     @PostMapping("/details/{bookingDetailId}/services")

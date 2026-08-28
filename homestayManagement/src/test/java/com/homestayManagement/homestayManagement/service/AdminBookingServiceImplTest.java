@@ -44,6 +44,7 @@ import com.homestayManagement.homestayManagement.dto.request.AdminDirectBookingG
 import com.homestayManagement.homestayManagement.dto.request.AdminDirectBookingRequest;
 import com.homestayManagement.homestayManagement.dto.request.AdminDirectBookingRoomRequest;
 import com.homestayManagement.homestayManagement.dto.request.AdminDirectBookingServiceRequest;
+import com.homestayManagement.homestayManagement.dto.request.AdminCheckoutPaymentRequest;
 import com.homestayManagement.homestayManagement.dto.response.SePayPaymentResponse;
 import com.homestayManagement.homestayManagement.service.impl.AdminBookingServiceImpl;
 import com.homestayManagement.homestayManagement.service.event.CheckoutInvoiceEmailEvent;
@@ -61,6 +62,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -512,6 +514,86 @@ class AdminBookingServiceImplTest {
             assertEquals(false, response.completed());
             assertEquals(BigDecimal.valueOf(6_000), response.payment().amount());
             verify(sePayPaymentService).createCheckoutPayment(3L, 6L, new BigDecimal("6000.00"));
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
+    }
+
+    @Test
+    void recordCheckoutPaymentWithCashSavesSuccessfulPaymentAndCompletesCheckout() {
+        Account account = Account.builder().id(1L).email("customer@example.com").build();
+        Customer customer = Customer.builder().id(2L).account(account).fullName("Customer").build();
+        Booking booking = Booking.builder()
+                .id(3L).customer(customer).bookingDate(LocalDateTime.now()).status("CHECKED_IN").build();
+        RoomType roomType = RoomType.builder().id(4L).name("Studio").build();
+        Room room = Room.builder().id(5L).roomNumber("201").roomType(roomType).status("OCCUPIED").build();
+        BookingDetail detail = BookingDetail.builder()
+                .id(6L).booking(booking).roomType(roomType).room(room)
+                .checkInTarget(LocalDateTime.of(2026, 7, 2, 14, 0))
+                .checkOutTarget(LocalDateTime.of(2026, 7, 3, 12, 0))
+                .numberOfAdults(2).numberOfChildren(0)
+                .priceAtBooking(BigDecimal.valueOf(8_000))
+                .rentType("DAILY").status("CHECKED_IN").build();
+        CheckInRecord record = CheckInRecord.builder().id(7L).bookingDetail(detail).build();
+        HousekeepingTask task = HousekeepingTask.builder()
+                .id(8L).checkInRecord(record).room(room).inspectionStatus("COMPLETED").build();
+        FacilityService facility = FacilityService.builder()
+                .id(9L).name("Breakfast").price(BigDecimal.valueOf(4_000)).isActive(true).build();
+        BookingServiceItem bookedService = BookingServiceItem.builder()
+                .id(10L).bookingDetail(detail).facilityService(facility)
+                .quantity(1).priceAtBooking(BigDecimal.valueOf(4_000)).build();
+        Invoice invoice = Invoice.builder()
+                .id(11L).booking(booking).totalAmount(BigDecimal.valueOf(12_000)).build();
+        Payment bookingDeposit = Payment.builder()
+                .id(12L).invoice(invoice).paymentPurpose("BOOKING")
+                .amount(BigDecimal.valueOf(6_000)).status("SUCCESS").build();
+        List<Payment> savedPayments = new ArrayList<>(List.of(bookingDeposit));
+        Employee employee = Employee.builder().id(13L).fullName("Receptionist").build();
+
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken("staff@example.com", "password")
+        );
+        try {
+            when(bookingDetailRepository.findByIdForAdminDetail(6L)).thenReturn(Optional.of(detail));
+            when(checkInRecordRepository.findByBookingDetailId(6L)).thenReturn(Optional.of(record));
+            when(housekeepingTaskRepository.findByCheckInRecordId(7L)).thenReturn(Optional.of(task));
+            when(checkInRecordRepository.findByBookingIdForInvoice(3L)).thenReturn(List.of(record));
+            when(bookingDetailRepository.findByBookingId(3L)).thenReturn(List.of(detail));
+            when(bookingServiceItemRepository.findByBookingDetailIds(List.of(6L))).thenReturn(List.of(bookedService));
+            when(serviceUsageRepository.findByBookingIdForInvoice(3L)).thenReturn(List.of());
+            when(roomAmenitiesUsageRepository.findByBookingIdForInvoice(3L)).thenReturn(List.of());
+            when(appliedPenaltyRepository.findByBookingIdForInvoice(3L)).thenReturn(List.of());
+            when(invoiceRepository.findByBookingIdForAdmin(3L)).thenReturn(Optional.of(invoice));
+            when(employeeRepository.findByAccountEmail("staff@example.com")).thenReturn(Optional.of(employee));
+            when(paymentRepository.findByInvoiceIdOrderByPaymentTimeDescIdDesc(11L)).thenAnswer(invocation -> savedPayments);
+            when(paymentRepository.save(any(Payment.class))).thenAnswer(invocation -> {
+                Payment payment = invocation.getArgument(0);
+                payment.setId(14L);
+                savedPayments.add(payment);
+                return payment;
+            });
+            when(checkInRecordRepository.findByBookingDetailIdForAdmin(6L)).thenReturn(List.of(record));
+            when(serviceUsageRepository.findByBookingDetailIdForAdmin(6L)).thenReturn(List.of());
+            when(roomAmenitiesUsageRepository.findByBookingDetailIdForAdmin(6L)).thenReturn(List.of());
+            when(appliedPenaltyRepository.findByBookingDetailIdForAdmin(6L)).thenReturn(List.of());
+            when(bookingGuestRepository.findByBookingDetailIds(List.of(6L))).thenReturn(List.of());
+            when(facilityServiceRepository.findAll()).thenReturn(List.of());
+            when(inventoryServiceRepository.findAll()).thenReturn(List.of());
+            when(roomMiniBarItemRepository.findAll()).thenReturn(List.of());
+            when(rulesPenaltyRepository.findAll()).thenReturn(List.of());
+
+            var response = service.recordCheckoutPayment(6L, new AdminCheckoutPaymentRequest("CASH"));
+
+            ArgumentCaptor<Payment> paymentCaptor = ArgumentCaptor.forClass(Payment.class);
+            verify(paymentRepository).save(paymentCaptor.capture());
+            Payment payment = paymentCaptor.getValue();
+            assertEquals(true, response.completed());
+            assertEquals("COMPLETED", detail.getStatus());
+            assertEquals("AVAILABLE", room.getStatus());
+            assertEquals("CASH", payment.getPaymentMethod());
+            assertEquals("CHECKOUT", payment.getPaymentPurpose());
+            assertEquals("SUCCESS", payment.getStatus());
+            assertEquals(0, new BigDecimal("6000.00").compareTo(payment.getAmount()));
         } finally {
             SecurityContextHolder.clearContext();
         }

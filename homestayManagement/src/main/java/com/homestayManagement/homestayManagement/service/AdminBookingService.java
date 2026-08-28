@@ -9,6 +9,7 @@ import com.homestayManagement.homestayManagement.dto.response.AdminCheckoutRespo
 import com.homestayManagement.homestayManagement.dto.request.AdminBookingAddMiniBarRequest;
 import com.homestayManagement.homestayManagement.dto.request.AdminBookingAddPenaltyRequest;
 import com.homestayManagement.homestayManagement.dto.request.AdminBookingAddServiceRequest;
+import com.homestayManagement.homestayManagement.dto.request.AdminCheckoutPaymentRequest;
 import com.homestayManagement.homestayManagement.dto.request.AdminDirectBookingRequest;
 import com.homestayManagement.homestayManagement.dto.request.AdminUpdateBookingCustomerRequest;
 import com.homestayManagement.homestayManagement.dto.request.AdminUpdateBookingDetailRequest;
@@ -28,6 +29,7 @@ public interface AdminBookingService {
     AdminBookingDetailResponse checkIn(Long bookingDetailId);
     AdminBookingDetailResponse checkOut(Long bookingDetailId);
     AdminCheckoutResponse prepareCheckOut(Long bookingDetailId);
+    AdminCheckoutResponse recordCheckoutPayment(Long bookingDetailId, AdminCheckoutPaymentRequest request);
     AdminBookingDetailResponse addService(Long bookingDetailId, AdminBookingAddServiceRequest request);
     AdminBookingDetailResponse addMiniBar(Long bookingDetailId, AdminBookingAddMiniBarRequest request);
     AdminBookingDetailResponse addPenalty(Long bookingDetailId, AdminBookingAddPenaltyRequest request);

@@ -8,6 +8,12 @@ import './AdminCheckInLogsPage.css'
 
 const API_BASE = 'http://localhost:8080/api/admin/bookings'
 
+const CHECKOUT_PAYMENT_OPTIONS = [
+  { value: 'CASH', label: 'Tiền mặt', description: 'Thu trực tiếp tại quầy' },
+  { value: 'CARD', label: 'Thẻ', description: 'Quẹt máy POS rồi ghi nhận' },
+  { value: 'QR', label: 'QR', description: 'Tạo mã SePay tự động' },
+]
+
 function bookingDisplay(booking) {
   return booking?.bookingCode || `#${booking?.bookingId || ''}`
 }
@@ -18,6 +24,11 @@ function authHeaders() {
 
 function authUploadHeaders() {
   return { Authorization: `Bearer ${getStoredToken()}` }
+}
+
+function parseMoneyInput(value) {
+  const digits = String(value || '').replace(/[^\d]/g, '')
+  return digits ? Number(digits) : 0
 }
 
 function toDateInputValue(date) {
@@ -382,6 +393,11 @@ function CheckOutModal({ bookingDetailId, onClose, onCompleted }) {
   const [loading, setLoading] = useState(true)
   const [checkingOut, setCheckingOut] = useState(false)
   const [payment, setPayment] = useState(null)
+  const [checkoutPaymentMethod, setCheckoutPaymentMethod] = useState('QR')
+  const [paymentMethodOpen, setPaymentMethodOpen] = useState(false)
+  const [cashDialogOpen, setCashDialogOpen] = useState(false)
+  const [cashReceived, setCashReceived] = useState('')
+  const [cashError, setCashError] = useState('')
   const [error, setError] = useState('')
 
   useEffect(() => {
@@ -399,13 +415,15 @@ function CheckOutModal({ bookingDetailId, onClose, onCompleted }) {
     return () => controller.abort()
   }, [bookingDetailId])
 
-  const handleCheckOut = async () => {
+  const submitCheckout = async (counterPaymentMethod) => {
     setCheckingOut(true)
     setError('')
     try {
-      const response = await fetch(`${API_BASE}/details/${bookingDetailId}/prepare-check-out`, {
+      const useCounterPayment = Boolean(counterPaymentMethod)
+      const response = await fetch(`${API_BASE}/details/${bookingDetailId}/${useCounterPayment ? 'checkout-payment' : 'prepare-check-out'}`, {
         method: 'POST',
         headers: authHeaders(),
+        ...(useCounterPayment ? { body: JSON.stringify({ paymentMethod: counterPaymentMethod }) } : {}),
       })
       const data = await response.json().catch(() => ({}))
       if (!response.ok) throw new Error(data.message || 'Không thể thực hiện check-out')
@@ -422,12 +440,37 @@ function CheckOutModal({ bookingDetailId, onClose, onCompleted }) {
     }
   }
 
+  const handleCheckOut = async () => {
+    if (remaining > 0 && checkoutPaymentMethod === 'CASH') {
+      setCashReceived('')
+      setCashError('')
+      setCashDialogOpen(true)
+      return
+    }
+    const counterPaymentMethod = remaining > 0 && checkoutPaymentMethod === 'CARD' ? 'CARD' : null
+    await submitCheckout(counterPaymentMethod)
+  }
+
+  const handleConfirmCashPayment = async () => {
+    const receivedAmount = parseMoneyInput(cashReceived)
+    if (receivedAmount < remaining) {
+      setCashError('Số tiền khách đưa chưa đủ để thanh toán hóa đơn.')
+      return
+    }
+    setCashDialogOpen(false)
+    await submitCheckout('CASH')
+  }
+
   const inv = detail?.invoice
   const paidAmount = Number(detail?.paidAmount || 0)
   const remaining = inv ? Number(inv.totalAmount || 0) - paidAmount : 0
   const guests = detail?.guests || []
   const primaryGuest = guests.find(g => g.primaryGuest) || guests[0]
   const otherGuests = guests.filter(g => g !== primaryGuest)
+  const selectedPaymentMethod = CHECKOUT_PAYMENT_OPTIONS.find(option => option.value === checkoutPaymentMethod) || CHECKOUT_PAYMENT_OPTIONS[0]
+  const cashReceivedAmount = parseMoneyInput(cashReceived)
+  const cashChangeAmount = Math.max(0, cashReceivedAmount - remaining)
+  const cashIsEnough = cashReceivedAmount >= remaining
 
   function genderLabel(g) {
     return g === 'MALE' ? 'Nam' : g === 'FEMALE' ? 'Nữ' : g === 'OTHER' ? 'Khác' : '—'
@@ -631,6 +674,49 @@ function CheckOutModal({ bookingDetailId, onClose, onCompleted }) {
                         <div className="aco-balance-label">Còn lại cần thanh toán</div>
                         <div className="aco-balance-amount">{formatMoney(remaining)}</div>
                         <p>Khách cần thanh toán trước khi trả phòng.</p>
+                        <div
+                          className="aco-payment-select"
+                          onBlur={event => {
+                            if (!event.currentTarget.contains(event.relatedTarget)) {
+                              setPaymentMethodOpen(false)
+                            }
+                          }}
+                        >
+                          <span className="aco-payment-select-label">Phương thức thanh toán</span>
+                          <button
+                            type="button"
+                            className="aco-payment-trigger"
+                            aria-haspopup="listbox"
+                            aria-expanded={paymentMethodOpen}
+                            onClick={() => setPaymentMethodOpen(open => !open)}
+                          >
+                            <span>
+                              <strong>{selectedPaymentMethod.label}</strong>
+                              <small>{selectedPaymentMethod.description}</small>
+                            </span>
+                            <b aria-hidden="true">⌄</b>
+                          </button>
+                          {paymentMethodOpen && (
+                            <div className="aco-payment-menu" role="listbox" aria-label="Chọn phương thức thanh toán">
+                              {CHECKOUT_PAYMENT_OPTIONS.map(option => (
+                                <button
+                                  key={option.value}
+                                  type="button"
+                                  className={`aco-payment-option${checkoutPaymentMethod === option.value ? ' is-selected' : ''}`}
+                                  role="option"
+                                  aria-selected={checkoutPaymentMethod === option.value}
+                                  onClick={() => {
+                                    setCheckoutPaymentMethod(option.value)
+                                    setPaymentMethodOpen(false)
+                                  }}
+                                >
+                                  <strong>{option.label}</strong>
+                                  <span>{option.description}</span>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     ) : (
                       <div className="aco-balance aco-balance--clear">
@@ -662,7 +748,9 @@ function CheckOutModal({ bookingDetailId, onClose, onCompleted }) {
                 {checkingOut ? (
                   <><span className="aco-spinner" />Đang xử lý...</>
                 ) : remaining > 0 ? (
-                  `Check-out & Thanh toán ${formatMoney(remaining)}`
+                  checkoutPaymentMethod === 'QR'
+                    ? `Tạo QR thanh toán ${formatMoney(remaining)}`
+                    : `Xác nhận ${selectedPaymentMethod.label} ${formatMoney(remaining)}`
                 ) : (
                   'Xác nhận Check-out'
                 )}
@@ -683,6 +771,53 @@ function CheckOutModal({ bookingDetailId, onClose, onCompleted }) {
           onSuccess={async () => { setPayment(null); await onCompleted() }}
           onClose={() => setPayment(null)}
         />
+      )}
+
+      {cashDialogOpen && (
+        <div className="aco-cash-overlay" onClick={event => event.target === event.currentTarget && !checkingOut && setCashDialogOpen(false)}>
+          <section className="aco-cash-modal" role="dialog" aria-modal="true" aria-labelledby="aco-cash-title">
+            <header>
+              <div>
+                <span>Thanh toán tiền mặt</span>
+                <h3 id="aco-cash-title">Nhập số tiền khách đưa</h3>
+              </div>
+              <button type="button" onClick={() => setCashDialogOpen(false)} disabled={checkingOut} aria-label="Đóng">×</button>
+            </header>
+
+            <div className="aco-cash-summary">
+              <div>
+                <span>Cần thu</span>
+                <strong>{formatMoney(remaining)}</strong>
+              </div>
+              <label>
+                <span>Khách đưa</span>
+                <input
+                  autoFocus
+                  inputMode="numeric"
+                  value={cashReceived}
+                  onChange={event => {
+                    setCashReceived(event.target.value)
+                    setCashError('')
+                  }}
+                  placeholder="VD: 5200000"
+                />
+              </label>
+              <div className={`aco-cash-change${cashReceived && !cashIsEnough ? ' is-short' : ''}`}>
+                <span>{cashReceived && !cashIsEnough ? 'Còn thiếu' : 'Tiền trả lại'}</span>
+                <strong>{formatMoney(cashReceived && !cashIsEnough ? remaining - cashReceivedAmount : cashChangeAmount)}</strong>
+              </div>
+            </div>
+
+            {cashError && <div className="aco-cash-error">{cashError}</div>}
+
+            <footer>
+              <button type="button" onClick={() => setCashDialogOpen(false)} disabled={checkingOut}>Hủy</button>
+              <button type="button" onClick={handleConfirmCashPayment} disabled={checkingOut || !cashIsEnough}>
+                {checkingOut ? <><span className="aco-spinner" />Đang xử lý...</> : 'Xác nhận đã thu tiền'}
+              </button>
+            </footer>
+          </section>
+        </div>
       )}
     </>
   )
