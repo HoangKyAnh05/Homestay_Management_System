@@ -37,7 +37,7 @@ function CustomerSurface({ children }) {
   return (
     <>
       {children}
-      <CustomerAiChat />
+      {/* <CustomerAiChat /> */}
     </>
   )
 }

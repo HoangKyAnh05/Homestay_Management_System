@@ -3,6 +3,7 @@ package com.homestayManagement.homestayManagement.service.event;
 import com.homestayManagement.homestayManagement.dto.email.CheckoutInvoiceEmailLine;
 import com.homestayManagement.homestayManagement.dto.email.CheckoutInvoiceEmailSnapshot;
 import com.homestayManagement.homestayManagement.service.CheckoutInvoiceEmailService;
+import com.homestayManagement.homestayManagement.service.InvoiceStorageService;
 import jakarta.mail.Multipart;
 import jakarta.mail.Part;
 import jakarta.mail.Session;
@@ -54,6 +55,7 @@ class StayAccessEmailListenerTest {
     void sendsStyledCheckoutInvoiceEmailWithVatAndLineItems() throws Exception {
         JavaMailSender mailSender = mock(JavaMailSender.class);
         CheckoutInvoiceEmailService invoiceEmailService = mock(CheckoutInvoiceEmailService.class);
+        InvoiceStorageService invoiceStorageService = mock(InvoiceStorageService.class);
         MimeMessage message = new MimeMessage(Session.getInstance(new Properties()));
         when(mailSender.createMimeMessage()).thenReturn(message);
         when(invoiceEmailService.buildSnapshot(1L)).thenReturn(new CheckoutInvoiceEmailSnapshot(
@@ -106,12 +108,14 @@ class StayAccessEmailListenerTest {
         CheckoutInvoiceEmailListener listener = new CheckoutInvoiceEmailListener(
                 mailSender,
                 invoiceEmailService,
+                invoiceStorageService,
                 "home@example.com"
         );
 
         listener.sendCheckoutInvoiceEmail(new CheckoutInvoiceEmailEvent(1L));
 
         verify(mailSender).send(message);
+        verify(invoiceStorageService).saveInvoiceHtml(any(), anyString());
         String content = extractText(message);
         assertTrue(content.contains("<!doctype html>"));
         assertTrue(content.contains("HD01"));
@@ -120,10 +124,12 @@ class StayAccessEmailListenerTest {
         assertTrue(content.contains("VCB"));
         assertTrue(content.contains("Thuế suất GTGT"));
         assertTrue(content.contains("8 %"));
+        assertTrue(content.contains("Đã bao gồm thuế GTGT"));
         assertTrue(content.contains("Phòng 101"));
         assertTrue(content.contains("Bữa sáng"));
         assertTrue(content.contains("Họ tên người mua hàng"));
         assertFalse(content.contains("Tên công ty (Company)"));
+        assertFalse(content.contains("Cộng tiền hàng (Sub total)"));
     }
 
     private String extractText(Part part) throws Exception {

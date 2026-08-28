@@ -293,7 +293,7 @@ function AdminLayout({ activePage, children }) {
           {children}
         </main>
       </div>
-      {['ROLE_ADMIN', 'ROLE_RECEPTIONIST'].includes(role) && <StaffAiChat />}
+      {/* {['ROLE_ADMIN', 'ROLE_RECEPTIONIST'].includes(role) && <StaffAiChat />} */}
     </div>
   )
 }

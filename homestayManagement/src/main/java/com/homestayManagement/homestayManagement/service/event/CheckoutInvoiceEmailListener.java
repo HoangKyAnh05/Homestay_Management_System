@@ -3,6 +3,7 @@ package com.homestayManagement.homestayManagement.service.event;
 import com.homestayManagement.homestayManagement.dto.email.CheckoutInvoiceEmailLine;
 import com.homestayManagement.homestayManagement.dto.email.CheckoutInvoiceEmailSnapshot;
 import com.homestayManagement.homestayManagement.service.CheckoutInvoiceEmailService;
+import com.homestayManagement.homestayManagement.service.InvoiceStorageService;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import org.slf4j.Logger;
@@ -10,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
@@ -30,22 +32,33 @@ public class CheckoutInvoiceEmailListener {
 
     private final JavaMailSender mailSender;
     private final CheckoutInvoiceEmailService checkoutInvoiceEmailService;
+    private final InvoiceStorageService invoiceStorageService;
     private final String mailFrom;
 
     public CheckoutInvoiceEmailListener(
             JavaMailSender mailSender,
             CheckoutInvoiceEmailService checkoutInvoiceEmailService,
+            InvoiceStorageService invoiceStorageService,
             @Value("${app.mail.from}") String mailFrom
     ) {
         this.mailSender = mailSender;
         this.checkoutInvoiceEmailService = checkoutInvoiceEmailService;
+        this.invoiceStorageService = invoiceStorageService;
         this.mailFrom = mailFrom;
     }
 
+    @Async("mailTaskExecutor")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void sendCheckoutInvoiceEmail(CheckoutInvoiceEmailEvent event) {
         try {
             CheckoutInvoiceEmailSnapshot invoice = checkoutInvoiceEmailService.buildSnapshot(event.invoiceId());
+            String htmlContent = buildHtmlEmail(invoice);
+
+            // Lưu hóa đơn vào thư mục invoive trong backend
+            if (invoiceStorageService != null) {
+                invoiceStorageService.saveInvoiceHtml(invoice, htmlContent);
+            }
+
             if (invoice.buyerEmail() == null || invoice.buyerEmail().isBlank()) {
                 LOGGER.warn("Không thể gửi hóa đơn {} vì booking không có email khách hàng", event.invoiceId());
                 return;
@@ -56,7 +69,7 @@ public class CheckoutInvoiceEmailListener {
             helper.setFrom(mailFrom);
             helper.setTo(invoice.buyerEmail());
             helper.setSubject("Hóa đơn checkout " + invoice.invoiceNumber() + " - booking " + invoice.bookingCode());
-            helper.setText(buildPlainText(invoice), buildHtmlEmail(invoice));
+            helper.setText(buildPlainText(invoice), htmlContent);
             mailSender.send(message);
         } catch (MessagingException | RuntimeException exception) {
             LOGGER.error("Không thể gửi email hóa đơn checkout {}", event.invoiceId(), exception);
@@ -80,9 +93,8 @@ public class CheckoutInvoiceEmailListener {
                 Chi tiết hàng hóa, dịch vụ:
                 %s
 
-                Giá chưa thuế: %s
-                VAT %s: %s
-                Tổng thanh toán đã bao gồm VAT: %s
+                Thuế suất GTGT: %s
+                Tổng cộng tiền thanh toán (đã bao gồm thuế GTGT): %s
                 Số tiền viết bằng chữ: %s
 
                 Trân trọng,
@@ -103,9 +115,7 @@ public class CheckoutInvoiceEmailListener {
                 invoice.issuedAt() != null ? invoice.issuedAt().format(DATE_TIME_FORMAT) : "",
                 invoice.taxAuthorityCode(),
                 buildPlainLineItems(invoice),
-                money(invoice.taxableAmount()),
                 percent(invoice.vatRate()),
-                money(invoice.vatAmount()),
                 money(invoice.totalAmount()),
                 amountInWords(invoice.totalAmount())
         );
@@ -190,17 +200,16 @@ public class CheckoutInvoiceEmailListener {
                                   %s
                                   %s
                                   <tr>
-                                    <td colspan="5" align="right" style="padding:8px 10px;border:1px solid #111111;font-weight:800;">Cộng tiền hàng <em>(Sub total)</em>:</td>
-                                    <td align="right" style="padding:8px 10px;border:1px solid #111111;">%s</td>
-                                  </tr>
-                                  <tr>
-                                    <td colspan="3" style="padding:8px 10px;border:1px solid #111111;font-weight:800;">Thuế suất GTGT <em>(VAT rate)</em>: %s</td>
-                                    <td colspan="2" align="right" style="padding:8px 10px;border:1px solid #111111;font-weight:800;">Tiền thuế GTGT <em>(VAT amount)</em>:</td>
-                                    <td align="right" style="padding:8px 10px;border:1px solid #111111;">%s</td>
-                                  </tr>
-                                  <tr>
-                                    <td colspan="5" align="right" style="padding:8px 10px;border:1px solid #111111;font-weight:800;">Tổng cộng tiền thanh toán<br><em>(Total amount)</em>:</td>
-                                    <td align="right" style="padding:8px 10px;border:1px solid #111111;">%s</td>
+                                    <td colspan="3" style="padding:10px 10px;border:1px solid #111111;font-weight:800;font-size:15px;vertical-align:middle;">
+                                      Thuế suất GTGT <em>(VAT rate)</em>: %s
+                                    </td>
+                                    <td colspan="2" align="right" style="padding:10px 10px;border:1px solid #111111;font-weight:800;font-size:15px;line-height:1.35;vertical-align:middle;">
+                                      Tổng cộng tiền thanh toán<br><em>(Total amount)</em>:<br>
+                                      <span style="font-size:12px;font-weight:normal;font-style:italic;color:#333333;">(Đã bao gồm thuế GTGT / VAT included)</span>
+                                    </td>
+                                    <td align="right" style="padding:10px 10px;border:1px solid #111111;font-weight:800;font-size:16px;vertical-align:middle;">
+                                      %s
+                                    </td>
                                   </tr>
                                   <tr>
                                     <td colspan="6" style="padding:8px 10px;border:1px solid #111111;"><strong>Số tiền viết bằng chữ <em>(Amount in words)</em>:</strong> %s</td>
@@ -259,9 +268,7 @@ public class CheckoutInvoiceEmailListener {
                 escape(invoice.bookingCode()),
                 buildLineRows(invoice),
                 buildEmptyRows(invoice.lines().size()),
-                money(invoice.taxableAmount()),
                 percent(invoice.vatRate()),
-                money(invoice.vatAmount()),
                 money(invoice.totalAmount()),
                 escape(amountInWords(invoice.totalAmount())),
                 escape(invoice.sellerName()),
