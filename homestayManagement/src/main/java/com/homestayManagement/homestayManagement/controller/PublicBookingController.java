@@ -10,6 +10,7 @@ import com.homestayManagement.homestayManagement.dto.response.PublicServiceOptio
 import com.homestayManagement.homestayManagement.service.PublicBookingService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
@@ -72,7 +73,12 @@ public class PublicBookingController {
             Authentication authentication,
             @Valid @RequestBody PublicCreateBookingRequest request
     ) {
-        return publicBookingService.createBooking(authentication.getName(), request);
+        String authenticatedEmail = authentication != null
+                && authentication.isAuthenticated()
+                && !(authentication instanceof AnonymousAuthenticationToken)
+                ? authentication.getName()
+                : null;
+        return publicBookingService.createBooking(authenticatedEmail, request);
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

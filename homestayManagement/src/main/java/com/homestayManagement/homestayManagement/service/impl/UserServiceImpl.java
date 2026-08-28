@@ -54,6 +54,7 @@ public class UserServiceImpl implements UserService {
             validatePhoneLength(request.phone(), 10);
             Customer customer = customerRepository.findByAccountId(account.getId())
                     .orElseGet(() -> Customer.builder().account(account).build());
+            customer.setEmail(account.getEmail());
             customer.setFullName(request.fullName().trim());
             customer.setPhone(blankToNull(request.phone()));
             customer.setDateOfBirth(request.dateOfBirth());
@@ -96,6 +97,7 @@ public class UserServiceImpl implements UserService {
             if (isCustomer(account)) {
                 Customer customer = customerRepository.findByAccountId(account.getId())
                         .orElseGet(() -> Customer.builder().account(account).fullName(account.getEmail()).build());
+                customer.setEmail(account.getEmail());
                 customer.setAvatarUrl("/uploads/" + filename);
                 customer.setAvatarSource("USER_UPLOAD");
                 customerRepository.save(customer);
@@ -134,7 +136,9 @@ public class UserServiceImpl implements UserService {
                 customer != null ? customer.getAddress() : employee != null ? employee.getAddress() : null,
                 customer != null ? customer.getAvatarUrl() : employee != null ? employee.getAvatarUrl() : null,
                 account.getRole().getName(),
-                customer != null ? customer.getIdentityDocumentNumber() : null
+                customer != null ? customer.getIdentityDocumentNumber() : null,
+                customer != null ? customer.getMemberPoints() : 0,
+                customer != null ? customer.getMemberDiscountPercent() : null
         );
     }
 

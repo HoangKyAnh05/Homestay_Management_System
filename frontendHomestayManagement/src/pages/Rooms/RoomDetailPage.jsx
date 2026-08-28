@@ -275,12 +275,18 @@ function BookingModal({ room, initialBookingData, onClose, onCreated }) {
 
   const startPayment = () => {
     const token = getStoredToken()
-    if (!token || !paymentSummary) return
+    if (!paymentSummary) return
+    const guestEmail = form.email.trim()
     setPaymentLoading(true)
     setError('')
-    fetch(`${API_BASE_URL}/payments/sepay/bookings/${paymentSummary.bookingId}`, {
+    fetch(token
+      ? `${API_BASE_URL}/payments/sepay/bookings/${paymentSummary.bookingId}`
+      : `${API_BASE_URL}/payments/sepay/public/bookings/${paymentSummary.bookingId}`, {
       method: 'POST',
-      headers: { Authorization: `Bearer ${token}` },
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : { 'Content-Type': 'application/json' }),
+      },
+      ...(token ? {} : { body: JSON.stringify({ email: guestEmail }) }),
     })
       .then(async (response) => {
         const data = await response.json().catch(() => ({}))
@@ -302,19 +308,15 @@ function BookingModal({ room, initialBookingData, onClose, onCreated }) {
 
   useEffect(() => {
     const token = getStoredToken()
-    if (!token) {
-      setError('Bạn cần đăng nhập để đặt phòng.')
-      setLoadingMeta(false)
-      return
-    }
+    const authHeaders = token ? { Authorization: `Bearer ${token}` } : {}
 
     Promise.all([
-      fetch(`${API_BASE_URL}/bookings/price-policies`, { headers: { Authorization: `Bearer ${token}` } }).then((res) => res.json()),
-      fetch(`${API_BASE_URL}/bookings/services`, { headers: { Authorization: `Bearer ${token}` } }).then((res) => res.json()),
-      fetch(`${API_BASE_URL}/users/me`, { headers: { Authorization: `Bearer ${token}` } }).then((res) => {
+      fetch(`${API_BASE_URL}/bookings/price-policies`, { headers: authHeaders }).then((res) => res.json()),
+      fetch(`${API_BASE_URL}/bookings/services`, { headers: authHeaders }).then((res) => res.json()),
+      token ? fetch(`${API_BASE_URL}/users/me`, { headers: authHeaders }).then((res) => {
         if (!res.ok) return null
         return res.json()
-      }).catch(() => null),
+      }).catch(() => null) : Promise.resolve(null),
     ])
       .then(([policyData, serviceData, profileData]) => {
         const nextPolicies = Array.isArray(policyData) ? policyData : []
@@ -380,10 +382,6 @@ function BookingModal({ room, initialBookingData, onClose, onCreated }) {
   const submit = (event) => {
     event.preventDefault()
     const token = getStoredToken()
-    if (!token) {
-      window.location.assign('/login')
-      return
-    }
 
     setSubmitting(true)
     setError('')
@@ -396,7 +394,7 @@ function BookingModal({ room, initialBookingData, onClose, onCreated }) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       body: JSON.stringify({
         ...form,
@@ -454,6 +452,17 @@ function BookingModal({ room, initialBookingData, onClose, onCreated }) {
             <div className="public-payment-grid">
               <div><span>Nhận phòng</span><strong>{formatBusyDate(paymentSummary.checkInTarget)} · {formatBusyTime(paymentSummary.checkInTarget)}</strong></div>
               <div><span>Trả phòng</span><strong>{formatBusyDate(paymentSummary.checkOutTarget)} · {formatBusyTime(paymentSummary.checkOutTarget)}</strong></div>
+              {Number(paymentSummary.roomDiscountAmount || 0) > 0 && (
+                <>
+                  <div><span>Tiền phòng gốc</span><strong>{formatMoney(paymentSummary.roomChargeBeforeDiscount)}</strong></div>
+                  {Number(paymentSummary.memberDiscountAmount || 0) > 0 && (
+                    <div><span>Ưu đãi thành viên {Number(paymentSummary.memberDiscountPercent || 0).toLocaleString('vi-VN')}%</span><strong>-{formatMoney(paymentSummary.memberDiscountAmount)}</strong></div>
+                  )}
+                  {Number(paymentSummary.roomDiscountAmount || 0) - Number(paymentSummary.memberDiscountAmount || 0) > 0 && (
+                    <div><span>{paymentSummary.voucherCode ? `Voucher ${paymentSummary.voucherCode}` : 'Ưu đãi'}</span><strong>-{formatMoney(Number(paymentSummary.roomDiscountAmount || 0) - Number(paymentSummary.memberDiscountAmount || 0))}</strong></div>
+                  )}
+                </>
+              )}
               <div><span>Tiền phòng</span><strong>{formatMoney(paymentSummary.roomCharge)}</strong></div>
               <div><span>Dịch vụ</span><strong>{formatMoney(paymentSummary.serviceCharge)}</strong></div>
               <div><span>Tổng tạm tính</span><strong>{formatMoney(paymentSummary.totalAmount)}</strong></div>
@@ -473,8 +482,10 @@ function BookingModal({ room, initialBookingData, onClose, onCreated }) {
         {sePayPayment && (
           <SePayQrPayment
             payment={sePayPayment}
-            statusUrl={`${API_BASE_URL}/bookings/my/${paymentSummary.bookingId}`}
-            headers={{ Authorization: `Bearer ${getStoredToken()}` }}
+            statusUrl={getStoredToken()
+              ? `${API_BASE_URL}/bookings/my/${paymentSummary.bookingId}`
+              : `${API_BASE_URL}/payments/sepay/public/bookings/${paymentSummary.bookingId}/status?email=${encodeURIComponent(form.email.trim())}`}
+            headers={getStoredToken() ? { Authorization: `Bearer ${getStoredToken()}` } : {}}
             successStatus="CONFIRMED"
             onSuccess={(booking) => onCreated({ ...paymentSummary, ...booking, requiresDeposit: false })}
             onClose={() => setSePayPayment(null)}
@@ -501,7 +512,7 @@ function BookingModal({ room, initialBookingData, onClose, onCreated }) {
             <div className="public-booking-grid">
               <label><span>Họ tên</span><input required value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} /></label>
               <label><span>Số điện thoại</span><input required value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></label>
-              <label><span>Email</span><input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></label>
+              <label><span>Email</span><input type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></label>
               <label><span>Ngày sinh</span><input type="date" value={form.dateOfBirth} onChange={(e) => setForm({ ...form, dateOfBirth: e.target.value })} /></label>
               <label className="public-booking-wide"><span>Địa chỉ</span><input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} /></label>
             </div>
@@ -849,7 +860,11 @@ function RoomDetailPage({ roomId }) {
 
             {createdBooking && (
               <div className={`room-created-toast${createdBooking.requiresDeposit ? ' room-created-toast--pending' : ''}`}>
-                {createdBooking.requiresDeposit
+                {!getStoredToken()
+                  ? String(createdBooking.status || '').toUpperCase() === 'CONFIRMED'
+                    ? `Đã tạo đơn đặt phòng ${bookingDisplay(createdBooking)} và thanh toán thành công. Email xác nhận đã được gửi về cho bạn.`
+                    : `Đã tạo đơn đặt phòng ${bookingDisplay(createdBooking)}. Thông tin đặt phòng đã được gửi về email của bạn.`
+                  : createdBooking.requiresDeposit
                   ? `Đã lưu đơn đặt phòng ${bookingDisplay(createdBooking)}. Đơn đang chờ thanh toán trước.`
                   : `Đã tạo đơn đặt phòng ${bookingDisplay(createdBooking)}. Trạng thái: đặt phòng thành công.`}
               </div>

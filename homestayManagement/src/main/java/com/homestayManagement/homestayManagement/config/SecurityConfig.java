@@ -40,6 +40,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/marketing/social/oauth/callback").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/payments/sepay/webhook").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/payments/sepay/public/bookings/*").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/payments/sepay/public/bookings/*/status").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/ai/customer/chat").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/ai/customer/chat/stream").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/ai/staff/chat")
@@ -50,6 +52,9 @@ public class SecurityConfig {
                         .requestMatchers("/api/rooms/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/vouchers/active").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/amenities").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/bookings/price-policies").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/bookings/services").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/bookings").permitAll()
                         .requestMatchers("/api/stays/**").hasAuthority("ROLE_CUSTOMER")
 
                         // Lễ tân/admin tạo và theo dõi; housekeeping/admin thực hiện công việc.

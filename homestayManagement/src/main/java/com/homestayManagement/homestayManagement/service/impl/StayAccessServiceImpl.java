@@ -276,6 +276,7 @@ public class StayAccessServiceImpl implements StayAccessService {
                 .build());
         customerRepository.save(Customer.builder()
                 .account(account)
+                .email(account.getEmail())
                 .fullName(representativeName.trim())
                 .build());
         return account;
@@ -286,8 +287,12 @@ public class StayAccessServiceImpl implements StayAccessService {
         if (customer == null) {
             customerRepository.save(Customer.builder()
                     .account(account)
+                    .email(account.getEmail())
                     .fullName(representativeName.trim())
                     .build());
+        } else {
+            customer.setEmail(account.getEmail());
+            customerRepository.save(customer);
         }
     }
 
@@ -400,7 +405,9 @@ public class StayAccessServiceImpl implements StayAccessService {
                 customer != null ? customer.getAddress() : null,
                 customer != null ? customer.getAvatarUrl() : null,
                 account.getRole().getName(),
-                customer != null ? customer.getIdentityDocumentNumber() : null
+                customer != null ? customer.getIdentityDocumentNumber() : null,
+                customer != null ? customer.getMemberPoints() : 0,
+                customer != null ? customer.getMemberDiscountPercent() : null
         );
     }
 

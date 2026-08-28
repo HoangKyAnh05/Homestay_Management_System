@@ -8,8 +8,10 @@ import com.homestayManagement.homestayManagement.dto.response.*;
 import com.homestayManagement.homestayManagement.entity.*;
 import com.homestayManagement.homestayManagement.repository.*;
 import com.homestayManagement.homestayManagement.service.PublicBookingService;
+import com.homestayManagement.homestayManagement.service.event.PublicBookingConfirmationEmailEvent;
 import com.homestayManagement.homestayManagement.service.support.BookingCodeGenerator;
 import com.homestayManagement.homestayManagement.service.support.BookingInventoryPolicy;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
@@ -45,6 +47,7 @@ public class PublicBookingServiceImpl implements PublicBookingService {
     private final InventoryServiceRepository inventoryServiceRepository;
     private final VoucherRepository voucherRepository;
     private final BookingCodeGenerator bookingCodeGenerator;
+    private final ApplicationEventPublisher eventPublisher;
 
     public PublicBookingServiceImpl(
             AccountRepository accountRepository,
@@ -61,7 +64,8 @@ public class PublicBookingServiceImpl implements PublicBookingService {
             FacilityServiceRepository facilityServiceRepository,
             InventoryServiceRepository inventoryServiceRepository,
             VoucherRepository voucherRepository,
-            BookingCodeGenerator bookingCodeGenerator
+            BookingCodeGenerator bookingCodeGenerator,
+            ApplicationEventPublisher eventPublisher
     ) {
         this.accountRepository = accountRepository;
         this.customerRepository = customerRepository;
@@ -78,6 +82,7 @@ public class PublicBookingServiceImpl implements PublicBookingService {
         this.inventoryServiceRepository = inventoryServiceRepository;
         this.voucherRepository = voucherRepository;
         this.bookingCodeGenerator = bookingCodeGenerator;
+        this.eventPublisher = eventPublisher;
     }
 
     @Override
@@ -175,6 +180,9 @@ public class PublicBookingServiceImpl implements PublicBookingService {
                 booking.getVoucherCode(),
                 booking.getVoucherDiscountType(),
                 booking.getVoucherDiscountValue(),
+                booking.getMemberDiscountPercent(),
+                booking.getMemberDiscountAmount(),
+                booking.getEarnedMemberPoints(),
                 roomChargeBeforeDiscount(booking, details),
                 zero(booking.getRoomDiscountAmount()),
                 roomCharge,
@@ -203,18 +211,16 @@ public class PublicBookingServiceImpl implements PublicBookingService {
 
     @Override
     @Transactional(isolation = Isolation.SERIALIZABLE)
-    public PublicBookingResponse createBooking(String email, PublicCreateBookingRequest request) {
+    public PublicBookingResponse createBooking(String authenticatedEmail, PublicCreateBookingRequest request) {
         validateRange(request.checkInTarget(), request.checkOutTarget());
 
-        Account account = accountRepository.findByEmail(email)
-                .orElseThrow(() -> new IllegalArgumentException("Khong tim thay tai khoan"));
-        if (account.getRole() == null || !"ROLE_CUSTOMER".equals(account.getRole().getName())) {
-            throw new IllegalArgumentException("Chi tai khoan khach hang moi co the dat phong");
+        Account account = findAuthenticatedCustomerAccount(authenticatedEmail);
+        if (account == null && (request.email() == null || request.email().isBlank())) {
+            throw new IllegalArgumentException("Vui long nhap email de nhan xac nhan dat phong");
         }
-
-        Customer customer = customerRepository.findByAccountId(account.getId())
-                .orElseGet(() -> Customer.builder().account(account).fullName(request.fullName().trim()).build());
+        Customer customer = findBookingCustomer(account, request);
         updateCustomer(customer, request);
+        boolean memberBooking = account != null;
 
         List<PublicBookingRoomRequest> selectedRooms = requireSelectedRooms(request);
         int requestedRoomCount = selectedRooms.stream().mapToInt(this::quantityOf).sum();
@@ -245,7 +251,10 @@ public class PublicBookingServiceImpl implements PublicBookingService {
                 .map(RoomBookingLine::price)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         VoucherDiscount voucherDiscount = resolveVoucherDiscount(request.voucherCode(), roomChargeBeforeDiscount);
-        applyAllocatedDiscounts(roomLines, voucherDiscount.amount());
+        BigDecimal memberDiscountPercent = memberBooking ? currentMemberDiscountPercent(customer) : BigDecimal.ZERO;
+        BigDecimal memberDiscountAmount = calculateMemberDiscountAmount(memberDiscountPercent, roomChargeBeforeDiscount.subtract(voucherDiscount.amount()));
+        BigDecimal totalRoomDiscount = voucherDiscount.amount().add(memberDiscountAmount);
+        applyAllocatedDiscounts(roomLines, totalRoomDiscount);
         DepositPolicy depositPolicy = selectedRooms.stream()
                 .map(selectedRoom -> roomTypesById.get(resolveRoomTypeId(selectedRoom)))
                 .filter(roomType -> roomType != null && roomType.getDepositPolicy() != null)
@@ -266,7 +275,9 @@ public class PublicBookingServiceImpl implements PublicBookingService {
                 .voucherDiscountType(voucherDiscount.discountType())
                 .voucherDiscountValue(voucherDiscount.discountValue())
                 .roomChargeBeforeDiscount(roomChargeBeforeDiscount)
-                .roomDiscountAmount(voucherDiscount.amount())
+                .roomDiscountAmount(totalRoomDiscount)
+                .memberDiscountPercent(memberDiscountPercent)
+                .memberDiscountAmount(memberDiscountAmount)
                 .bookingDate(bookingDate)
                 .status(bookingStatus)
                 .build());
@@ -304,6 +315,13 @@ public class PublicBookingServiceImpl implements PublicBookingService {
                 ? roomCharge
                 : requiresDeposit ? calculateDepositAmount(depositPolicy, totalAmount) : BigDecimal.ZERO;
         savePrimaryBookingGuest(booking, firstDetail, customer, request.identityDocumentNumber());
+        int earnedMemberPoints = memberBooking ? calculateEarnedMemberPoints(totalAmount) : 0;
+        if (memberBooking) {
+            addMemberPoints(customer, earnedMemberPoints);
+            booking.setEarnedMemberPoints(earnedMemberPoints);
+            bookingRepository.save(booking);
+        }
+        publishBookingConfirmationEmail(memberBooking, booking, customer, savedDetails, roomCharge, serviceCharge, totalAmount, requiresDeposit, depositAmount);
 
         return new PublicBookingResponse(
                 booking.getId(),
@@ -317,6 +335,9 @@ public class PublicBookingServiceImpl implements PublicBookingService {
                 booking.getVoucherCode(),
                 booking.getVoucherDiscountType(),
                 booking.getVoucherDiscountValue(),
+                booking.getMemberDiscountPercent(),
+                booking.getMemberDiscountAmount(),
+                booking.getEarnedMemberPoints(),
                 booking.getRoomChargeBeforeDiscount(),
                 booking.getRoomDiscountAmount(),
                 roomCharge,
@@ -330,6 +351,75 @@ public class PublicBookingServiceImpl implements PublicBookingService {
                 depositAmount
         );
     }
+
+    private Account findAuthenticatedCustomerAccount(String authenticatedEmail) {
+        if (authenticatedEmail == null || authenticatedEmail.isBlank()) {
+            return null;
+        }
+        Account account = accountRepository.findByEmail(authenticatedEmail)
+                .orElseThrow(() -> new IllegalArgumentException("Khong tim thay tai khoan"));
+        if (account.getRole() == null || !"ROLE_CUSTOMER".equals(account.getRole().getName())) {
+            throw new IllegalArgumentException("Chi tai khoan khach hang moi co the dat phong");
+        }
+        return account;
+    }
+
+    private void publishBookingConfirmationEmail(
+            boolean memberBooking,
+            Booking booking,
+            Customer customer,
+            List<BookingDetail> savedDetails,
+            BigDecimal roomCharge,
+            BigDecimal serviceCharge,
+            BigDecimal totalAmount,
+            boolean requiresDeposit,
+            BigDecimal depositAmount
+    ) {
+        if (memberBooking || requiresDeposit || customer.getEmail() == null || customer.getEmail().isBlank()) {
+            return;
+        }
+        eventPublisher.publishEvent(new PublicBookingConfirmationEmailEvent(
+                customer.getEmail(),
+                customer.getFullName(),
+                booking.getBookingCode(),
+                savedDetails.stream().map(BookingDetail::getCheckInTarget).min(LocalDateTime::compareTo).orElse(null),
+                savedDetails.stream().map(BookingDetail::getCheckOutTarget).max(LocalDateTime::compareTo).orElse(null),
+                roomCharge,
+                serviceCharge,
+                totalAmount,
+                requiresDeposit,
+                depositAmount,
+                false,
+                savedDetails.stream().map(detail -> new PublicBookingConfirmationEmailEvent.RoomLine(
+                        roomTypeName(detail),
+                        detail.getNumberOfAdults(),
+                        detail.getNumberOfChildren(),
+                        finalRoomAmount(detail)
+                )).toList()
+        ));
+    }
+
+    private String roomTypeName(BookingDetail detail) {
+        Room room = detail.getRoom();
+        RoomType roomType = detail.getRoomType() != null ? detail.getRoomType() : room != null ? room.getRoomType() : null;
+        return roomType != null ? roomType.getName() : "Phong da dat";
+    }
+
+    private Customer findBookingCustomer(Account account, PublicCreateBookingRequest request) {
+        if (account != null) {
+            return customerRepository.findByAccountId(account.getId())
+                    .orElseGet(() -> Customer.builder()
+                            .account(account)
+                            .email(account.getEmail())
+                            .fullName(request.fullName().trim())
+                            .build());
+        }
+        return Customer.builder()
+                .email(blankToNull(request.email()))
+                .fullName(request.fullName().trim())
+                .build();
+    }
+
     private List<PublicBookingRoomRequest> requireSelectedRooms(PublicCreateBookingRequest request) {
         if (request.rooms() != null && !request.rooms().isEmpty()) {
             return request.rooms();
@@ -467,9 +557,60 @@ public class PublicBookingServiceImpl implements PublicBookingService {
 
     private void updateCustomer(Customer customer, PublicCreateBookingRequest request) {
         customer.setFullName(request.fullName().trim());
+        if (customer.getAccount() != null) {
+            customer.setEmail(customer.getAccount().getEmail());
+        } else {
+            customer.setEmail(blankToNull(request.email()));
+        }
         customer.setPhone(request.phone().trim());
         customer.setAddress(request.address() != null && !request.address().isBlank() ? request.address().trim() : null);
         customer.setDateOfBirth(request.dateOfBirth());
+        customer.setIdentityDocumentNumber(blankToNull(request.identityDocumentNumber()));
+        customerRepository.save(customer);
+    }
+
+    private String blankToNull(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value.trim();
+    }
+
+    private BigDecimal currentMemberDiscountPercent(Customer customer) {
+        int points = customer.getMemberPoints() == null ? 0 : customer.getMemberPoints();
+        int discountPercent = Math.min(15, points / 10);
+        return BigDecimal.valueOf(discountPercent);
+    }
+
+    private BigDecimal calculateMemberDiscountAmount(BigDecimal memberDiscountPercent, BigDecimal eligibleAmount) {
+        if (memberDiscountPercent == null || memberDiscountPercent.compareTo(BigDecimal.ZERO) <= 0) {
+            return BigDecimal.ZERO;
+        }
+        if (eligibleAmount == null || eligibleAmount.compareTo(BigDecimal.ZERO) <= 0) {
+            return BigDecimal.ZERO;
+        }
+        return eligibleAmount.multiply(memberDiscountPercent)
+                .divide(BigDecimal.valueOf(100), 0, RoundingMode.HALF_UP)
+                .min(eligibleAmount)
+                .setScale(0, RoundingMode.HALF_UP);
+    }
+
+    private int calculateEarnedMemberPoints(BigDecimal totalAmount) {
+        if (totalAmount == null || totalAmount.compareTo(BigDecimal.ZERO) <= 0) {
+            return 0;
+        }
+        int points = totalAmount.divide(BigDecimal.valueOf(1_000_000), 0, RoundingMode.DOWN).intValue();
+        return Math.max(1, points);
+    }
+
+    private void addMemberPoints(Customer customer, int earnedMemberPoints) {
+        if (earnedMemberPoints <= 0) {
+            return;
+        }
+        int currentPoints = customer.getMemberPoints() == null ? 0 : customer.getMemberPoints();
+        int nextPoints = currentPoints + earnedMemberPoints;
+        customer.setMemberPoints(nextPoints);
+        customer.setMemberDiscountPercent(BigDecimal.valueOf(Math.min(15, nextPoints / 10)));
         customerRepository.save(customer);
     }
 
@@ -520,6 +661,9 @@ public class PublicBookingServiceImpl implements PublicBookingService {
                 details.stream().map(BookingDetail::getCheckOutTarget).max(LocalDateTime::compareTo).orElse(firstDetail.getCheckOutTarget()),
                 details.size(),
                 booking.getVoucherCode(),
+                booking.getMemberDiscountPercent(),
+                booking.getMemberDiscountAmount(),
+                booking.getEarnedMemberPoints(),
                 roomChargeBeforeDiscount(booking, details),
                 zero(booking.getRoomDiscountAmount()),
                 roomCharge,

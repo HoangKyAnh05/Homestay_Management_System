@@ -3,6 +3,7 @@ package com.homestayManagement.homestayManagement.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Entity
@@ -19,8 +20,11 @@ public class Customer {
     private Long id;
 
     @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "account_id", nullable = false, unique = true)
+    @JoinColumn(name = "account_id", unique = true)
     private Account account;
+
+    @Column(length = 50)
+    private String email;
 
     @Column(name = "full_name", nullable = false, length = 100)
     private String fullName;
@@ -45,4 +49,12 @@ public class Customer {
 
     @Column(name = "identity_document_number", length = 30)
     private String identityDocumentNumber;
+
+    @Builder.Default
+    @Column(name = "member_points", nullable = false)
+    private Integer memberPoints = 0;
+
+    @Builder.Default
+    @Column(name = "member_discount_percent", nullable = false, precision = 5, scale = 2)
+    private BigDecimal memberDiscountPercent = BigDecimal.ZERO;
 }

@@ -2,13 +2,16 @@ package com.homestayManagement.homestayManagement.service.impl;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.homestayManagement.homestayManagement.dto.request.SePayWebhookRequest;
+import com.homestayManagement.homestayManagement.dto.response.PublicBookingPaymentStatusResponse;
 import com.homestayManagement.homestayManagement.dto.response.SePayPaymentResponse;
 import com.homestayManagement.homestayManagement.entity.*;
 import com.homestayManagement.homestayManagement.repository.*;
 import com.homestayManagement.homestayManagement.service.SePayPaymentService;
 import com.homestayManagement.homestayManagement.service.StayAccessService;
+import com.homestayManagement.homestayManagement.service.event.PublicBookingConfirmationEmailEvent;
 import com.homestayManagement.homestayManagement.service.support.BookingInventoryPolicy;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
@@ -46,6 +49,7 @@ public class SePayPaymentServiceImpl implements SePayPaymentService {
     private final InventoryServiceRepository inventoryServiceRepository;
     private final StayAccessService stayAccessService;
     private final ObjectMapper objectMapper;
+    private final ApplicationEventPublisher eventPublisher;
     private final String bankName;
     private final String accountNumber;
     private final String accountHolder;
@@ -65,6 +69,7 @@ public class SePayPaymentServiceImpl implements SePayPaymentService {
             InventoryServiceRepository inventoryServiceRepository,
             StayAccessService stayAccessService,
             ObjectMapper objectMapper,
+            ApplicationEventPublisher eventPublisher,
             @Value("${sepay.bank-name:}") String bankName,
             @Value("${sepay.account-number:}") String accountNumber,
             @Value("${sepay.account-holder:}") String accountHolder,
@@ -84,6 +89,7 @@ public class SePayPaymentServiceImpl implements SePayPaymentService {
         this.inventoryServiceRepository = inventoryServiceRepository;
         this.stayAccessService = stayAccessService;
         this.objectMapper = objectMapper;
+        this.eventPublisher = eventPublisher;
         this.bankName = bankName;
         this.accountNumber = accountNumber;
         this.accountHolder = accountHolder;
@@ -100,6 +106,28 @@ public class SePayPaymentServiceImpl implements SePayPaymentService {
 
     @Override
     @Transactional(isolation = Isolation.READ_COMMITTED)
+    public SePayPaymentResponse createPublicBookingPayment(Long bookingId, String email) {
+        if (email == null || email.isBlank()) {
+            throw new IllegalArgumentException("Vui long nhap email dat phong");
+        }
+        return createBookingPayment(bookingId, email.trim());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PublicBookingPaymentStatusResponse getPublicBookingPaymentStatus(Long bookingId, String email) {
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new IllegalArgumentException("Khong tim thay booking"));
+        ensureBookingEmailMatches(booking, email);
+        return new PublicBookingPaymentStatusResponse(
+                booking.getId(),
+                booking.getBookingCode(),
+                booking.getStatus()
+        );
+    }
+
+    @Override
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public SePayPaymentResponse createBookingPaymentForAdmin(Long bookingId) {
         return createBookingPayment(bookingId, null);
     }
@@ -109,12 +137,7 @@ public class SePayPaymentServiceImpl implements SePayPaymentService {
         Booking booking = bookingRepository.findByIdForPaymentUpdate(bookingId)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy booking"));
         if (customerEmail != null) {
-            String ownerEmail = booking.getCustomer().getAccount() != null
-                    ? booking.getCustomer().getAccount().getEmail()
-                    : null;
-            if (ownerEmail == null || !customerEmail.equalsIgnoreCase(ownerEmail)) {
-                throw new IllegalArgumentException("Bạn không có quyền thanh toán booking này");
-            }
+            ensureBookingEmailMatches(booking, customerEmail);
         }
         if (!"PENDING".equalsIgnoreCase(booking.getStatus())) {
             throw new IllegalArgumentException("Booking này không ở trạng thái chờ thanh toán");
@@ -262,7 +285,67 @@ public class SePayPaymentServiceImpl implements SePayPaymentService {
             bookingRepository.save(booking);
             bookingDetails.forEach(detail -> detail.setStatus("CONFIRMED"));
             bookingDetailRepository.saveAll(bookingDetails);
+            publishGuestPaymentConfirmationEmail(booking, bookingDetails, payment);
         }
+    }
+
+    private void ensureBookingEmailMatches(Booking booking, String email) {
+        if (email == null || email.isBlank()) {
+            throw new IllegalArgumentException("Vui long nhap email dat phong");
+        }
+        String ownerEmail = bookingEmail(booking);
+        if (ownerEmail == null || !email.trim().equalsIgnoreCase(ownerEmail)) {
+            throw new IllegalArgumentException("Email khong khop voi booking nay");
+        }
+    }
+
+    private String bookingEmail(Booking booking) {
+        Customer customer = booking.getCustomer();
+        if (customer == null) {
+            return null;
+        }
+        if (customer.getAccount() != null && customer.getAccount().getEmail() != null) {
+            return customer.getAccount().getEmail();
+        }
+        return customer.getEmail();
+    }
+
+    private void publishGuestPaymentConfirmationEmail(Booking booking, List<BookingDetail> bookingDetails, Payment payment) {
+        Customer customer = booking.getCustomer();
+        if (customer == null || customer.getAccount() != null || customer.getEmail() == null || customer.getEmail().isBlank()) {
+            return;
+        }
+        Invoice invoice = payment.getInvoice();
+        BigDecimal roomCharge = invoice != null ? zero(invoice.getRoomCharge()) : bookingDetails.stream()
+                .map(this::finalRoomAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal serviceCharge = invoice != null ? zero(invoice.getServiceCharge()) : BigDecimal.ZERO;
+        BigDecimal totalAmount = invoice != null ? zero(invoice.getTotalAmount()) : roomCharge.add(serviceCharge);
+        eventPublisher.publishEvent(new PublicBookingConfirmationEmailEvent(
+                customer.getEmail(),
+                customer.getFullName(),
+                booking.getBookingCode(),
+                bookingDetails.stream().map(BookingDetail::getCheckInTarget).filter(Objects::nonNull).min(LocalDateTime::compareTo).orElse(null),
+                bookingDetails.stream().map(BookingDetail::getCheckOutTarget).filter(Objects::nonNull).max(LocalDateTime::compareTo).orElse(null),
+                roomCharge,
+                serviceCharge,
+                totalAmount,
+                false,
+                zero(payment.getAmount()),
+                true,
+                bookingDetails.stream().map(detail -> new PublicBookingConfirmationEmailEvent.RoomLine(
+                        roomTypeName(detail),
+                        detail.getNumberOfAdults(),
+                        detail.getNumberOfChildren(),
+                        finalRoomAmount(detail)
+                )).toList()
+        ));
+    }
+
+    private String roomTypeName(BookingDetail detail) {
+        Room room = detail.getRoom();
+        RoomType roomType = detail.getRoomType() != null ? detail.getRoomType() : room != null ? room.getRoomType() : null;
+        return roomType != null ? roomType.getName() : "Phong da dat";
     }
 
     private Invoice getOrCreateInvoice(Booking booking, List<BookingDetail> details) {

@@ -1,7 +1,10 @@
 package com.homestayManagement.homestayManagement.controller;
 
+import com.homestayManagement.homestayManagement.dto.request.PublicSePayBookingPaymentRequest;
+import com.homestayManagement.homestayManagement.dto.response.PublicBookingPaymentStatusResponse;
 import com.homestayManagement.homestayManagement.dto.response.SePayPaymentResponse;
 import com.homestayManagement.homestayManagement.service.SePayPaymentService;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -24,6 +27,22 @@ public class SePayPaymentController {
             @PathVariable Long bookingId
     ) {
         return sePayPaymentService.createPayment(authentication.getName(), bookingId);
+    }
+
+    @PostMapping("/public/bookings/{bookingId}")
+    public SePayPaymentResponse createPublicPayment(
+            @PathVariable Long bookingId,
+            @Valid @RequestBody PublicSePayBookingPaymentRequest request
+    ) {
+        return sePayPaymentService.createPublicBookingPayment(bookingId, request.email());
+    }
+
+    @GetMapping("/public/bookings/{bookingId}/status")
+    public PublicBookingPaymentStatusResponse getPublicPaymentStatus(
+            @PathVariable Long bookingId,
+            @RequestParam String email
+    ) {
+        return sePayPaymentService.getPublicBookingPaymentStatus(bookingId, email);
     }
 
     @PostMapping("/webhook")

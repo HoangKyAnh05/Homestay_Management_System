@@ -744,12 +744,18 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
 
   const startPayment = () => {
     const token = getStoredToken()
-    if (!token || !paymentSummary) return
+    if (!paymentSummary) return
+    const guestEmail = form.email.trim()
     setPaymentLoading(true)
     setError('')
-    fetch(`${API_BASE_URL}/payments/sepay/bookings/${paymentSummary.bookingId}`, {
+    fetch(token
+      ? `${API_BASE_URL}/payments/sepay/bookings/${paymentSummary.bookingId}`
+      : `${API_BASE_URL}/payments/sepay/public/bookings/${paymentSummary.bookingId}`, {
       method: 'POST',
-      headers: { Authorization: `Bearer ${token}` },
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : { 'Content-Type': 'application/json' }),
+      },
+      ...(token ? {} : { body: JSON.stringify({ email: guestEmail }) }),
     })
       .then(async (response) => {
         const data = await response.json().catch(() => ({}))
@@ -768,18 +774,14 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
 
   useEffect(() => {
     const token = getStoredToken()
-    if (!token) {
-      setError('Bạn cần đăng nhập để đặt phòng.')
-      setLoadingMeta(false)
-      return
-    }
+    const authHeaders = token ? { Authorization: `Bearer ${token}` } : {}
 
     Promise.all([
-      fetch(`${API_BASE_URL}/bookings/price-policies`, { headers: { Authorization: `Bearer ${token}` } }).then((res) => {
+      fetch(`${API_BASE_URL}/bookings/price-policies`, { headers: authHeaders }).then((res) => {
         if (!res.ok) throw new Error('Không thể tải gói thuê.')
         return res.json()
       }),
-      fetch(`${API_BASE_URL}/bookings/services`, { headers: { Authorization: `Bearer ${token}` } }).then((res) => {
+      fetch(`${API_BASE_URL}/bookings/services`, { headers: authHeaders }).then((res) => {
         if (!res.ok) throw new Error('Không thể tải dịch vụ đi kèm.')
         return res.json()
       }),
@@ -787,10 +789,10 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
         if (!res.ok) return []
         return res.json()
       }).catch(() => []),
-      fetch(`${API_BASE_URL}/users/me`, { headers: { Authorization: `Bearer ${token}` } }).then((res) => {
+      token ? fetch(`${API_BASE_URL}/users/me`, { headers: authHeaders }).then((res) => {
         if (!res.ok) return null
         return res.json()
-      }).catch(() => null),
+      }).catch(() => null) : Promise.resolve(null),
     ])
       .then(([policyData, serviceData, voucherData, profileData]) => {
         const nextPolicies = Array.isArray(policyData) ? policyData : []
@@ -1103,10 +1105,6 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
   const submit = (event) => {
     event.preventDefault()
     const token = getStoredToken()
-    if (!token) {
-      window.location.assign('/login')
-      return
-    }
     if (!selectedRooms.length) {
       setError('Vui lòng chọn ít nhất một loại nhà.')
       return
@@ -1130,7 +1128,7 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       body: JSON.stringify({
         ...form,
@@ -1212,7 +1210,12 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
               {paymentSummary.roomDiscountAmount > 0 && (
                 <>
                   <div><span>Tiền phòng gốc</span><strong>{formatPrice(paymentSummary.roomChargeBeforeDiscount)}</strong></div>
-                  <div><span>Voucher {paymentSummary.voucherCode}</span><strong>-{formatPrice(paymentSummary.roomDiscountAmount)}</strong></div>
+                  {Number(paymentSummary.memberDiscountAmount || 0) > 0 && (
+                    <div><span>Ưu đãi thành viên {Number(paymentSummary.memberDiscountPercent || 0).toLocaleString('vi-VN')}%</span><strong>-{formatPrice(paymentSummary.memberDiscountAmount)}</strong></div>
+                  )}
+                  {Number(paymentSummary.roomDiscountAmount || 0) - Number(paymentSummary.memberDiscountAmount || 0) > 0 && (
+                    <div><span>{paymentSummary.voucherCode ? `Voucher ${paymentSummary.voucherCode}` : 'Ưu đãi'}</span><strong>-{formatPrice(Number(paymentSummary.roomDiscountAmount || 0) - Number(paymentSummary.memberDiscountAmount || 0))}</strong></div>
+                  )}
                 </>
               )}
               <div><span>Tiền phòng</span><strong>{formatPrice(paymentSummary.roomCharge)}</strong></div>
@@ -1233,8 +1236,10 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
         {sePayPayment && (
           <SePayQrPayment
             payment={sePayPayment}
-            statusUrl={`${API_BASE_URL}/bookings/my/${paymentSummary.bookingId}`}
-            headers={{ Authorization: `Bearer ${getStoredToken()}` }}
+            statusUrl={getStoredToken()
+              ? `${API_BASE_URL}/bookings/my/${paymentSummary.bookingId}`
+              : `${API_BASE_URL}/payments/sepay/public/bookings/${paymentSummary.bookingId}/status?email=${encodeURIComponent(form.email.trim())}`}
+            headers={getStoredToken() ? { Authorization: `Bearer ${getStoredToken()}` } : {}}
             successStatus="CONFIRMED"
             onSuccess={(booking) => onCreated({ ...paymentSummary, ...booking, requiresDeposit: false })}
             onClose={() => setSePayPayment(null)}
@@ -1261,7 +1266,7 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
             <div className="public-booking-grid">
               <label><span>Họ tên</span><input required value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} /></label>
               <label><span>Số điện thoại</span><input required value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></label>
-              <label><span>Email</span><input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></label>
+              <label><span>Email</span><input type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></label>
               <label><span>Ngày sinh</span><input type="date" value={form.dateOfBirth} onChange={(e) => setForm({ ...form, dateOfBirth: e.target.value })} /></label>
               <label><span>Căn cước công dân</span><input required value={form.identityDocumentNumber} onChange={(e) => setForm({ ...form, identityDocumentNumber: e.target.value })} /></label>
               <label className="public-booking-wide"><span>Địa chỉ</span><input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} /></label>
@@ -1742,7 +1747,11 @@ function RoomsPage() {
 
         {createdBooking && (
           <div className={`room-created-toast${createdBooking.requiresDeposit ? ' room-created-toast--pending' : ''}`}>
-            {createdBooking.requiresDeposit
+            {!getStoredToken()
+              ? String(createdBooking.status || '').toUpperCase() === 'CONFIRMED'
+                ? `Đã tạo booking ${bookingDisplay(createdBooking)} và thanh toán thành công. Email xác nhận đã được gửi về cho bạn.`
+                : `Đã tạo booking ${bookingDisplay(createdBooking)}. Thông tin đặt phòng đã được gửi về email của bạn.`
+              : createdBooking.requiresDeposit
               ? `Đã lưu booking ${bookingDisplay(createdBooking)}. Đơn đang chờ thanh toán trước.`
               : `Đã tạo booking ${bookingDisplay(createdBooking)}. Trạng thái: đặt phòng thành công.`}
           </div>

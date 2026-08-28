@@ -149,7 +149,7 @@ public class CheckoutInvoiceEmailServiceImpl implements CheckoutInvoiceEmailServ
                 sellerAccountNo,
                 sellerBankName,
                 customer.getFullName(),
-                customer.getAccount() != null ? customer.getAccount().getEmail() : null,
+                customer.getAccount() != null ? customer.getAccount().getEmail() : customer.getEmail(),
                 customer.getAddress(),
                 booking.getBookingCode(),
                 invoice.getCreatedAt(),

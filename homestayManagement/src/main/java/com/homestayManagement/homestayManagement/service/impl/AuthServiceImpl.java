@@ -156,6 +156,7 @@ public class AuthServiceImpl implements AuthService {
 
         Customer customer = Customer.builder()
                 .account(account)
+                .email(account.getEmail())
                 .fullName(request.fullName().trim())
                 .phone(request.phone() != null && !request.phone().isBlank() ? request.phone().trim() : null)
                 .build();
@@ -352,6 +353,7 @@ public class AuthServiceImpl implements AuthService {
     private void syncGoogleProfile(Account account, GoogleTokenInfo googleUser) {
         Customer customer = customerRepository.findByAccountId(account.getId())
                 .orElseGet(() -> Customer.builder().account(account).build());
+        customer.setEmail(account.getEmail());
 
         if (customer.getFullName() == null || customer.getFullName().isBlank()) {
             customer.setFullName(googleUser.name() != null && !googleUser.name().isBlank()
@@ -393,7 +395,9 @@ public class AuthServiceImpl implements AuthService {
                 customer != null ? customer.getAddress() : employee != null ? employee.getAddress() : null,
                 customer != null ? customer.getAvatarUrl() : employee != null ? employee.getAvatarUrl() : null,
                 account.getRole().getName(),
-                customer != null ? customer.getIdentityDocumentNumber() : null
+                customer != null ? customer.getIdentityDocumentNumber() : null,
+                customer != null ? customer.getMemberPoints() : 0,
+                customer != null ? customer.getMemberDiscountPercent() : null
         );
     }
 

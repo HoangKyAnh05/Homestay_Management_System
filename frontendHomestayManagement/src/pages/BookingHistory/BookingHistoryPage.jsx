@@ -553,7 +553,12 @@ function BookingHistoryPage() {
                     {Number(detail.roomDiscountAmount || 0) > 0 && (
                       <>
                         <div><span>Tiền phòng gốc</span><strong>{formatMoney(detail.roomChargeBeforeDiscount)}</strong></div>
-                        <div><span>Voucher {detail.voucherCode}</span><strong>-{formatMoney(detail.roomDiscountAmount)}</strong></div>
+                        {Number(detail.memberDiscountAmount || 0) > 0 && (
+                          <div><span>Ưu đãi thành viên {Number(detail.memberDiscountPercent || 0).toLocaleString('vi-VN')}%</span><strong>-{formatMoney(detail.memberDiscountAmount)}</strong></div>
+                        )}
+                        {Number(detail.roomDiscountAmount || 0) - Number(detail.memberDiscountAmount || 0) > 0 && (
+                          <div><span>{detail.voucherCode ? `Voucher ${detail.voucherCode}` : 'Ưu đãi'}</span><strong>-{formatMoney(Number(detail.roomDiscountAmount || 0) - Number(detail.memberDiscountAmount || 0))}</strong></div>
+                        )}
                       </>
                     )}
                     <div><span>Tổng tiền phòng</span><strong>{formatMoney(detail.roomCharge)}</strong></div>

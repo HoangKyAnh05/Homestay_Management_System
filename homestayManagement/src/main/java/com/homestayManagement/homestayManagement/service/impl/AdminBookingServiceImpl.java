@@ -1061,7 +1061,7 @@ public class AdminBookingServiceImpl implements AdminBookingService {
         return new AdminBookingCustomerResponse(
                 customer.getId(),
                 customer.getFullName(),
-                customer.getAccount() != null ? customer.getAccount().getEmail() : null,
+                customer.getAccount() != null ? customer.getAccount().getEmail() : customer.getEmail(),
                 customer.getPhone(),
                 customer.getAddress(),
                 customer.getDateOfBirth()

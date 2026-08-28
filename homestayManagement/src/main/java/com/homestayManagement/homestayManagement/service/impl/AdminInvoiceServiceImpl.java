@@ -102,7 +102,7 @@ public class AdminInvoiceServiceImpl implements AdminInvoiceService {
                 invoice.getBooking().getStatus(),
                 customer.getId(),
                 customer.getFullName(),
-                customer.getAccount() != null ? customer.getAccount().getEmail() : null,
+                customer.getAccount() != null ? customer.getAccount().getEmail() : customer.getEmail(),
                 employee != null ? employee.getId() : null,
                 employee != null ? employee.getFullName() : "Thanh toan online",
                 invoice.getBooking().getVoucherCode(),

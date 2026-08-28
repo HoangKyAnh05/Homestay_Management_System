@@ -5,10 +5,12 @@ import com.homestayManagement.homestayManagement.dto.request.PublicBookingServic
 import com.homestayManagement.homestayManagement.dto.request.PublicCreateBookingRequest;
 import com.homestayManagement.homestayManagement.entity.*;
 import com.homestayManagement.homestayManagement.repository.*;
+import com.homestayManagement.homestayManagement.service.event.PublicBookingConfirmationEmailEvent;
 import com.homestayManagement.homestayManagement.service.support.BookingCodeGenerator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.context.ApplicationEventPublisher;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -44,6 +46,7 @@ class PublicBookingServiceImplTest {
     @Mock private FacilityServiceRepository facilityServiceRepository;
     @Mock private InventoryServiceRepository inventoryServiceRepository;
     @Mock private VoucherRepository voucherRepository;
+    @Mock private ApplicationEventPublisher eventPublisher;
 
     private PublicBookingServiceImpl service;
 
@@ -64,7 +67,8 @@ class PublicBookingServiceImplTest {
                 facilityServiceRepository,
                 inventoryServiceRepository,
                 voucherRepository,
-                new BookingCodeGenerator(bookingRepository)
+                new BookingCodeGenerator(bookingRepository),
+                eventPublisher
         );
     }
 
@@ -142,7 +146,13 @@ class PublicBookingServiceImplTest {
     void createMultiRoomBookingSavesServicesOnTheirSelectedRooms() {
         Role customerRole = Role.builder().id(1L).name("ROLE_CUSTOMER").build();
         Account account = Account.builder().id(2L).email("guest@example.com").role(customerRole).build();
-        Customer customer = Customer.builder().id(3L).account(account).fullName("Guest").build();
+        Customer customer = Customer.builder()
+                .id(3L)
+                .account(account)
+                .fullName("Guest")
+                .memberPoints(20)
+                .memberDiscountPercent(BigDecimal.valueOf(2))
+                .build();
         RoomType vipSuite = RoomType.builder().id(10L).name("VIP Suite").maxAdults(2).maxChildren(1).build();
         RoomType connectingRoom = RoomType.builder().id(20L).name("Connecting Room").maxAdults(4).maxChildren(3).build();
         PricePolicy dailyPolicy = PricePolicy.builder().id(30L).rentType("DAILY").build();
@@ -214,11 +224,126 @@ class PublicBookingServiceImplTest {
         List<BookingServiceItem> savedServices = serviceItemCaptor.getAllValues();
 
         assertEquals(BigDecimal.valueOf(7_000), response.serviceCharge());
+        assertEquals(BigDecimal.valueOf(2), response.memberDiscountPercent());
+        assertEquals(BigDecimal.valueOf(440), response.memberDiscountAmount());
+        assertEquals(1, response.earnedMemberPoints());
+        assertEquals(21, customer.getMemberPoints());
         assertEquals(2, response.rooms().size());
+        verify(eventPublisher, never()).publishEvent(any(PublicBookingConfirmationEmailEvent.class));
         assertEquals(100L, savedServices.get(0).getBookingDetail().getId());
         assertEquals("BBQ", savedServices.get(0).getFacilityService().getName());
         assertEquals(101L, savedServices.get(1).getBookingDetail().getId());
         assertEquals("Breakfast", savedServices.get(1).getFacilityService().getName());
+    }
+
+    @Test
+    void createBookingAllowsGuestCustomerWithoutAccount() {
+        RoomType roomType = RoomType.builder().id(10L).name("Garden House").maxAdults(2).maxChildren(1).build();
+        PricePolicy dailyPolicy = PricePolicy.builder().id(30L).rentType("DAILY").build();
+
+        when(customerRepository.save(any(Customer.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(roomTypeRepository.findAllByIdForInventoryUpdate(Set.of(10L))).thenReturn(List.of(roomType));
+        when(bookingDetailRepository.findOverlappingSchedule(any(), any())).thenReturn(List.of());
+        when(roomRepository.findByRoomTypeId(10L)).thenReturn(List.of(Room.builder().id(11L).roomType(roomType).build()));
+        when(pricePolicyRepository.findById(30L)).thenReturn(java.util.Optional.of(dailyPolicy));
+        when(roomPriceConfigRepository.findByRoomTypeIdAndPricePolicyIdAndDayType(10L, 30L, "WEEKDAY"))
+                .thenReturn(java.util.Optional.of(RoomPriceConfig.builder().price(BigDecimal.valueOf(1_200_000)).build()));
+        when(bookingRepository.save(any(Booking.class))).thenAnswer(invocation -> {
+            Booking booking = invocation.getArgument(0);
+            booking.setId(60L);
+            return booking;
+        });
+        when(bookingDetailRepository.save(any(BookingDetail.class))).thenAnswer(invocation -> {
+            BookingDetail detail = invocation.getArgument(0);
+            detail.setId(100L);
+            return detail;
+        });
+
+        PublicCreateBookingRequest request = new PublicCreateBookingRequest(
+                "Guest",
+                "0900000000",
+                "guest@example.com",
+                "Ha Noi",
+                null,
+                "012345678901",
+                null,
+                10L,
+                null,
+                LocalDateTime.of(2026, 7, 6, 14, 0),
+                LocalDateTime.of(2026, 7, 7, 12, 0),
+                30L,
+                2,
+                0,
+                null,
+                List.of()
+        );
+
+        var response = service.createBooking(null, request);
+
+        ArgumentCaptor<Customer> customerCaptor = ArgumentCaptor.forClass(Customer.class);
+        verify(customerRepository).save(customerCaptor.capture());
+        Customer savedCustomer = customerCaptor.getValue();
+
+        assertEquals(null, savedCustomer.getAccount());
+        assertEquals("guest@example.com", savedCustomer.getEmail());
+        assertEquals(0, response.earnedMemberPoints());
+        ArgumentCaptor<PublicBookingConfirmationEmailEvent> eventCaptor =
+                ArgumentCaptor.forClass(PublicBookingConfirmationEmailEvent.class);
+        verify(eventPublisher).publishEvent(eventCaptor.capture());
+        assertEquals("guest@example.com", eventCaptor.getValue().email());
+        assertEquals(response.bookingCode(), eventCaptor.getValue().bookingCode());
+        assertEquals(BigDecimal.valueOf(1_200_000), eventCaptor.getValue().totalAmount());
+        verify(accountRepository, never()).findByEmail(any());
+    }
+
+    @Test
+    void createGuestBookingThatRequiresPaymentDoesNotSendPendingConfirmationEmail() {
+        RoomType roomType = RoomType.builder().id(10L).name("Garden House").maxAdults(2).maxChildren(1).build();
+        PricePolicy hourlyPolicy = PricePolicy.builder().id(31L).rentType("HOURLY").limitHours(2).build();
+
+        when(customerRepository.save(any(Customer.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(roomTypeRepository.findAllByIdForInventoryUpdate(Set.of(10L))).thenReturn(List.of(roomType));
+        when(bookingDetailRepository.findOverlappingSchedule(any(), any())).thenReturn(List.of());
+        when(roomRepository.findByRoomTypeId(10L)).thenReturn(List.of(Room.builder().id(11L).roomType(roomType).build()));
+        when(pricePolicyRepository.findById(31L)).thenReturn(java.util.Optional.of(hourlyPolicy));
+        when(roomPriceConfigRepository.findByRoomTypeIdAndPricePolicyIdAndDayType(10L, 31L, "WEEKDAY"))
+                .thenReturn(java.util.Optional.of(RoomPriceConfig.builder().price(BigDecimal.valueOf(500_000)).build()));
+        when(bookingRepository.save(any(Booking.class))).thenAnswer(invocation -> {
+            Booking booking = invocation.getArgument(0);
+            booking.setId(61L);
+            return booking;
+        });
+        when(bookingDetailRepository.save(any(BookingDetail.class))).thenAnswer(invocation -> {
+            BookingDetail detail = invocation.getArgument(0);
+            detail.setId(101L);
+            return detail;
+        });
+
+        PublicCreateBookingRequest request = new PublicCreateBookingRequest(
+                "Guest",
+                "0900000000",
+                "guest@example.com",
+                "Ha Noi",
+                null,
+                "012345678901",
+                null,
+                10L,
+                null,
+                LocalDateTime.of(2026, 7, 6, 14, 0),
+                LocalDateTime.of(2026, 7, 6, 16, 0),
+                31L,
+                2,
+                0,
+                null,
+                List.of()
+        );
+
+        var response = service.createBooking(null, request);
+
+        assertEquals("PENDING", response.status());
+        assertEquals(true, response.requiresDeposit());
+        assertEquals(BigDecimal.valueOf(500_000), response.depositAmount());
+        verify(eventPublisher, never()).publishEvent(any(PublicBookingConfirmationEmailEvent.class));
     }
 
     @Test

@@ -17,5 +17,5 @@ public interface PublicBookingService {
     PublicBookingHistoryDetailResponse getMyBookingDetail(String email, Long bookingId);
     PublicBookingHistoryDetailResponse confirmMyBooking(String email, Long bookingId);
     PublicBookingHistoryDetailResponse submitMyBookingFeedback(String email, Long bookingId, PublicBookingFeedbackRequest request);
-    PublicBookingResponse createBooking(String email, PublicCreateBookingRequest request);
+    PublicBookingResponse createBooking(String authenticatedEmail, PublicCreateBookingRequest request);
 }

@@ -265,7 +265,7 @@ public class AdminCheckInRegistrationServiceImpl implements AdminCheckInRegistra
     private AdminBookingCustomerResponse toCustomerResponse(Customer customer) {
         return new AdminBookingCustomerResponse(
                 customer.getId(), customer.getFullName(),
-                customer.getAccount() != null ? customer.getAccount().getEmail() : null,
+                customer.getAccount() != null ? customer.getAccount().getEmail() : customer.getEmail(),
                 customer.getPhone(), customer.getAddress(), customer.getDateOfBirth()
         );
     }

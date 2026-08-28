@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.homestayManagement.homestayManagement.entity.Booking;
 import com.homestayManagement.homestayManagement.entity.BookingDetail;
 import com.homestayManagement.homestayManagement.entity.BookingServiceItem;
+import com.homestayManagement.homestayManagement.entity.Customer;
 import com.homestayManagement.homestayManagement.entity.Invoice;
 import com.homestayManagement.homestayManagement.entity.InventoryService;
 import com.homestayManagement.homestayManagement.entity.Payment;
@@ -18,11 +19,14 @@ import com.homestayManagement.homestayManagement.repository.RoomRepository;
 import com.homestayManagement.homestayManagement.repository.RoomTypeRepository;
 import com.homestayManagement.homestayManagement.repository.ServiceUsageRepository;
 import com.homestayManagement.homestayManagement.service.impl.SePayPaymentServiceImpl;
+import com.homestayManagement.homestayManagement.service.event.PublicBookingConfirmationEmailEvent;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -69,6 +73,8 @@ class SePayPaymentServiceImplTest {
     private InventoryServiceRepository inventoryServiceRepository;
     @Mock
     private StayAccessService stayAccessService;
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
 
     private SePayPaymentServiceImpl service;
 
@@ -87,6 +93,7 @@ class SePayPaymentServiceImplTest {
                 inventoryServiceRepository,
                 stayAccessService,
                 new ObjectMapper(),
+                eventPublisher,
                 "Vietcombank",
                 "0123456789",
                 "NGUYEN VAN A",
@@ -199,6 +206,57 @@ class SePayPaymentServiceImplTest {
         assertEquals("HMS30", response.transferContent());
         assertNull(booking.getPaymentHoldExpiresAt());
         assertNull(response.holdExpiresAt());
+    }
+
+    @Test
+    void createPublicBookingPaymentAllowsGuestWithMatchingEmail() {
+        Customer customer = Customer.builder().id(1L).email("guest@example.com").fullName("Guest").build();
+        Booking booking = Booking.builder().id(10L).bookingCode("BK_TEST").customer(customer).status("PENDING").build();
+        BookingDetail detail = BookingDetail.builder()
+                .booking(booking)
+                .rentType("HOURLY")
+                .priceAtBooking(BigDecimal.valueOf(300_000))
+                .build();
+        Invoice invoice = Invoice.builder()
+                .id(20L)
+                .booking(booking)
+                .totalAmount(BigDecimal.valueOf(300_000))
+                .build();
+        Payment payment = Payment.builder()
+                .id(30L)
+                .invoice(invoice)
+                .paymentCode("HMS30")
+                .paymentPurpose("BOOKING")
+                .amount(BigDecimal.valueOf(300_000))
+                .status("PENDING")
+                .build();
+
+        when(bookingRepository.findByIdForPaymentUpdate(10L)).thenReturn(Optional.of(booking));
+        when(bookingDetailRepository.findByBookingId(10L)).thenReturn(List.of(detail));
+        when(invoiceRepository.findByBookingIdForAdmin(10L)).thenReturn(Optional.of(invoice));
+        when(paymentRepository.findFirstByInvoiceIdAndPaymentMethodAndPaymentPurposeAndStatusOrderByIdDesc(
+                20L, "SEPAY", "BOOKING", "PENDING"
+        )).thenReturn(Optional.of(payment));
+        when(paymentRepository.save(payment)).thenReturn(payment);
+
+        var response = service.createPublicBookingPayment(10L, "guest@example.com");
+
+        assertEquals(10L, response.bookingId());
+        assertEquals(BigDecimal.valueOf(300_000), response.amount());
+    }
+
+    @Test
+    void createPublicBookingPaymentRejectsWrongGuestEmail() {
+        Customer customer = Customer.builder().id(1L).email("guest@example.com").fullName("Guest").build();
+        Booking booking = Booking.builder().id(10L).customer(customer).status("PENDING").build();
+
+        when(bookingRepository.findByIdForPaymentUpdate(10L)).thenReturn(Optional.of(booking));
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> service.createPublicBookingPayment(10L, "other@example.com")
+        );
+        verify(paymentRepository, never()).save(any());
     }
 
     @Test
@@ -333,6 +391,49 @@ class SePayPaymentServiceImplTest {
         verify(roomRepository).save(room102);
         verify(stayAccessService).expireAccess(40L);
         verify(bookingDetailRepository, never()).save(detail201);
+    }
+
+    @Test
+    void bookingWebhookPublishesPaidEmailForGuestBooking() throws Exception {
+        Customer customer = Customer.builder().id(1L).email("guest@example.com").fullName("Guest").build();
+        Booking booking = Booking.builder().id(10L).bookingCode("BK_TEST").customer(customer).status("PENDING").build();
+        Invoice invoice = Invoice.builder()
+                .id(20L)
+                .booking(booking)
+                .roomCharge(BigDecimal.valueOf(250_000))
+                .serviceCharge(BigDecimal.ZERO)
+                .totalAmount(BigDecimal.valueOf(250_000))
+                .build();
+        Payment payment = Payment.builder()
+                .id(30L)
+                .invoice(invoice)
+                .paymentCode("HMS30")
+                .paymentPurpose("BOOKING")
+                .amount(BigDecimal.valueOf(250_000))
+                .status("PENDING")
+                .build();
+        BookingDetail detail = BookingDetail.builder()
+                .id(40L)
+                .booking(booking)
+                .status("PENDING")
+                .priceAtBooking(BigDecimal.valueOf(250_000))
+                .allocatedDiscount(BigDecimal.ZERO)
+                .build();
+        byte[] body = webhookBody(92708L, 250_000);
+        String timestamp = String.valueOf(Instant.now().getEpochSecond());
+
+        when(paymentRepository.findBySepayTransactionId(92708L)).thenReturn(Optional.empty());
+        when(paymentRepository.findByPaymentCodeIgnoreCase("HMS30")).thenReturn(Optional.of(payment));
+        when(bookingRepository.findByIdForPaymentUpdate(10L)).thenReturn(Optional.of(booking));
+        when(bookingDetailRepository.findByBookingId(10L)).thenReturn(List.of(detail));
+
+        service.handleWebhook(body, signature(body, timestamp), timestamp);
+
+        ArgumentCaptor<PublicBookingConfirmationEmailEvent> eventCaptor =
+                ArgumentCaptor.forClass(PublicBookingConfirmationEmailEvent.class);
+        verify(eventPublisher).publishEvent(eventCaptor.capture());
+        assertEquals("guest@example.com", eventCaptor.getValue().email());
+        assertEquals(true, eventCaptor.getValue().paymentConfirmed());
     }
 
     private byte[] webhookBody(long id, long amount) {

@@ -58,6 +58,18 @@ public class Booking {
     @Column(name = "room_discount_amount", nullable = false, precision = 10, scale = 2)
     private BigDecimal roomDiscountAmount = BigDecimal.ZERO;
 
+    @Builder.Default
+    @Column(name = "member_discount_percent", nullable = false, precision = 5, scale = 2)
+    private BigDecimal memberDiscountPercent = BigDecimal.ZERO;
+
+    @Builder.Default
+    @Column(name = "member_discount_amount", nullable = false, precision = 10, scale = 2)
+    private BigDecimal memberDiscountAmount = BigDecimal.ZERO;
+
+    @Builder.Default
+    @Column(name = "earned_member_points", nullable = false)
+    private Integer earnedMemberPoints = 0;
+
     @Column(name = "booking_date", nullable = false)
     private LocalDateTime bookingDate;
 

@@ -79,6 +79,7 @@ public class AdminUserServiceImpl implements AdminUserService {
             validatePhoneLength(request.phone(), 10);
             Customer detail = Customer.builder()
                     .account(account)
+                    .email(account.getEmail())
                     .fullName(request.fullName().trim())
                     .phone(blankToNull(request.phone()))
                     .build();
@@ -115,6 +116,7 @@ public class AdminUserServiceImpl implements AdminUserService {
             employeeRepository.deleteByAccountId(id);
             Customer detail = customerRepository.findByAccountId(id)
                     .orElseGet(() -> Customer.builder().account(account).build());
+            detail.setEmail(account.getEmail());
             detail.setFullName(request.fullName().trim());
             detail.setPhone(blankToNull(request.phone()));
             customerRepository.save(detail);

@@ -19,6 +19,8 @@ const emptyProfile = {
   identityDocumentNumber: '',
   avatarUrl: '',
   role: '',
+  memberPoints: 0,
+  memberDiscountPercent: 0,
 }
 
 function ProfilePage() {
@@ -206,6 +208,16 @@ function ProfilePage() {
                 </p>
                 <span>{profile.role || 'ROLE_CUSTOMER'}</span>
               </div>
+              <div className="profile-member-stats" aria-label="Điểm thành viên">
+                <div>
+                  <span>Điểm tích lũy</span>
+                  <strong>{Number(profile.memberPoints || 0).toLocaleString('vi-VN')}</strong>
+                </div>
+                <div>
+                  <span>Ưu đãi hiện tại</span>
+                  <strong>{Number(profile.memberDiscountPercent || 0).toLocaleString('vi-VN')}%</strong>
+                </div>
+              </div>
               {isUploadingAvatar && <small>Đang tải ảnh...</small>}
             </section>
 
@@ -264,6 +276,8 @@ function ProfilePage() {
                 <ProfileField label="Địa chỉ" value={profile.address} />
                 <ProfileField label="Căn cước công dân" value={profile.identityDocumentNumber} />
                 <ProfileField label="Vai trò" value={profile.role} />
+                <ProfileField label="Điểm thành viên" value={Number(profile.memberPoints || 0).toLocaleString('vi-VN')} />
+                <ProfileField label="Ưu đãi thành viên" value={`${Number(profile.memberDiscountPercent || 0).toLocaleString('vi-VN')}%`} />
               </div>
             )}
           </div>
@@ -301,6 +315,8 @@ function normalizeProfile(profile) {
     address: profile?.address || '',
     identityDocumentNumber: profile?.identityDocumentNumber || '',
     avatarUrl: profile?.avatarUrl || '',
+    memberPoints: profile?.memberPoints || 0,
+    memberDiscountPercent: profile?.memberDiscountPercent || 0,
   }
 }
 
