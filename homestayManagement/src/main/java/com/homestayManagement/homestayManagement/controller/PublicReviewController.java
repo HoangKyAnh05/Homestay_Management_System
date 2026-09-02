@@ -15,6 +15,16 @@ public class PublicReviewController {
 
     private final ReviewService reviewService;
 
+    @GetMapping
+    public ResponseEntity<List<ReviewResponseDto>> getAllPublicReviews() {
+        return ResponseEntity.ok(reviewService.getFeaturedReviews());
+    }
+
+    @GetMapping("/featured")
+    public ResponseEntity<List<ReviewResponseDto>> getFeaturedReviews() {
+        return ResponseEntity.ok(reviewService.getFeaturedReviews());
+    }
+
     @GetMapping("/room-type/{roomTypeId}")
     public ResponseEntity<List<ReviewResponseDto>> getReviewsByRoomType(@PathVariable Long roomTypeId) {
         return ResponseEntity.ok(reviewService.getReviewsByRoomType(roomTypeId));

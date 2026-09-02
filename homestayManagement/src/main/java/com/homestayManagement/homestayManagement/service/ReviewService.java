@@ -9,8 +9,10 @@ import java.util.List;
 public interface ReviewService {
     ReviewResponseDto createReview(CreateReviewRequestDto request, String userEmail);
     List<ReviewResponseDto> getReviewsByRoomType(Long roomTypeId);
+    List<ReviewResponseDto> getFeaturedReviews();
     ReviewResponseDto getReviewByBooking(Long bookingId);
     List<ReviewResponseDto> getAllReviews();
     ReviewResponseDto updateReviewStatus(Long reviewId, UpdateReviewStatusRequestDto request);
+    List<ReviewResponseDto> syncGoogleReviews();
 }
 

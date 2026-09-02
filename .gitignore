@@ -72,6 +72,9 @@ quick_push.bat
 push_ky_anh.bat
 render_diagrams.bat
 code_flow_docs/
+Deploy_Bank/
+*.exe
+
 
 
 

@@ -32,6 +32,7 @@ import StayPage from './pages/Stay/StayPage'
 import StayActivationPage from './pages/Stay/StayActivationPage'
 import WishlistPage from './pages/Wishlist/WishlistPage'
 import LandingPage from './pages/Landing/LandingPage'
+import FloatingContactWidget from './components/FloatingContact/FloatingContactWidget'
 import { getStoredUser } from './services/authService'
 import { STAFF_ROLES, roleCanAccess, roleDefaultPath } from './utils/roleUtils'
 
@@ -42,6 +43,7 @@ function CustomerSurface({ children }) {
     <>
       {children}
       {/* <CustomerAiChat /> */}
+      <FloatingContactWidget />
     </>
   )
 }

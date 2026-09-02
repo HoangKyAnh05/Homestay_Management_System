@@ -31,4 +31,9 @@ public class AdminReviewController {
     ) {
         return ResponseEntity.ok(reviewService.updateReviewStatus(reviewId, request));
     }
+
+    @PostMapping("/sync-google")
+    public ResponseEntity<List<ReviewResponseDto>> syncGoogleReviews() {
+        return ResponseEntity.ok(reviewService.syncGoogleReviews());
+    }
 }

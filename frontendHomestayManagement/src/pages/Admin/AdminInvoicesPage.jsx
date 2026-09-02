@@ -161,7 +161,12 @@ function AdminInvoicesPage() {
   const [error, setError] = useState('')
   const [page, setPage] = useState(1)
 
-  useEffect(() => {
+  const [fromDate, setFromDate] = useState('')
+  const [toDate, setToDate] = useState('')
+
+  const fetchInvoices = () => {
+    setLoading(true)
+    setError('')
     fetch(API, { headers: authHeaders() })
       .then(async res => {
         const data = await res.json().catch(() => ({}))
@@ -171,6 +176,10 @@ function AdminInvoicesPage() {
       .then(data => setInvoices(Array.isArray(data) ? data : []))
       .catch(err => setError(err.message || 'Không thể tải danh sách hóa đơn'))
       .finally(() => setLoading(false))
+  }
+
+  useEffect(() => {
+    fetchInvoices()
   }, [])
 
   const filteredInvoices = useMemo(() => {
@@ -184,14 +193,17 @@ function AdminInvoicesPage() {
         invoice.customerEmail?.toLowerCase().includes(keyword)
       const matchMethod = !methodFilter || invoice.latestPaymentMethod === methodFilter
       const matchStatus = !statusFilter || invoice.latestPaymentStatus === statusFilter
-      return matchSearch && matchMethod && matchStatus
+      const matchFrom = !fromDate || (invoice.createdAt && invoice.createdAt.slice(0, 10) >= fromDate)
+      const matchTo = !toDate || (invoice.createdAt && invoice.createdAt.slice(0, 10) <= toDate)
+      return matchSearch && matchMethod && matchStatus && matchFrom && matchTo
     })
-  }, [invoices, search, methodFilter, statusFilter])
+  }, [invoices, search, methodFilter, statusFilter, fromDate, toDate])
 
   const totalAmount = filteredInvoices.reduce((sum, invoice) => sum + Number(invoice.totalAmount || 0), 0)
   const paidAmount = filteredInvoices.reduce((sum, invoice) => sum + Number(invoice.paidAmount || 0), 0)
+  const remainingAmount = filteredInvoices.reduce((sum, invoice) => sum + Number(invoice.remainingAmount || 0), 0)
   const voucherDiscountAmount = filteredInvoices.reduce((sum, invoice) => sum + Number(invoice.roomDiscountAmount || 0), 0)
-  const pendingCount = filteredInvoices.filter(invoice => invoice.latestPaymentStatus === 'PENDING').length
+  const unpaidCount = filteredInvoices.filter(invoice => invoice.latestPaymentStatus === 'PENDING' || Number(invoice.remainingAmount || 0) > 0).length
   const totalPages = Math.max(1, Math.ceil(filteredInvoices.length / PAGE_SIZE))
   const safePage = Math.min(page, totalPages)
   const paginatedInvoices = filteredInvoices.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE)
@@ -211,6 +223,25 @@ function AdminInvoicesPage() {
     setPage(1)
   }
 
+  const changeFromDate = event => {
+    setFromDate(event.target.value)
+    setPage(1)
+  }
+
+  const changeToDate = event => {
+    setToDate(event.target.value)
+    setPage(1)
+  }
+
+  const resetFilters = () => {
+    setSearch('')
+    setMethodFilter('')
+    setStatusFilter('')
+    setFromDate('')
+    setToDate('')
+    setPage(1)
+  }
+
   return (
     <AdminLayout activePage="invoices">
       <div className="ain-header">
@@ -218,17 +249,40 @@ function AdminInvoicesPage() {
           <h1>Quản lý Hóa đơn</h1>
           <p>Tra cứu lịch sử hóa đơn tổng của các đoàn và trạng thái thanh toán.</p>
         </div>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button
+            type="button"
+            onClick={fetchInvoices}
+            disabled={loading}
+            style={{
+              height: '40px',
+              padding: '0 16px',
+              border: '1px solid #111827',
+              borderRadius: '8px',
+              background: '#111827',
+              color: '#ffffff',
+              fontWeight: '700',
+              cursor: 'pointer',
+              fontSize: '13px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+          >
+            {loading ? 'Đang tải...' : '↻ Làm mới'}
+          </button>
+        </div>
       </div>
 
-      <div className="ain-stats">
+      <div className="ain-stats" style={{ gridTemplateColumns: 'repeat(5, minmax(0, 1fr))' }}>
         <div><span>Tổng hóa đơn</span><strong>{filteredInvoices.length}</strong></div>
-        <div><span>Tổng tiền</span><strong>{formatMoney(totalAmount)}</strong></div>
-        <div><span>Voucher đã giảm</span><strong>{formatMoney(voucherDiscountAmount)}</strong></div>
-        <div><span>Đã thu thành công</span><strong>{formatMoney(paidAmount)}</strong></div>
-        <div><span>Đang chờ</span><strong>{pendingCount}</strong></div>
+        <div><span>Tổng tiền hóa đơn</span><strong>{formatMoney(totalAmount)}</strong></div>
+        <div><span>Đã thu thực tế</span><strong style={{ color: '#16a34a' }}>{formatMoney(paidAmount)}</strong></div>
+        <div><span>Chưa thu (Còn nợ)</span><strong style={{ color: remainingAmount > 0 ? '#dc2626' : '#111827' }}>{formatMoney(remainingAmount)}</strong></div>
+        <div><span>Voucher đã giảm</span><strong style={{ color: '#2563eb' }}>{formatMoney(voucherDiscountAmount)}</strong></div>
       </div>
 
-      <div className="ain-toolbar">
+      <div className="ain-toolbar" style={{ alignItems: 'center' }}>
         <input className="ain-search" value={search} onChange={changeSearch} placeholder="Tìm mã hóa đơn, booking, khách hàng..." />
         <select className="ain-select" value={methodFilter} onChange={changeMethodFilter}>
           <option value="">Tất cả phương thức</option>
@@ -236,6 +290,7 @@ function AdminInvoicesPage() {
           <option value="VNPAY">VNPAY</option>
           <option value="MOMO">MoMo</option>
           <option value="BANK_TRANSFER">Chuyển khoản</option>
+          <option value="SEPAY">SEPAY</option>
         </select>
         <select className="ain-select" value={statusFilter} onChange={changeStatusFilter}>
           <option value="">Tất cả trạng thái</option>
@@ -243,6 +298,42 @@ function AdminInvoicesPage() {
           <option value="FAILED">Thất bại</option>
           <option value="PENDING">Đang chờ</option>
         </select>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <input
+            type="date"
+            className="ain-select"
+            value={fromDate}
+            onChange={changeFromDate}
+            title="Từ ngày lập hóa đơn"
+          />
+          <span style={{ color: '#6b7280', fontSize: '13px' }}>-</span>
+          <input
+            type="date"
+            className="ain-select"
+            value={toDate}
+            onChange={changeToDate}
+            title="Đến ngày lập hóa đơn"
+          />
+        </div>
+        {(search || methodFilter || statusFilter || fromDate || toDate) && (
+          <button
+            type="button"
+            onClick={resetFilters}
+            style={{
+              height: '40px',
+              padding: '0 12px',
+              border: '1px solid #d1d5db',
+              borderRadius: '8px',
+              background: '#f3f4f6',
+              color: '#374151',
+              fontWeight: '600',
+              cursor: 'pointer',
+              fontSize: '13px'
+            }}
+          >
+            Xóa bộ lọc
+          </button>
+        )}
       </div>
 
       {error && <div className="ain-error">{error}</div>}

@@ -1122,16 +1122,10 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
     : undefined
 
   useEffect(() => {
-    if (selectedRooms.some((room) => !room.roomId)) {
-      setScheduleError('')
-      setScheduleNotice('')
-      setCheckingSchedule(false)
-      return undefined
-    }
-
     if (!selectedRooms.length || !form.checkInTarget || !form.checkOutTarget) {
       setScheduleError('')
       setScheduleNotice('')
+      setCheckingSchedule(false)
       return undefined
     }
 
@@ -1151,11 +1145,14 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
       const fromDate = dateTimeLocalToDateKey(form.checkInTarget)
       const toDate = dateTimeLocalToDateKey(form.checkOutTarget) || fromDate
 
-      Promise.all(selectedRooms.map((room) =>
-        fetch(`${API_BASE_URL}/rooms/${room.roomId}?fromDate=${fromDate}&toDate=${toDate}`, { signal: controller.signal })
+      Promise.all(selectedRooms.map((room) => {
+        const targetId = room.roomId || room.roomTypeId || room.id
+        if (!targetId) return Promise.resolve({ room, busySlots: [] })
+        return fetch(`${API_BASE_URL}/rooms/${targetId}?fromDate=${fromDate}&toDate=${toDate}`, { signal: controller.signal })
           .then((response) => response.ok ? response.json() : null)
           .then((data) => ({ room, busySlots: data?.busySlots || [] }))
-      ))
+          .catch(() => ({ room, busySlots: [] }))
+      }))
         .then((items) => {
           const conflict = items.find((item) => findOverlappingSlot(item.busySlots, form.checkInTarget, form.checkOutTarget))
           if (conflict) {

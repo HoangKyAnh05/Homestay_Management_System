@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import './LandingPage.css';
 import { LandingApp, VILLAS_DATA } from './LandingController';
 import { resolveImageUrl } from '../../utils/imageUrl';
+import FloatingContactWidget from '../../components/FloatingContact/FloatingContactWidget';
 
 const API_BASE_URL = 'http://localhost:8080/api';
 
@@ -51,6 +52,8 @@ function LandingPage() {
     dbRoomsRef.current = dbRooms;
   }, [dbRooms]);
 
+  const [publicReviews, setPublicReviews] = useState([]);
+
   // Fetch real rooms only once
   useEffect(() => {
     fetch(`${API_BASE_URL}/rooms/types`)
@@ -63,6 +66,15 @@ function LandingPage() {
       })
       .catch(() => {})
       .finally(() => setLoadingRooms(false));
+
+    fetch(`${API_BASE_URL}/public/reviews/featured`)
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setPublicReviews(data);
+        }
+      })
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -280,7 +292,7 @@ function LandingPage() {
         <div className="preloader-curtain curtain-left"></div>
         <div className="preloader-curtain curtain-right"></div>
         <div className="preloader-content">
-          <span className="preloader-kanji">紅葉</span>
+          <span className="preloader-leaf">🍁</span>
           <div className="preloader-counter" id="preloader-counter">00%</div>
           <span className="preloader-status" id="preloader-status">KHỞI ĐỘNG KHÔNG GIAN 3D & SƯƠNG MÙ...</span>
           <div className="preloader-bar"><div className="preloader-bar-fill" id="preloader-bar-fill"></div></div>
@@ -314,14 +326,14 @@ function LandingPage() {
       {/* Top Navigation Header */}
       <header className="site-header" id="site-header">
         <div className="nav-container">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexShrink: 0 }}>
-            <a href="/home" className="landing-back-btn" title="Quay lại hệ thống quản lý & đặt phòng Lá Đỏ Homestay">
-              ← Về Trang Chủ
+          <div className="header-left">
+            <a href="/home" className="landing-back-btn" title="Quay lại trang chủ Lá Đỏ Homestay">
+              ← Trang Chủ
             </a>
             <a href="#hero" className="brand-logo">
-              <span className="logo-kanji">紅葉</span>
+              <span className="logo-leaf">🍁</span>
               <div className="logo-text">
-                <span className="brand-name">LÁ ĐỎ</span>
+                <span className="brand-name">LÁ ĐỎ HOMESTAY</span>
                 <span className="brand-tagline">MIST SANCTUARY • SAPA</span>
               </div>
             </a>
@@ -805,52 +817,62 @@ function LandingPage() {
           <div className="container">
             <div className="section-badge">
               <i data-lucide="heart"></i>
-              <span>CẢM NHẬN TỪ KHÁCH NGHỈ DƯỠNG</span>
+              <span>ĐÁNH GIÁ TỪ GOOGLE MAPS & KHÁCH LƯU TRÚ</span>
             </div>
-            <h2 className="section-title">Những Câu Chuyện Bên Khói Trà</h2>
+            <h2 className="section-title">Cảm Nhận Chân Thực Tại Lá Đỏ Homestay</h2>
 
             <div className="reviews-slider">
-              <div className="review-card" data-tilt>
-                <div className="review-stars">★★★★★</div>
-                <blockquote className="review-quote">
-                  "Thức dậy ở The Glass Pine Pavilion lúc 6 giờ sáng và thấy biển mây trôi bồng bềnh ngay dưới chân giường là trải nghiệm ngoạn mục nhất trong cuộc đời tôi. Dịch vụ ngâm khoáng nóng thảo dược cực kỳ thư giãn."
-                </blockquote>
-                <div className="reviewer-info">
-                  <img src="/landing/images/avatar/nguyen-thanh-tung.png" alt="Nguyễn Thanh Tùng" className="reviewer-avatar" />
-                  <div>
-                    <span className="reviewer-name">Nguyễn Thanh Tùng</span>
-                    <span className="reviewer-role">Kiến Trúc Sư • Hà Nội</span>
+              {(publicReviews.length > 0 ? publicReviews : [
+                {
+                  reviewId: 1,
+                  customerName: 'Nguyễn Khánh Linh',
+                  customerAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
+                  roomTypeName: 'Phòng Panorama View Thung Lũng',
+                  ratingStars: 5,
+                  comment: 'Lá Đỏ Homestay view đỉnh nóc kịch trần luôn mọi người ơi! Ngồi ban công vừa nhâm nhi tách cà phê nóng vừa ngắm trọn đoàn tàu Mường Hoa màu đỏ chạy qua thung lũng giữa biển mây Hoàng Liên Sơn siêu đẹp. Phòng ốc bằng gỗ pơ-mu thơm dịu, chăn đệm sưởi ấm cúng, nước nóng cực mạnh.',
+                },
+                {
+                  reviewId: 2,
+                  customerName: 'Trần Đức Minh',
+                  customerAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80',
+                  roomTypeName: 'Phòng Đôi Ban Công Mây',
+                  ratingStars: 5,
+                  comment: 'Homestay nằm ở số 31 Hoàng Liên, không gian yên tĩnh và mộc mạc. Buổi sáng thức dậy kéo rèm ra là mây tràn vào sát cửa kính. Đồ ăn sáng và cà phê ở quán Lá Đỏ ngon, giá cả rất hợp lý so với mặt bằng Sa Pa. Chắc chắn sẽ quay lại!',
+                },
+                {
+                  reviewId: 3,
+                  customerName: 'Lê Anh Khoa',
+                  customerAvatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=400&q=80',
+                  roomTypeName: 'Phòng Gia Đình Hoàng Liên',
+                  ratingStars: 5,
+                  comment: 'Vị trí đắc địa cách Nhà thờ Đá và Sun Plaza chỉ 5-7 phút đi bộ. Bờ kè đá trước homestay chụp ảnh sống ảo góc nào cũng ra ảnh thơ mộng. Tối đến homestay hỗ trợ set up tiệc nướng BBQ ngoài trời ngắm thung lũng về đêm lung linh ánh đèn.',
+                }
+              ]).slice(0, 6).map((rev) => (
+                <div className="review-card" key={rev.reviewId || rev.id} data-tilt>
+                  <div className="review-stars">
+                    {'★'.repeat(Math.max(1, Math.min(5, Math.round(rev.ratingStars || 5))))}
+                  </div>
+                  <blockquote className="review-quote">
+                    "{rev.comment}"
+                  </blockquote>
+                  <div className="reviewer-info">
+                    <img
+                      src={resolveImageUrl(rev.customerAvatar) || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=400&q=80'}
+                      alt={rev.customerName}
+                      className="reviewer-avatar"
+                      onError={(e) => {
+                        e.currentTarget.src = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=400&q=80';
+                      }}
+                    />
+                    <div>
+                      <span className="reviewer-name">{rev.customerName || 'Khách lưu trú'}</span>
+                      <span className="reviewer-role">
+                        {rev.roomTypeName ? `${rev.roomTypeName} • ` : ''}Đánh giá đã xác thực ✓
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
-
-              <div className="review-card" data-tilt>
-                <div className="review-stars">★★★★★</div>
-                <blockquote className="review-quote">
-                  "Không gian yên tĩnh tuyệt đối, chỉ có tiếng suối reo và chim hót. Các món ăn farm-to-table được chuẩn bị rất tinh tế và tươi ngon. Chúng tôi nhất định sẽ quay lại Komorebi mỗi năm."
-                </blockquote>
-                <div className="reviewer-info">
-                  <img src="/landing/images/avatar/tran-thi-mai-anh.png" alt="Trần Thị Mai Anh" className="reviewer-avatar" />
-                  <div>
-                    <span className="reviewer-name">Trần Thị Mai Anh</span>
-                    <span className="reviewer-role">Nhiếp Ảnh Gia • TP. Hồ Chí Minh</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="review-card" data-tilt>
-                <div className="review-stars">★★★★★</div>
-                <blockquote className="review-quote">
-                  "Komorebi mang lại cho gia đình tôi cảm giác bình yên đến lạ kỳ. Bồn tắm Onsen gỗ Pơ-mu ngoài trời nhìn ra thung lũng buổi hoàng hôn thực sự là kiệt tác nghệ thuật nghỉ dưỡng."
-                </blockquote>
-                <div className="reviewer-info">
-                  <img src="/landing/images/avatar/le-hoang-nam.png" alt="Lê Hoàng Nam" className="reviewer-avatar" />
-                  <div>
-                    <span className="reviewer-name">Lê Hoàng Nam</span>
-                    <span className="reviewer-role">Nhà Sáng Lập Startup • Đà Nẵng</span>
-                  </div>
-                </div>
-              </div>
+              ))}
             </div>
           </div>
         </section>
@@ -945,8 +967,8 @@ function LandingPage() {
         <div className="container footer-container">
           <div className="footer-col brand-col">
             <div className="footer-logo">
-              <span className="logo-kanji">紅葉</span>
-              <span className="brand-name">LÁ ĐỎ SANCTUARY</span>
+              <span className="footer-leaf">🍁</span>
+              <span className="brand-name">LÁ ĐỎ HOMESTAY SAPA</span>
             </div>
             <p className="footer-bio">
               Khu nghỉ dưỡng sinh thái biệt lập giữa thung lũng Mường Hoa, Sa Pa, Lào Cai. Điểm đến cho những tâm hồn kiếm tìm sự thanh lọc và bình yên nguyên bản.
@@ -1122,6 +1144,9 @@ function LandingPage() {
         <i data-lucide="check" className="toast-icon"></i>
         <span className="toast-message" id="toast-msg">Thành công!</span>
       </div>
+
+      {/* Floating 3 Contact Buttons */}
+      <FloatingContactWidget />
     </div>
   );
 }

@@ -22,6 +22,7 @@ public class ReviewServiceImpl implements ReviewService {
     private final AccountRepository accountRepository;
     private final CustomerRepository customerRepository;
     private final RoomTypeRepository roomTypeRepository;
+    private final com.homestayManagement.homestayManagement.config.ReviewDataSeeder reviewDataSeeder;
 
     @Override
     @Transactional
@@ -92,6 +93,13 @@ public class ReviewServiceImpl implements ReviewService {
 
     @Override
     @Transactional(readOnly = true)
+    public List<ReviewResponseDto> getFeaturedReviews() {
+        List<Review> reviews = reviewRepository.findFeaturedApproved();
+        return reviews.stream().map(this::mapToDto).collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public ReviewResponseDto getReviewByBooking(Long bookingId) {
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new IllegalArgumentException("Khong tim thay don dat phong"));
@@ -129,6 +137,15 @@ public class ReviewServiceImpl implements ReviewService {
         return mapToDto(updatedReview);
     }
 
+    @Override
+    @Transactional
+    public List<ReviewResponseDto> syncGoogleReviews() {
+        if (reviewDataSeeder != null) {
+            reviewDataSeeder.syncGoogleReviews();
+        }
+        return getAllReviews();
+    }
+
     private void updateRoomTypeRatingStats(RoomType roomType) {
         Double avg = reviewRepository.findAverageRatingByRoomType(roomType);
         Integer count = reviewRepository.countByRoomType(roomType);
@@ -140,8 +157,11 @@ public class ReviewServiceImpl implements ReviewService {
 
     private ReviewResponseDto mapToDto(Review review) {
         Customer cust = review.getAccount() != null ? customerRepository.findByAccountId(review.getAccount().getId()).orElse(null) : null;
-        String name = cust != null ? cust.getFullName() : "Khach hang";
-        String avatar = cust != null ? (cust.getAvatarUrl() != null ? cust.getAvatarUrl() : cust.getGoogleAvatarUrl()) : null;
+        if (cust == null && review.getBooking() != null) {
+            cust = review.getBooking().getCustomer();
+        }
+        String name = cust != null && cust.getFullName() != null && !cust.getFullName().isBlank() ? cust.getFullName() : "Khách hàng";
+        String avatar = cust != null ? (cust.getAvatarUrl() != null && !cust.getAvatarUrl().isBlank() ? cust.getAvatarUrl() : cust.getGoogleAvatarUrl()) : null;
 
         return ReviewResponseDto.builder()
                 .reviewId(review.getId())

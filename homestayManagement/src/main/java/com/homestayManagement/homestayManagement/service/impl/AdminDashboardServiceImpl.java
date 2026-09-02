@@ -48,7 +48,7 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
     @Transactional(readOnly = true)
     public AdminDashboardSummaryResponse getSummary(LocalDate fromDate, LocalDate toDate) {
         LocalDate endDate = toDate != null ? toDate : LocalDate.now();
-        LocalDate startDate = fromDate != null ? fromDate : endDate.minusDays(29);
+        LocalDate startDate = fromDate != null ? fromDate : endDate.minusMonths(1);
         if (endDate.isBefore(startDate)) {
             throw new IllegalArgumentException("Ngày kết thúc phải sau ngày bắt đầu");
         }

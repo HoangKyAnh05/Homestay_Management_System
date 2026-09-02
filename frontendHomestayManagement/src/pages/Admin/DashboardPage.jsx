@@ -19,7 +19,11 @@ function toDateInputValue(date) {
 
 function defaultFromDate() {
   const date = new Date()
-  date.setDate(date.getDate() - 29)
+  const currentDay = date.getDate()
+  date.setMonth(date.getMonth() - 1)
+  if (date.getDate() !== currentDay) {
+    date.setDate(0)
+  }
   return toDateInputValue(date)
 }
 
@@ -360,7 +364,7 @@ function OccupancyChart({ data, totalRooms, onInspectHover, onInspectLeave, onIn
         {data.map(item => {
           const occRate = Number(item.occupancyRate || 0)
           const occRooms = Number(item.occupiedRooms || 0)
-          const roomsCount = Number(item.totalRooms || totalRooms || 9)
+          const roomsCount = Number(item.totalRooms || totalRooms || 1)
           const freeRooms = Math.max(0, roomsCount - occRooms)
 
           const occInspectInfo = {
@@ -704,7 +708,7 @@ function DashboardPage() {
   const occupancyKpiInfo = useMemo(() => {
     const avgRate = Number(kpis.averageOccupancyRate || 0)
     const occupiedNights = Number(kpis.occupiedRoomNights || 0)
-    const totalRooms = Number(kpis.totalRooms || 9)
+    const totalRooms = Number(kpis.totalRooms || 0)
     const totalCapacityNights = totalRooms * daysInPeriod
     return {
       title: 'Công suất phòng trung bình (Average Occupancy Rate)',
@@ -736,7 +740,7 @@ function DashboardPage() {
   }, [kpis, daysInPeriod])
 
   const roomsKpiInfo = useMemo(() => {
-    const totalRooms = Number(kpis.totalRooms || 9)
+    const totalRooms = Number(kpis.totalRooms || 0)
     return {
       title: 'Tổng số lượng phòng trong hệ thống',
       subtitle: `${totalRooms} phòng vật lý đang được quản lý`,

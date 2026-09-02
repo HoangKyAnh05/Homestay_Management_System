@@ -103,11 +103,11 @@ ON DUPLICATE KEY UPDATE
 -- 3. customers
 -- ============================================================
 INSERT INTO customers (id, account_id, full_name, phone, address, avatar_url, date_of_birth) VALUES
-(3, 3, 'Nguyen Van A', '0900000003', 'Quan 1, TP Ho Chi Minh', NULL, '1995-03-15'),
-(6, 6, 'Nguyen Khanh Linh', '0900000006', 'Da Lat, Lam Dong', NULL, '1998-07-21'),
-(7, 7, 'Tran Duc Minh', '0900000007', 'Nha Trang, Khanh Hoa', NULL, '1992-11-09'),
-(8, 8, 'Pham Minh Thao', '0900000008', 'Thu Duc, TP Ho Chi Minh', NULL, '1999-02-24'),
-(9, 9, 'Le Anh Khoa', '0900000009', 'Hoi An, Quang Nam', NULL, '1990-10-02')
+(3, 3, 'Nguyen Van An', '0900000003', 'Quan 1, TP Ho Chi Minh', 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=400&q=80', '1995-03-15'),
+(6, 6, 'Nguyen Khanh Linh', '0900000006', 'Da Lat, Lam Dong', 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80', '1998-07-21'),
+(7, 7, 'Tran Duc Minh', '0900000007', 'Nha Trang, Khanh Hoa', 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80', '1992-11-09'),
+(8, 8, 'Pham Minh Thao', '0900000008', 'Thu Duc, TP Ho Chi Minh', 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=400&q=80', '1999-02-24'),
+(9, 9, 'Le Anh Khoa', '0900000009', 'Hoi An, Quang Nam', 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=400&q=80')
 ON DUPLICATE KEY UPDATE
     account_id = VALUES(account_id),
     full_name = VALUES(full_name),
@@ -523,3 +523,44 @@ ON DUPLICATE KEY UPDATE
     external_post_id = VALUES(external_post_id),
     creator_id = VALUES(creator_id),
     agent_config_id = VALUES(agent_config_id);
+
+-- ============================================================
+-- 26. reviews (Google Maps & Authenticated Guest Reviews)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS reviews (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    booking_id BIGINT NOT NULL UNIQUE,
+    room_type_id BIGINT NOT NULL,
+    account_id BIGINT NOT NULL,
+    rating_stars INT NOT NULL,
+    comment TEXT,
+    image_urls TEXT,
+    status VARCHAR(20) NOT NULL DEFAULT 'APPROVED',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO reviews (
+    id, booking_id, room_type_id, account_id, rating_stars, comment, image_urls, status, created_at
+) VALUES
+(1, 1, 1, 3, 5, 'Lá Đỏ Homestay view đỉnh nóc kịch trần luôn mọi người ơi! Ngồi ban công hoặc bờ kè đá phía trước vừa nhâm nhi tách cà phê nóng vừa ngắm trọn đoàn tàu Mường Hoa màu đỏ chạy qua thung lũng giữa biển mây Hoàng Liên Sơn siêu đẹp. Phòng ốc bằng gỗ pơ-mu thơm dịu, chăn đệm sưởi ấm cúng, nước nóng cực mạnh. Các bạn nhân viên bản địa rất dễ thương và hiếu khách. 10/10!', 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80,https://images.unsplash.com/photo-1582719508461-905c673771fd?auto=format&fit=crop&w=800&q=80', 'APPROVED', DATE_SUB(NOW(), INTERVAL 2 DAY)),
+(2, 2, 2, 6, 5, 'Homestay nằm ở số 31 Hoàng Liên, ngay cạnh Viettrekking nhưng không gian yên tĩnh và mộc mạc hơn nhiều. Buổi sáng thức dậy kéo rèm ra là mây tràn vào sát cửa kính. Đồ ăn sáng và cà phê ở quán Lá Đỏ ngon, giá cả rất hợp lý so với mặt bằng Sa Pa. Chắc chắn sẽ quay lại!', 'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=800&q=80', 'APPROVED', DATE_SUB(NOW(), INTERVAL 4 DAY)),
+(3, 3, 3, 7, 5, 'Vị trí đắc địa cách Nhà thờ Đá và Sun Plaza chỉ khoảng 5-7 phút đi bộ. Bờ kè đá trước homestay chụp ảnh sống ảo góc nào cũng ra ảnh thơ mộng. Tối đến homestay hỗ trợ set up tiệc nướng BBQ ngoài trời ngắm thung lũng về đêm lung linh ánh đèn. Trải nghiệm tuyệt vời!', 'https://images.unsplash.com/photo-1578683010236-d716f9a3f461?auto=format&fit=crop&w=800&q=80', 'APPROVED', DATE_SUB(NOW(), INTERVAL 6 DAY)),
+(4, 4, 4, 8, 5, 'Phòng Panorama view thung lũng ngắm trọn dãy Fansipan. Điểm cộng lớn nhất là bồn tắm gỗ nhìn ra núi rừng, ngâm mình ngắm hoàng hôn buông xuống sườn đồi là khoảnh khắc đáng giá nhất chuyến đi. Bạn lễ tân nhiệt tình hỗ trợ thuê xe máy và đặt vé cáp treo.', 'https://images.unsplash.com/photo-1618773928121-c32242e63f39?auto=format&fit=crop&w=800&q=80', 'APPROVED', DATE_SUB(NOW(), INTERVAL 8 DAY)),
+(5, 5, 5, 9, 4, 'Không gian ngập tràn cây xanh, hoa cỏ và decor nhà gỗ rất gần gũi với thiên nhiên Sa Pa. Anh chị chủ nhà và nhân viên thân thiện như người một nhà. Phòng sạch sẽ tinh tươm. Đường vào hơi dốc đặc trưng đồi núi nhưng có xe đưa đón hành lý rất tiện.', 'https://images.unsplash.com/photo-1596394516093-501ba68a0ba6?auto=format&fit=crop&w=800&q=80', 'APPROVED', DATE_SUB(NOW(), INTERVAL 12 DAY)),
+(6, 6, 1, 3, 5, 'Chuyến đi nghỉ dưỡng 3 ngày 2 đêm cùng gia đình tại Lá Đỏ rất trọn vẹn. Phòng gia đình rộng rãi, tiện nghi ấm cúng, trà táo mèo và hạt dẻ nướng miễn phí đón khách rất chu đáo. View săn mây buổi sáng 10 điểm không có nhưng!', 'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?auto=format&fit=crop&w=800&q=80', 'APPROVED', DATE_SUB(NOW(), INTERVAL 15 DAY))
+ON DUPLICATE KEY UPDATE
+    room_type_id = VALUES(room_type_id),
+    account_id = VALUES(account_id),
+    rating_stars = VALUES(rating_stars),
+    comment = VALUES(comment),
+    image_urls = VALUES(image_urls),
+    status = VALUES(status),
+    created_at = VALUES(created_at);
+
+-- Cập nhật điểm đánh giá trung bình & số lượng review vào room_types
+UPDATE room_types SET average_rating = 5.0, total_reviews = 2 WHERE id = 1;
+UPDATE room_types SET average_rating = 5.0, total_reviews = 1 WHERE id = 2;
+UPDATE room_types SET average_rating = 5.0, total_reviews = 1 WHERE id = 3;
+UPDATE room_types SET average_rating = 5.0, total_reviews = 1 WHERE id = 4;
+UPDATE room_types SET average_rating = 4.0, total_reviews = 1 WHERE id = 5;
+

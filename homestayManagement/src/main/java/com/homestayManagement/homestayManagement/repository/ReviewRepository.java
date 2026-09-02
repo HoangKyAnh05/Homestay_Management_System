@@ -25,4 +25,7 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
 
     @Query("SELECT COUNT(r) FROM Review r WHERE r.roomType = :roomType AND (r.status IS NULL OR UPPER(r.status) != 'HIDDEN')")
     Integer countByRoomType(@Param("roomType") RoomType roomType);
+
+    @Query("SELECT r FROM Review r WHERE r.status IS NULL OR UPPER(r.status) = 'APPROVED' ORDER BY r.ratingStars DESC, r.createdAt DESC")
+    List<Review> findFeaturedApproved();
 }
