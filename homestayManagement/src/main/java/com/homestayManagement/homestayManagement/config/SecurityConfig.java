@@ -50,7 +50,9 @@ public class SecurityConfig {
                         .hasAnyAuthority("ROLE_ADMIN", "ROLE_RECEPTIONIST")
                         .requestMatchers("/uploads/**").permitAll()
                         .requestMatchers("/api/rooms/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/vouchers/active").permitAll()
+                        .requestMatchers("/api/public/reviews/**").permitAll()
+                        .requestMatchers("/api/customer/**").hasAuthority("ROLE_CUSTOMER")
+                        .requestMatchers(HttpMethod.GET, "/api/vouchers/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/amenities").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/bookings/price-policies").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/bookings/services").permitAll()
@@ -66,6 +68,11 @@ public class SecurityConfig {
                         .hasAnyAuthority("ROLE_ADMIN", "ROLE_HOUSEKEEPING")
 
                         // ── Admin + Lễ tân ────────────────────────────────────────────
+                        .requestMatchers("/api/admin/shifts/**")
+                        .hasAnyAuthority("ROLE_ADMIN", "ROLE_RECEPTIONIST")
+                        // Hủy phòng & hoàn tiền: chỉ riêng Admin được truy cập và xác nhận
+                        .requestMatchers("/api/admin/bookings/cancellations/**", "/api/admin/bookings/*/confirm-refund")
+                        .hasAuthority("ROLE_ADMIN")
                         .requestMatchers("/api/admin/bookings/**", "/api/admin/invoices/**")
                         .hasAnyAuthority("ROLE_ADMIN", "ROLE_RECEPTIONIST")
                         // Lễ tân cần đọc gói giá khi tạo/chỉnh sửa booking.
@@ -75,6 +82,12 @@ public class SecurityConfig {
                                 "/api/admin/services/facility/**",
                                 "/api/admin/services/inventory/**")
                         .hasAnyAuthority("ROLE_ADMIN", "ROLE_RECEPTIONIST")
+
+                        // Quản lý sự cố & đồ hỏng/mất: Housekeeping và Lễ tân có thể xem và báo cáo
+                        .requestMatchers(HttpMethod.GET, "/api/admin/incidents/**")
+                        .hasAnyAuthority("ROLE_ADMIN", "ROLE_HOUSEKEEPING", "ROLE_RECEPTIONIST")
+                        .requestMatchers(HttpMethod.POST, "/api/admin/incidents", "/api/admin/incidents/upload-image")
+                        .hasAnyAuthority("ROLE_ADMIN", "ROLE_HOUSEKEEPING", "ROLE_RECEPTIONIST")
 
                         // ── Chỉ ROLE_ADMIN ──────────────────────────────────────────────
                         // Quản lý người dùng

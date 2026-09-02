@@ -47,6 +47,9 @@ class PublicBookingServiceImplTest {
     @Mock private InventoryServiceRepository inventoryServiceRepository;
     @Mock private VoucherRepository voucherRepository;
     @Mock private ApplicationEventPublisher eventPublisher;
+    @Mock private com.homestayManagement.homestayManagement.repository.RoomIncidentRepository roomIncidentRepository;
+    @Mock private com.homestayManagement.homestayManagement.repository.InvoiceRepository invoiceRepository;
+    @Mock private com.homestayManagement.homestayManagement.repository.PaymentRepository paymentRepository;
 
     private PublicBookingServiceImpl service;
 
@@ -68,7 +71,10 @@ class PublicBookingServiceImplTest {
                 inventoryServiceRepository,
                 voucherRepository,
                 new BookingCodeGenerator(bookingRepository),
-                eventPublisher
+                eventPublisher,
+                roomIncidentRepository,
+                invoiceRepository,
+                paymentRepository
         );
     }
 

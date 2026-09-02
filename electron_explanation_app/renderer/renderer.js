@@ -190,6 +190,20 @@ function selectFlow(flowId) {
   document.getElementById('active-flow-title').innerText = flow.title;
   document.getElementById('active-flow-desc').innerText = flow.desc;
   
+  // Render Presentation Script Banner
+  const presBox = document.getElementById('presentation-script-box');
+  const presText = document.getElementById('presentation-script-text');
+  if (presBox && presText) {
+    if (flow.presentationScript) {
+      presText.innerHTML = flow.presentationScript;
+      presBox.style.display = 'block';
+      window.currentPresentationText = presText.innerText;
+    } else {
+      presBox.style.display = 'none';
+      window.currentPresentationText = '';
+    }
+  }
+
   // Render sequence steps flowchart
   renderFlowSteps(flowId);
   
@@ -197,31 +211,58 @@ function selectFlow(flowId) {
   loadSimulator(flowId);
 }
 
-// COPY CODE FUNCTION
+// COPY CODE & PRESENTATION SCRIPT FUNCTION
 function initCopyCode() {
   const copyBtn = document.getElementById('copy-code-btn');
-  copyBtn.addEventListener('click', () => {
-    if (window.currentCode) {
-      navigator.clipboard.writeText(window.currentCode).then(() => {
-        const originalText = copyBtn.innerText;
-        copyBtn.innerText = 'Đã sao chép! ✓';
-        copyBtn.style.backgroundColor = 'var(--success)';
-        copyBtn.style.color = 'white';
-        
-        setTimeout(() => {
-          copyBtn.innerText = originalText;
-          copyBtn.style.backgroundColor = '';
-          copyBtn.style.color = '';
-        }, 1500);
-        
-        logToConsole(`[Hệ thống] Đã sao chép mã nguồn của file vào clipboard.`);
-      }).catch(err => {
-        logToConsole(`[Hệ thống] Không thể sao chép code: ${err.message}`, 'error');
-      });
-    } else {
-      logToConsole(`[Hệ thống] Không có code nào để sao chép.`, 'error');
-    }
-  });
+  if (copyBtn) {
+    copyBtn.addEventListener('click', () => {
+      if (window.currentCode) {
+        navigator.clipboard.writeText(window.currentCode).then(() => {
+          const originalText = copyBtn.innerText;
+          copyBtn.innerText = 'Đã sao chép! ✓';
+          copyBtn.style.backgroundColor = 'var(--success)';
+          copyBtn.style.color = 'white';
+          
+          setTimeout(() => {
+            copyBtn.innerText = originalText;
+            copyBtn.style.backgroundColor = '';
+            copyBtn.style.color = '';
+          }, 1500);
+          
+          logToConsole(`[Hệ thống] Đã sao chép mã nguồn của file vào clipboard.`);
+        }).catch(err => {
+          logToConsole(`[Hệ thống] Không thể sao chép code: ${err.message}`, 'error');
+        });
+      } else {
+        logToConsole(`[Hệ thống] Không có code nào để sao chép.`, 'error');
+      }
+    });
+  }
+
+  // Copy presentation script button listener
+  const copyPresBtn = document.getElementById('copy-presentation-btn');
+  if (copyPresBtn) {
+    copyPresBtn.addEventListener('click', () => {
+      if (window.currentPresentationText) {
+        navigator.clipboard.writeText(window.currentPresentationText).then(() => {
+          const originalText = copyPresBtn.innerText;
+          copyPresBtn.innerText = 'Đã sao chép bài nói! ✓';
+          copyPresBtn.style.backgroundColor = 'var(--success)';
+          
+          setTimeout(() => {
+            copyPresBtn.innerText = originalText;
+            copyPresBtn.style.backgroundColor = 'var(--primary)';
+          }, 1500);
+          
+          logToConsole(`[Hệ thống] Đã sao chép kịch bản thuyết trình vào clipboard.`);
+        }).catch(err => {
+          logToConsole(`[Hệ thống] Lỗi khi sao chép bài nói: ${err.message}`, 'error');
+        });
+      } else {
+        logToConsole(`[Hệ thống] Không có bài thuyết trình nào để sao chép.`, 'error');
+      }
+    });
+  }
 }
 
 // PROJECT ROOT SELECTION & CONFIGURATION

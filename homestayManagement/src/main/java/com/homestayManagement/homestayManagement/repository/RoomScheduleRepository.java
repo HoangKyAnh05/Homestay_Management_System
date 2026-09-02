@@ -20,4 +20,6 @@ public interface RoomScheduleRepository extends JpaRepository<RoomSchedule, Long
             @Param("startInclusive") LocalDateTime startInclusive,
             @Param("endExclusive") LocalDateTime endExclusive
     );
+
+    void deleteByRoomId(Long roomId);
 }

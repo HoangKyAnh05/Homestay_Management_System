@@ -764,3 +764,1048 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Extend Stay Button */
+.history-extend-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #1e3a8a;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.history-extend-btn:hover {
+  background: #3b82f6;
+  color: #ffffff;
+  border-color: #3b82f6;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(59, 130, 246, 0.25);
+}
+
+.history-extend-btn--compact {
+  padding: 5px 10px;
+  font-size: 12px;
+  border-radius: 6px;
+}
+
+.history-room-extend-link {
+  background: none;
+  border: none;
+  color: #2563eb;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+  transition: color 0.2s;
+}
+
+.history-room-extend-link:hover {
+  color: #1d4ed8;
+}
+
+/* Modal Overlay & Container */
+.extend-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(4px);
+  display: grid;
+  place-items: center;
+  z-index: 9999;
+  padding: 16px;
+  animation: extendFadeIn 0.2s ease-out;
+}
+
+.extend-modal {
+  background: #ffffff;
+  width: min(100%, 640px);
+  max-height: 90vh;
+  overflow-y: auto;
+  border-radius: 20px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  border: 1px solid #e2e8f0;
+  animation: extendSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes extendFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes extendSlideUp {
+  from { opacity: 0; transform: translateY(16px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.extend-modal-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid #f1f5f9;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  background: #f8fafc;
+  border-radius: 20px 20px 0 0;
+}
+
+.extend-modal-header h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.extend-modal-header p {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: #64748b;
+}
+
+.extend-modal-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: #94a3b8;
+  cursor: pointer;
+  line-height: 1;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+.extend-modal-close:hover {
+  background: #e2e8f0;
+  color: #334155;
+}
+
+.extend-modal-body {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.extend-alert {
+  padding: 12px 16px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.extend-alert--error {
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+}
+
+.extend-alert--success {
+  background: #f0fdf4;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+}
+
+/* Current Info Card */
+.extend-current-info {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  background: #f8fafc;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+}
+
+.extend-info-label {
+  display: block;
+  font-size: 12px;
+  color: #64748b;
+  margin-bottom: 2px;
+}
+
+.extend-current-info strong {
+  font-size: 14px;
+  color: #1e293b;
+}
+
+/* Hours preset */
+.extend-hours-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.extend-section-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #334155;
+}
+
+.extend-hour-presets {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.extend-hour-btn {
+  flex: 1;
+  min-width: 75px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1.5px solid #e2e8f0;
+  background: #ffffff;
+  color: #334155;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.extend-hour-btn:hover {
+  border-color: #93c5fd;
+  background: #f0f9ff;
+}
+
+.extend-hour-btn.is-active {
+  background: #2563eb;
+  color: #ffffff;
+  border-color: #2563eb;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+}
+
+/* Checking box */
+.extend-checking-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 24px;
+  background: #f8fafc;
+  border-radius: 12px;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.extend-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #cbd5e1;
+  border-top-color: #2563eb;
+  border-radius: 50%;
+  animation: extendSpin 0.7s linear infinite;
+}
+
+@keyframes extendSpin {
+  to { transform: rotate(360deg); }
+}
+
+/* Result Box - Available */
+.extend-result-box {
+  border-radius: 14px;
+  padding: 18px;
+}
+
+.extend-result-box--available {
+  background: #f0fdf4;
+  border: 1.5px solid #86efac;
+}
+
+.extend-result-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: #22c55e;
+  color: #ffffff;
+  margin-bottom: 8px;
+}
+
+.extend-result-badge--busy {
+  background: #ea580c;
+}
+
+.extend-result-box--available h3 {
+  margin: 0 0 14px;
+  font-size: 16px;
+  color: #166534;
+}
+
+.extend-fee-breakdown {
+  background: #ffffff;
+  padding: 14px;
+  border-radius: 10px;
+  border: 1px solid #bbf7d0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.extend-fee-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: #374151;
+}
+
+.extend-fee-total {
+  border-top: 1px dashed #d1d5db;
+  padding-top: 8px;
+  margin-top: 4px;
+  font-weight: 700;
+}
+
+.extend-hint-note {
+  margin: 10px 0 0;
+  font-size: 12px;
+  color: #4b5563;
+  font-style: italic;
+}
+
+.extend-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.extend-confirm-btn {
+  flex: 1;
+  padding: 12px 18px;
+  border-radius: 10px;
+  border: none;
+  background: #16a34a;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.extend-confirm-btn:hover:not(:disabled) {
+  background: #15803d;
+}
+
+.extend-cancel-btn {
+  padding: 12px 18px;
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #475569;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.extend-cancel-btn:hover {
+  background: #f1f5f9;
+}
+
+/* Result Box - Busy */
+.extend-result-box--busy {
+  background: #fff7ed;
+  border: 1.5px solid #fdba74;
+}
+
+.extend-busy-desc strong {
+  color: #9a3412;
+  font-size: 15px;
+  display: block;
+}
+
+.extend-busy-desc p {
+  margin: 4px 0 14px;
+  font-size: 13px;
+  color: #7c2d12;
+}
+
+.extend-options-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.extend-option-card {
+  background: #ffffff;
+  border: 1px solid #fed7aa;
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+
+.extend-option-card--checkout {
+  border-color: #e2e8f0;
+  background: #f8fafc;
+}
+
+.extend-option-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.extend-option-tag {
+  font-size: 11px;
+  font-weight: 700;
+  background: #f97316;
+  color: #ffffff;
+  padding: 2px 7px;
+  border-radius: 4px;
+}
+
+.extend-option-card--checkout .extend-option-tag {
+  background: #64748b;
+}
+
+.extend-option-head h4 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.extend-alt-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.extend-alt-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  background: #fffaf5;
+  border: 1px solid #fed7aa;
+  border-radius: 8px;
+  gap: 10px;
+}
+
+.extend-alt-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.extend-alt-info strong {
+  font-size: 14px;
+  color: #0f172a;
+}
+
+.extend-alt-type {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.extend-alt-price {
+  font-size: 13px;
+  font-weight: 700;
+  color: #ea580c;
+}
+
+.extend-switch-btn {
+  padding: 8px 14px;
+  background: #ea580c;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+
+.extend-switch-btn:hover:not(:disabled) {
+  background: #c2410c;
+}
+
+.extend-no-rooms {
+  margin: 6px 0;
+  font-size: 13px;
+  color: #9a3412;
+  font-style: italic;
+}
+
+.extend-checkout-text {
+  margin: 0 0 10px;
+  font-size: 13px;
+  color: #475569;
+}
+
+.extend-checkout-confirm-btn {
+  padding: 9px 16px;
+  background: #475569;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.extend-checkout-confirm-btn:hover {
+  background: #334155;
+}
+
+.history-room-extended-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #ffedd5;
+  color: #c2410c;
+  font-size: 11px;
+  font-weight: 800;
+  border: 1px solid #fed7aa;
+}
+
+/* =========================================================
+   CANCEL BOOKING BUTTONS & MODAL & CANCELLATION CARD
+   ========================================================= */
+
+.history-cancel-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 16px;
+  background: #fee2e2;
+  color: #b91c1c;
+  border: 1px solid #fca5a5;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.history-cancel-btn:hover {
+  background: #fecaca;
+  border-color: #ef4444;
+  color: #991b1b;
+  transform: translateY(-1px);
+}
+
+.history-cancel-btn--compact {
+  padding: 5px 10px;
+  font-size: 11.5px;
+  border-radius: 7px;
+}
+
+/* Cancellation Info Card in Detail View */
+.history-cancellation-card {
+  margin: 16px 0;
+  padding: 18px 20px;
+  background: #fff5f5;
+  border: 1.5px solid #fecaca;
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.history-cancellation-badge {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.history-cancellation-icon {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.history-cancellation-badge strong {
+  display: block;
+  font-size: 15px;
+  color: #991b1b;
+  margin-bottom: 3px;
+}
+
+.history-cancellation-badge p {
+  margin: 0;
+  font-size: 13px;
+  color: #475569;
+}
+
+.history-cancellation-refund-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  padding: 12px 16px;
+  background: #ffffff;
+  border: 1px solid #fed7aa;
+  border-radius: 10px;
+}
+
+.history-cancellation-refund-grid > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.history-cancellation-refund-grid span {
+  font-size: 12px;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.refund-rate-highlight {
+  font-size: 16px;
+  color: #0369a1;
+  font-weight: 800;
+}
+
+.refund-amount-highlight {
+  font-size: 17px;
+  color: #b91c1c;
+  font-weight: 900;
+}
+
+.refund-status--completed {
+  font-size: 13px;
+  color: #15803d;
+  font-weight: 700;
+}
+
+.refund-status--pending {
+  font-size: 13px;
+  color: #d97706;
+  font-weight: 700;
+}
+
+.history-cancellation-refund-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  padding: 8px 12px;
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 8px;
+  color: #334155;
+}
+
+.history-cancellation-refund-info span {
+  font-weight: 600;
+  color: #64748b;
+}
+
+.history-cancellation-support-note {
+  font-size: 12.5px;
+  color: #0369a1;
+  background: #f0f9ff;
+  border-left: 3px solid #0284c7;
+  padding: 8px 12px;
+  border-radius: 0 6px 6px 0;
+  line-height: 1.45;
+}
+
+/* Cancel Modal */
+.history-cancel-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(4px);
+  display: grid;
+  place-items: center;
+  z-index: 9999;
+  padding: 20px;
+}
+
+.history-cancel-modal {
+  width: 100%;
+  max-width: 580px;
+  max-height: 90vh;
+  overflow-y: auto;
+  background: #ffffff;
+  border-radius: 20px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  animation: cancelModalPop 0.22s ease-out;
+}
+
+@keyframes cancelModalPop {
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.history-cancel-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.history-cancel-modal-header h2 {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 800;
+  color: #991b1b;
+}
+
+.history-cancel-modal-header p {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.history-cancel-modal-close {
+  background: none;
+  border: none;
+  font-size: 26px;
+  line-height: 1;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 4px;
+}
+
+.history-cancel-modal-close:hover {
+  color: #1e293b;
+}
+
+.history-cancel-modal-body {
+  padding: 20px 24px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.history-cancel-alert {
+  padding: 12px 16px;
+  border-radius: 10px;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.history-cancel-alert--error {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fca5a5;
+}
+
+.history-cancel-alert--success {
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #86efac;
+}
+
+/* Policy Breakdown Box */
+.history-cancel-policy-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+
+.history-cancel-policy-card h4 {
+  margin: 0 0 10px;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #334155;
+}
+
+.history-cancel-policy-card ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.history-cancel-policy-card li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 12.5px;
+  color: #475569;
+  line-height: 1.4;
+}
+
+.policy-tag {
+  padding: 2px 7px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.policy-tag--green {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.policy-tag--yellow {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.policy-tag--red {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+/* Preview Applied Calculation Card */
+.history-cancel-preview-card {
+  background: #fff8f8;
+  border: 1px solid #fecaca;
+  border-radius: 12px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cancel-preview-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  color: #475569;
+}
+
+.cancel-preview-row strong {
+  color: #1e293b;
+}
+
+.cancel-preview-row .text-green {
+  color: #15803d;
+}
+
+.cancel-preview-row .text-yellow {
+  color: #d97706;
+}
+
+.cancel-preview-row .text-red {
+  color: #dc2626;
+}
+
+.cancel-preview-divider {
+  height: 1px;
+  background: #fed7aa;
+  margin: 4px 0;
+}
+
+.cancel-preview-row--highlight {
+  padding-top: 4px;
+  font-size: 14px;
+}
+
+.refund-amount-value {
+  font-size: 19px;
+  color: #dc2626;
+  font-weight: 900;
+}
+
+.policy-badge {
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.policy-badge--green {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.policy-badge--yellow {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.policy-badge--red {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.cancel-preview-desc {
+  font-size: 12px;
+  color: #64748b;
+  margin-top: 2px;
+  line-height: 1.35;
+}
+
+.history-cancel-loading {
+  padding: 16px;
+  text-align: center;
+  font-size: 13px;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.cancel-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #e2e8f0;
+  border-top-color: #ef4444;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Form Styles */
+.history-cancel-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.history-cancel-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.history-cancel-field label {
+  font-size: 13px;
+  font-weight: 700;
+  color: #334155;
+}
+
+.field-required {
+  color: #ef4444;
+}
+
+.field-subtext {
+  margin: 0 0 8px;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.history-cancel-field textarea,
+.history-cancel-field input {
+  width: 100%;
+  padding: 11px 14px;
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  color-scheme: light;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 10px;
+  font-size: 14px;
+  line-height: 1.5;
+  box-sizing: border-box;
+  font-family: inherit;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.history-cancel-field textarea::placeholder,
+.history-cancel-field input::placeholder {
+  color: #94a3b8 !important;
+  opacity: 1;
+}
+
+.history-cancel-field textarea:hover,
+.history-cancel-field input:hover {
+  border-color: #94a3b8;
+}
+
+.history-cancel-field textarea:focus,
+.history-cancel-field input:focus {
+  outline: none;
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #dc2626;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.12);
+}
+
+.history-cancel-bank-fields {
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.history-cancel-bank-fields h4 {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.cancel-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.history-cancel-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.history-cancel-btn--back {
+  padding: 11px 18px;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #475569;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.history-cancel-btn--back:hover {
+  background: #e2e8f0;
+}
+
+.history-cancel-btn--confirm {
+  padding: 11px 22px;
+  background: #dc2626;
+  border: none;
+  border-radius: 10px;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #ffffff;
+  cursor: pointer;
+  transition: all 0.15s;
+  box-shadow: 0 2px 6px rgba(220, 38, 38, 0.3);
+}
+
+.history-cancel-btn--confirm:hover:not(:disabled) {
+  background: #b91c1c;
+  transform: translateY(-1px);
+}
+
+.history-cancel-btn--confirm:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+
+

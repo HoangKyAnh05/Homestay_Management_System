@@ -18,6 +18,12 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 
+import com.homestayManagement.homestayManagement.dto.request.PublicBookingExtendRequest;
+import com.homestayManagement.homestayManagement.dto.request.PublicBookingExtensionCheckRequest;
+import com.homestayManagement.homestayManagement.dto.request.PublicBookingCancelRequest;
+import com.homestayManagement.homestayManagement.dto.response.PublicBookingCancelPolicyPreviewResponse;
+import com.homestayManagement.homestayManagement.dto.response.PublicBookingExtensionCheckResponse;
+
 @RestController
 @RequestMapping("/api/bookings")
 public class PublicBookingController {
@@ -66,6 +72,41 @@ public class PublicBookingController {
             @Valid @RequestBody PublicBookingFeedbackRequest request
     ) {
         return publicBookingService.submitMyBookingFeedback(authentication.getName(), bookingId, request);
+    }
+
+    @PostMapping("/my/{bookingId}/check-extension")
+    public PublicBookingExtensionCheckResponse checkExtension(
+            Authentication authentication,
+            @PathVariable Long bookingId,
+            @RequestBody PublicBookingExtensionCheckRequest request
+    ) {
+        return publicBookingService.checkExtension(authentication.getName(), bookingId, request);
+    }
+
+    @PostMapping("/my/{bookingId}/extend")
+    public PublicBookingHistoryDetailResponse extendStay(
+            Authentication authentication,
+            @PathVariable Long bookingId,
+            @RequestBody PublicBookingExtendRequest request
+    ) {
+        return publicBookingService.extendStay(authentication.getName(), bookingId, request);
+    }
+
+    @GetMapping("/my/{bookingId}/cancel-policy-preview")
+    public PublicBookingCancelPolicyPreviewResponse getCancelPolicyPreview(
+            Authentication authentication,
+            @PathVariable Long bookingId
+    ) {
+        return publicBookingService.getCancelPolicyPreview(authentication.getName(), bookingId);
+    }
+
+    @PostMapping("/my/{bookingId}/cancel")
+    public PublicBookingHistoryDetailResponse cancelMyBooking(
+            Authentication authentication,
+            @PathVariable Long bookingId,
+            @Valid @RequestBody PublicBookingCancelRequest request
+    ) {
+        return publicBookingService.cancelMyBooking(authentication.getName(), bookingId, request);
     }
 
     @PostMapping

@@ -3,6 +3,141 @@
   gap: 22px;
 }
 
+/* Shift Handover Banner */
+.rcp-shift-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 20px;
+  border-radius: 12px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease;
+}
+
+.rcp-shift-banner--active {
+  border-left: 5px solid #22c55e;
+  background: linear-gradient(to right, #f0fdf4, #ffffff);
+}
+
+.rcp-shift-banner--pending {
+  border-left: 5px solid #f59e0b;
+  background: linear-gradient(to right, #fffbeb, #ffffff);
+}
+
+.rcp-shift-info {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex: 1;
+}
+
+.rcp-shift-tag {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+
+.rcp-shift-banner--active .rcp-shift-tag {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.rcp-shift-banner--pending .rcp-shift-tag {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.rcp-shift-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.rcp-shift-text strong {
+  font-size: 14px;
+  color: #0f172a;
+}
+
+.rcp-shift-text span {
+  font-size: 12.5px;
+  color: #64748b;
+}
+
+.rcp-shift-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.rcp-btn-shift-history {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #475569;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.rcp-btn-shift-history:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+}
+
+.rcp-btn-shift-history svg {
+  width: 15px;
+  height: 15px;
+}
+
+.rcp-btn-shift-handover {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: none;
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+  color: #ffffff;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(2, 132, 199, 0.25);
+  transition: all 0.15s ease;
+}
+
+.rcp-btn-shift-handover:hover {
+  background: linear-gradient(135deg, #0369a1 0%, #075985 100%);
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.35);
+  transform: translateY(-1px);
+}
+
+.rcp-btn-shift-handover svg {
+  width: 15px;
+  height: 15px;
+}
+
+@media (max-width: 768px) {
+  .rcp-shift-banner {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .rcp-shift-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}
+
 /* Hello banner */
 .rcp-hello {
   display: flex;

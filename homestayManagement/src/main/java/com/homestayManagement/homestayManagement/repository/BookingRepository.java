@@ -35,4 +35,15 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
             @Param("bookingId") Long bookingId,
             @Param("email") String email
     );
+
+    @Query("""
+            select b from Booking b
+            join fetch b.customer c
+            left join fetch c.account a
+            where b.status = 'CANCELLED'
+            order by coalesce(b.cancelledAt, b.bookingDate) desc
+            """)
+    java.util.List<Booking> findCancellationsOrderByCancelledAtDesc();
+
+    long countByRefundStatus(String refundStatus);
 }

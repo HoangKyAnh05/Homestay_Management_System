@@ -138,7 +138,7 @@ function AdminHousekeepingCalendarPage() {
         <div className="hkr-toolbar">
           <div className="hkr-search"><span>⌕</span><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Tìm số phòng..." /></div>
           <select value={roomTypeId} onChange={event => setRoomTypeId(event.target.value)}>
-            <option value="ALL">Tất cả loại nhà</option>
+            <option value="ALL">Tất cả loại phòng</option>
             {allRoomTypes.map(type => <option key={type.id} value={type.id}>{type.name}</option>)}
           </select>
           <select value={status} onChange={event => setStatus(event.target.value)}>

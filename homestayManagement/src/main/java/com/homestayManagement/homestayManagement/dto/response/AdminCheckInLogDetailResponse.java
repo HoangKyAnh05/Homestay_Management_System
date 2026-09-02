@@ -16,6 +16,8 @@ public record AdminCheckInLogDetailResponse(
         String rentType,
         String detailStatus,
         AdminBookingCheckInResponse checkInRecord,
-        boolean housekeepingInspectionCompleted
+        boolean housekeepingInspectionCompleted,
+        Integer extensionHours,
+        BigDecimal extensionAmount
 ) {
 }

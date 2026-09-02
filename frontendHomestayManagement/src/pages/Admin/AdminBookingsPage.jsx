@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { getStoredToken } from '../../services/authService'
+import { useShiftGuard } from '../../context/ShiftGuardContext'
 import { formatClockTime, formatDateTime as formatAppDateTime } from '../../utils/dateTimeFormat'
 import { houseTypeName } from '../../utils/houseType'
 import SePayQrPayment from '../../components/SePayQrPayment/SePayQrPayment'
@@ -55,6 +56,17 @@ function addDays(date, amount) {
 function formatShortDate(value) {
   if (!value) return ''
   return new Date(value).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })
+}
+
+function formatFullVietnameseDate(date) {
+  if (!date) return ''
+  const d = new Date(date)
+  const days = ['Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7']
+  const dayName = days[d.getDay()]
+  const day = String(d.getDate()).padStart(2, '0')
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const year = d.getFullYear()
+  return `${dayName} - Ngày ${day}/${month}/${year}`
 }
 
 function normalizeStatus(status) {
@@ -229,7 +241,10 @@ function InvoicePreviewModal({ detail, onClose }) {
     Number(record.earlyCheckInFee || 0) + Number(record.lateCheckOutFee || 0)
   )
   const voucherApplied = hasVoucherDiscount(detail)
-  const roomBaseAmount = Number(detail?.priceAtBooking ?? detail?.roomChargeBeforeDiscount ?? totals.roomCharge)
+  const extHours = Number(detail?.extensionHours || 0)
+  const totalRoomCharge = Number(detail?.priceAtBooking ?? detail?.roomChargeBeforeDiscount ?? totals.roomCharge)
+  const extAmount = Number(detail?.extensionAmount || (extHours > 0 ? (totalRoomCharge > 0 ? Math.round(totalRoomCharge / 20 * extHours) : extHours * 80000) : 0))
+  const roomBaseAmount = Math.max(0, (voucherApplied ? totalRoomCharge : totals.roomCharge) - (extHours > 0 ? extAmount : 0))
   const roomVoucherDiscount = Number(detail?.allocatedDiscount || 0)
 
   return (
@@ -276,6 +291,9 @@ function InvoicePreviewModal({ detail, onClose }) {
               <DetailField label="Trả phòng" value={formatAppDateTime(detail?.checkOutTarget)} />
               <DetailField label="Số khách" value={`${Number(detail?.numberOfAdults || 0)} người lớn · ${Number(detail?.numberOfChildren || 0)} trẻ em`} />
               <DetailField label="Loại thuê" value={detail?.rentType} />
+              {extHours > 0 && (
+                <DetailField label="Thuê thêm giờ" value={`+${extHours} giờ (+${formatMoney(extAmount)})`} />
+              )}
               <DetailField label="Người lập" value={detail?.invoice?.employeeName} />
               {voucherApplied && (
                 <>
@@ -310,13 +328,32 @@ function InvoicePreviewModal({ detail, onClose }) {
           <section className="abk-invoice-section">
             <h4>Chi tiết tiền phòng và lưu trú</h4>
             <div className="abk-line-list">
-              <div className="abk-line-row">
-                <div>
-                  <strong>Giá phòng đã đặt</strong>
-                  <span>{detail?.rentType || 'Loại thuê'} · {formatAppDateTime(detail?.checkInTarget)} đến {formatAppDateTime(detail?.checkOutTarget)}</span>
+              {extHours > 0 ? (
+                <>
+                  <div className="abk-line-row">
+                    <div>
+                      <strong>Giá phòng ban đầu</strong>
+                      <span>{detail?.rentType || 'Loại thuê'} · {formatAppDateTime(detail?.checkInTarget)}</span>
+                    </div>
+                    <strong>{formatMoney(roomBaseAmount)}</strong>
+                  </div>
+                  <div className="abk-line-row" style={{ background: '#f0f9ff', padding: '8px 10px', borderRadius: '6px' }}>
+                    <div>
+                      <strong style={{ color: '#0369a1' }}>⏰ Thuê thêm giờ (+{extHours}h)</strong>
+                      <span style={{ color: '#0284c7' }}>Gia hạn thời gian trả phòng đến {formatAppDateTime(detail?.checkOutTarget)}</span>
+                    </div>
+                    <strong style={{ color: '#0284c7' }}>+{formatMoney(extAmount)}</strong>
+                  </div>
+                </>
+              ) : (
+                <div className="abk-line-row">
+                  <div>
+                    <strong>Giá phòng đã đặt</strong>
+                    <span>{detail?.rentType || 'Loại thuê'} · {formatAppDateTime(detail?.checkInTarget)} đến {formatAppDateTime(detail?.checkOutTarget)}</span>
+                  </div>
+                  <strong>{formatMoney(voucherApplied ? roomBaseAmount : totals.roomCharge)}</strong>
                 </div>
-                <strong>{formatMoney(voucherApplied ? roomBaseAmount : totals.roomCharge)}</strong>
-              </div>
+              )}
               {voucherApplied && (
                 <>
                   <div className="abk-line-row abk-line-row--discount">
@@ -539,6 +576,9 @@ function BookingDetailModal({ detail, loading, error, actionLoading, actionError
   const inspectionComplete = Boolean(
     detail?.housekeepingInspectionCompleted || housekeepingTask?.inspectionStatus === 'COMPLETED'
   )
+  const extHours = Number(detail?.extensionHours || 0)
+  const totalRoomCharge = Number(detail?.priceAtBooking ?? detail?.roomChargeBeforeDiscount ?? 0)
+  const extAmount = Number(detail?.extensionAmount || (extHours > 0 ? (totalRoomCharge > 0 ? Math.round(totalRoomCharge / 20 * extHours) : extHours * 80000) : 0))
   const services    = serviceForm.type === 'FACILITY' ? detail?.facilityServices || [] : detail?.inventoryServices || []
   const selectedServices = detail?.serviceItems?.filter(item => item.type !== 'MINI_BAR') || []
   const selectedMiniBars = detail?.serviceItems?.filter(item => item.type === 'MINI_BAR') || []
@@ -817,6 +857,19 @@ function BookingDetailModal({ detail, loading, error, actionLoading, actionError
 
                 {!editBooking ? (
                   <>
+                    {extHours > 0 && (
+                      <div className="abk-extension-callout" style={{ background: '#f0f9ff', border: '1px solid #bae6fd', padding: '12px 14px', borderRadius: '8px', marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: '#0369a1' }}>
+                        <div>
+                          <strong style={{ fontSize: '14px' }}>⏰ Khách đã thuê thêm {extHours} giờ lưu trú</strong>
+                          <div style={{ fontSize: '13px', marginTop: '2px', color: '#0284c7' }}>
+                            Phụ phí thuê thêm: <b>+{formatMoney(extAmount)}</b> · Giờ trả phòng gia hạn: <b>{formatAppDateTime(detail.checkOutTarget)}</b>
+                          </div>
+                        </div>
+                        <span style={{ background: '#0284c7', color: '#fff', padding: '4px 10px', borderRadius: '12px', fontSize: '12px', fontWeight: 600 }}>
+                          +{extHours}h
+                        </span>
+                      </div>
+                    )}
                     <div className="abk-detail-grid">
                       <DetailField label="Phòng"            value={`${detail.roomNumber ? `Phòng ${detail.roomNumber}` : 'Chưa gán phòng'} · ${houseTypeName(detail, 'Chưa phân loại')}`} />
                       <DetailField label="Ngày đặt"         value={formatAppDateTime(detail.bookingDate)} />
@@ -825,6 +878,12 @@ function BookingDetailModal({ detail, loading, error, actionLoading, actionError
                       <DetailField label="Người lớn"        value={detail.numberOfAdults} />
                       <DetailField label="Trẻ em"           value={detail.numberOfChildren} />
                       <DetailField label="Loại thuê"        value={detail.rentType} />
+                      {extHours > 0 && (
+                        <>
+                          <DetailField label="Thuê thêm giờ" value={`+${extHours} giờ`} />
+                          <DetailField label="Tiền thuê thêm" value={`+${formatMoney(extAmount)}`} />
+                        </>
+                      )}
                       <DetailField label="Trạng thái"       value={statusLabel(detail.bookingStatus)} />
                       <DetailField label="Giá lúc đặt"      value={formatMoney(detail.priceAtBooking)} />
                       {hasVoucherDiscount(detail) && (
@@ -1814,7 +1873,199 @@ function DirectBookingModal({ onClose, onCreated }) {
   )
 }
 
+function DayRevenueDetailModal({ day, bookings = [], rooms = [], onClose, onOpenDetail }) {
+  if (!day) return null
+
+  // Lọc các đơn đặt phòng trong ngày:
+  // 1. Đơn nhận phòng vào ngày này
+  const checkInBookings = bookings.filter(b => isCheckInDay(b, day))
+  // 2. Đơn hoạt động trong ngày này (check-in hoặc đang lưu trú)
+  const activeBookings = bookings.filter(b => isCheckInDay(b, day) || overlapsDay(b, day))
+
+  // Doanh thu nhận phòng trong ngày
+  const totalCheckInRevenue = checkInBookings.reduce((sum, b) => sum + Number(b.priceAtBooking || b.finalRoomAmount || 0), 0)
+
+  // Thống kê phòng
+  const assignedRooms = new Set(activeBookings.map(b => b.roomId).filter(Boolean))
+  const unassignedCount = activeBookings.filter(b => b.roomId == null).length
+  const totalGuests = activeBookings.reduce((sum, b) => sum + Number(b.numberOfAdults || 1) + Number(b.numberOfChildren || 0), 0)
+
+  const dayTitle = formatFullVietnameseDate(day)
+
+  return (
+    <div className="abk-day-modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="abk-day-modal">
+        <div className="abk-day-modal-head">
+          <div>
+            <span className="abk-day-modal-badge">📊 Báo cáo ngày</span>
+            <h3>{dayTitle}</h3>
+            <p>Tổng quan doanh thu và danh sách khách hàng đặt phòng trong ngày</p>
+          </div>
+          <button type="button" className="abk-modal-close" onClick={onClose} aria-label="Đóng">×</button>
+        </div>
+
+        <div className="abk-day-modal-body">
+          {/* Thẻ chỉ số tổng quan */}
+          <div className="abk-day-kpi-grid">
+            <div className="abk-day-kpi-card abk-day-kpi-card--revenue">
+              <div className="abk-day-kpi-icon">💰</div>
+              <div>
+                <span>Doanh thu ngày</span>
+                <strong>{formatMoney(totalCheckInRevenue)}</strong>
+                <small>{checkInBookings.length} đơn nhận phòng hôm nay</small>
+              </div>
+            </div>
+
+            <div className="abk-day-kpi-card">
+              <div className="abk-day-kpi-icon">🏠</div>
+              <div>
+                <span>Phòng có khách</span>
+                <strong>{assignedRooms.size + unassignedCount} phòng</strong>
+                <small>{assignedRooms.size} đã gán · {unassignedCount} chờ xếp</small>
+              </div>
+            </div>
+
+            <div className="abk-day-kpi-card">
+              <div className="abk-day-kpi-icon">📋</div>
+              <div>
+                <span>Tổng đơn trong ngày</span>
+                <strong>{activeBookings.length} đơn</strong>
+                <small>{checkInBookings.length} mới · {activeBookings.length - checkInBookings.length} lưu trú tiếp</small>
+              </div>
+            </div>
+
+            <div className="abk-day-kpi-card">
+              <div className="abk-day-kpi-icon">👥</div>
+              <div>
+                <span>Số lượng khách</span>
+                <strong>{totalGuests} khách</strong>
+                <small>Dự kiến lưu trú trong ngày</small>
+              </div>
+            </div>
+          </div>
+
+          {/* Danh sách đặt phòng */}
+          <div className="abk-day-booking-section">
+            <div className="abk-day-booking-head">
+              <h4>Danh sách khách đặt phòng ({activeBookings.length})</h4>
+              <span>Bấm nút "Chi tiết" để xem hóa đơn & quản lý lưu trú</span>
+            </div>
+
+            {activeBookings.length === 0 ? (
+              <div className="abk-day-booking-empty">
+                <span>🍃</span>
+                <p>Không có đơn đặt phòng nào trong ngày này.</p>
+                <small>Doanh thu: 0đ</small>
+              </div>
+            ) : (
+              <div className="abk-day-booking-list">
+                {activeBookings.map(b => {
+                  const isNewCheckIn = isCheckInDay(b, day)
+                  const room = rooms.find(r => r.id === b.roomId)
+                  const roomName = b.roomNumber
+                    ? `Phòng ${b.roomNumber}`
+                    : b.roomId
+                    ? `Phòng ${room?.roomNumber || b.roomId}`
+                    : 'Chờ gán phòng'
+                  const isUnassigned = !b.roomId
+
+                  return (
+                    <article className={`abk-day-booking-item${isUnassigned ? ' is-unassigned' : ''}`} key={b.bookingDetailId}>
+                      <div className="abk-day-booking-main">
+                        <div className="abk-day-booking-header-row">
+                          <span className={`abk-day-room-pill${isUnassigned ? ' is-unassigned' : ''}`}>
+                            {isUnassigned ? '⚡ Chờ gán phòng' : `🚪 ${roomName}`}
+                          </span>
+                          <span className="abk-day-type-text">
+                            {houseTypeName(b, room?.roomTypeName || 'Loại phòng')}
+                          </span>
+                          {isNewCheckIn ? (
+                            <span className="abk-day-checkin-tag">✨ Nhận phòng hôm nay</span>
+                          ) : (
+                            <span className="abk-day-stay-tag">🛌 Đang lưu trú</span>
+                          )}
+                          <span className={`abk-status-pill abk-status-pill--${String(b.bookingStatus || '').toLowerCase()}`}>
+                            {statusLabel(b.bookingStatus)}
+                          </span>
+                        </div>
+
+                        <div className="abk-day-customer-grid">
+                          <div>
+                            <span className="abk-day-label">Khách hàng</span>
+                            <strong className="abk-day-customer-name">
+                              {b.customerName || 'Khách vãng lai'}
+                            </strong>
+                            {b.customerPhone && (
+                              <span className="abk-day-phone">📞 {b.customerPhone}</span>
+                            )}
+                          </div>
+
+                          <div>
+                            <span className="abk-day-label">Mã booking & Khách</span>
+                            <span className="abk-day-code">{bookingDisplay(b)}</span>
+                            <span className="abk-day-guests">
+                              👥 {b.numberOfAdults || 1} NL {b.numberOfChildren > 0 ? `· ${b.numberOfChildren} TE` : ''}
+                            </span>
+                          </div>
+
+                          <div>
+                            <span className="abk-day-label">Thời gian lưu trú</span>
+                            <span className="abk-day-time">
+                              {formatAppDateTime(b.checkInTarget)}
+                            </span>
+                            <span className="abk-day-time-arrow">
+                              ➔ {formatAppDateTime(b.checkOutTarget)}
+                            </span>
+                          </div>
+
+                          <div className="abk-day-price-col">
+                            <span className="abk-day-label">Doanh thu phòng</span>
+                            <strong className="abk-day-price">
+                              {formatMoney(b.priceAtBooking || b.finalRoomAmount || 0)}
+                            </strong>
+                            <small className="abk-day-rent-type">
+                              Gói: {b.rentType === 'OVERNIGHT' ? 'Qua đêm' : b.rentType === 'HOURLY' ? 'Theo giờ' : 'Theo ngày'}
+                            </small>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="abk-day-booking-side">
+                        <button
+                          type="button"
+                          className="abk-day-detail-btn"
+                          onClick={() => {
+                            onClose()
+                            onOpenDetail(b.bookingDetailId)
+                          }}
+                        >
+                          Chi tiết →
+                        </button>
+                      </div>
+                    </article>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="abk-day-modal-footer">
+          <div className="abk-day-footer-total">
+            <span>Tổng doanh thu đặt phòng ngày {formatShortDate(day)}:</span>
+            <strong>{formatMoney(totalCheckInRevenue)}</strong>
+          </div>
+          <button type="button" className="abk-day-footer-close-btn" onClick={onClose}>
+            Đóng
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function AdminBookingsPage() {
+  const { isInShift, guardAction } = useShiftGuard()
   const [weekStart, setWeekStart] = useState(() => toDateKey(startOfWeek()))
   const [schedule, setSchedule] = useState({ rooms: [], bookings: [], weekStart, weekEnd: weekStart })
   const [loading, setLoading] = useState(true)
@@ -1831,6 +2082,7 @@ function AdminBookingsPage() {
   const [selectedDetail, setSelectedDetail] = useState(null)
   const [selectedBookingDetailId, setSelectedBookingDetailId] = useState(null)
   const [directModalOpen, setDirectModalOpen] = useState(false)
+  const [daySummaryModal, setDaySummaryModal] = useState(null)
 
   const loadSchedule = () => {
     const controller = new AbortController()
@@ -1903,6 +2155,10 @@ function AdminBookingsPage() {
       setActionError(directData || 'Không xử lý được yêu cầu')
       return
     }
+    if (!isInShift) {
+      guardAction(null, 'Chỉnh sửa / Cập nhật đơn đặt phòng')
+      return
+    }
     if (!selectedBookingDetailId) return
     setActionLoading(true)
     setActionError('')
@@ -1961,10 +2217,14 @@ function AdminBookingsPage() {
   const activeRoomsToday = new Set(
     todayBookings.map(booking => booking.roomId).filter(roomId => roomId != null)
   ).size
+  const unassignedToday = todayBookings.filter(b => b.roomId == null).length
+  const unassignedWeek = adminScheduleBookings.filter(b => b.roomId == null)
   const pendingCount = adminScheduleBookings.filter(booking =>
     [booking.bookingStatus, booking.detailStatus].some(status => normalizeStatus(status) === 'PENDING')
   ).length
   const weekRevenue = adminScheduleBookings.reduce((sum, booking) => sum + Number(booking.priceAtBooking || 0), 0)
+
+  const unassignedVisibleBookings = visibleBookings.filter(booking => booking.roomId == null)
 
   const shiftWeek = amount => {
     setWeekStart(toDateKey(addDays(toDate(weekStart), amount * 7)))
@@ -1978,7 +2238,11 @@ function AdminBookingsPage() {
           <p>Lịch tuần từ {formatShortDate(schedule.weekStart)} đến {formatShortDate(schedule.weekEnd)}.</p>
         </div>
         <div className="abk-week-controls">
-          <button type="button" className="abk-create-btn" onClick={() => setDirectModalOpen(true)}>
+          <button
+            type="button"
+            className="abk-create-btn"
+            onClick={() => guardAction(() => setDirectModalOpen(true), 'Tạo đơn đặt phòng')}
+          >
             Đặt phòng
           </button>
           <button type="button" className="abk-icon-btn" onClick={() => shiftWeek(-1)} aria-label="Tuần trước">
@@ -1993,18 +2257,49 @@ function AdminBookingsPage() {
 
       <div className="abk-stats">
         <div><span>Phòng trong hệ thống</span><strong>{schedule.rooms.length}</strong></div>
-        <div><span>Phòng có khách hôm nay</span><strong>{activeRoomsToday}</strong></div>
+        <div>
+          <span>Phòng có khách hôm nay</span>
+          <strong>
+            {activeRoomsToday + unassignedToday}
+            {unassignedToday > 0 && (
+              <small style={{ fontSize: '12px', color: '#e67e22', marginLeft: '6px', fontWeight: 700 }}>
+                ({unassignedToday} chờ gán)
+              </small>
+            )}
+          </strong>
+        </div>
         <div><span>Đơn trong tuần</span><strong>{adminScheduleBookings.length}</strong></div>
+        <div>
+          <span>Chưa gán phòng</span>
+          <strong style={{ color: unassignedWeek.length > 0 ? '#e67e22' : 'inherit' }}>
+            {unassignedWeek.length}
+          </strong>
+        </div>
         <div><span>Đang chờ</span><strong>{pendingCount}</strong></div>
         <div><span>Giá trị đặt phòng</span><strong>{formatMoney(weekRevenue)}</strong></div>
       </div>
+
+      {unassignedWeek.length > 0 && (
+        <div className="abk-unassigned-alert-banner">
+          <div className="abk-unassigned-alert-left">
+            <span className="abk-unassigned-alert-icon">⚡</span>
+            <div>
+              <strong>Có {unassignedWeek.length} phòng đặt trực tuyến chưa được gán phòng trong tuần này!</strong>
+              <p>Các đơn này đang hiển thị ở hàng <em>"Chờ gán phòng"</em> trên lịch hoặc có thể gán tại <em>Nhật ký lưu trú</em>.</p>
+            </div>
+          </div>
+          <a href="/admin/check-in-logs" className="abk-unassigned-alert-link">
+            Mở Nhật ký check-in →
+          </a>
+        </div>
+      )}
 
       <div className="abk-toolbar">
         <input
           className="abk-search"
           value={search}
           onChange={e => setSearch(e.target.value)}
-          placeholder="Tìm phòng, loại nhà, khách hàng, số điện thoại..."
+          placeholder="Tìm phòng, loại phòng, khách hàng, số điện thoại..."
         />
         <input
           className="abk-date"
@@ -2029,7 +2324,7 @@ function AdminBookingsPage() {
           <div className="abk-empty">Đang tải lịch đặt phòng...</div>
         ) : error ? (
           <div className="abk-empty abk-empty--error">{error}</div>
-        ) : filteredRooms.length === 0 ? (
+        ) : filteredRooms.length === 0 && unassignedVisibleBookings.length === 0 ? (
           <div className="abk-empty">Không có phòng hoặc đơn đặt phòng phù hợp.</div>
         ) : (
           <div className="abk-grid-wrap">
@@ -2037,13 +2332,63 @@ function AdminBookingsPage() {
               <div className="abk-room-head">Phòng</div>
               {weekDays.map((day, index) => {
                 const key = toDateKey(day)
+                const dayCheckInBookings = schedule.bookings.filter(b => isAdminScheduleBookingVisible(b) && isCheckInDay(b, day))
+                const dayRevenue = dayCheckInBookings.reduce((sum, b) => sum + Number(b.priceAtBooking || b.finalRoomAmount || 0), 0)
                 return (
-                  <div className={`abk-day-head${key === todayKey ? ' abk-day-head--today' : ''}`} key={key}>
+                  <div
+                    className={`abk-day-head${key === todayKey ? ' abk-day-head--today' : ''}`}
+                    key={key}
+                    onClick={() => setDaySummaryModal(day)}
+                    title={`Nhấn để xem doanh thu & danh sách đặt phòng ngày ${formatShortDate(day)}`}
+                  >
                     <span>{index === 6 ? 'Chủ nhật' : `Thứ ${index + 2}`}</span>
                     <strong>{formatShortDate(day)}</strong>
+                    <div className="abk-day-head-meta">
+                      {dayCheckInBookings.length > 0 ? (
+                        <span className="abk-day-head-revenue">
+                          {formatMoney(dayRevenue)}
+                        </span>
+                      ) : (
+                        <span className="abk-day-head-empty">0đ</span>
+                      )}
+                    </div>
                   </div>
                 )
               })}
+
+              {/* Hàng đơn đặt chưa gán phòng (Web Booking Chưa Xếp Phòng) */}
+              {unassignedVisibleBookings.length > 0 && (
+                <div className="abk-row abk-row--unassigned" key="unassigned-row">
+                  <div className="abk-room-cell abk-room-cell--unassigned">
+                    <div className="abk-unassigned-tag">
+                      <span className="abk-unassigned-pulse"></span>
+                      <strong>Chờ gán phòng</strong>
+                    </div>
+                    <span>{unassignedVisibleBookings.length} đơn đặt chờ xếp</span>
+                  </div>
+                  {weekDays.map(day => {
+                    const dayBookings = unassignedVisibleBookings
+                      .filter(booking => isCheckInDay(booking, day))
+                      .sort((a, b) => new Date(a.checkInTarget) - new Date(b.checkInTarget))
+                    return (
+                      <div className="abk-day-cell abk-day-cell--unassigned" key={`unassigned-${toDateKey(day)}`}>
+                        {dayBookings.length ? (
+                          dayBookings.map(booking => (
+                            <div key={booking.bookingDetailId} className="abk-unassigned-booking-wrapper">
+                              <span className="abk-unassigned-type-pill">
+                                🏠 {houseTypeName(booking, 'Loại phòng')}
+                              </span>
+                              <BookingCard booking={booking} onOpenDetail={openDetail} />
+                            </div>
+                          ))
+                        ) : (
+                          <span className="abk-free">—</span>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
 
               {pagedRooms.map(room => (
                 <div className="abk-row" key={room.id}>
@@ -2102,6 +2447,16 @@ function AdminBookingsPage() {
         <DirectBookingModal
           onClose={() => setDirectModalOpen(false)}
           onCreated={handleDirectBookingCreated}
+        />
+      )}
+
+      {daySummaryModal && (
+        <DayRevenueDetailModal
+          day={daySummaryModal}
+          bookings={schedule.bookings.filter(isAdminScheduleBookingVisible)}
+          rooms={schedule.rooms}
+          onClose={() => setDaySummaryModal(null)}
+          onOpenDetail={openDetail}
         />
       )}
     </AdminLayout>

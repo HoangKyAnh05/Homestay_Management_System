@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { getStoredToken } from '../../services/authService'
-import { formatDateTime as formatAppDateTime } from '../../utils/dateTimeFormat'
+import { useShiftGuard } from '../../context/ShiftGuardContext'
+import { formatClockTime, formatDateTime as formatAppDateTime } from '../../utils/dateTimeFormat'
 import { houseTypeName } from '../../utils/houseType'
 import SePayQrPayment from '../../components/SePayQrPayment/SePayQrPayment'
 import AdminLayout from './AdminLayout'
@@ -180,14 +181,22 @@ function BookingListItem({ booking, active, onSelect }) {
   const progress = booking.totalDetails ? Math.round((booking.checkedInDetails / booking.totalDetails) * 100) : 0
   const isCompleted = String(booking.bookingStatus || '').toUpperCase() === 'COMPLETED'
     || (booking.totalDetails > 0 && booking.completedDetails === booking.totalDetails)
+  const totalExtHours = booking.details.reduce((sum, d) => sum + (Number(d.extensionHours) || 0), 0)
 
   return (
     <button type="button" className={`acl-booking${active ? ' acl-booking--active' : ''}`} onClick={onSelect}>
       <span className="acl-booking-top">
         <strong>Booking {bookingDisplay(booking)}</strong>
-        <span className={`acl-pill acl-pill--${String(booking.bookingStatus || '').toLowerCase()}`}>
-          {statusLabel(booking.bookingStatus)}
-        </span>
+        <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+          {totalExtHours > 0 && (
+            <span className="acl-booking-extend-pill" title={`Khách đã thuê thêm ${totalExtHours} giờ`}>
+              +{totalExtHours}h
+            </span>
+          )}
+          <span className={`acl-pill acl-pill--${String(booking.bookingStatus || '').toLowerCase()}`}>
+            {statusLabel(booking.bookingStatus)}
+          </span>
+        </div>
       </span>
       <span className="acl-booking-customer">{customer.fullName || 'Khách chưa có tên'}</span>
       <span className="acl-booking-meta">
@@ -215,6 +224,7 @@ function DetailCard({ detail, actionLoading, housekeepingRequested, onAction }) 
   const canCheckIn = stage === 'waiting'
   const canCheckOut = stage === 'staying'
   const loading = actionLoading === detail.bookingDetailId
+  const extHours = Number(detail.extensionHours || 0)
 
   return (
     <article className={`acl-detail acl-detail--${stage}`}>
@@ -225,12 +235,25 @@ function DetailCard({ detail, actionLoading, housekeepingRequested, onAction }) 
         </div>
         <div>
           <div className="acl-detail-title">
-            <h3>{detail.roomNumber ? `Phòng ${detail.roomNumber}` : 'Chưa gán phòng'}</h3>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <h3>{detail.roomNumber ? `Phòng ${detail.roomNumber}` : 'Chưa gán phòng'}</h3>
+              {extHours > 0 && (
+                <span className="acl-extension-badge">
+                  ⏰ Khách thuê thêm +{extHours} giờ
+                </span>
+              )}
+            </div>
             <span className={`acl-stage acl-stage--${stage}`}>{stageLabel(stage)}</span>
           </div>
           <div className="acl-detail-grid">
             <div><span>Nhận phòng dự kiến</span><strong>{formatAppDateTime(detail.checkInTarget)}</strong></div>
-            <div><span>Trả phòng dự kiến</span><strong>{formatAppDateTime(detail.checkOutTarget)}</strong></div>
+            <div>
+              <span>Trả phòng dự kiến</span>
+              <strong style={extHours > 0 ? { color: '#c2410c' } : {}}>
+                {formatAppDateTime(detail.checkOutTarget)}
+                {extHours > 0 && <span className="acl-extend-tag"> (+{extHours}h thuê thêm)</span>}
+              </strong>
+            </div>
             <div><span>Check-in thực tế</span><strong>{formatAppDateTime(detail.checkInRecord?.actualCheckIn)}</strong></div>
             <div><span>Check-out thực tế</span><strong>{formatAppDateTime(detail.checkInRecord?.actualCheckOut)}</strong></div>
           </div>
@@ -242,6 +265,9 @@ function DetailCard({ detail, actionLoading, housekeepingRequested, onAction }) 
           <span>{detail.numberOfAdults || 0} người lớn</span>
           <span>{detail.numberOfChildren || 0} trẻ em</span>
           <span>{rentTypeLabel(detail.rentType)}</span>
+          {extHours > 0 && (
+            <span className="acl-tag-extend">⏰ Thuê thêm: +{extHours} giờ</span>
+          )}
           <span>{formatMoney(detail.priceAtBooking)}</span>
         </div>
         <div className="acl-detail-actions">
@@ -472,6 +498,11 @@ function CheckOutModal({ bookingDetailId, onClose, onCompleted }) {
   const cashChangeAmount = Math.max(0, cashReceivedAmount - remaining)
   const cashIsEnough = cashReceivedAmount >= remaining
 
+  const extHours = Number(detail?.extensionHours || 0)
+  const totalRoomCharge = Number(inv?.roomCharge ?? detail?.finalRoomAmount ?? detail?.priceAtBooking ?? 0)
+  const extAmount = Number(detail?.extensionAmount || (extHours > 0 ? (totalRoomCharge > 0 ? Math.round(totalRoomCharge / 20 * extHours) : extHours * 80000) : 0))
+  const baseRoomCharge = Math.max(0, totalRoomCharge - (extHours > 0 ? extAmount : 0))
+
   function genderLabel(g) {
     return g === 'MALE' ? 'Nam' : g === 'FEMALE' ? 'Nữ' : g === 'OTHER' ? 'Khác' : '—'
   }
@@ -511,7 +542,25 @@ function CheckOutModal({ bookingDetailId, onClose, onCompleted }) {
                     <div className="aco-card-title">
                       <svg viewBox="0 0 20 20" fill="none"><path d="M3 10h14M3 6h14M3 14h7" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/></svg>
                       Thông tin đặt phòng
+                      {extHours > 0 && (
+                        <span className="aco-badge aco-badge--extend" style={{ background: '#e0f2fe', color: '#0369a1' }}>
+                          ⏰ Thuê thêm +{extHours}h
+                        </span>
+                      )}
                     </div>
+
+                    {extHours > 0 && (
+                      <div className="aco-extension-alert">
+                        <div className="aco-extension-alert-icon">⏰</div>
+                        <div>
+                          <strong>Khách đã thuê thêm {extHours} giờ lưu trú</strong>
+                          <p>
+                            Phụ phí thuê thêm: <b>{formatMoney(extAmount)}</b> · Giờ trả phòng gia hạn: <b>{formatAppDateTime(detail.checkOutTarget)}</b>
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
                     <div className="aco-info-grid">
                       <div className="aco-info-item">
                         <span>Phòng</span>
@@ -525,11 +574,19 @@ function CheckOutModal({ bookingDetailId, onClose, onCompleted }) {
                       <div className="aco-info-item">
                         <span>Trả phòng</span>
                         <strong>{formatAppDateTime(detail.checkOutTarget)}</strong>
+                        {extHours > 0 && <small style={{ color: '#0284c7', fontWeight: 600 }}>Bao gồm +{extHours}h thuê thêm</small>}
                       </div>
                       <div className="aco-info-item">
                         <span>Số khách</span>
                         <strong>{detail.numberOfAdults || 0} người lớn · {detail.numberOfChildren || 0} trẻ em</strong>
                       </div>
+                      {extHours > 0 && (
+                        <div className="aco-info-item aco-info-item--extended" style={{ gridColumn: 'span 2' }}>
+                          <span>Chi tiết thuê thêm giờ</span>
+                          <strong>+{extHours} giờ thuê thêm · Phụ thu: {formatMoney(extAmount)}</strong>
+                          <small>Đã tính gộp vào tiền phòng trên hóa đơn thanh toán</small>
+                        </div>
+                      )}
                     </div>
                   </section>
 
@@ -619,9 +676,19 @@ function CheckOutModal({ bookingDetailId, onClose, onCompleted }) {
                       Hoá đơn thanh toán
                     </div>
 
-                    {/* Chi phí phát sinh */}
-                    {(detail.serviceItems?.length > 0 || detail.penaltyItems?.length > 0) && (
+                    {/* Chi phí phát sinh & Thuê thêm */}
+                    {(extHours > 0 || detail.serviceItems?.length > 0 || detail.penaltyItems?.length > 0) && (
                       <div className="aco-items">
+                        {extHours > 0 && (
+                          <div className="aco-item aco-item--extension">
+                            <span className="aco-item-name">
+                              Thuê thêm giờ lưu trú
+                              <small>Gia hạn phòng đến {formatClockTime(detail.checkOutTarget)}</small>
+                            </span>
+                            <span className="aco-item-qty">+{extHours}h</span>
+                            <strong>{formatMoney(extAmount)}</strong>
+                          </div>
+                        )}
                         {detail.serviceItems?.map((item, i) => (
                           <div key={i} className="aco-item">
                             <span className="aco-item-name">{item.name}</span>
@@ -644,10 +711,23 @@ function CheckOutModal({ bookingDetailId, onClose, onCompleted }) {
 
                     {/* Tổng kết */}
                     <div className="aco-totals">
-                      <div className="aco-total-row">
-                        <span>Tiền phòng</span>
-                        <strong>{formatMoney(inv?.roomCharge)}</strong>
-                      </div>
+                      {extHours > 0 ? (
+                        <>
+                          <div className="aco-total-row">
+                            <span>Tiền phòng gốc</span>
+                            <strong>{formatMoney(baseRoomCharge)}</strong>
+                          </div>
+                          <div className="aco-total-row aco-total-row--extended">
+                            <span>Thuê thêm (+{extHours}h)</span>
+                            <strong>+{formatMoney(extAmount)}</strong>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="aco-total-row">
+                          <span>Tiền phòng</span>
+                          <strong>{formatMoney(inv?.roomCharge)}</strong>
+                        </div>
+                      )}
                       <div className="aco-total-row">
                         <span>Dịch vụ</span>
                         <strong>{formatMoney(inv?.serviceCharge)}</strong>
@@ -921,7 +1001,7 @@ function CheckInModal({ bookingDetailId, onClose, onCompleted }) {
       })
       setOcrNotice(`Đã đọc căn cước cho người lưu trú ${index + 1}. Vui lòng kiểm tra lại trước khi xác nhận.`)
     } catch (err) {
-      setError(err.message)
+      setError(`Không thể quét CCCD tự động: ${err.message}. Bạn vẫn có thể nhập trực tiếp thông tin vào form để check-in.`)
     } finally {
       setOcrLoadingIndex(null)
     }
@@ -1129,6 +1209,7 @@ function CheckInModal({ bookingDetailId, onClose, onCompleted }) {
 }
 
 function AdminCheckInLogsPage() {
+  const { isInShift, guardAction } = useShiftGuard()
   const [bookings, setBookings] = useState([])
   const [selectedBookingId, setSelectedBookingId] = useState(null)
   const [fromDate, setFromDate] = useState(defaultFromDate)
@@ -1204,6 +1285,15 @@ function AdminCheckInLogsPage() {
   const completedCount = allDetails.filter(detail => detailStage(detail) === 'completed').length
 
   const runAction = async (bookingDetailId, action) => {
+    if (!isInShift) {
+      const actionLabels = {
+        'check-in': 'Check-in nhận phòng',
+        'check-out': 'Check-out trả phòng',
+        'housekeeping-request': 'Yêu cầu dọn phòng',
+      }
+      guardAction(null, actionLabels[action] || 'Cập nhật lưu trú')
+      return
+    }
     if (action === 'check-in') {
       setCheckInTargetId(bookingDetailId)
       return

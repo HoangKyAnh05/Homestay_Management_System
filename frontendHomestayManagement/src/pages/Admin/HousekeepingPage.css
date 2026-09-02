@@ -15,7 +15,7 @@
   .admin-shell--housekeeping-role .admin-nav-group-trigger{display:none}
   .admin-shell--housekeeping-role .admin-nav{display:block;padding:8px 12px 0}
   .admin-shell--housekeeping-role .admin-nav-submenu{background:transparent;border:0;display:flex;margin:0;padding:0}
-  .admin-shell--housekeeping-role .admin-nav-subitem{background:rgba(34,197,94,.16);box-shadow:inset 0 -2px 0 #34d399;color:#fff;min-height:42px;text-align:center}
+  .admin-shell--housekeeping-role .admin-nav-subitem{background:#dcfce7;box-shadow:inset 0 -2px 0 #16a34a;color:#15803d;min-height:42px;text-align:center}
   .admin-shell--housekeeping-role .admin-sidebar-bottom{border-top:0;display:grid;gap:8px;grid-template-columns:1fr 1fr;padding:8px 12px 10px}
   .admin-shell--housekeeping-role .admin-sidebar-bottom .admin-nav-item{justify-content:center;min-height:40px;padding:8px}
   .admin-shell--housekeeping-role .admin-topbar{height:54px;padding:0 14px}

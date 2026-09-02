@@ -101,7 +101,7 @@ const amenities = [
     categoryLabel: 'Trong phòng',
     price: 0,
     schedule: 'Phục vụ 24/7',
-    location: 'Tất cả loại nhà',
+    location: 'Tất cả loại phòng',
     description: 'Hệ thống điều hòa và nước nóng riêng, được kiểm tra trước mỗi lượt khách nhận phòng.',
     image: '/home_5/image_2.jpg',
     icon: 'temperature',
@@ -213,6 +213,7 @@ function AmenitiesHeader() {
       <a className="home-logo" href="/home">Home Stays</a>
       <nav className="home-nav" aria-label="Điều hướng chính">
         <a href="/home">Trang chủ</a>
+        <a href="/landing" className="home-nav-landing-link" title="Khám phá không gian 3D Komorebi Sanctuary">✨ Komorebi 3D</a>
         <a href="/rooms">Phòng</a>
         <a href="/wishlist">Yêu thích</a>
         <a href="/amenities" className="home-nav-active">Tiện nghi</a>
@@ -511,7 +512,7 @@ function AmenitiesPage() {
                   {eligibleBookings.map(booking => (
                     <label className={String(booking.bookingId) === selectedBookingId ? 'selected' : ''} key={booking.bookingId}>
                       <input type="radio" name="booking" value={booking.bookingId} checked={String(booking.bookingId) === selectedBookingId} onChange={event => setSelectedBookingId(event.target.value)} />
-                      <span><strong>Booking {bookingDisplay(booking)} · {houseTypeName(booking)}</strong><small>{formatDateTime(booking.checkInTarget)} → {formatDateTime(booking.checkOutTarget)} · {booking.roomCount} loại nhà</small></span>
+                      <span><strong>Booking {bookingDisplay(booking)} · {houseTypeName(booking)}</strong><small>{formatDateTime(booking.checkInTarget)} → {formatDateTime(booking.checkOutTarget)} · {booking.roomCount} loại phòng</small></span>
                       <b>{booking.status}</b>
                     </label>
                   ))}

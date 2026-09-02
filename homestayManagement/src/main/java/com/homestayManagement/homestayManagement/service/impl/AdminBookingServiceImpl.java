@@ -4,6 +4,7 @@ import com.homestayManagement.homestayManagement.dto.request.AdminUpdateBookingC
 import com.homestayManagement.homestayManagement.dto.request.AdminUpdateBookingDetailRequest;
 import com.homestayManagement.homestayManagement.dto.request.AdminDirectBookingRequest;
 import com.homestayManagement.homestayManagement.dto.request.AdminDirectBookingGuestRequest;
+import com.homestayManagement.homestayManagement.dto.response.AdminBookingCancellationResponse;
 import com.homestayManagement.homestayManagement.dto.response.AdminBookingCheckInResponse;
 import com.homestayManagement.homestayManagement.dto.response.AdminBookingCustomerResponse;
 import com.homestayManagement.homestayManagement.dto.response.AdminBookingDetailResponse;
@@ -103,6 +104,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -345,7 +347,17 @@ public class AdminBookingServiceImpl implements AdminBookingService {
                 facilityServiceRepository.findAll().stream().map(this::toFacilityServiceResponse).toList(),
                 inventoryServiceRepository.findAll().stream().map(this::toInventoryServiceResponse).toList(),
                 roomMiniBarItemRepository.findAll().stream().map(this::toMiniBarResponse).toList(),
-                rulesPenaltyRepository.findAll().stream().map(this::toRulesPenaltyResponse).toList()
+                rulesPenaltyRepository.findAll().stream().map(this::toRulesPenaltyResponse).toList(),
+                detail.getExtensionHours() != null ? detail.getExtensionHours() : 0,
+                safeExtensionAmount(detail),
+                booking.getCancellationReason(),
+                booking.getCancelledAt(),
+                booking.getRefundRate(),
+                booking.getRefundAmount() != null ? booking.getRefundAmount() : BigDecimal.ZERO,
+                booking.getRefundStatus(),
+                booking.getRefundInfo(),
+                booking.getRefundCompletedAt(),
+                booking.getRefundHandledBy()
         );
     }
 
@@ -1023,7 +1035,9 @@ public class AdminBookingServiceImpl implements AdminBookingService {
                 detail.getPriceAtBooking(),
                 detail.getRentType(),
                 booking.getStatus(),
-                detail.getStatus()
+                detail.getStatus(),
+                detail.getExtensionHours() != null ? detail.getExtensionHours() : 0,
+                safeExtensionAmount(detail)
         );
     }
 
@@ -1088,7 +1102,9 @@ public class AdminBookingServiceImpl implements AdminBookingService {
                 detail.getRentType(),
                 detail.getStatus(),
                 record != null ? toCheckInResponse(record) : null,
-                record != null && inspectedRecordIds.contains(record.getId())
+                record != null && inspectedRecordIds.contains(record.getId()),
+                detail.getExtensionHours() != null ? detail.getExtensionHours() : 0,
+                safeExtensionAmount(detail)
         );
     }
 
@@ -1468,5 +1484,121 @@ public class AdminBookingServiceImpl implements AdminBookingService {
 
     private RulesPenaltyResponse toRulesPenaltyResponse(RulesPenalty penalty) {
         return new RulesPenaltyResponse(penalty.getId(), penalty.getTitle(), penalty.getPenaltyAmount());
+    }
+
+    private BigDecimal calculateHourlyRate(RoomType roomType, BookingDetail detail) {
+        if (roomType == null) {
+            return BigDecimal.valueOf(80_000);
+        }
+        List<RoomPriceConfig> configs = roomPriceConfigRepository.findByRoomTypeIdWithPolicy(roomType.getId());
+        for (RoomPriceConfig cfg : configs) {
+            if (cfg.getPricePolicy() != null && isHourlyPolicy(cfg.getPricePolicy()) && cfg.getPrice() != null && cfg.getPrice().compareTo(BigDecimal.ZERO) > 0) {
+                int limitHours = cfg.getPricePolicy().getLimitHours() != null && cfg.getPricePolicy().getLimitHours() > 0 ? cfg.getPricePolicy().getLimitHours() : 1;
+                return cfg.getPrice().divide(BigDecimal.valueOf(limitHours), 0, RoundingMode.HALF_UP);
+            }
+        }
+        if (detail != null && detail.getPriceAtBooking() != null && detail.getPriceAtBooking().compareTo(BigDecimal.ZERO) > 0) {
+            return detail.getPriceAtBooking().divide(BigDecimal.valueOf(20), 0, RoundingMode.HALF_UP).max(BigDecimal.valueOf(50_000));
+        }
+        for (RoomPriceConfig cfg : configs) {
+            if (cfg.getPrice() != null && cfg.getPrice().compareTo(BigDecimal.ZERO) > 0) {
+                return cfg.getPrice().divide(BigDecimal.valueOf(20), 0, RoundingMode.HALF_UP).max(BigDecimal.valueOf(50_000));
+            }
+        }
+        return BigDecimal.valueOf(80_000);
+    }
+
+    private boolean isHourlyPolicy(PricePolicy policy) {
+        if (policy == null || policy.getRentType() == null) return false;
+        String type = policy.getRentType().trim().toUpperCase();
+        return "HOURLY".equals(type) || "BY_HOUR".equals(type);
+    }
+
+    private BigDecimal safeExtensionAmount(BookingDetail detail) {
+        if (detail == null) return BigDecimal.ZERO;
+        if (detail.getExtensionAmount() != null && detail.getExtensionAmount().compareTo(BigDecimal.ZERO) > 0) {
+            return detail.getExtensionAmount();
+        }
+        if (detail.getExtensionHours() != null && detail.getExtensionHours() > 0) {
+            BigDecimal hourlyRate = calculateHourlyRate(detail.getRoomType(), detail);
+            return hourlyRate.multiply(BigDecimal.valueOf(detail.getExtensionHours()));
+        }
+        return BigDecimal.ZERO;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<AdminBookingCancellationResponse> getCancellations() {
+        return bookingRepository.findCancellationsOrderByCancelledAtDesc().stream()
+                .map(this::toCancellationResponse)
+                .toList();
+    }
+
+    private AdminBookingCancellationResponse toCancellationResponse(Booking booking) {
+        Customer customer = booking.getCustomer();
+        Account account = customer != null ? customer.getAccount() : null;
+        List<BookingDetail> details = bookingDetailRepository.findByBookingId(booking.getId());
+
+        LocalDateTime earliestCheckIn = details.stream()
+                .map(BookingDetail::getCheckInTarget)
+                .filter(java.util.Objects::nonNull)
+                .min(LocalDateTime::compareTo)
+                .orElse(booking.getBookingDate());
+
+        BigDecimal roomCharge = details.stream()
+                .map(this::finalRoomAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal serviceCharge = calculateServiceCharge(booking.getId());
+        BigDecimal totalAmount = roomCharge.add(serviceCharge);
+
+        Optional<com.homestayManagement.homestayManagement.entity.Invoice> invoiceOpt = invoiceRepository.findByBookingId(booking.getId());
+        BigDecimal paidAmount = invoiceOpt.map(invoice -> paymentRepository.findByInvoiceIdOrderByPaymentTimeDescIdDesc(invoice.getId()).stream()
+                .filter(p -> "SUCCESS".equalsIgnoreCase(p.getStatus()))
+                .map(com.homestayManagement.homestayManagement.entity.Payment::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add)).orElse(BigDecimal.ZERO);
+
+        String zaloPhone = customer != null ? customer.getPhone() : null;
+
+        return new AdminBookingCancellationResponse(
+                booking.getId(),
+                booking.getBookingCode(),
+                customer != null ? customer.getId() : null,
+                customer != null ? customer.getFullName() : null,
+                customer != null ? customer.getPhone() : null,
+                account != null ? account.getEmail() : null,
+                zaloPhone,
+                booking.getBookingDate(),
+                earliestCheckIn,
+                booking.getCancelledAt(),
+                booking.getCancellationReason(),
+                totalAmount,
+                paidAmount,
+                booking.getRefundRate(),
+                booking.getRefundAmount() != null ? booking.getRefundAmount() : BigDecimal.ZERO,
+                booking.getRefundStatus(),
+                booking.getRefundInfo(),
+                booking.getRefundCompletedAt(),
+                booking.getRefundHandledBy()
+        );
+    }
+
+    @Override
+    @Transactional
+    public AdminBookingDetailResponse confirmRefund(Long bookingId, String employeeEmail) {
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đơn đặt phòng"));
+        if (!"CANCELLED".equalsIgnoreCase(booking.getStatus())) {
+            throw new IllegalArgumentException("Đơn đặt phòng chưa bị hủy");
+        }
+        booking.setRefundStatus("REFUNDED");
+        booking.setRefundCompletedAt(LocalDateTime.now());
+        booking.setRefundHandledBy(employeeEmail);
+        bookingRepository.save(booking);
+
+        List<BookingDetail> details = bookingDetailRepository.findByBookingId(booking.getId());
+        if (details.isEmpty()) {
+            throw new IllegalArgumentException("Đơn đặt phòng không có thông tin chi tiết");
+        }
+        return getBookingDetail(details.get(0).getId());
     }
 }

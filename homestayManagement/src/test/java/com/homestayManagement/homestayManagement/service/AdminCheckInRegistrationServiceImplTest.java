@@ -176,6 +176,32 @@ class AdminCheckInRegistrationServiceImplTest {
         assertEquals(81L, response.stayAccessId());
     }
 
+    @Test
+    void completeAcceptsChildUnder10WithoutIdentityDocument() {
+        TestData data = testData();
+        Employee employee = Employee.builder().id(70L).fullName("Lễ tân").build();
+        List<AdminCheckInGuestRequest> guests = List.of(
+                new AdminCheckInGuestRequest("Người lớn", "012345678901", java.time.LocalDate.now().minusYears(30), "booker@example.com", null, null, null, "VIETNAM"),
+                new AdminCheckInGuestRequest("Em bé", null, java.time.LocalDate.now().minusYears(5), null, null, null, null, "VIETNAM")
+        );
+
+        when(bookingDetailRepository.findByIdForAdminDetail(40L)).thenReturn(Optional.of(data.detail()));
+        when(checkInRecordRepository.findByBookingDetailId(40L)).thenReturn(Optional.empty());
+        when(roomRepository.findByIdForCheckIn(101L)).thenReturn(Optional.of(data.room()));
+        when(bookingDetailRepository.findOverlappingSchedule(any(), any())).thenReturn(List.of(data.detail()));
+        when(employeeRepository.findByAccountEmail("staff@example.com")).thenReturn(Optional.of(employee));
+        when(stayAccessService.grantAccess(any(), any(), any(), any()))
+                .thenReturn(new StayAccessService.GrantResult(81L, "booker@example.com", "ACTIVE", false, true));
+
+        var response = service.complete(
+                40L,
+                new AdminCompleteCheckInRequest(101L, "booker@example.com", guests)
+        );
+
+        assertEquals("CHECKED_IN", data.detail().getStatus());
+        assertEquals(2, response.guestCount());
+    }
+
     private TestData testData() {
         LocalDateTime checkIn = LocalDateTime.of(2026, 6, 20, 14, 0);
         Account account = Account.builder().id(1L).email("booker@example.com").build();

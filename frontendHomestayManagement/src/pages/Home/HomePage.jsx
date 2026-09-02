@@ -45,17 +45,62 @@ function voucherDiscountText(voucher) {
 
 function voucherConditionText(voucher) {
   if (!voucher?.minOrderValue || Number(voucher.minOrderValue) <= 0) {
-    return 'Áp dụng cho kỳ nghỉ của bạn tại Nhà Ba Gian.'
+    return 'Áp dụng cho kỳ nghỉ của bạn tại Lá Đỏ Homestay.'
   }
   return `Cho đơn từ ${formatVoucherMoney(voucher.minOrderValue)}.`
 }
 
-function roomPrice(room) {
+function isWeekendDay(targetDate) {
+  let date = null
+  if (targetDate) {
+    date = new Date(targetDate)
+  } else {
+    try {
+      const params = new URLSearchParams(window.location.search)
+      const checkInDate = params.get('checkInDate')
+      if (checkInDate) {
+        date = new Date(checkInDate)
+      }
+    } catch {}
+  }
+  if (!date || Number.isNaN(date.getTime())) {
+    date = new Date()
+  }
+  const day = date.getDay()
+  return day === 0 || day === 6
+}
+
+function roomPrice(room, targetDate) {
+  if (!room) return 0
+  const isWeekend = isWeekendDay(targetDate)
+
+  if (isWeekend) {
+    if (room.weekendPrice != null && Number(room.weekendPrice) > 0) {
+      return Number(room.weekendPrice)
+    }
+    if (Array.isArray(room.prices) && room.prices.length > 0) {
+      const weekendItem = room.prices.find(
+        (p) => String(p.dayType || '').toUpperCase() === 'WEEKEND' && Number(p.price) > 0
+      )
+      if (weekendItem) return Number(weekendItem.price)
+    }
+  } else {
+    if (room.weekdayPrice != null && Number(room.weekdayPrice) > 0) {
+      return Number(room.weekdayPrice)
+    }
+    if (Array.isArray(room.prices) && room.prices.length > 0) {
+      const weekdayItem = room.prices.find(
+        (p) => String(p.dayType || '').toUpperCase() === 'WEEKDAY' && Number(p.price) > 0
+      )
+      if (weekdayItem) return Number(weekdayItem.price)
+    }
+  }
+
   if (room.price != null && Number(room.price) > 0) return Number(room.price)
   if (room.weekdayPrice != null && Number(room.weekdayPrice) > 0) return Number(room.weekdayPrice)
   if (room.weekendPrice != null && Number(room.weekendPrice) > 0) return Number(room.weekendPrice)
   if (Array.isArray(room.prices) && room.prices.length > 0) {
-    const validPrices = room.prices.map(p => Number(p.price || 0)).filter(p => p > 0)
+    const validPrices = room.prices.map((p) => Number(p.price || 0)).filter((p) => p > 0)
     if (validPrices.length > 0) return Math.min(...validPrices)
   }
   return 0
@@ -255,14 +300,14 @@ function SearchResultsSection({ criteria, rooms, loading, error, maxPrice, onMax
       <div className="home-section-inner">
         <div className="home-section-head">
           <div>
-            <h2>Loại nhà còn trống</h2>
+            <h2>Loại phòng còn trống</h2>
             <p>
               {criteria
                 ? `Từ ${criteria.checkInDate} đến ${criteria.checkOutDate} · ${criteria.adults} người lớn · ${criteria.rooms} phòng`
-                : 'Kết quả tìm kiếm theo loại nhà.'}
+                : 'Kết quả tìm kiếm theo loại phòng.'}
             </p>
           </div>
-          <span className="search-result-count">{visibleRooms.length} loại nhà</span>
+          <span className="search-result-count">{visibleRooms.length} loại phòng</span>
         </div>
 
         <div className="search-results-layout">
@@ -287,7 +332,7 @@ function SearchResultsSection({ criteria, rooms, loading, error, maxPrice, onMax
 
           <div className="search-results-content">
             {loading ? (
-              <div className="rooms-loading">Đang tìm loại nhà còn trống...</div>
+              <div className="rooms-loading">Đang tìm loại phòng còn trống...</div>
             ) : error ? (
               <div className="rooms-loading rooms-loading--error">{error}</div>
             ) : visibleRooms.length ? (
@@ -295,7 +340,7 @@ function SearchResultsSection({ criteria, rooms, loading, error, maxPrice, onMax
                 {visibleRooms.map(room => <RoomCard key={room.roomTypeId || room.id} room={room} criteria={criteria} />)}
               </div>
             ) : (
-              <div className="rooms-loading">Không có loại nhà đủ số lượng và sức chứa trong thời gian này.</div>
+              <div className="rooms-loading">Không có loại phòng đủ số lượng và sức chứa trong thời gian này.</div>
             )}
           </div>
         </div>
@@ -312,10 +357,10 @@ function RoomsSection({ rooms, loading }) {
       <div className="home-section-inner">
         <div className="home-section-head">
           <div>
-            <h2 id="rooms-title">Loại nhà nổi bật</h2>
+            <h2 id="rooms-title">Loại phòng nổi bật</h2>
             <p>Không gian nghỉ dưỡng được chọn lọc dành cho bạn.</p>
           </div>
-          <a href="/rooms" className="home-view-all">Xem tất cả loại nhà →</a>
+          <a href="/rooms" className="home-view-all">Xem tất cả loại phòng →</a>
         </div>
 
         {loading ? (
@@ -388,44 +433,125 @@ function FeaturesSection() {
   )
 }
 
+// Section: Giới thiệu Không gian Komorebi 3D Sanctuary
+function KomorebiSanctuarySection() {
+  return (
+    <section className="home-section komorebi-showcase-section" aria-label="Komorebi 3D Sanctuary">
+      <div className="home-section-inner">
+        <div className="komorebi-showcase-card">
+          <div className="komorebi-showcase-bg">
+            <img src="/landing/images/check-in-canh-dep/nhung-toa-do-song-ao-dep-nhu-troi-tay-o-viet-nam-hut-khach-checkindocx-1615078910396.webp" alt="Komorebi 3D Sanctuary" />
+            <div className="komorebi-showcase-overlay" />
+          </div>
+          <div className="komorebi-showcase-content">
+            <div className="komorebi-badge">
+              <span className="komorebi-badge-dot" />
+              <span>TRẢI NGHIỆM ĐỘC QUYỀN • WEBGL 3D & THÍNH ÂM THIÊN NHIÊN</span>
+            </div>
+            <h2 className="komorebi-title">
+              <span className="komorebi-kanji">紅葉</span>
+              <span>Lá Đỏ Mist Sanctuary</span>
+            </h2>
+            <p className="komorebi-desc">
+              Khám phá không gian nghỉ dưỡng ẩn mình giữa sương mây ngàn Hoàng Liên Sơn. Trải nghiệm mô phỏng 3D thời gian thực với dãy núi sương mờ, đom đóm phát sáng, âm thanh suối rừng và 04 căn biệt thự Wabi-Sabi độc bản.
+            </p>
+            <div className="komorebi-features-list">
+              <span className="komorebi-pill">✦ 3D WebGL Realtime</span>
+              <span className="komorebi-pill">✦ Onsen khoáng nóng ngoài trời</span>
+              <span className="komorebi-pill">✦ Thính âm suối, gió & lò sưởi</span>
+              <span className="komorebi-pill">✦ Chuyển đổi Ngày / Đêm / Hoàng hôn</span>
+            </div>
+            <div className="komorebi-actions">
+              <a href="/landing" className="komorebi-cta-btn">
+                <span>Khám Phá Không Gian 3D Ngay</span>
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+              </a>
+              <a href="/rooms" className="komorebi-ghost-btn">
+                Xem phòng nghỉ dưỡng
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
 // Section: Đánh giá khách hàng
 function ReviewsSection() {
   const reviews = [
     {
-      initials: 'NV',
-      name: 'Nguyễn Văn A',
-      text: '"Không gian tuyệt đẹp, phòng rộng rãi và sạch sẽ. Nhân viên rất nhiệt tình. Chắc chắn sẽ quay lại lần sau."',
+      initials: 'TT',
+      name: 'Nguyễn Thanh Tùng',
+      role: 'Kiến trúc sư • Hà Nội',
+      stay: 'Nghỉ tại Nhà 7 · 3 ngày 2 đêm',
+      title: 'Không gian tĩnh tại vượt mong đợi',
+      text: '“Không gian tuyệt đẹp, phòng rộng rãi và sạch sẽ từng góc nhỏ. Buổi sáng mở cửa ban công thấy sương sớm bảng lảng luồn qua ngọn thông, cảm giác bình yên đến lạ. Chắc chắn tôi sẽ quay lại cùng gia đình.”',
+      highlight: 'Sạch sẽ & View mây',
     },
     {
-      initials: 'TH',
-      name: 'Trần Thị Hoa',
-      text: '"View từ phòng rất đẹp, buổi sáng ngắm sương mù trên đồi thực sự tuyệt vời. Đồ ăn sáng ngon."',
+      initials: 'MA',
+      name: 'Trần Thị Mai Anh',
+      role: 'Nhiếp ảnh gia • TP. Hồ Chí Minh',
+      stay: 'Nghỉ tại Nhà VIP · 2 ngày 1 đêm',
+      title: 'Khoảnh khắc săn mây tuyệt diệu',
+      text: '“View từ ban công ngắm bình minh và sương mờ trên thung lũng thực sự ngoạn mục. Đồ ăn sáng bản địa tươi ngon, nhân viên ấm áp chu đáo như người nhà. Một trải nghiệm chữa lành tâm hồn đúng nghĩa!”',
+      highlight: 'Ẩm thực & Dịch vụ tận tâm',
     },
     {
-      initials: 'LM',
+      initials: 'MĐ',
       name: 'Lê Minh Đức',
-      text: '"Homestay ấm cúng, cảm giác như ở nhà. Giá cả hợp lý, vị trí thuận tiện. Rất đáng để trải nghiệm."',
+      role: 'Kinh doanh tự do • Đà Nẵng',
+      stay: 'Nghỉ tại Nhà 1 · 4 ngày 3 đêm',
+      title: 'Ấm cúng như trở về ngôi nhà thứ hai',
+      text: '“Homestay ấm cúng, thiết kế gỗ kết hợp đá bazan rất sang trọng mà vẫn gần gũi với thiên nhiên. Tắm suối khoáng thảo dược buổi tối giúp xua tan hết mệt mỏi. Giá cả hoàn toàn xứng đáng với chất lượng.”',
+      highlight: 'Tắm khoáng & Tiện nghi',
     },
   ]
 
   return (
     <section className="home-section home-reviews" aria-labelledby="reviews-title">
       <div className="home-section-inner">
-        <h2 id="reviews-title">Khách hàng nói gì</h2>
+        <div className="home-reviews-header">
+          <div className="home-reviews-badge">
+            <span className="badge-sparkle">✦</span>
+            <span>TRẢI NGHIỆM THỰC TẾ TỪ DU KHÁCH</span>
+          </div>
+          <h2 id="reviews-title" className="home-reviews-heading">Những Câu Chuyện Thư Thái & Chữa Lành</h2>
+          <p className="home-reviews-subtitle">
+            Hơn 98% du khách đánh giá 5 sao về không gian tĩnh lặng, khung cảnh săn mây và dịch vụ tận tâm tại Lá Đỏ Homestay Sa Pa.
+          </p>
+        </div>
+
         <div className="reviews-grid">
           {reviews.map((r) => (
-            <div key={r.name} className="review-card">
-              <div className="review-stars" aria-label="5 sao">
-                {Array.from({ length: 5 }).map((_, index) => (
-                  <svg key={index} viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+            <div key={r.name} className="home-review-card">
+              <div className="review-card-top">
+                <div className="review-stars" aria-label="5 sao">
+                  {Array.from({ length: 5 }).map((_, index) => (
+                    <svg key={index} viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                    </svg>
+                  ))}
+                </div>
+                <span className="review-verified-badge">
+                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <polyline points="20 6 9 17 4 12"></polyline>
                   </svg>
-                ))}
+                  Đã lưu trú
+                </span>
               </div>
-              <p>{r.text}</p>
+
+              <h3 className="review-card-title">{r.title}</h3>
+              <p className="review-card-text">{r.text}</p>
+
               <div className="review-author">
-                <span className="review-avatar">{r.initials}</span>
-                <strong>{r.name}</strong>
+                <div className="review-avatar-initials">{r.initials}</div>
+                <div className="review-author-info">
+                  <strong className="review-author-name">{r.name}</strong>
+                  <span className="review-author-role">{r.role}</span>
+                  <span className="review-stay-pill">{r.stay}</span>
+                </div>
               </div>
             </div>
           ))}
@@ -463,11 +589,11 @@ function HomeFooter() {
       <div className="home-footer-inner">
         <div className="footer-brand">
           <div className="footer-brand-header">
-            <h3>Nhà Ba Gian</h3>
-            <span className="footer-brand-tag">Garden Villa in Tiến Xuân</span>
+            <h3>Lá Đỏ Homestay</h3>
+            <span className="footer-brand-tag">Mountain & Cloud Retreat in Sa Pa</span>
           </div>
           <p className="footer-brand-desc">
-            Mang tâm hồn của kiến trúc truyền thống Việt Nam vào cuộc sống hiện đại. Ngôi nhà thứ hai bình yên giữa thung lũng xanh.
+            Nằm nép mình bên triền núi Hoàng Liên Sơn với tầm nhìn ôm trọn thung lũng Mường Hoa bồng bềnh mây trắng. Chốn dừng chân mộc mạc, bình yên giữa lòng Sa Pa sương mờ.
           </p>
           <div className="footer-social">
             <a href="https://facebook.com" target="_blank" rel="noreferrer" aria-label="Facebook" className="footer-social-btn">
@@ -486,21 +612,21 @@ function HomeFooter() {
               <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
               <circle cx="12" cy="10" r="3"/>
             </svg>
-            <span>Thung lũng Ngọc Linh, Trại Mới, Tiến Xuân, Thạch Thất, Hà Nội</span>
+            <span>Số 031 Hoàng Liên, Phường Sa Pa, Thị xã Sa Pa, Lào Cai</span>
           </div>
           <div className="footer-location-stats">
             <div className="footer-stat-item">
-              <span className="stat-emoji">🚗</span>
+              <span className="stat-emoji">📍</span>
               <div className="stat-info">
-                <strong>35 km</strong>
-                <span>Cách trung tâm Hà Nội</span>
+                <strong>1.2 km</strong>
+                <span>Cách Nhà thờ đá Sa Pa</span>
               </div>
             </div>
             <div className="footer-stat-item">
               <span className="stat-emoji">⏱️</span>
               <div className="stat-info">
-                <strong>40 phút</strong>
-                <span>Thời gian lái xe ô tô</span>
+                <strong>5 phút</strong>
+                <span>Thời gian lái xe / taxi</span>
               </div>
             </div>
           </div>
@@ -525,7 +651,7 @@ function HomeFooter() {
               </span>
               <div className="contact-info-text">
                 <span className="contact-label">Hotline tư vấn</span>
-                <a href="tel:0869544586" className="contact-value contact-value-highlight">0869 544 586 (Cô Hải)</a>
+                <a href="tel:0941186699" className="contact-value contact-value-highlight">0941 186 699 (Lễ tân Sa Pa)</a>
               </div>
             </div>
 
@@ -535,7 +661,7 @@ function HomeFooter() {
               </span>
               <div className="contact-info-text">
                 <span className="contact-label">Email hỗ trợ</span>
-                <a href="mailto:thungsimngoclinh@gmail.com" className="contact-value">thungsimngoclinh@gmail.com</a>
+                <a href="mailto:ladohomestaysapa@gmail.com" className="contact-value">ladohomestaysapa@gmail.com</a>
               </div>
             </div>
 
@@ -545,7 +671,7 @@ function HomeFooter() {
               </span>
               <div className="contact-info-text">
                 <span className="contact-label">Facebook Fanpage</span>
-                <a href="#" className="contact-value">Nhà ba gian.</a>
+                <a href="https://www.facebook.com" target="_blank" rel="noreferrer" className="contact-value">Lá Đỏ Homestay Sa Pa</a>
               </div>
             </div>
           </div>
@@ -554,7 +680,7 @@ function HomeFooter() {
 
       <div className="home-footer-bottom">
         <div className="home-footer-bottom-inner">
-          <p>© 2026 Nhà Ba Gian - Garden Villa in Tiến Xuân. All rights reserved.</p>
+          <p>© 2026 Lá Đỏ Homestay - Mountain & Cloud Retreat in Sa Pa. All rights reserved.</p>
           <div className="footer-bottom-badge">
             <span className="status-dot"></span>
             <span>Hệ thống đặt phòng trực tuyến 24/7</span>
@@ -677,9 +803,10 @@ function HomePage() {
   return (
     <div className="home-page">
       <header className="home-header">
-        <a className="home-logo" href="/home">Nhà Ba Gian</a>
+        <a className="home-logo" href="/home">Lá Đỏ Homestay</a>
         <nav className="home-nav" aria-label="Điều hướng chính">
           <a href="/home" className="home-nav-active">Trang chủ</a>
+          <a href="/landing" className="home-nav-landing-link" title="Khám phá không gian 3D Komorebi Sanctuary">✨ Komorebi 3D</a>
           <a href="/rooms">Phòng</a>
           <a href="/wishlist">Yêu thích</a>
           <a href="/amenities">Tiện nghi</a>
@@ -702,7 +829,7 @@ function HomePage() {
             {isUserMenuOpen && (
               <div className="home-user-dropdown">
                 {currentUser.role === 'ROLE_ADMIN' && (
-                  <a href="/admin">Quản lý Nhà Ba Gian</a>
+                  <a href="/admin">Quản lý Lá Đỏ Homestay</a>
                 )}
                 <a href="/wishlist" onClick={(e) => { e.preventDefault(); setIsUserMenuOpen(false); window.location.assign('/wishlist'); }}>Danh sách yêu thích</a>
                 <a href="/booking-history" onClick={(e) => { e.preventDefault(); setIsUserMenuOpen(false); window.location.assign('/booking-history'); }}>Lịch sử đặt phòng</a>
@@ -719,12 +846,12 @@ function HomePage() {
         )}
       </header>
 
-      <section className="home-hero" aria-label="Nhà Ba Gian">
-        <img src="/banner.png" alt="Không gian nghỉ dưỡng Nhà Ba Gian" />
+      <section className="home-hero" aria-label="Lá Đỏ Homestay">
+        <img src="/banner.png" alt="Không gian nghỉ dưỡng Lá Đỏ Homestay" />
         <div className="home-hero-shade" />
         <div className="home-hero-copy">
-          <p>Nghỉ dưỡng cân bằng</p>
-          <h1>Nhà Ba Gian</h1>
+          <p>Nghỉ dưỡng săn mây đỉnh Fansipan</p>
+          <h1>Lá Đỏ Homestay</h1>
         </div>
       </section>
 
@@ -741,6 +868,7 @@ function HomePage() {
 
       <RoomsSection rooms={rooms} loading={loading} />
       <FeaturesSection />
+      <KomorebiSanctuarySection />
       <ReviewsSection />
       <GallerySection rooms={rooms} />
       <HomeFooter />

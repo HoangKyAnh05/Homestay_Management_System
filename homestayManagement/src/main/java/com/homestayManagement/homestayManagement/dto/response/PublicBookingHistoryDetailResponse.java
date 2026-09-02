@@ -29,6 +29,13 @@ public record PublicBookingHistoryDetailResponse(
         String customerFeedback,
         LocalDateTime customerFeedbackAt,
         List<PublicBookingHistoryRoomResponse> rooms,
-        List<PublicBookingHistoryServiceResponse> services
+        List<PublicBookingHistoryServiceResponse> services,
+        BigDecimal paidAmount,
+        String cancellationReason,
+        LocalDateTime cancelledAt,
+        Integer refundRate,
+        BigDecimal refundAmount,
+        String refundStatus,
+        String refundInfo
 ) {
 }

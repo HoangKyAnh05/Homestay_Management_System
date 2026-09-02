@@ -70,7 +70,13 @@ public class ViettelIdentityOcrServiceImpl implements IdentityOcrService {
             HttpRequest request = buildRequest(imageFront, imageBack);
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
-                throw new IllegalArgumentException("Viettel AI OCR trả về lỗi HTTP " + response.statusCode());
+                String errorDetails = tryExtractErrorMessage(response.body());
+                if (response.statusCode() == 403 || response.statusCode() == 401) {
+                    throw new IllegalArgumentException("Token Viettel AI OCR không hợp lệ, đã hết hạn hoặc tài khoản chưa đăng ký gói OCR CCCD (HTTP "
+                            + response.statusCode() + (errorDetails != null ? ": " + errorDetails : "") + ")");
+                }
+                throw new IllegalArgumentException("Viettel AI OCR trả về lỗi HTTP " + response.statusCode()
+                        + (errorDetails != null ? ": " + errorDetails : ""));
             }
             JsonNode root = objectMapper.readTree(response.body());
             int code = root.path("code").asInt(-1);
@@ -89,6 +95,24 @@ public class ViettelIdentityOcrServiceImpl implements IdentityOcrService {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new IllegalArgumentException("Quá trình OCR căn cước bị gián đoạn");
+        }
+    }
+
+    private String tryExtractErrorMessage(String responseBody) {
+        if (responseBody == null || responseBody.isBlank()) {
+            return null;
+        }
+        try {
+            JsonNode root = objectMapper.readTree(responseBody);
+            return firstNonBlank(
+                    root.path("vi_message").asText(null),
+                    root.path("en_message").asText(null),
+                    root.path("message").asText(null),
+                    root.path("error").asText(null),
+                    root.path("description").asText(null)
+            );
+        } catch (Exception ignored) {
+            return null;
         }
     }
 
@@ -120,13 +144,16 @@ public class ViettelIdentityOcrServiceImpl implements IdentityOcrService {
     private HttpRequest buildRequest(MultipartFile imageFront, MultipartFile imageBack) throws IOException {
         String boundary = "----HomestayViettelOcrBoundary" + UUID.randomUUID();
         byte[] body = multipartBody(boundary, imageFront, imageBack);
-        return HttpRequest.newBuilder()
+        var requestBuilder = HttpRequest.newBuilder()
                 .uri(URI.create(endpoint))
                 .timeout(Duration.ofSeconds(timeoutSeconds))
                 .header("accept", "*/*")
-                .header("Content-Type", "multipart/form-data; boundary=" + boundary)
-                .POST(HttpRequest.BodyPublishers.ofByteArray(body))
-                .build();
+                .header("Content-Type", "multipart/form-data; boundary=" + boundary);
+        if (token != null && !token.isBlank()) {
+            requestBuilder.header("token", token);
+            requestBuilder.header("Authorization", "Bearer " + token);
+        }
+        return requestBuilder.POST(HttpRequest.BodyPublishers.ofByteArray(body)).build();
     }
 
     private byte[] multipartBody(String boundary, MultipartFile imageFront, MultipartFile imageBack) throws IOException {

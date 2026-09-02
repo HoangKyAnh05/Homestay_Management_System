@@ -12,6 +12,8 @@ public interface RoomPriceConfigRepository extends JpaRepository<RoomPriceConfig
 
     List<RoomPriceConfig> findByRoomTypeId(Long roomTypeId);
 
+    void deleteByRoomTypeId(Long roomTypeId);
+
     List<RoomPriceConfig> findByPricePolicyId(Long pricePolicyId);
 
     Optional<RoomPriceConfig> findByRoomTypeIdAndPricePolicyIdAndDayType(

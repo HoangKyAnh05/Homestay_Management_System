@@ -178,6 +178,7 @@ function PublicHeader() {
       <a className="home-logo" href="/home">Home Stays</a>
       <nav className="home-nav" aria-label="Điều hướng chính">
         <a href="/home">Trang chủ</a>
+        <a href="/landing" className="home-nav-landing-link" title="Khám phá không gian 3D Komorebi Sanctuary">✨ Komorebi 3D</a>
         <a href="/rooms" className="home-nav-active">Phòng</a>
         <a href="/wishlist">Yêu thích</a>
         <a href="/amenities">Tiện nghi</a>
@@ -623,7 +624,7 @@ function RoomDetailPage({ roomId }) {
     fetch(`${API_BASE_URL}/rooms/${roomId}?${params}`)
       .then((response) => response.json().then((data) => ({ response, data })))
       .then(({ response, data }) => {
-        if (!response.ok) throw new Error(data.message || 'Không thể tải chi tiết loại nhà.')
+        if (!response.ok) throw new Error(data.message || 'Không thể tải chi tiết loại phòng.')
         setRoom(data)
         setSelectedImage(data.primaryImageUrl || data.imageUrls?.[0] || '')
       })
@@ -698,10 +699,10 @@ function RoomDetailPage({ roomId }) {
       <PublicHeader />
 
       <main className="room-detail-main">
-        <a className="room-back-link" href="/rooms">← Quay lại danh sách loại nhà</a>
+        <a className="room-back-link" href="/rooms">← Quay lại danh sách loại phòng</a>
 
         {loading ? (
-          <div className="rooms-state">Đang tải chi tiết loại nhà...</div>
+          <div className="rooms-state">Đang tải chi tiết loại phòng...</div>
         ) : error ? (
           <div className="rooms-state rooms-state-error">{error}</div>
         ) : room ? (
@@ -743,7 +744,7 @@ function RoomDetailPage({ roomId }) {
               <aside className="room-detail-media-panel" aria-label="Ảnh phòng">
                 <div className="room-detail-main-photo">
                   {selectedImage ? (
-                    <img src={resolveImageUrl(selectedImage)} alt={houseTypeName(room, 'Loại nhà')} />
+                    <img src={resolveImageUrl(selectedImage)} alt={houseTypeName(room, 'Loại phòng')} />
                   ) : (
                     <div>Home Stays</div>
                   )}
@@ -761,7 +762,7 @@ function RoomDetailPage({ roomId }) {
                   ))}
                 </div>
                 <section className="room-info-section">
-                  <h2>Thông tin loại nhà</h2>
+                  <h2>Thông tin loại phòng</h2>
                   <p>{room.description || 'Không gian nghỉ dưỡng tiện nghi, phù hợp cho kỳ lưu trú của bạn.'}</p>
                   <div className="room-info-chips">
                     <span>{room.maxAdults || 0} người lớn</span>
@@ -778,7 +779,7 @@ function RoomDetailPage({ roomId }) {
                 <section className="room-booking-panel room-booking-panel--compact">
                   <div className="room-booking-head">
                     <div>
-                      <h2>Đặt loại nhà này</h2>
+                      <h2>Đặt loại phòng này</h2>
                       <p>Chọn thời gian lưu trú và gói thuê phù hợp để tạo đơn đặt phòng.</p>
                     </div>
                     <button className="room-detail-cta" type="button" onClick={openBookingModal}>

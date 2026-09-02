@@ -29,6 +29,9 @@ public record PublicBookingResponse(
         String depositPolicyName,
         String depositCalculationType,
         BigDecimal depositPolicyValue,
-        BigDecimal depositAmount
+        BigDecimal depositAmount,
+        String luckyVoucherCode,
+        BigDecimal luckyVoucherDiscountPercent,
+        LocalDateTime luckyVoucherEndDate
 ) {
 }

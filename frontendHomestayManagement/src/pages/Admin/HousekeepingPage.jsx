@@ -68,7 +68,7 @@ function TaskCard({ task, active, onClick }) {
   )
 }
 
-function TaskDetail({ task, busy, onStart, onSubmitInspection, onCompleteCleaning, onClose }) {
+function TaskDetail({ task, busy, onStart, onSubmitInspection, onCompleteCleaning, onClose, onReportIncident }) {
   const [quantities, setQuantities] = useState(() => Object.fromEntries((task?.miniBarItems || []).map(item => [item.itemId, item.quantityUsed || 0])))
   const [penaltySelections, setPenaltySelections] = useState(() => Object.fromEntries((task?.penaltyItems || []).map(item => [item.ruleId, item.selected])))
   const [checklistSelections, setChecklistSelections] = useState(() => Object.fromEntries((task?.cleaningChecklistItems || []).map(item => [item.id, item.completed])))
@@ -193,6 +193,20 @@ function TaskDetail({ task, busy, onStart, onSubmitInspection, onCompleteCleanin
             <textarea maxLength={1000} disabled={inspectionDone || busy} value={note} onChange={event => setNote(event.target.value)} placeholder="Ví dụ: thiếu 1 khăn tắm, điều hòa hoạt động bình thường..." />
           </label>
 
+          <div style={{ background: '#fff1f2', border: '1px dashed #f43f5e', borderRadius: 12, padding: '14px 16px', marginTop: 18, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+            <div>
+              <strong style={{ color: '#be123c', display: 'block', fontSize: 14 }}>⚠️ Phát hiện đồ đạc bị hỏng hóc hoặc bị mất?</strong>
+              <span style={{ color: '#881337', fontSize: 12 }}>Báo cáo ngay để Quản trị viên xử lý bồi thường hoặc bố trí bảo trì thay mới</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => onReportIncident(task)}
+              style={{ background: '#e11d48', color: '#fff', border: 0, padding: '8px 14px', borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: 'pointer', whiteSpace: 'nowrap' }}
+            >
+              + Báo đồ hỏng / mất
+            </button>
+          </div>
+
           <section className="hk-cleaning-checklist">
             <div className="hk-checklist-head">
               <div>
@@ -299,16 +313,115 @@ function HousekeepingPage() {
   const count = key => tasks.filter(task => matchesTab(task, key)).length
 
   const runAction = async (path, options, success) => {
-    setBusy(true); setError(''); setNotice('')
+    setBusy(true)
+    setError('')
+    setNotice('')
     try {
       const updated = await apiRequest(path, options)
-      setTasks(current => current.map(task => task.id === updated.id ? updated : task))
+      setTasks(current => current.map(task => (task.id === updated.id ? updated : task)))
       setSelectedId(updated.id)
+      if (updated.cleaningStatus === 'COMPLETED') {
+        setTab('COMPLETED')
+      } else if (updated.inspectionStatus === 'COMPLETED') {
+        setTab('INSPECTED')
+      } else if (updated.inspectionStatus === 'IN_PROGRESS') {
+        setTab('IN_PROGRESS')
+      }
       setNotice(success)
     } catch (err) {
       setError(err.message)
     } finally {
       setBusy(false)
+    }
+  }
+
+  const [reportingTask, setReportingTask] = useState(null)
+  const [incidentSubmitting, setIncidentSubmitting] = useState(false)
+  const [hkUploadingImage, setHkUploadingImage] = useState(false)
+  const hkFileInputRef = useRef(null)
+  const [incidentForm, setIncidentForm] = useState({
+    itemName: '',
+    quantity: 1,
+    incidentType: 'DAMAGED',
+    severity: 'MEDIUM',
+    estimatedCost: '',
+    description: '',
+    evidenceImageUrl: '',
+  })
+
+  const handleOpenReport = (task) => {
+    setReportingTask(task)
+    setIncidentForm({
+      itemName: '',
+      quantity: 1,
+      incidentType: 'DAMAGED',
+      severity: 'MEDIUM',
+      estimatedCost: '',
+      description: '',
+      evidenceImageUrl: '',
+    })
+  }
+
+  const handleHkImageUpload = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setHkUploadingImage(true)
+    setError('')
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      const res = await fetch('http://localhost:8080/api/admin/incidents/upload-image', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${getStoredToken()}`,
+        },
+        body: formData,
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error(data.message || 'Không thể tải ảnh lên từ máy tính.')
+      }
+      setIncidentForm((prev) => ({ ...prev, evidenceImageUrl: data.url }))
+    } catch (err) {
+      setError(err.message || 'Lỗi khi upload ảnh')
+    } finally {
+      setHkUploadingImage(false)
+      if (hkFileInputRef.current) hkFileInputRef.current.value = ''
+    }
+  }
+
+  const handleIncidentSubmit = async (e) => {
+    e.preventDefault()
+    if (!reportingTask) return
+    setIncidentSubmitting(true)
+    setError('')
+    try {
+      const res = await fetch('http://localhost:8080/api/admin/incidents', {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({
+          roomId: reportingTask.roomId,
+          bookingDetailId: reportingTask.bookingDetailId,
+          housekeepingTaskId: reportingTask.id,
+          itemName: incidentForm.itemName,
+          quantity: Number(incidentForm.quantity) || 1,
+          incidentType: incidentForm.incidentType,
+          severity: incidentForm.severity,
+          estimatedCost: incidentForm.estimatedCost ? Number(incidentForm.estimatedCost) : null,
+          description: incidentForm.description,
+          evidenceImageUrl: incidentForm.evidenceImageUrl,
+        }),
+      })
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}))
+        throw new Error(errData.message || 'Không thể gửi báo cáo sự cố')
+      }
+      setNotice(`Đã gửi báo cáo sự cố (${incidentForm.itemName}) phòng ${reportingTask.roomNumber} tới Quản trị viên.`)
+      setReportingTask(null)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setIncidentSubmitting(false)
     }
   }
 
@@ -349,8 +462,175 @@ function HousekeepingPage() {
             onStart={() => runAction(`/tasks/${selected.id}/start`, { method: 'POST' }, `Đã nhận phòng ${selected.roomNumber}`)}
             onSubmitInspection={body => runAction(`/tasks/${selected.id}/inspection`, { method: 'PUT', body: JSON.stringify(body) }, 'Đã gửi chi phí cho lễ tân')}
             onCompleteCleaning={body => runAction(`/tasks/${selected.id}/complete-cleaning`, { method: 'POST', body: JSON.stringify(body) }, `Phòng ${selected.roomNumber} đã sẵn sàng`)}
+            onReportIncident={handleOpenReport}
           />
         </div>
+
+        {reportingTask && (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }} onClick={() => setReportingTask(null)}>
+            <div style={{ background: '#fff', borderRadius: 16, maxWidth: 520, width: '100%', padding: 24, boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }} onClick={e => e.stopPropagation()}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
+                <h2 style={{ margin: 0, fontSize: 18, color: '#0f172a' }}>⚠️ Báo Đồ Hỏng / Mất - Phòng {reportingTask.roomNumber}</h2>
+                <button type="button" onClick={() => setReportingTask(null)} style={{ background: 'none', border: 0, fontSize: 24, cursor: 'pointer', color: '#94a3b8' }}>×</button>
+              </div>
+              <form onSubmit={handleIncidentSubmit}>
+                <div style={{ display: 'grid', gap: 14 }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 4, color: '#334155' }}>Tên đồ vật / tài sản *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="VD: Điều khiển tivi, Khăn tắm, Ly thủy tinh, Vòi sen..."
+                      value={incidentForm.itemName}
+                      onChange={e => setIncidentForm({ ...incidentForm, itemName: e.target.value })}
+                      style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #cbd5e1', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 4, color: '#334155' }}>Phân loại sự cố *</label>
+                      <select
+                        value={incidentForm.incidentType}
+                        onChange={e => setIncidentForm({ ...incidentForm, incidentType: e.target.value })}
+                        style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #cbd5e1', background: '#fff' }}
+                      >
+                        <option value="DAMAGED">💥 Đồ bị hỏng hóc</option>
+                        <option value="LOST">🔍 Đồ thất lạc / bị mất</option>
+                        <option value="MAINTENANCE">🛠️ Phòng cần bảo trì (Sửa chữa, bảo dưỡng...)</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 4, color: '#334155' }}>Số lượng *</label>
+                      <input
+                        type="number"
+                        min="1"
+                        required
+                        value={incidentForm.quantity}
+                        onChange={e => setIncidentForm({ ...incidentForm, quantity: e.target.value })}
+                        style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #cbd5e1', boxSizing: 'border-box' }}
+                      />
+                    </div>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 4, color: '#334155' }}>Mức độ nghiêm trọng</label>
+                      <select
+                        value={incidentForm.severity}
+                        onChange={e => setIncidentForm({ ...incidentForm, severity: e.target.value })}
+                        style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #cbd5e1', background: '#fff' }}
+                      >
+                        <option value="LOW">Thấp (Trầy xước nhỏ, đồ phụ)</option>
+                        <option value="MEDIUM">Trung bình (Đồ dùng thường ngày)</option>
+                        <option value="HIGH">Cao (Đồ giá trị, ảnh hưởng phòng)</option>
+                        <option value="CRITICAL">Khẩn cấp (Hỏng điện, vỡ kính lớn...)</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 4, color: '#334155' }}>Chi phí ước tính (VND)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="10000"
+                        placeholder="VD: 150000"
+                        value={incidentForm.estimatedCost}
+                        onChange={e => setIncidentForm({ ...incidentForm, estimatedCost: e.target.value })}
+                        style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #cbd5e1', boxSizing: 'border-box' }}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 4, color: '#334155' }}>Ảnh bằng chứng hiện trường</label>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                        <input
+                          type="file"
+                          ref={hkFileInputRef}
+                          accept="image/png,image/jpeg,image/webp,image/jpg"
+                          style={{ display: 'none' }}
+                          onChange={handleHkImageUpload}
+                        />
+                        <button
+                          type="button"
+                          disabled={hkUploadingImage}
+                          onClick={() => hkFileInputRef.current?.click()}
+                          style={{
+                            padding: '8px 14px',
+                            background: '#f8fafc',
+                            border: '1.5px dashed #94a3b8',
+                            borderRadius: 8,
+                            fontSize: 13,
+                            fontWeight: 600,
+                            color: '#334155',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          {hkUploadingImage ? 'Đang tải ảnh...' : '📁 Chọn ảnh từ máy (PC)'}
+                        </button>
+                        <span style={{ fontSize: 12, color: '#64748b' }}>hoặc nhập link URL ảnh:</span>
+                      </div>
+
+                      <input
+                        type="url"
+                        placeholder="https://... hoặc link ảnh chụp hiện trường"
+                        value={incidentForm.evidenceImageUrl}
+                        onChange={e => setIncidentForm({ ...incidentForm, evidenceImageUrl: e.target.value })}
+                        style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #cbd5e1', boxSizing: 'border-box' }}
+                      />
+
+                      {incidentForm.evidenceImageUrl && (
+                        <div style={{ position: 'relative', display: 'inline-block', maxWidth: 160, borderRadius: 8, overflow: 'hidden', border: '1px solid #cbd5e1', marginTop: 4 }}>
+                          <img
+                            src={incidentForm.evidenceImageUrl.startsWith('/uploads/') ? `http://localhost:8080${incidentForm.evidenceImageUrl}` : incidentForm.evidenceImageUrl}
+                            alt="Preview"
+                            style={{ width: '100%', maxHeight: 110, objectFit: 'cover', display: 'block' }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setIncidentForm({ ...incidentForm, evidenceImageUrl: '' })}
+                            style={{
+                              position: 'absolute',
+                              top: 4,
+                              right: 4,
+                              background: 'rgba(15,23,42,0.75)',
+                              color: '#fff',
+                              border: 0,
+                              borderRadius: '50%',
+                              width: 22,
+                              height: 22,
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: 12,
+                            }}
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 4, color: '#334155' }}>Mô tả hiện trạng chi tiết</label>
+                    <textarea
+                      rows={3}
+                      placeholder="Mô tả cụ thể hiện trạng hư hại, vị trí, hoặc tình trạng khi kiểm tra phòng..."
+                      value={incidentForm.description}
+                      onChange={e => setIncidentForm({ ...incidentForm, description: e.target.value })}
+                      style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #cbd5e1', boxSizing: 'border-box', resize: 'vertical' }}
+                    />
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 8 }}>
+                    <button type="button" onClick={() => setReportingTask(null)} style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', padding: '10px 16px', borderRadius: 8, fontWeight: 600, cursor: 'pointer' }}>Hủy</button>
+                    <button type="submit" disabled={incidentSubmitting || hkUploadingImage} style={{ background: '#e11d48', color: '#fff', border: 0, padding: '10px 20px', borderRadius: 8, fontWeight: 600, cursor: 'pointer' }}>
+                      {incidentSubmitting ? 'Đang gửi...' : 'Gửi báo cáo sự cố'}
+                    </button>
+                  </div>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
     </AdminLayout>
   )

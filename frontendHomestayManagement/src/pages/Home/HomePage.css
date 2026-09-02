@@ -1147,74 +1147,223 @@
 
 /* ── Reviews section ── */
 .home-reviews {
-  background: #ffffff;
+  background: linear-gradient(180deg, #faf8f5 0%, #f4f0e6 100%);
+  padding: 85px 0 95px;
+  position: relative;
+  overflow: hidden;
 }
 
-.home-reviews h2 {
-  margin: 0 0 36px;
+.home-reviews::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 800px;
+  height: 250px;
+  background: radial-gradient(ellipse at top, rgba(226, 177, 115, 0.15), transparent 70%);
+  pointer-events: none;
+}
+
+.home-reviews-header {
   text-align: center;
-  color: #15191f;
-  font-size: clamp(24px, 3vw, 32px);
-  font-weight: 800;
+  margin-bottom: 50px;
+}
+
+.home-reviews-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 18px;
+  background: rgba(184, 137, 72, 0.1);
+  border: 1px solid rgba(184, 137, 72, 0.28);
+  border-radius: 999px;
+  color: #8f6225;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 8px rgba(184, 137, 72, 0.08);
+}
+
+.badge-sparkle {
+  color: #c98e3b;
+  font-size: 13px;
+}
+
+.home-reviews-heading {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: clamp(28px, 4vw, 42px);
+  font-weight: 700;
+  color: #17281f;
+  letter-spacing: -0.015em;
+  line-height: 1.25;
+  margin: 0 0 14px;
+}
+
+.home-reviews-subtitle {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 15.5px;
+  color: #55665b;
+  max-width: 620px;
+  margin: 0 auto;
+  line-height: 1.65;
 }
 
 .reviews-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 24px;
+  gap: 28px;
 }
 
-.review-card {
-  padding: 28px;
-  border-radius: 14px;
-  background: #f4f5f0;
-  border: 1px solid #e5e9e1;
+.home-review-card {
+  position: relative;
+  padding: 36px 32px 30px;
+  border-radius: 20px;
+  background: #ffffff !important;
+  border: 1.5px solid #e8dec8 !important;
+  box-shadow: 0 14px 38px rgba(35, 48, 38, 0.08), 0 2px 8px rgba(0, 0, 0, 0.03) !important;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: transform 0.35s cubic-bezier(0.2, 1, 0.3, 1), box-shadow 0.35s ease, border-color 0.35s ease;
+  overflow: hidden;
+}
+
+.home-review-card::before {
+  content: '“';
+  position: absolute;
+  top: -5px;
+  right: 22px;
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 105px;
+  line-height: 1;
+  color: rgba(184, 137, 72, 0.12);
+  pointer-events: none;
+  font-style: italic;
+  user-select: none;
+}
+
+.home-review-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 24px 50px rgba(35, 48, 38, 0.15), 0 4px 12px rgba(184, 137, 72, 0.12) !important;
+  border-color: #cca462 !important;
+}
+
+.review-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
 }
 
 .review-stars {
   display: flex;
   align-items: center;
-  gap: 3px;
-  color: #d4a017;
-  margin-bottom: 14px;
+  gap: 4px;
+  color: #df9b1c;
+  margin: 0;
 }
 
 .review-stars svg {
   width: 18px;
   height: 18px;
-  fill: currentColor;
+  fill: #df9b1c;
   stroke: none;
+  filter: drop-shadow(0 1px 2px rgba(223, 155, 28, 0.3));
 }
 
-.review-card p {
-  margin: 0 0 20px;
-  color: #3d4350;
-  font-size: 14px;
+.review-verified-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #edf7f0;
+  border: 1px solid rgba(46, 139, 87, 0.25);
+  color: #1a6d38;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.review-card-title {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 19px;
+  font-weight: 700;
+  color: #14281c !important;
+  margin: 0 0 12px;
+  line-height: 1.35;
+}
+
+.review-card-text {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 19px;
   line-height: 1.65;
+  color: #2c3e32 !important;
   font-style: italic;
+  margin: 0 0 24px;
+  flex-grow: 1;
 }
 
 .review-author {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(225, 215, 200, 0.6);
 }
 
-.review-avatar {
-  width: 36px;
-  height: 36px;
-  display: inline-grid;
-  place-items: center;
+.review-avatar-initials {
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
-  background: #1f4328;
-  color: #ffffff;
-  font-size: 13px;
+  background: linear-gradient(135deg, #183e25 0%, #295d3b 100%);
+  color: #f7e7cb;
+  font-family: 'Playfair Display', serif;
+  font-size: 16px;
   font-weight: 700;
+  display: grid;
+  place-items: center;
+  border: 2px solid #cca462;
+  box-shadow: 0 4px 12px rgba(24, 62, 37, 0.22);
+  flex-shrink: 0;
 }
 
-.review-author strong {
-  color: #15191f;
-  font-size: 14px;
+.review-author-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.review-author-name {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  color: #122419 !important;
+}
+
+.review-author-role {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 12.5px;
+  color: #55675c !important;
+}
+
+.review-stay-pill {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 11.5px;
+  color: #8c601f !important;
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+@media (max-width: 960px) {
+  .reviews-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
 }
 
 /* ── Gallery ── */
@@ -1818,5 +1967,199 @@
 
   .home-voucher-content strong {
     font-size: 15px;
+  }
+}
+
+/* ── Komorebi 3D Sanctuary Showcase & Nav Link ── */
+.home-nav-landing-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(226, 177, 115, 0.18), rgba(60, 163, 116, 0.15));
+  border: 1px solid rgba(226, 177, 115, 0.45);
+  color: #1f4328 !important;
+  font-weight: 700 !important;
+  font-size: 13.5px !important;
+  transition: all 0.25s ease;
+  box-shadow: 0 2px 8px rgba(226, 177, 115, 0.15);
+}
+
+.home-nav-landing-link:hover {
+  background: linear-gradient(135deg, rgba(226, 177, 115, 0.32), rgba(60, 163, 116, 0.25));
+  border-color: #e2b173;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(226, 177, 115, 0.25);
+}
+
+.komorebi-showcase-section {
+  padding: 40px 0;
+  background: #f7f6f2;
+}
+
+.komorebi-showcase-card {
+  position: relative;
+  border-radius: 24px;
+  overflow: hidden;
+  min-height: 480px;
+  display: flex;
+  align-items: center;
+  box-shadow: 0 20px 48px rgba(15, 24, 19, 0.2);
+  border: 1px solid rgba(226, 177, 115, 0.3);
+}
+
+.komorebi-showcase-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+.komorebi-showcase-bg img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scale(1.03);
+  filter: brightness(0.7);
+}
+
+.komorebi-showcase-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, rgba(7, 10, 8, 0.95) 0%, rgba(13, 20, 16, 0.88) 45%, rgba(7, 10, 8, 0.6) 100%);
+}
+
+.komorebi-showcase-content {
+  position: relative;
+  z-index: 2;
+  max-width: 680px;
+  padding: 50px 48px;
+  color: #f6f3ee;
+}
+
+.komorebi-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(226, 177, 115, 0.12);
+  border: 1px solid rgba(226, 177, 115, 0.3);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: #e2b173;
+  margin-bottom: 20px;
+  backdrop-filter: blur(8px);
+}
+
+.komorebi-badge-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #e04836;
+  box-shadow: 0 0 8px #e04836;
+}
+
+.komorebi-title {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: clamp(28px, 4vw, 40px);
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: 16px;
+  line-height: 1.2;
+}
+
+.komorebi-kanji {
+  font-size: 28px;
+  font-weight: 300;
+  color: #e2b173;
+  letter-spacing: 0.1em;
+}
+
+.komorebi-desc {
+  font-size: 15.5px;
+  line-height: 1.7;
+  color: #c4beb4;
+  margin-bottom: 24px;
+}
+
+.komorebi-features-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 32px;
+}
+
+.komorebi-pill {
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  font-size: 12.5px;
+  font-weight: 500;
+  color: #f6f3ee;
+  backdrop-filter: blur(6px);
+}
+
+.komorebi-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.komorebi-cta-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 28px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #e2b173 0%, #c78e44 100%);
+  color: #0c120e;
+  font-size: 15px;
+  font-weight: 700;
+  text-decoration: none;
+  box-shadow: 0 8px 24px rgba(226, 177, 115, 0.35);
+  transition: all 0.25s ease;
+}
+
+.komorebi-cta-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 32px rgba(226, 177, 115, 0.5);
+  color: #000000;
+}
+
+.komorebi-ghost-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 14px 24px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #f6f3ee;
+  font-size: 14.5px;
+  font-weight: 600;
+  text-decoration: none;
+  backdrop-filter: blur(8px);
+  transition: all 0.25s ease;
+}
+
+.komorebi-ghost-btn:hover {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.4);
+  color: #ffffff;
+}
+
+@media (max-width: 768px) {
+  .komorebi-showcase-content {
+    padding: 36px 24px;
+  }
+  .komorebi-title {
+    flex-direction: column;
+    gap: 4px;
   }
 }

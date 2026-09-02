@@ -60,4 +60,6 @@ public interface HousekeepingTaskRepository extends JpaRepository<HousekeepingTa
             where bd.id = :bookingDetailId
             """)
     Optional<HousekeepingTask> findByBookingDetailIdForDetail(@Param("bookingDetailId") Long bookingDetailId);
+
+    void deleteByRoomId(Long roomId);
 }

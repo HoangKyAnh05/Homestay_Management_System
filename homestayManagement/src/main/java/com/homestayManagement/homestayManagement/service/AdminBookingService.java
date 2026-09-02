@@ -37,4 +37,6 @@ public interface AdminBookingService {
     AdminBookingDetailResponse removeMiniBar(Long bookingDetailId, Long miniBarUsageId);
     AdminBookingDetailResponse removePenalty(Long bookingDetailId, Long penaltyId);
     AdminBookingDetailResponse generateInvoice(Long bookingDetailId);
+    List<com.homestayManagement.homestayManagement.dto.response.AdminBookingCancellationResponse> getCancellations();
+    AdminBookingDetailResponse confirmRefund(Long bookingId, String employeeEmail);
 }

@@ -26,6 +26,20 @@ public class PublicVoucherServiceImpl implements PublicVoucherService {
                 .toList();
     }
 
+    @Override
+    public VoucherResponse checkVoucher(String code) {
+        if (code == null || code.isBlank()) {
+            throw new IllegalArgumentException("Vui lòng nhập mã voucher hợp lệ");
+        }
+        LocalDateTime now = LocalDateTime.now();
+        Voucher voucher = voucherRepository.findByCodeIgnoreCase(code.trim())
+                .orElseThrow(() -> new IllegalArgumentException("Mã voucher '" + code.trim() + "' không tồn tại"));
+        if (!isActive(voucher, now)) {
+            throw new IllegalArgumentException("Mã voucher '" + code.trim() + "' đã hết hạn hoặc hết lượt sử dụng");
+        }
+        return toResponse(voucher);
+    }
+
     private boolean isActive(Voucher voucher, LocalDateTime now) {
         if (voucher.getStartDate() != null && voucher.getStartDate().isAfter(now)) {
             return false;

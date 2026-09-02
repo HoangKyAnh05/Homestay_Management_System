@@ -225,9 +225,20 @@ public class AdminCheckInRegistrationServiceImpl implements AdminCheckInRegistra
             throw new IllegalArgumentException("Cần nhập đủ thông tin cho " + expectedCount + " người lưu trú");
         }
         Set<String> identities = new HashSet<>();
+        java.time.LocalDate today = java.time.LocalDate.now();
         for (AdminCheckInGuestRequest guest : guests) {
-            String identity = guest.identityDocumentNumber().trim().toUpperCase();
-            if (!identities.add(identity)) {
+            boolean isUnder10 = false;
+            if (guest.dateOfBirth() != null) {
+                int age = java.time.Period.between(guest.dateOfBirth(), today).getYears();
+                if (age < 10) {
+                    isUnder10 = true;
+                }
+            }
+            String identity = guest.identityDocumentNumber() != null ? guest.identityDocumentNumber().trim() : "";
+            if (!isUnder10 && identity.isBlank()) {
+                throw new IllegalArgumentException("Căn cước công dân của người lưu trú " + guest.fullName() + " không được để trống");
+            }
+            if (!identity.isBlank() && !identities.add(identity.toUpperCase())) {
                 throw new IllegalArgumentException("Căn cước công dân của người lưu trú không được trùng nhau");
             }
         }
@@ -245,8 +256,8 @@ public class AdminCheckInRegistrationServiceImpl implements AdminCheckInRegistra
                             .booking(detail.getBooking())
                             .bookingDetail(detail)
                             .fullName(request.fullName().trim())
-                            .identityDocumentType("CCCD")
-                            .identityDocumentNumber(request.identityDocumentNumber().trim())
+                            .identityDocumentType(blankToNull(request.identityDocumentNumber()) != null ? "CCCD" : null)
+                            .identityDocumentNumber(blankToNull(request.identityDocumentNumber()))
                             .dateOfBirth(request.dateOfBirth())
                             .email(index == 0
                                     ? representativeEmail.trim().toLowerCase()

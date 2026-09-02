@@ -2,6 +2,7 @@ package com.homestayManagement.homestayManagement.repository;
 
 import com.homestayManagement.homestayManagement.entity.BookingDetail;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -139,4 +140,8 @@ public interface BookingDetailRepository extends JpaRepository<BookingDetail, Lo
             @Param("startInclusive") LocalDateTime startInclusive,
             @Param("endExclusive") LocalDateTime endExclusive
     );
+
+    @Modifying
+    @Query("UPDATE BookingDetail bd SET bd.room = null WHERE bd.room.id = :roomId")
+    void detachRoom(@Param("roomId") Long roomId);
 }

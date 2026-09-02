@@ -44,6 +44,26 @@ function normalizeCode(value) {
   return String(value || '').trim().toUpperCase()
 }
 
+function getSavedVouchers() {
+  try {
+    const raw = localStorage.getItem('homestay_saved_vouchers')
+    return raw ? JSON.parse(raw) : []
+  } catch {
+    return []
+  }
+}
+
+function saveVoucherToStorage(voucher) {
+  if (!voucher || !voucher.code) return
+  try {
+    const existing = getSavedVouchers()
+    if (!existing.some((v) => normalizeCode(v.code) === normalizeCode(voucher.code))) {
+      existing.unshift(voucher)
+      localStorage.setItem('homestay_saved_vouchers', JSON.stringify(existing))
+    }
+  } catch {}
+}
+
 function calculateVoucherDiscount(voucher, roomTotal) {
   if (!voucher || roomTotal <= 0) return 0
   const minOrderValue = Number(voucher.minOrderValue || 0)
@@ -77,12 +97,57 @@ function serviceTypeLabel(type) {
   return String(type || '').toUpperCase() === 'INVENTORY' ? 'Thuê đồ' : 'Tiện ích'
 }
 
-function roomPrice(room) {
+function isWeekendDay(targetDate) {
+  let date = null
+  if (targetDate) {
+    date = new Date(targetDate)
+  } else {
+    try {
+      const params = new URLSearchParams(window.location.search)
+      const checkInDate = params.get('checkInDate')
+      if (checkInDate) {
+        date = new Date(checkInDate)
+      }
+    } catch {}
+  }
+  if (!date || Number.isNaN(date.getTime())) {
+    date = new Date()
+  }
+  const day = date.getDay()
+  return day === 0 || day === 6
+}
+
+function roomPrice(room, targetDate) {
+  if (!room) return 0
+  const isWeekend = isWeekendDay(targetDate)
+
+  if (isWeekend) {
+    if (room.weekendPrice != null && Number(room.weekendPrice) > 0) {
+      return Number(room.weekendPrice)
+    }
+    if (Array.isArray(room.prices) && room.prices.length > 0) {
+      const weekendItem = room.prices.find(
+        (p) => String(p.dayType || '').toUpperCase() === 'WEEKEND' && Number(p.price) > 0
+      )
+      if (weekendItem) return Number(weekendItem.price)
+    }
+  } else {
+    if (room.weekdayPrice != null && Number(room.weekdayPrice) > 0) {
+      return Number(room.weekdayPrice)
+    }
+    if (Array.isArray(room.prices) && room.prices.length > 0) {
+      const weekdayItem = room.prices.find(
+        (p) => String(p.dayType || '').toUpperCase() === 'WEEKDAY' && Number(p.price) > 0
+      )
+      if (weekdayItem) return Number(weekdayItem.price)
+    }
+  }
+
   if (room.price != null && Number(room.price) > 0) return Number(room.price)
   if (room.weekdayPrice != null && Number(room.weekdayPrice) > 0) return Number(room.weekdayPrice)
   if (room.weekendPrice != null && Number(room.weekendPrice) > 0) return Number(room.weekendPrice)
   if (Array.isArray(room.prices) && room.prices.length > 0) {
-    const validPrices = room.prices.map(p => Number(p.price || 0)).filter(p => p > 0)
+    const validPrices = room.prices.map((p) => Number(p.price || 0)).filter((p) => p > 0)
     if (validPrices.length > 0) return Math.min(...validPrices)
   }
   return 0
@@ -462,6 +527,7 @@ function PublicHeader() {
       <a className="home-logo" href="/home">Home Stays</a>
       <nav className="home-nav" aria-label="Điều hướng chính">
         <a href="/home">Trang chủ</a>
+        <a href="/landing" className="home-nav-landing-link" title="Khám phá không gian 3D Komorebi Sanctuary">✨ Komorebi 3D</a>
         <a href="/rooms" className="home-nav-active">Phòng</a>
         <a href="/wishlist">Yêu thích</a>
         <a href="/amenities">Tiện nghi</a>
@@ -496,11 +562,13 @@ function PublicHeader() {
   )
 }
 
-function RoomCard({ room, selected, onToggle }) {
+function RoomCard({ room, selected, onToggle, criteria }) {
   const typeOnly = isRoomTypeSearchResult(room)
   const title = houseTypeName(room)
   const imageUrl = room.primaryImageUrl || room.imageUrls?.[0]
-  const price = roomPrice(room)
+  const targetDate = criteria?.checkInDate
+  const isWeekend = isWeekendDay(targetDate)
+  const price = roomPrice(room, targetDate)
   const detailRoomId = room.roomId || room.representativeRoomId
   const detailUrl = detailRoomId ? `/rooms/${detailRoomId}${window.location.search || ''}` : null
   const roomTypeId = room.roomTypeId || room.id
@@ -542,8 +610,10 @@ function RoomCard({ room, selected, onToggle }) {
   }
 
 
+  const isAvailable = typeOnly ? (Number(room.availableRooms || 0) > 0) : (!room.status || room.status === 'AVAILABLE')
+
   return (
-    <article className={`public-room-card${selected ? ' is-selected' : ''}`}>
+    <article className={`public-room-card${selected ? ' is-selected' : ''}${!isAvailable ? ' is-room-disabled' : ''}`}>
       <a className="public-room-card-link" href={detailUrl || window.location.href} onClick={(event) => !detailUrl && event.preventDefault()}>
         <div className="public-room-photo">
           <img
@@ -555,8 +625,12 @@ function RoomCard({ room, selected, onToggle }) {
               e.target.src = getFallbackRoomImage(title, roomTypeId);
             }}
           />
-          <span className="public-room-badge">
-            {typeOnly ? `Còn ${room.availableRooms || 0} phòng` : 'Sẵn sàng đặt'}
+          <span className={`public-room-badge${!isAvailable ? ' is-maintenance' : ''}`}>
+            {!isAvailable
+              ? '⚠️ Tạm bảo trì'
+              : typeOnly
+              ? `Còn ${room.availableRooms || 0} phòng`
+              : 'Sẵn sàng đặt'}
           </span>
           <button
             type="button"
@@ -577,13 +651,16 @@ function RoomCard({ room, selected, onToggle }) {
         <div className="public-room-meta">
           <span>{room.maxAdults || 0} người lớn</span>
           <span>{room.maxChildren || 0} trẻ em</span>
-          {typeOnly && <span>Đặt theo loại nhà</span>}
+          {typeOnly && <span>Đặt theo loại phòng</span>}
         </div>
         <div className="public-room-price-row">
           <strong>{formatPrice(price)}</strong>
           <span>/{rentTypeLabel(room.rentType)}</span>
+          {isWeekend && (room.weekendPrice || room.prices?.some(p => String(p.dayType).toUpperCase() === 'WEEKEND')) && (
+            <span className="public-room-weekend-badge" style={{ marginLeft: 8, fontSize: '0.75rem', background: '#ffe4e6', color: '#e11d48', padding: '2px 8px', borderRadius: 999, fontWeight: 600 }}>Giá cuối tuần</span>
+          )}
         </div>
-        {room.weekendPrice && room.weekendPrice !== room.weekdayPrice && (
+        {room.weekendPrice && room.weekendPrice !== room.weekdayPrice && !isWeekend && (
           <div className="public-room-weekend">Cuối tuần: {formatPrice(room.weekendPrice)}</div>
         )}
         {room.depositPolicyId && (
@@ -591,8 +668,14 @@ function RoomCard({ room, selected, onToggle }) {
         )}
         <div className="public-room-actions">
           {detailUrl && <a href={detailUrl}>Xem chi tiết</a>}
-          <button type="button" className={selected ? 'is-selected' : ''} onClick={() => onToggle(room)}>
-            {selected ? 'Bỏ chọn' : typeOnly ? 'Đặt phòng' : 'Chọn phòng'}
+          <button
+            type="button"
+            className={selected ? 'is-selected' : ''}
+            disabled={!isAvailable}
+            onClick={() => isAvailable && onToggle(room)}
+            title={!isAvailable ? 'Phòng đang bảo trì, tạm thời không thể đặt' : undefined}
+          >
+            {!isAvailable ? 'Đang bảo trì' : selected ? 'Bỏ chọn' : typeOnly ? 'Đặt phòng' : 'Chọn phòng'}
           </button>
         </div>
       </div>
@@ -601,29 +684,167 @@ function RoomCard({ room, selected, onToggle }) {
 }
 
 
+function LuckyVoucherRewardModal({ reward, onClose }) {
+  const [copied, setCopied] = useState(false)
+
+  if (!reward) return null
+
+  const handleCopy = () => {
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(reward.code)
+      } else {
+        const input = document.createElement('input')
+        input.value = reward.code
+        document.body.appendChild(input)
+        input.select()
+        document.execCommand('copy')
+        document.body.removeChild(input)
+      }
+    } catch {}
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2500)
+  }
+
+  const handleSaveAndCopy = () => {
+    saveVoucherToStorage({
+      id: Date.now(),
+      code: reward.code,
+      discountType: 'PERCENT',
+      discountValue: reward.discountPercent || 8,
+      minOrderValue: 0,
+      endDate: reward.endDate,
+      isLucky: true,
+    })
+    handleCopy()
+  }
+
+  return (
+    <div className="lucky-reward-overlay" role="presentation" onClick={(event) => event.target === event.currentTarget && onClose()}>
+      <section className="lucky-reward-modal" role="dialog" aria-modal="true" aria-labelledby="lucky-reward-title">
+        <button type="button" className="lucky-reward-close" onClick={onClose} aria-label="Đóng">×</button>
+        <div className="lucky-reward-sparkles" aria-hidden="true">✨ 🎉 🎁</div>
+        <div className="lucky-reward-head">
+          <h3 id="lucky-reward-title">Chúc Mừng Bạn Nhận Voucher May Mắn!</h3>
+          <p>
+            Cảm ơn bạn đã đặt phòng thành công. Homestay gửi tặng bạn mã giảm giá may mắn cho lần đặt phòng tiếp theo:
+          </p>
+        </div>
+
+        <div className="lucky-voucher-card">
+          <span className="lucky-voucher-discount">GIẢM {reward.discountPercent}%</span>
+          <span className="lucky-voucher-desc">Áp dụng trực tiếp vào tổng tiền phòng cho lần đặt kế tiếp</span>
+          <div className="lucky-voucher-code-box">
+            <span className="lucky-voucher-code">{reward.code}</span>
+            <button type="button" className="lucky-voucher-copy-btn" onClick={handleCopy}>
+              {copied ? '✓ Đã chép' : '📋 Sao chép'}
+            </button>
+          </div>
+          <div className="lucky-voucher-meta">
+            <span>🎟️ Voucher may mắn</span>
+            <span>• Hạn dùng 3 tháng</span>
+            <span>• Không giới hạn đơn tối thiểu</span>
+          </div>
+        </div>
+
+        <div className="lucky-reward-footer">
+          <button type="button" className="lucky-reward-save-btn" onClick={handleSaveAndCopy}>
+            {copied ? '✓ Đã lưu & sao chép mã!' : '💾 Lưu & Sao chép mã'}
+          </button>
+          <button type="button" className="lucky-reward-done-btn" onClick={onClose}>
+            Hoàn tất
+          </button>
+        </div>
+      </section>
+    </div>
+  )
+}
+
 function BookingVoucherControl({
   voucherCode,
   setVoucherCode,
   voucherEligible,
   voucherDiscount,
-  eligibleVouchers,
+  eligibleVouchers = [],
   selectedVoucher,
+  allVouchers = [],
+  setVouchers,
+  roomTotal = 0,
 }) {
   const [open, setOpen] = useState(false)
   const [draftCode, setDraftCode] = useState(voucherCode)
-  const draftVoucher = eligibleVouchers.find((voucher) => normalizeCode(voucher.code) === normalizeCode(draftCode))
+  const [checking, setChecking] = useState(false)
+  const [manualError, setManualError] = useState('')
+
+  const combinedVouchers = useMemo(() => {
+    const list = [...(allVouchers.length ? allVouchers : eligibleVouchers)]
+    const saved = getSavedVouchers()
+    saved.forEach((sv) => {
+      if (!list.some((item) => normalizeCode(item.code) === normalizeCode(sv.code))) {
+        list.push(sv)
+      }
+    })
+    return list
+  }, [allVouchers, eligibleVouchers])
+
+  const draftVoucher = combinedVouchers.find((voucher) => normalizeCode(voucher.code) === normalizeCode(draftCode))
   const appliedLabel = selectedVoucher && voucherEligible
     ? `${selectedVoucher.code} · -${formatPrice(voucherDiscount)}`
     : 'Chọn hoặc nhập mã khuyến mãi'
 
   const openPopup = () => {
     setDraftCode(voucherCode)
+    setManualError('')
     setOpen(true)
   }
 
-  const confirmVoucher = () => {
-    setVoucherCode(draftCode.trim())
+  const handleSelectVoucher = (code) => {
+    setDraftCode(code)
+    setVoucherCode(code.trim())
     setOpen(false)
+  }
+
+  const confirmVoucher = async () => {
+    const trimmed = draftCode.trim()
+    if (!trimmed) {
+      setVoucherCode('')
+      setOpen(false)
+      return
+    }
+    setManualError('')
+
+    // Check locally first
+    const found = combinedVouchers.find((v) => normalizeCode(v.code) === normalizeCode(trimmed))
+    if (found) {
+      setVoucherCode(found.code)
+      setDraftCode(found.code)
+      setOpen(false)
+      return
+    }
+
+    // Check with backend
+    setChecking(true)
+    try {
+      const response = await fetch(`${API_BASE_URL}/vouchers/check/${encodeURIComponent(trimmed)}`)
+      const data = await response.json()
+      if (!response.ok) {
+        throw new Error(data.message || 'Mã khuyến mãi không tồn tại hoặc đã hết hạn')
+      }
+      if (setVouchers) {
+        setVouchers((prev) => {
+          if (prev.some((v) => normalizeCode(v.code) === normalizeCode(data.code))) return prev
+          return [data, ...prev]
+        })
+      }
+      saveVoucherToStorage(data)
+      setVoucherCode(data.code)
+      setDraftCode(data.code)
+      setOpen(false)
+    } catch (err) {
+      setManualError(err.message)
+    } finally {
+      setChecking(false)
+    }
   }
 
   return (
@@ -656,17 +877,24 @@ function BookingVoucherControl({
             </div>
 
             <div className="public-voucher-options">
-              {eligibleVouchers.length ? eligibleVouchers.map((voucher) => {
+              {combinedVouchers.length ? combinedVouchers.map((voucher) => {
                 const isSelected = normalizeCode(voucher.code) === normalizeCode(draftCode)
+                const isLucky = voucher.isLucky || String(voucher.code || '').toUpperCase().startsWith('LUCKY')
+                const calculated = calculateVoucherDiscount(voucher, roomTotal)
                 return (
-                  <article className={`public-voucher-option${isSelected ? ' is-selected' : ''}`} key={voucher.id}>
+                  <article className={`public-voucher-option${isSelected ? ' is-selected' : ''}`} key={voucher.id || voucher.code}>
                     <div>
-                      <span>{voucher.code}</span>
-                      <strong>{voucherDiscountText(voucher)}</strong>
+                      <span className={isLucky ? 'lucky-badge' : ''}>
+                        {isLucky ? `🎉 ${voucher.code}` : voucher.code}
+                      </span>
+                      <strong>
+                        {voucherDiscountText(voucher)}
+                        {calculated > 0 && <small style={{ marginLeft: 8, color: '#166534', fontWeight: 600 }}>(-{formatPrice(calculated)})</small>}
+                      </strong>
                       <p>{voucher.minOrderValue ? `Cho tiền phòng từ ${formatPrice(voucher.minOrderValue)}` : 'Không yêu cầu giá trị tối thiểu'}</p>
                     </div>
-                    <button type="button" onClick={() => setDraftCode(voucher.code)}>
-                      {isSelected ? 'Đã nhận' : 'Nhận'}
+                    <button type="button" onClick={() => handleSelectVoucher(voucher.code)}>
+                      {isSelected ? 'Đã chọn' : 'Áp dụng'}
                     </button>
                   </article>
                 )
@@ -677,19 +905,31 @@ function BookingVoucherControl({
 
             <div className="public-voucher-manual">
               <label>
-                <span>Thêm khuyến mãi</span>
+                <span>Thêm khuyến mãi / Nhập mã</span>
                 <input
                   value={draftCode}
-                  onChange={(event) => setDraftCode(event.target.value)}
-                  placeholder="Nhập mã khuyến mãi"
+                  onChange={(event) => {
+                    setDraftCode(event.target.value)
+                    setManualError('')
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') {
+                      event.preventDefault()
+                      confirmVoucher()
+                    }
+                  }}
+                  placeholder="NHẬP MÃ KHUYẾN MÃI"
                 />
               </label>
-              {draftVoucher && <small>Đã chọn {draftVoucher.code}</small>}
+              {manualError && <div className="public-voucher-manual-error">{manualError}</div>}
+              {draftVoucher && !manualError && <small>Đã chọn: {draftVoucher.code} ({voucherDiscountText(draftVoucher)})</small>}
             </div>
 
             <div className="public-voucher-modal-actions">
-              {voucherCode && <button type="button" onClick={() => setDraftCode('')}>Bỏ mã</button>}
-              <button type="button" className="public-voucher-confirm" onClick={confirmVoucher}>Xác nhận</button>
+              {voucherCode && <button type="button" onClick={() => { setDraftCode(''); setVoucherCode(''); setOpen(false); }}>Bỏ mã</button>}
+              <button type="button" className="public-voucher-confirm" disabled={checking} onClick={confirmVoucher}>
+                {checking ? 'Đang kiểm tra...' : 'Xác nhận'}
+              </button>
             </div>
           </section>
         </div>
@@ -799,7 +1039,15 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
         const nextServices = Array.isArray(serviceData) ? serviceData : []
         setPolicies(nextPolicies)
         setServiceOptions(nextServices)
-        setVouchers(Array.isArray(voucherData) ? voucherData : [])
+        const savedList = getSavedVouchers()
+        const activeList = Array.isArray(voucherData) ? voucherData : []
+        const mergedVouchers = [...savedList]
+        activeList.forEach((v) => {
+          if (!mergedVouchers.some((item) => normalizeCode(item.code) === normalizeCode(v.code))) {
+            mergedVouchers.push(v)
+          }
+        })
+        setVouchers(mergedVouchers)
         try {
           const pending = JSON.parse(window.sessionStorage.getItem('homeStayPendingAmenityService') || 'null')
           const matched = nextServices.find(item => item.type === pending?.type && String(item.id) === String(pending?.serviceId))
@@ -911,7 +1159,7 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
         .then((items) => {
           const conflict = items.find((item) => findOverlappingSlot(item.busySlots, form.checkInTarget, form.checkOutTarget))
           if (conflict) {
-            setScheduleError(`${houseTypeName(conflict.room, 'Loại nhà này')} đã có lịch đặt trong khung giờ này. Vui lòng chọn giờ khác.`)
+            setScheduleError(`${houseTypeName(conflict.room, 'Loại phòng này')} đã có lịch đặt trong khung giờ này. Vui lòng chọn giờ khác.`)
             setScheduleNotice('')
             return
           }
@@ -934,7 +1182,7 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
 
           const latestCheckout = new Date(nextBusy.slot.checkInTarget)
           latestCheckout.setHours(latestCheckout.getHours() - 1)
-          const message = `${houseTypeName(nextBusy.room, 'Loại nhà này')} đã có lịch đặt từ ${formatNoticeTime(nextBusy.slot.checkInTarget)}. Quý khách vui lòng check out trước ${formatNoticeTime(latestCheckout)}.`
+          const message = `${houseTypeName(nextBusy.room, 'Loại phòng này')} đã có lịch đặt từ ${formatNoticeTime(nextBusy.slot.checkInTarget)}. Quý khách vui lòng check out trước ${formatNoticeTime(latestCheckout)}.`
           if (checkOut > latestCheckout) {
             setScheduleError(message)
             setScheduleNotice('')
@@ -1106,7 +1354,12 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
     event.preventDefault()
     const token = getStoredToken()
     if (!selectedRooms.length) {
-      setError('Vui lòng chọn ít nhất một loại nhà.')
+      setError('Vui lòng chọn ít nhất một loại phòng.')
+      return
+    }
+    const unavailableRoom = selectedRooms.find((r) => (r.availableRooms != null && Number(r.availableRooms) <= 0) || r.status === 'MAINTENANCE')
+    if (unavailableRoom) {
+      setError(`Loại phòng ${houseTypeName(unavailableRoom)} hiện đang bảo trì hoặc tạm thời hết phòng, vui lòng chọn phòng khác.`)
       return
     }
     if (timeError) {
@@ -1313,7 +1566,7 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
           </section>
 
           <section className="multi-selected-section">
-            <h3>Loại nhà trong booking này</h3>
+            <h3>Loại phòng trong booking này</h3>
             <div className="multi-selected-rooms">
               {selectedRooms.map((room) => (
                 <article key={roomKey(room)}>
@@ -1340,6 +1593,9 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
               voucherDiscount={voucherDiscount}
               eligibleVouchers={eligibleVouchers}
               selectedVoucher={selectedVoucher}
+              allVouchers={vouchers}
+              setVouchers={setVouchers}
+              roomTotal={roomTotal}
             />
           </section>
 
@@ -1526,8 +1782,10 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
   )
 }
 
-function BookingCart({ selectedRooms, requestedRooms, onRemove, onOpenBooking }) {
-  const total = selectedRooms.reduce((sum, room) => sum + roomPrice(room) * selectedQuantity(room), 0)
+function BookingCart({ selectedRooms, requestedRooms, onRemove, onOpenBooking, criteria }) {
+  const targetDate = criteria?.checkInDate
+  const isWeekend = isWeekendDay(targetDate)
+  const total = selectedRooms.reduce((sum, room) => sum + roomPrice(room, targetDate) * selectedQuantity(room), 0)
   const selectedCount = selectedRooms.reduce((sum, room) => sum + selectedQuantity(room), 0)
   const isEnough = selectedCount >= requestedRooms
 
@@ -1536,7 +1794,10 @@ function BookingCart({ selectedRooms, requestedRooms, onRemove, onOpenBooking })
       <div className="rooms-booking-cart-head">
         <div>
           <h2>Booking của bạn</h2>
-          <p>Đã chọn {selectedRooms.length} loại · {selectedCount}/{requestedRooms} loại nhà</p>
+          <p>
+            Đã chọn {selectedRooms.length} loại · {selectedCount}/{requestedRooms} loại phòng
+            {isWeekend && <span style={{ color: '#e11d48', fontWeight: 600, display: 'inline-block', marginLeft: 4 }}> · Giá cuối tuần</span>}
+          </p>
         </div>
         <span className={isEnough ? 'is-ready' : ''}>{isEnough ? 'Đủ phòng' : 'Chưa đủ'}</span>
       </div>
@@ -1544,13 +1805,13 @@ function BookingCart({ selectedRooms, requestedRooms, onRemove, onOpenBooking })
         {selectedRooms.length ? selectedRooms.map((room) => (
           <div key={roomKey(room)}>
             <span>{houseTypeName(room)} × {selectedQuantity(room)}</span>
-            <strong>{formatPrice(roomPrice(room))}</strong>
-            <button type="button" onClick={() => onRemove(roomKey(room))} aria-label="Bỏ loại nhà">×</button>
+            <strong>{formatPrice(roomPrice(room, targetDate))}</strong>
+            <button type="button" onClick={() => onRemove(roomKey(room))} aria-label="Bỏ loại phòng">×</button>
           </div>
-        )) : <p>Chọn loại nhà từ danh sách để tạo booking.</p>}
+        )) : <p>Chọn loại phòng từ danh sách để tạo booking.</p>}
       </div>
       <div className="rooms-booking-cart-total">
-        <span>Tạm tính</span>
+        <span>Tạm tính {isWeekend && <small style={{ color: '#e11d48', fontWeight: 600 }}>(Cuối tuần)</small>}</span>
         <strong>{formatPrice(total)}</strong>
       </div>
       <button type="button" disabled={!selectedRooms.length} onClick={onOpenBooking}>Tiếp tục đặt phòng</button>
@@ -1566,6 +1827,7 @@ function RoomsPage() {
   const [selectedRooms, setSelectedRooms] = useState(() => readBookingCart())
   const [bookingModalOpen, setBookingModalOpen] = useState(false)
   const [createdBooking, setCreatedBooking] = useState(null)
+  const [luckyReward, setLuckyReward] = useState(null)
   const [focusRoomApplied, setFocusRoomApplied] = useState(() => readBookingCart().length > 0)
 
   useEffect(() => {
@@ -1587,7 +1849,7 @@ function RoomsPage() {
           ? allRooms.filter((room) => String(room.roomTypeId || room.id) === String(searchCriteria.roomTypeId))
           : allRooms
         setRooms(nextRooms)
-        const highest = Math.max(...nextRooms.map((room) => roomPrice(room)), 0)
+        const highest = Math.max(...nextRooms.map((room) => roomPrice(room, searchCriteria?.checkInDate)), 0)
         setMaxPrice(Math.max(highest, 100000))
       })
       .catch(() => setError('Không thể tải danh sách phòng.'))
@@ -1616,19 +1878,19 @@ function RoomsPage() {
   }, [selectedRooms])
 
   const highestPrice = useMemo(() => {
-    const highest = Math.max(...rooms.map((room) => roomPrice(room)), 0)
+    const highest = Math.max(...rooms.map((room) => roomPrice(room, searchCriteria?.checkInDate)), 0)
     return Math.max(highest, 100000)
-  }, [rooms])
+  }, [rooms, searchCriteria])
 
   const visibleRooms = useMemo(() => {
     return rooms
       .filter((room) => {
-        const price = roomPrice(room)
+        const price = roomPrice(room, searchCriteria?.checkInDate)
         const matchesPrice = price <= maxPrice
         return matchesPrice
       })
-      .sort((a, b) => roomPrice(a) - roomPrice(b))
-  }, [rooms, maxPrice])
+      .sort((a, b) => roomPrice(a, searchCriteria?.checkInDate) - roomPrice(b, searchCriteria?.checkInDate))
+  }, [rooms, maxPrice, searchCriteria])
 
   const requestedRooms = searchCriteria?.rooms || Math.max(1, selectedRooms.length || 1)
   const selectedRoomIds = useMemo(() => new Set(selectedRooms.map(roomKey)), [selectedRooms])
@@ -1656,6 +1918,7 @@ function RoomsPage() {
             <BookingCart
               selectedRooms={selectedRooms}
               requestedRooms={requestedRooms}
+              criteria={searchCriteria}
               onRemove={removeRoom}
               onOpenBooking={() => setBookingModalOpen(true)}
             />
@@ -1714,11 +1977,11 @@ function RoomsPage() {
           <section className="rooms-results-panel">
             <div className="rooms-results-head">
               <div>
-                <h2>{searchCriteria?.isDefaultRoomTypeList ? 'Tất cả loại nhà' : 'Loại nhà trống phù hợp'}</h2>
+                <h2>{searchCriteria?.isDefaultRoomTypeList ? 'Tất cả loại phòng' : 'Loại phòng trống phù hợp'}</h2>
                 <p>
                   {!searchCriteria?.isDefaultRoomTypeList
                     ? `Từ ${searchCriteria.checkInDate} đến ${searchCriteria.checkOutDate} · cần ${searchCriteria.rooms} phòng`
-                    : 'Khách chọn loại nhà, lễ tân sẽ gán phòng cụ thể khi check-in.'}
+                    : 'Khách chọn loại phòng, lễ tân sẽ gán phòng cụ thể khi check-in.'}
                 </p>
               </div>
               <span>{visibleRooms.length} phù hợp</span>
@@ -1734,6 +1997,7 @@ function RoomsPage() {
                   <RoomCard
                     key={roomKey(room)}
                     room={room}
+                    criteria={searchCriteria}
                     selected={selectedRoomIds.has(roomKey(room))}
                     onToggle={toggleRoom}
                   />
@@ -1767,7 +2031,22 @@ function RoomsPage() {
               setBookingModalOpen(false)
               setSelectedRooms([])
               clearBookingCart()
+              if (booking?.luckyVoucherCode) {
+                setLuckyReward({
+                  code: booking.luckyVoucherCode,
+                  discountPercent: Number(booking.luckyVoucherDiscountPercent || 8),
+                  endDate: booking.luckyVoucherEndDate,
+                  bookingCode: bookingDisplay(booking),
+                })
+              }
             }}
+          />
+        )}
+
+        {luckyReward && (
+          <LuckyVoucherRewardModal
+            reward={luckyReward}
+            onClose={() => setLuckyReward(null)}
           />
         )}
       </main>

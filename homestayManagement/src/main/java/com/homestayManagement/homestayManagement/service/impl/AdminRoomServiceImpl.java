@@ -11,10 +11,14 @@ import com.homestayManagement.homestayManagement.entity.DepositPolicy;
 import com.homestayManagement.homestayManagement.entity.Room;
 import com.homestayManagement.homestayManagement.entity.RoomImage;
 import com.homestayManagement.homestayManagement.entity.RoomType;
+import com.homestayManagement.homestayManagement.repository.BookingDetailRepository;
 import com.homestayManagement.homestayManagement.repository.DepositPolicyRepository;
 import com.homestayManagement.homestayManagement.repository.HousekeepingChecklistTemplateRepository;
+import com.homestayManagement.homestayManagement.repository.HousekeepingTaskRepository;
 import com.homestayManagement.homestayManagement.repository.RoomImageRepository;
+import com.homestayManagement.homestayManagement.repository.RoomPriceConfigRepository;
 import com.homestayManagement.homestayManagement.repository.RoomRepository;
+import com.homestayManagement.homestayManagement.repository.RoomScheduleRepository;
 import com.homestayManagement.homestayManagement.repository.RoomTypeRepository;
 import com.homestayManagement.homestayManagement.service.AdminRoomService;
 import org.springframework.stereotype.Service;
@@ -42,19 +46,31 @@ public class AdminRoomServiceImpl implements AdminRoomService {
     private final RoomRepository roomRepository;
     private final RoomImageRepository roomImageRepository;
     private final HousekeepingChecklistTemplateRepository housekeepingChecklistTemplateRepository;
+    private final RoomPriceConfigRepository roomPriceConfigRepository;
+    private final RoomScheduleRepository roomScheduleRepository;
+    private final HousekeepingTaskRepository housekeepingTaskRepository;
+    private final BookingDetailRepository bookingDetailRepository;
 
     public AdminRoomServiceImpl(
             DepositPolicyRepository depositPolicyRepository,
             RoomTypeRepository roomTypeRepository,
             RoomRepository roomRepository,
             RoomImageRepository roomImageRepository,
-            HousekeepingChecklistTemplateRepository housekeepingChecklistTemplateRepository
+            HousekeepingChecklistTemplateRepository housekeepingChecklistTemplateRepository,
+            RoomPriceConfigRepository roomPriceConfigRepository,
+            RoomScheduleRepository roomScheduleRepository,
+            HousekeepingTaskRepository housekeepingTaskRepository,
+            BookingDetailRepository bookingDetailRepository
     ) {
         this.depositPolicyRepository = depositPolicyRepository;
         this.roomTypeRepository = roomTypeRepository;
         this.roomRepository = roomRepository;
         this.roomImageRepository = roomImageRepository;
         this.housekeepingChecklistTemplateRepository = housekeepingChecklistTemplateRepository;
+        this.roomPriceConfigRepository = roomPriceConfigRepository;
+        this.roomScheduleRepository = roomScheduleRepository;
+        this.housekeepingTaskRepository = housekeepingTaskRepository;
+        this.bookingDetailRepository = bookingDetailRepository;
     }
 
     // ── DepositPolicy ─────────────────────────────────────────
@@ -137,9 +153,11 @@ public class AdminRoomServiceImpl implements AdminRoomService {
     @Override
     @Transactional
     public void deleteRoomType(Long id) {
-        if (!roomRepository.findByRoomTypeId(id).isEmpty()) {
-            throw new IllegalArgumentException("Không thể xoá loại phòng đang có phòng sử dụng");
+        List<Room> rooms = roomRepository.findByRoomTypeId(id);
+        for (Room room : rooms) {
+            deleteRoom(room.getId());
         }
+        roomPriceConfigRepository.deleteByRoomTypeId(id);
         housekeepingChecklistTemplateRepository.findByRoomTypeIdAndRoomIsNull(id)
                 .ifPresent(housekeepingChecklistTemplateRepository::delete);
         roomTypeRepository.deleteById(id);
@@ -260,6 +278,9 @@ public class AdminRoomServiceImpl implements AdminRoomService {
         Room room = getRoomById(id);
         housekeepingChecklistTemplateRepository.findByRoomId(id)
                 .ifPresent(housekeepingChecklistTemplateRepository::delete);
+        roomScheduleRepository.deleteByRoomId(id);
+        housekeepingTaskRepository.deleteByRoomId(id);
+        bookingDetailRepository.detachRoom(id);
         roomImageRepository.findByRoomId(id).forEach(img -> deleteFile(img.getImageUrl()));
         roomImageRepository.deleteByRoomId(id);
         roomRepository.delete(room);

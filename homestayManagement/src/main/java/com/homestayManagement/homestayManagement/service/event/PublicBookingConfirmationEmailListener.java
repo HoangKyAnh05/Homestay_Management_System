@@ -24,8 +24,8 @@ public class PublicBookingConfirmationEmailListener {
     private static final Logger LOGGER = LoggerFactory.getLogger(PublicBookingConfirmationEmailListener.class);
     private static final DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("HH:mm dd/MM/yyyy");
     private static final Locale VIETNAM = Locale.forLanguageTag("vi-VN");
-    private static final String HOMESTAY_ADDRESS = "Thung lũng Ngọc Linh, Trại Mới, Tiến Xuân, Thạch Thất, Hà Nội";
-    private static final String CONTACT_PHONE = "0869 544 586 (Cô Hải)";
+    private static final String HOMESTAY_ADDRESS = "Số 031 đường Hoàng Liên, Phường Sa Pa, Thị xã Sa Pa, Lào Cai";
+    private static final String CONTACT_PHONE = "0941 186 699 (Lễ tân Sa Pa)";
 
     private final JavaMailSender mailSender;
     private final String mailFrom;
@@ -215,8 +215,8 @@ public class PublicBookingConfirmationEmailListener {
                           </tr>
                           <tr>
                             <td align="center" style="padding:20px 28px;background:#edf2ee;color:#73817b;font-size:12px;line-height:1.6;">
-                              Cảm ơn bạn đã lựa chọn Home Stays.<br>
-                              Hẹn gặp bạn tại Thung lũng Ngọc Linh.
+                              Cảm ơn bạn đã lựa chọn Lá Đỏ Homestay Sa Pa.<br>
+                              Hẹn gặp bạn tại Sa Pa sương mờ.
                             </td>
                           </tr>
                         </table>

@@ -58,6 +58,7 @@ function PublicHeader() {
       <a className="home-logo" href="/home">Home Stays</a>
       <nav className="home-nav" aria-label="Điều hướng chính">
         <a href="/home">Trang chủ</a>
+        <a href="/landing" className="home-nav-landing-link" title="Khám phá không gian 3D Komorebi Sanctuary">✨ Komorebi 3D</a>
         <a href="/rooms">Phòng</a>
         <a href="/wishlist" className="home-nav-active">Yêu thích</a>
         <a href="/amenities">Tiện nghi</a>
@@ -137,9 +138,9 @@ export default function WishlistPage() {
         <section className="wishlist-heading">
           <div>
             <p>Tài khoản của tôi</p>
-            <h1>Danh sách loại nhà yêu thích ❤️</h1>
+            <h1>Danh sách loại phòng yêu thích ❤️</h1>
           </div>
-          <span>{items.length} loại nhà đã lưu</span>
+          <span>{items.length} loại phòng đã lưu</span>
         </section>
 
         {loading ? (
@@ -148,8 +149,8 @@ export default function WishlistPage() {
           <div className="wishlist-state wishlist-state--error">{error}</div>
         ) : items.length === 0 ? (
           <div className="wishlist-state">
-            <p>Bạn chưa lưu loại nhà yêu thích nào.</p>
-            <a href="/rooms" className="wishlist-browse-btn">Khám phá các loại nhà ngay</a>
+            <p>Bạn chưa lưu loại phòng yêu thích nào.</p>
+            <a href="/rooms" className="wishlist-browse-btn">Khám phá các loại phòng ngay</a>
           </div>
         ) : (
           <div className="wishlist-grid">

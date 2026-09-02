@@ -20,6 +20,12 @@ class AdminCheckInGuestRequestValidationTest {
     }
 
     @Test
+    void acceptsNullOrEmptyIdentityDocumentNumber() {
+        assertTrue(validator.validate(guest(null, "0912345678", "guest@example.com")).isEmpty());
+        assertTrue(validator.validate(guest("", "0912345678", "guest@example.com")).isEmpty());
+    }
+
+    @Test
     void rejectsIdentityThatDoesNotContainExactlyTwelveDigits() {
         var violations = validator.validate(guest("12345678901", "0912345678", "guest@example.com"));
 

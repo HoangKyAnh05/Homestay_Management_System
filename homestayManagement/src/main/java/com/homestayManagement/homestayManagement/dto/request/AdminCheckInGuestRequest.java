@@ -12,8 +12,7 @@ public record AdminCheckInGuestRequest(
         @Size(max = 100, message = "Tên người lưu trú tối đa 100 ký tự")
         String fullName,
 
-        @NotBlank(message = "Căn cước công dân không được để trống")
-        @Pattern(regexp = "^\\d{12}$", message = "Căn cước công dân phải gồm đúng 12 chữ số")
+        @Pattern(regexp = "^(\\d{12})?$", message = "Căn cước công dân phải gồm đúng 12 chữ số")
         String identityDocumentNumber,
 
         LocalDate dateOfBirth,
@@ -22,7 +21,7 @@ public record AdminCheckInGuestRequest(
         @Size(max = 100, message = "Email tối đa 100 ký tự")
         String email,
 
-        @Pattern(regexp = "^\\d{10}$", message = "Số điện thoại phải gồm đúng 10 chữ số")
+        @Pattern(regexp = "^(\\d{10})?$", message = "Số điện thoại phải gồm đúng 10 chữ số")
         String phone,
 
         @Size(max = 255, message = "Địa chỉ tối đa 255 ký tự")

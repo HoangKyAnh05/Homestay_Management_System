@@ -82,6 +82,7 @@ function PublicHeader() {
       <a className="home-logo" href="/home">Home Stays</a>
       <nav className="home-nav" aria-label="Điều hướng chính">
         <a href="/home">Trang chủ</a>
+        <a href="/landing" className="home-nav-landing-link" title="Khám phá không gian 3D Komorebi Sanctuary">✨ Komorebi 3D</a>
         <a href="/rooms">Phòng</a>
         <a href="/wishlist">Yêu thích</a>
         <a href="/amenities">Tiện nghi</a>
@@ -147,6 +148,531 @@ function AddServiceButton({ bookingId, compact = false }) {
   )
 }
 
+function canExtendStay(booking) {
+  const status = String(booking?.status || '').toUpperCase()
+  return ['CONFIRMED', 'CHECKED_IN'].includes(status)
+}
+
+function ExtendStayButton({ onClick, compact = false }) {
+  const className = compact
+    ? 'history-extend-btn history-extend-btn--compact'
+    : 'history-extend-btn'
+  return (
+    <button
+      type="button"
+      className={className}
+      onClick={(event) => {
+        event.stopPropagation()
+        onClick()
+      }}
+      title="Thuê thêm giờ / Gia hạn thời gian lưu trú"
+    >
+      ⏰ Thuê thêm giờ
+    </button>
+  )
+}
+
+function canCancelBooking(booking) {
+  const status = String(booking?.status || '').toUpperCase()
+  return ['PENDING', 'CONFIRMED'].includes(status)
+}
+
+function CancelBookingButton({ onClick, compact = false }) {
+  const className = compact
+    ? 'history-cancel-btn history-cancel-btn--compact'
+    : 'history-cancel-btn'
+  return (
+    <button
+      type="button"
+      className={className}
+      onClick={(event) => {
+        event.stopPropagation()
+        onClick()
+      }}
+      title="Hủy đặt phòng và nhận hoàn tiền theo quy định"
+    >
+      Hủy phòng
+    </button>
+  )
+}
+
+function BookingExtensionModal({
+  booking,
+  roomDetail,
+  onClose,
+  token,
+  onExtensionSuccess,
+}) {
+  const [hours, setHours] = useState(2)
+  const [checking, setChecking] = useState(false)
+  const [checkResult, setCheckResult] = useState(null)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const [successMsg, setSuccessMsg] = useState('')
+
+  const detailId = roomDetail?.bookingDetailId || booking?.rooms?.[0]?.bookingDetailId
+
+  const checkAvailability = async (targetHours) => {
+    if (!booking?.bookingId) return
+    setChecking(true)
+    setError('')
+    try {
+      const res = await fetch(`${API_BASE_URL}/bookings/my/${booking.bookingId}/check-extension`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          bookingDetailId: detailId,
+          additionalHours: targetHours,
+        }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.message || 'Không thể kiểm tra tình trạng phòng')
+      setCheckResult(data)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setChecking(false)
+    }
+  }
+
+  useEffect(() => {
+    checkAvailability(hours)
+  }, [hours])
+
+  const handleConfirmExtend = async (switchRoomId = null) => {
+    setSaving(true)
+    setError('')
+    try {
+      const res = await fetch(`${API_BASE_URL}/bookings/my/${booking.bookingId}/extend`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          bookingDetailId: detailId,
+          additionalHours: hours,
+          switchRoomId: switchRoomId,
+        }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.message || 'Không thể gia hạn lưu trú')
+      setSuccessMsg(
+        switchRoomId
+          ? '✓ Đã chuyển đổi sang phòng mới thành công! Bạn có thể tiếp tục lưu trú.'
+          : `✓ Đã gia hạn thành công thêm ${hours} giờ! Chúc bạn có kỳ nghỉ tuyệt vời!`
+      )
+      onExtensionSuccess(data)
+      setTimeout(() => {
+        onClose()
+      }, 1800)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="extend-modal-overlay" onClick={onClose}>
+      <div className="extend-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="extend-modal-header">
+          <div>
+            <h2>⏰ Thuê Thêm Giờ / Gia Hạn Lưu Trú</h2>
+            <p>Booking {bookingDisplay(booking)} · {roomDetail?.roomNumber ? `Phòng ${roomDetail.roomNumber}` : 'Phòng đang ở'}</p>
+          </div>
+          <button type="button" className="extend-modal-close" onClick={onClose}>×</button>
+        </div>
+
+        <div className="extend-modal-body">
+          {error && <div className="extend-alert extend-alert--error">{error}</div>}
+          {successMsg && <div className="extend-alert extend-alert--success">{successMsg}</div>}
+
+          {/* Current Booking Info */}
+          <div className="extend-current-info">
+            <div>
+              <span className="extend-info-label">Phòng đang ở</span>
+              <strong>{roomDetail?.roomNumber ? `Phòng ${roomDetail.roomNumber}` : 'Phòng hiện tại'} ({houseTypeName(roomDetail || {})})</strong>
+            </div>
+            <div>
+              <span className="extend-info-label">Giờ trả phòng hiện tại</span>
+              <strong style={{ color: '#ea580c' }}>{formatAppDateTime(roomDetail?.checkOutTarget || checkResult?.currentCheckOut, { weekday: 'short' })}</strong>
+            </div>
+          </div>
+
+          {/* Hour selection */}
+          <div className="extend-hours-section">
+            <label className="extend-section-title">Chọn số giờ muốn thuê thêm:</label>
+            <div className="extend-hour-presets">
+              {[1, 2, 3, 4, 6, 12].map((h) => (
+                <button
+                  key={h}
+                  type="button"
+                  className={`extend-hour-btn ${hours === h ? 'is-active' : ''}`}
+                  onClick={() => setHours(h)}
+                >
+                  +{h} Giờ
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Live Check Result */}
+          {checking ? (
+            <div className="extend-checking-box">
+              <div className="extend-spinner" />
+              <span>Đang kiểm tra phòng trống theo thời gian thực...</span>
+            </div>
+          ) : checkResult ? (
+            checkResult.currentRoomAvailable ? (
+              /* Case 1: Room is available! */
+              <div className="extend-result-box extend-result-box--available">
+                <div className="extend-result-badge">✓ Phòng còn trống</div>
+                <h3>{checkResult.message}</h3>
+                <div className="extend-fee-breakdown">
+                  <div className="extend-fee-row">
+                    <span>Thời gian trả phòng mới:</span>
+                    <strong>{formatAppDateTime(checkResult.newCheckOut, { weekday: 'short' })}</strong>
+                  </div>
+                  <div className="extend-fee-row">
+                    <span>Số giờ thuê thêm:</span>
+                    <strong>+{checkResult.additionalHours} giờ</strong>
+                  </div>
+                  <div className="extend-fee-row extend-fee-total">
+                    <span>Phí thuê thêm giờ:</span>
+                    <strong style={{ color: '#16a34a', fontSize: '18px' }}>{formatMoney(checkResult.extensionFee)}</strong>
+                  </div>
+                </div>
+                <p className="extend-hint-note">ℹ️ Phí thuê thêm sẽ được tự động cộng vào hóa đơn booking của bạn.</p>
+
+                <div className="extend-actions">
+                  <button
+                    type="button"
+                    className="extend-confirm-btn"
+                    disabled={saving}
+                    onClick={() => handleConfirmExtend(null)}
+                  >
+                    {saving ? 'Đang xử lý...' : `✓ Xác nhận thuê thêm (${formatMoney(checkResult.extensionFee)})`}
+                  </button>
+                  <button type="button" className="extend-cancel-btn" onClick={onClose}>
+                    Đóng
+                  </button>
+                </div>
+              </div>
+            ) : (
+              /* Case 2: Room is already booked by another customer! */
+              <div className="extend-result-box extend-result-box--busy">
+                <div className="extend-result-badge extend-result-badge--busy">⚠️ Phòng đã có khách đặt trước</div>
+                <div className="extend-busy-desc">
+                  <strong>Phòng {checkResult.roomNumber || 'này'} đã được khách khác đặt trước cho khung giờ tiếp theo.</strong>
+                  <p>Hệ thống không thể gia hạn tiếp tại phòng hiện tại. Bạn có thể lựa chọn 1 trong 2 phương án dưới đây:</p>
+                </div>
+
+                <div className="extend-options-wrapper">
+                  {/* Option A: Switch to another available room */}
+                  <div className="extend-option-card">
+                    <div className="extend-option-head">
+                      <span className="extend-option-tag">Lựa chọn 1</span>
+                      <h4>🔄 Chuyển đổi sang phòng khác còn trống để tiếp tục ở</h4>
+                    </div>
+
+                    {checkResult.alternativeRooms && checkResult.alternativeRooms.length > 0 ? (
+                      <div className="extend-alt-grid">
+                        {checkResult.alternativeRooms.map((alt) => (
+                          <div key={alt.roomId} className="extend-alt-item">
+                            <div className="extend-alt-info">
+                              <strong>Phòng {alt.roomNumber}</strong>
+                              <span className="extend-alt-type">{alt.roomTypeName} · Tối đa {alt.capacityAdults} người</span>
+                              <span className="extend-alt-price">{formatMoney(alt.totalPrice)} (+{hours}h)</span>
+                            </div>
+                            <button
+                              type="button"
+                              className="extend-switch-btn"
+                              disabled={saving}
+                              onClick={() => handleConfirmExtend(alt.roomId)}
+                            >
+                              {saving ? 'Đang đổi...' : 'Đổi sang phòng này →'}
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="extend-no-rooms">Hiện tại tất cả các phòng khác cũng đã kín lịch trong khung giờ này.</p>
+                    )}
+                  </div>
+
+                  {/* Option B: Check out on time */}
+                  <div className="extend-option-card extend-option-card--checkout">
+                    <div className="extend-option-head">
+                      <span className="extend-option-tag">Lựa chọn 2</span>
+                      <h4>🚪 Trả phòng đúng giờ (Check-out khi hết giờ)</h4>
+                    </div>
+                    <p className="extend-checkout-text">
+                      Bạn có thể giữ nguyên lịch trình và thực hiện thủ tục trả phòng vào lúc <strong>{formatAppDateTime(checkResult.currentCheckOut, { weekday: 'short' })}</strong>.
+                    </p>
+                    <button type="button" className="extend-checkout-confirm-btn" onClick={onClose}>
+                      Tôi sẽ trả phòng đúng giờ
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )
+          ) : null}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function BookingCancelModal({
+  booking,
+  onClose,
+  token,
+  onCancelSuccess,
+  currentUser,
+}) {
+  const [reason, setReason] = useState('')
+  const [zaloPhone, setZaloPhone] = useState(currentUser?.phoneNumber || '')
+  const [bankAccountNumber, setBankAccountNumber] = useState('')
+  const [bankName, setBankName] = useState('Vietcombank')
+  const [accountHolderName, setAccountHolderName] = useState(currentUser?.fullName || '')
+  const [preview, setPreview] = useState(null)
+  const [loadingPreview, setLoadingPreview] = useState(true)
+  const [previewError, setPreviewError] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState('')
+  const [successMsg, setSuccessMsg] = useState('')
+
+  useEffect(() => {
+    let ignore = false
+    setLoadingPreview(true)
+    setPreviewError('')
+    fetch(`${API_BASE_URL}/bookings/my/${booking.bookingId}/cancel-policy-preview`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(async (res) => {
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok) throw new Error(data.message || 'Không thể kiểm tra chính sách hoàn tiền')
+        return data
+      })
+      .then((data) => {
+        if (!ignore) setPreview(data)
+      })
+      .catch((err) => {
+        if (!ignore) setPreviewError(err.message)
+      })
+      .finally(() => {
+        if (!ignore) setLoadingPreview(false)
+      })
+    return () => {
+      ignore = true
+    }
+  }, [booking?.bookingId, token])
+
+  const handleConfirmCancel = async (e) => {
+    e.preventDefault()
+    if (!reason.trim()) {
+      setSubmitError('Vui lòng nhập lý do hủy phòng')
+      return
+    }
+    setSubmitting(true)
+    setSubmitError('')
+    try {
+      const res = await fetch(`${API_BASE_URL}/bookings/my/${booking.bookingId}/cancel`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          reason: reason.trim(),
+          zaloPhone: zaloPhone.trim(),
+          bankAccountNumber: bankAccountNumber.trim(),
+          bankName: bankName.trim(),
+          accountHolderName: accountHolderName.trim(),
+        }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.message || 'Không thể thực hiện hủy phòng')
+      setSuccessMsg('✓ Đã gửi yêu cầu hủy phòng thành công!')
+      onCancelSuccess(data)
+      setTimeout(() => {
+        onClose()
+      }, 1500)
+    } catch (err) {
+      setSubmitError(err.message)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <div className="history-cancel-modal-overlay" onClick={onClose}>
+      <div className="history-cancel-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="history-cancel-modal-header">
+          <div>
+            <h2>🛑 Xác Nhận Hủy Đặt Phòng</h2>
+            <p>Booking {bookingDisplay(booking)}</p>
+          </div>
+          <button type="button" className="history-cancel-modal-close" onClick={onClose}>×</button>
+        </div>
+
+        <div className="history-cancel-modal-body">
+          {submitError && <div className="history-cancel-alert history-cancel-alert--error">{submitError}</div>}
+          {successMsg && <div className="history-cancel-alert history-cancel-alert--success">{successMsg}</div>}
+
+          {/* Refund Policy Rules Box */}
+          <div className="history-cancel-policy-card">
+            <h4>📋 Quy định chính sách hủy phòng & hoàn tiền:</h4>
+            <ul>
+              <li>
+                <span className="policy-tag policy-tag--green">Hoàn 100%</span>
+                <strong>Hủy trước 48 giờ nhận phòng:</strong> Hoàn trả 100% số tiền đã thanh toán.
+              </li>
+              <li>
+                <span className="policy-tag policy-tag--yellow">Hoàn 50%</span>
+                <strong>Hủy trong vòng 48 giờ trước nhận phòng:</strong> Hoàn trả 50% số tiền đã thanh toán.
+              </li>
+              <li>
+                <span className="policy-tag policy-tag--red">Không hoàn tiền</span>
+                <strong>Hủy sau giờ nhận phòng (đã quá giờ check-in / vào phòng):</strong> Mất 100% số tiền.
+              </li>
+            </ul>
+          </div>
+
+          {loadingPreview ? (
+            <div className="history-cancel-loading">
+              <span className="cancel-spinner" /> Đang kiểm tra thời gian và chính sách hoàn tiền...
+            </div>
+          ) : previewError ? (
+            <div className="history-cancel-alert history-cancel-alert--error">{previewError}</div>
+          ) : preview && (
+            <div className="history-cancel-preview-card">
+              <div className="cancel-preview-row">
+                <span>Giờ nhận phòng dự kiến:</span>
+                <strong>{formatAppDateTime(preview.checkInTarget, { weekday: 'short' })}</strong>
+              </div>
+              <div className="cancel-preview-row">
+                <span>Thời gian yêu cầu hủy:</span>
+                <strong>{formatAppDateTime(preview.requestTime, { weekday: 'short' })}</strong>
+              </div>
+              <div className="cancel-preview-row">
+                <span>Khoảng cách đến giờ check-in:</span>
+                <strong className={preview.hoursUntilCheckIn >= 48 ? 'text-green' : preview.hoursUntilCheckIn > 0 ? 'text-yellow' : 'text-red'}>
+                  {preview.hoursUntilCheckIn > 0
+                    ? `Trước giờ nhận phòng ${preview.hoursUntilCheckIn} giờ`
+                    : 'Đã quá giờ nhận phòng'}
+                </strong>
+              </div>
+              <div className="cancel-preview-divider" />
+              <div className="cancel-preview-row">
+                <span>Số tiền bạn đã thanh toán:</span>
+                <strong>{formatMoney(preview.paidAmount)}</strong>
+              </div>
+              <div className="cancel-preview-row">
+                <span>Tỷ lệ hoàn tiền áp dụng:</span>
+                <span className={`policy-badge policy-badge--${preview.refundRate === 100 ? 'green' : preview.refundRate === 50 ? 'yellow' : 'red'}`}>
+                  {preview.refundRate}%
+                </span>
+              </div>
+              <div className="cancel-preview-row cancel-preview-row--highlight">
+                <span>Số tiền dự kiến được hoàn trả:</span>
+                <strong className="refund-amount-value">{formatMoney(preview.refundAmount)}</strong>
+              </div>
+              <div className="cancel-preview-desc">
+                <em>{preview.policyDescription}</em>
+              </div>
+            </div>
+          )}
+
+          <form onSubmit={handleConfirmCancel} className="history-cancel-form">
+            <div className="history-cancel-field">
+              <label>Lý do hủy phòng <span className="field-required">*</span></label>
+              <textarea
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                placeholder="Vui lòng cho biết lý do hủy phòng (VD: Thay đổi lịch trình, bận việc đột xuất...)"
+                rows={2}
+                required
+              />
+            </div>
+
+            {preview && Number(preview.refundAmount || 0) > 0 && (
+              <div className="history-cancel-bank-fields">
+                <h4>Thông tin liên hệ & nhận hoàn tiền:</h4>
+                <p className="field-subtext">Lễ tân sẽ liên hệ qua Zalo / SĐT hoặc chuyển khoản hoàn trả theo thông tin này:</p>
+                
+                <div className="history-cancel-field">
+                  <label>Số điện thoại / Zalo nhận liên hệ:</label>
+                  <input
+                    type="text"
+                    value={zaloPhone}
+                    onChange={(e) => setZaloPhone(e.target.value)}
+                    placeholder="VD: 0912345678"
+                    required
+                  />
+                </div>
+
+                <div className="cancel-form-grid">
+                  <div className="history-cancel-field">
+                    <label>Ngân hàng nhận:</label>
+                    <input
+                      type="text"
+                      value={bankName}
+                      onChange={(e) => setBankName(e.target.value)}
+                      placeholder="VD: Vietcombank, MBBank..."
+                    />
+                  </div>
+                  <div className="history-cancel-field">
+                    <label>Số tài khoản (STK):</label>
+                    <input
+                      type="text"
+                      value={bankAccountNumber}
+                      onChange={(e) => setBankAccountNumber(e.target.value)}
+                      placeholder="VD: 1029384756"
+                    />
+                  </div>
+                </div>
+
+                <div className="history-cancel-field">
+                  <label>Tên chủ tài khoản:</label>
+                  <input
+                    type="text"
+                    value={accountHolderName}
+                    onChange={(e) => setAccountHolderName(e.target.value)}
+                    placeholder="VD: NGUYEN VAN A"
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="history-cancel-actions">
+              <button
+                type="button"
+                className="history-cancel-btn--back"
+                onClick={onClose}
+                disabled={submitting}
+              >
+                Giữ lại phòng
+              </button>
+              <button
+                type="submit"
+                className="history-cancel-btn--confirm"
+                disabled={submitting || loadingPreview}
+              >
+                {submitting ? 'Đang gửi yêu cầu hủy...' : 'Xác nhận hủy đặt phòng'}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function BookingHistoryPage() {
   const [bookings, setBookings] = useState([])
   const [selectedBookingId, setSelectedBookingId] = useState(null)
@@ -164,6 +690,53 @@ function BookingHistoryPage() {
   const [feedbackText, setFeedbackText] = useState('')
   const [feedbackSaving, setFeedbackSaving] = useState(false)
   const [confirmSaving, setConfirmSaving] = useState(false)
+  
+  // Extend Stay Modal State
+  const [extendModalOpen, setExtendModalOpen] = useState(false)
+  const [extendBooking, setExtendBooking] = useState(null)
+  const [extendRoomDetail, setExtendRoomDetail] = useState(null)
+
+  // Cancel Booking Modal State
+  const [cancelModalOpen, setCancelModalOpen] = useState(false)
+  const [cancelBooking, setCancelBooking] = useState(null)
+
+  const handleOpenExtendModal = (bookingObj, roomDetailObj = null) => {
+    setExtendBooking(bookingObj)
+    setExtendRoomDetail(roomDetailObj || bookingObj?.rooms?.[0] || null)
+    setExtendModalOpen(true)
+  }
+
+  const handleExtensionSuccess = (updatedData) => {
+    setDetail(updatedData)
+    setBookings((current) =>
+      current.map((b) => (b.bookingId === updatedData.bookingId ? { ...b, totalAmount: updatedData.totalAmount } : b))
+    )
+  }
+
+  const handleOpenCancelModal = (bookingObj) => {
+    setCancelBooking(bookingObj)
+    setCancelModalOpen(true)
+  }
+
+  const handleCancelSuccess = (updatedData) => {
+    setDetail(updatedData)
+    setBookings((current) =>
+      current.map((b) =>
+        b.bookingId === updatedData.bookingId
+          ? {
+              ...b,
+              status: 'CANCELLED',
+              cancellationReason: updatedData.cancellationReason,
+              cancelledAt: updatedData.cancelledAt,
+              refundRate: updatedData.refundRate,
+              refundAmount: updatedData.refundAmount,
+              refundStatus: updatedData.refundStatus,
+              requiresPayment: false,
+            }
+          : b
+      )
+    )
+  }
   
   // Review & Rating State
   const [reviewOpen, setReviewOpen] = useState(false)
@@ -469,6 +1042,18 @@ function BookingHistoryPage() {
                   <p>{formatAppDateTime(booking.checkInTarget, { weekday: 'long' })}</p>
                   <div className="history-card-bottom">
                     <span>{booking.roomCount} phòng · {formatMoney(booking.totalAmount)}</span>
+                    {canExtendStay(booking) && (
+                      <ExtendStayButton
+                        compact
+                        onClick={() => handleOpenExtendModal(booking)}
+                      />
+                    )}
+                    {canCancelBooking(booking) && (
+                      <CancelBookingButton
+                        compact
+                        onClick={() => handleOpenCancelModal(booking)}
+                      />
+                    )}
                     {canAddService(booking) && <AddServiceButton bookingId={booking.bookingId} compact />}
                     {booking.requiresPayment && (
                       <PaymentButton
@@ -524,6 +1109,12 @@ function BookingHistoryPage() {
                       <h2>{statusLabel(detail.status)}</h2>
                     </div>
                     <div className="history-detail-actions">
+                      {canExtendStay(detail) && (
+                        <ExtendStayButton onClick={() => handleOpenExtendModal(detail)} />
+                      )}
+                      {canCancelBooking(detail) && (
+                        <CancelBookingButton onClick={() => handleOpenCancelModal(detail)} />
+                      )}
                       {canAddService(detail) && <AddServiceButton bookingId={detail.bookingId} />}
                       {detail.requiresPayment && (
                         <PaymentButton
@@ -536,6 +1127,45 @@ function BookingHistoryPage() {
                   </div>
 
                   {paymentError && <div className="history-payment-error">{paymentError}</div>}
+
+                  {detail.status === 'CANCELLED' && (
+                    <div className="history-cancellation-card">
+                      <div className="history-cancellation-badge">
+                        <span className="history-cancellation-icon">🛑</span>
+                        <div>
+                          <strong>Đơn đặt phòng đã được hủy{detail.cancelledAt ? ` lúc ${formatAppDateTime(detail.cancelledAt, { weekday: 'short' })}` : ''}</strong>
+                          {detail.cancellationReason && <p>Lý do hủy: <em>{detail.cancellationReason}</em></p>}
+                        </div>
+                      </div>
+                      <div className="history-cancellation-refund-grid">
+                        <div>
+                          <span>Tỷ lệ hoàn tiền:</span>
+                          <strong className="refund-rate-highlight">{detail.refundRate !== undefined && detail.refundRate !== null ? `${detail.refundRate}%` : '0%'}</strong>
+                        </div>
+                        <div>
+                          <span>Số tiền hoàn trả:</span>
+                          <strong className="refund-amount-highlight">{formatMoney(detail.refundAmount)}</strong>
+                        </div>
+                        <div>
+                          <span>Trạng thái xử lý:</span>
+                          <strong className={detail.refundStatus === 'REFUNDED' ? 'refund-status--completed' : 'refund-status--pending'}>
+                            {detail.refundStatus === 'REFUNDED' ? '✓ Đã hoàn tiền thành công' : Number(detail.refundAmount || 0) > 0 ? '⏳ Đang chờ Lễ tân chuyển khoản' : 'Không áp dụng hoàn tiền'}
+                          </strong>
+                        </div>
+                      </div>
+                      {detail.refundInfo && (
+                        <div className="history-cancellation-refund-info">
+                          <span>Thông tin nhận hoàn tiền:</span>
+                          <strong>{detail.refundInfo}</strong>
+                        </div>
+                      )}
+                      {Number(detail.refundAmount || 0) > 0 && detail.refundStatus !== 'REFUNDED' && (
+                        <div className="history-cancellation-support-note">
+                          💡 Lễ tân sẽ chủ động liên hệ với quý khách qua Zalo/SĐT để xác nhận và thực hiện chuyển khoản hoàn tiền theo đúng quy định.
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {detail.requiresPayment && (
                     <div className="history-payment-alert">
@@ -567,22 +1197,43 @@ function BookingHistoryPage() {
                   </div>
 
                   <section className="history-detail-section">
-                    <h3>Loại nhà đã đặt</h3>
+                    <h3>Loại phòng đã đặt</h3>
                     <div className="history-room-list">
-                      {detail.rooms.map((room) => (
-                        <article key={room.bookingDetailId}>
-                          <div>
-                            <strong>Phòng {room.roomNumber}</strong>
-                            <span>{houseTypeName(room)} · {room.numberOfAdults} NL · {room.numberOfChildren} TE</span>
-                          </div>
-                          <p>{formatAppDateTime(room.checkInTarget, { weekday: 'long' })} → {formatAppDateTime(room.checkOutTarget, { weekday: 'long' })}</p>
-                          <b>
-                            {Number(room.allocatedDiscount || 0) > 0
-                              ? `${formatMoney(room.finalRoomAmount)} (-${formatMoney(room.allocatedDiscount)})`
-                              : formatMoney(room.priceAtBooking)}
-                          </b>
-                        </article>
-                      ))}
+                      {detail.rooms.map((room) => {
+                        const roomExtHours = Number(room.extensionHours || 0)
+                        return (
+                          <article key={room.bookingDetailId}>
+                            <div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                <strong>Phòng {room.roomNumber}</strong>
+                                {roomExtHours > 0 && (
+                                  <span className="history-room-extended-tag">
+                                    ⏰ Đã thuê thêm +{roomExtHours}h
+                                  </span>
+                                )}
+                              </div>
+                              <span>{houseTypeName(room)} · {room.numberOfAdults} NL · {room.numberOfChildren} TE</span>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '6px' }}>
+                              <p>{formatAppDateTime(room.checkInTarget, { weekday: 'long' })} → {formatAppDateTime(room.checkOutTarget, { weekday: 'long' })}</p>
+                              {canExtendStay(detail) && (
+                                <button
+                                  type="button"
+                                  className="history-room-extend-link"
+                                  onClick={() => handleOpenExtendModal(detail, room)}
+                                >
+                                  ⏰ Thuê thêm giờ phòng này
+                                </button>
+                              )}
+                            </div>
+                            <b>
+                              {Number(room.allocatedDiscount || 0) > 0
+                                ? `${formatMoney(room.finalRoomAmount)} (-${formatMoney(room.allocatedDiscount)})`
+                                : formatMoney(room.priceAtBooking)}
+                            </b>
+                          </article>
+                        )
+                      })}
                     </div>
                   </section>
 
@@ -818,6 +1469,28 @@ function BookingHistoryPage() {
             </div>
           </form>
         </div>
+      )}
+
+      {/* Modal: Thuê Thêm Giờ / Gia Hạn Lưu Trú */}
+      {extendModalOpen && extendBooking && (
+        <BookingExtensionModal
+          booking={extendBooking}
+          roomDetail={extendRoomDetail}
+          token={token}
+          onClose={() => setExtendModalOpen(false)}
+          onExtensionSuccess={handleExtensionSuccess}
+        />
+      )}
+
+      {/* Modal: Xác Nhận Hủy Đặt Phòng & Hoàn Tiền */}
+      {cancelModalOpen && cancelBooking && (
+        <BookingCancelModal
+          booking={cancelBooking}
+          currentUser={getStoredUser()}
+          token={token}
+          onClose={() => setCancelModalOpen(false)}
+          onCancelSuccess={handleCancelSuccess}
+        />
       )}
 
     </div>

@@ -1,4 +1,4 @@
-export function houseTypeName(source, fallback = 'Loại Nhà') {
+export function houseTypeName(source, fallback = 'Loại Phòng') {
   if (!source) return fallback
 
   const explicitName =
@@ -16,7 +16,7 @@ export function houseTypeName(source, fallback = 'Loại Nhà') {
 
   const id = source.roomTypeId ?? source.typeId ?? source.id
   if (id !== undefined && id !== null && String(id).trim() !== '') {
-    return `Loại Nhà ${id}`
+    return `Loại Phòng ${id}`
   }
 
   return fallback

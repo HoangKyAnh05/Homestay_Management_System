@@ -65,6 +65,14 @@ public class BookingDetail {
     private LocalDateTime assignedAt;
 
     @Builder.Default
+    @Column(name = "extension_hours")
+    private Integer extensionHours = 0;
+
+    @Builder.Default
+    @Column(name = "extension_amount", precision = 10, scale = 2)
+    private BigDecimal extensionAmount = BigDecimal.ZERO;
+
+    @Builder.Default
     @Column(nullable = false, length = 20)
     private String status = "CONFIRMED";
 }

@@ -16,6 +16,8 @@ public record PublicBookingHistoryRoomResponse(
         BigDecimal allocatedDiscount,
         BigDecimal finalRoomAmount,
         String rentType,
-        String status
+        String status,
+        Integer extensionHours,
+        BigDecimal extensionAmount
 ) {
 }

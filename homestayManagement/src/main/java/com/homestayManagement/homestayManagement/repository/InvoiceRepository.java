@@ -30,6 +30,8 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
             """)
     Optional<Invoice> findByBookingIdForAdmin(@Param("bookingId") Long bookingId);
 
+    Optional<Invoice> findByBookingId(Long bookingId);
+
     @Query("""
             select i from Invoice i
             join fetch i.booking b

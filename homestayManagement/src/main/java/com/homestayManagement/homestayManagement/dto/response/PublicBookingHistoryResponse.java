@@ -29,6 +29,11 @@ public record PublicBookingHistoryResponse(
         BigDecimal depositAmount,
         boolean customerConfirmed,
         String customerFeedback,
-        LocalDateTime customerFeedbackAt
+        LocalDateTime customerFeedbackAt,
+        String cancellationReason,
+        LocalDateTime cancelledAt,
+        Integer refundRate,
+        BigDecimal refundAmount,
+        String refundStatus
 ) {
 }

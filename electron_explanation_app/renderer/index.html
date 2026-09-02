@@ -59,7 +59,7 @@
     <main class="main-dashboard">
       <!-- TOP NAV -->
       <header class="top-nav">
-        <div class="active-flow-info">
+        <div class="active-flow-info" style="flex: 1; max-width: 60%;">
           <h1 id="active-flow-title">Chọn luồng chạy code</h1>
           <p id="active-flow-desc">Chọn một luồng nghiệp vụ bên trái để bắt đầu khám phá luồng chạy chi tiết.</p>
         </div>
@@ -77,6 +77,19 @@
           </button>
         </div>
       </header>
+
+      <!-- PRESENTATION SCRIPT BANNER -->
+      <div id="presentation-script-box" class="presentation-script-box" style="display: none;">
+        <div class="pres-header">
+          <div class="pres-title">
+            <span>🎙️ KỊCH BẢN THUYẾT TRÌNH CỦA BẠN (CHẠY TỪ FILE NÀO SANG FILE NÀO)</span>
+          </div>
+          <button class="copy-code-btn" id="copy-presentation-btn" style="font-size: 11px; padding: 4px 10px; background-color: var(--primary); color: white; border: none;">📋 Sao chép bài nói</button>
+        </div>
+        <div class="pres-body" id="presentation-script-text">
+          <!-- Presentation text dynamically injected here -->
+        </div>
+      </div>
 
       <!-- CONTENT PANES -->
       <div class="content-split-pane">

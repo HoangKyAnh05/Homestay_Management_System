@@ -44,33 +44,46 @@ public class RoomServiceImpl implements RoomService {
     private final RoomImageRepository roomImageRepository;
     private final BookingDetailRepository bookingDetailRepository;
     private final RoomPriceConfigRepository roomPriceConfigRepository;
+    private final com.homestayManagement.homestayManagement.repository.RoomIncidentRepository roomIncidentRepository;
 
     public RoomServiceImpl(
             RoomTypeRepository roomTypeRepository,
             RoomRepository roomRepository,
             RoomImageRepository roomImageRepository,
             BookingDetailRepository bookingDetailRepository,
-            RoomPriceConfigRepository roomPriceConfigRepository
+            RoomPriceConfigRepository roomPriceConfigRepository,
+            com.homestayManagement.homestayManagement.repository.RoomIncidentRepository roomIncidentRepository
     ) {
         this.roomTypeRepository = roomTypeRepository;
         this.roomRepository = roomRepository;
         this.roomImageRepository = roomImageRepository;
         this.bookingDetailRepository = bookingDetailRepository;
         this.roomPriceConfigRepository = roomPriceConfigRepository;
+        this.roomIncidentRepository = roomIncidentRepository;
+    }
+
+    private boolean isRoomAvailable(Room room, java.util.Set<Long> inProgressRoomIds) {
+        if (room == null) return false;
+        if ("MAINTENANCE".equalsIgnoreCase(room.getStatus())) return false;
+        if (inProgressRoomIds != null && inProgressRoomIds.contains(room.getId())) return false;
+        return true;
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<RoomTypeResponse> getAllRoomTypes() {
+        java.util.Set<Long> inProgressRoomIds = new java.util.HashSet<>(roomIncidentRepository.findRoomIdsWithInProgressIncidents());
         return roomTypeRepository.findAll().stream()
-                .map(this::toRoomTypeResponse)
+                .map(rt -> toRoomTypeResponse(rt, inProgressRoomIds))
                 .toList();
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<RoomPublicResponse> getAllPublicRooms() {
+        java.util.Set<Long> inProgressRoomIds = new java.util.HashSet<>(roomIncidentRepository.findRoomIdsWithInProgressIncidents());
         return roomRepository.findAllWithRoomType().stream()
+                .filter(room -> isRoomAvailable(room, inProgressRoomIds))
                 .map(this::toPublicRoomResponse)
                 .sorted(Comparator.comparing(RoomPublicResponse::roomNumber, Comparator.nullsLast(String::compareToIgnoreCase)))
                 .toList();
@@ -108,6 +121,18 @@ public class RoomServiceImpl implements RoomService {
                         detail.getStatus()
                 ))
                 .toList();
+
+        java.util.Set<Long> inProgressRoomIds = new java.util.HashSet<>(roomIncidentRepository.findRoomIdsWithInProgressIncidents());
+        if (!isRoomAvailable(room, inProgressRoomIds)) {
+            List<RoomBusySlotResponse> blockedSlots = new java.util.ArrayList<>(busySlots);
+            blockedSlots.add(new RoomBusySlotResponse(
+                    -1L,
+                    startDate.atStartOfDay(),
+                    endDate.plusDays(30).atStartOfDay(),
+                    "MAINTENANCE"
+            ));
+            busySlots = blockedSlots;
+        }
 
         return new RoomDetailPublicResponse(
                 room.getId(),
@@ -153,8 +178,9 @@ public class RoomServiceImpl implements RoomService {
         int adultsPerRoom = (int) Math.ceil((adults != null ? adults : 1) / (double) requestedRooms);
         int childrenPerRoom = (int) Math.ceil((children != null ? children : 0) / (double) requestedRooms);
         String dayType = isWeekend(checkInDate) ? "WEEKEND" : "WEEKDAY";
+        java.util.Set<Long> inProgressRoomIds = new java.util.HashSet<>(roomIncidentRepository.findRoomIdsWithInProgressIncidents());
         Map<Long, Long> totalRoomsByType = roomRepository.findAllWithRoomType().stream()
-                .filter(room -> room.getRoomType() != null)
+                .filter(room -> room.getRoomType() != null && isRoomAvailable(room, inProgressRoomIds))
                 .collect(Collectors.groupingBy(room -> room.getRoomType().getId(), Collectors.counting()));
 
         return roomTypeRepository.findAll().stream()
@@ -299,8 +325,11 @@ public class RoomServiceImpl implements RoomService {
         );
     }
 
-    private RoomTypeResponse toRoomTypeResponse(RoomType roomType) {
+    private RoomTypeResponse toRoomTypeResponse(RoomType roomType, java.util.Set<Long> inProgressRoomIds) {
         List<Room> rooms = roomRepository.findByRoomTypeId(roomType.getId());
+        int availableRooms = (int) rooms.stream()
+                .filter(r -> isRoomAvailable(r, inProgressRoomIds))
+                .count();
         List<String> allUrls = rooms.stream()
                 .flatMap(room -> roomImageRepository.findByRoomId(room.getId()).stream())
                 .sorted(Comparator.comparing(RoomImage::isPrimary).reversed().thenComparing(RoomImage::getId))
@@ -321,7 +350,7 @@ public class RoomServiceImpl implements RoomService {
                 findDisplayPrice(roomType.getId(), "WEEKDAY"),
                 findDisplayPrice(roomType.getId(), "WEEKEND"),
                 findDisplayRentType(roomType.getId()),
-                rooms.size(),
+                availableRooms,
                 primaryUrl,
                 allUrls,
                 prices
@@ -335,6 +364,8 @@ public class RoomServiceImpl implements RoomService {
                 .min(Comparator.comparing(RoomPriceConfig::getPrice))
                 .or(() -> roomPriceConfigRepository.findByRoomTypeIdWithPolicy(roomTypeId).stream()
                         .filter(config -> dayType.equalsIgnoreCase(config.getDayType()))
+                        .min(Comparator.comparing(RoomPriceConfig::getPrice)))
+                .or(() -> roomPriceConfigRepository.findByRoomTypeIdWithPolicy(roomTypeId).stream()
                         .min(Comparator.comparing(RoomPriceConfig::getPrice)))
                 .map(RoomPriceConfig::getPrice)
                 .orElse(BigDecimal.ZERO);

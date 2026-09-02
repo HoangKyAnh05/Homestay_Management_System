@@ -90,6 +90,32 @@ public class Booking {
     @Column(name = "customer_feedback_at")
     private LocalDateTime customerFeedbackAt;
 
+    @Column(name = "cancellation_reason", length = 1000)
+    private String cancellationReason;
+
+    @Column(name = "cancelled_at")
+    private LocalDateTime cancelledAt;
+
+    @Column(name = "refund_rate")
+    private Integer refundRate;
+
+    @Builder.Default
+    @Column(name = "refund_amount", precision = 10, scale = 2)
+    private BigDecimal refundAmount = BigDecimal.ZERO;
+
+    @Builder.Default
+    @Column(name = "refund_status", length = 30)
+    private String refundStatus = "NO_REFUND";
+
+    @Column(name = "refund_info", length = 500)
+    private String refundInfo;
+
+    @Column(name = "refund_completed_at")
+    private LocalDateTime refundCompletedAt;
+
+    @Column(name = "refund_handled_by", length = 100)
+    private String refundHandledBy;
+
     public String getBookingCode() {
         if (bookingCode != null && !bookingCode.isBlank()) {
             return bookingCode;

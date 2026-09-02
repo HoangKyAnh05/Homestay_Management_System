@@ -3,6 +3,7 @@ import AdminRoomsPage from './pages/Admin/AdminRoomsPage'
 import AdminLoginPage from './pages/Admin/AdminLoginPage'
 import AdminInvoicesPage from './pages/Admin/AdminInvoicesPage'
 import AdminBookingsPage from './pages/Admin/AdminBookingsPage'
+import AdminCancellationsPage from './pages/Admin/AdminCancellationsPage'
 import AdminCheckInLogsPage from './pages/Admin/AdminCheckInLogsPage'
 import AdminHousekeepingChecklistsPage from './pages/Admin/AdminHousekeepingChecklistsPage'
 import AdminHousekeepingCalendarPage from './pages/Admin/AdminHousekeepingCalendarPage'
@@ -14,6 +15,8 @@ import AdminReviewsPage from './pages/Admin/AdminReviewsPage'
 import CustomerAiChat from './components/CustomerAiChat/CustomerAiChat'
 import DashboardPage from './pages/Admin/DashboardPage'
 import HousekeepingPage from './pages/Admin/HousekeepingPage'
+import AdminIncidentsPage from './pages/Admin/AdminIncidentsPage'
+import AdminShiftHandoversPage from './pages/Admin/AdminShiftHandoversPage'
 import { MarketingAIAgentPage, MarketingPostLogsPage, MarketingVouchersPage } from './pages/Admin/MarketingPages'
 import ReceptionistOverviewPage from './pages/Admin/ReceptionistOverviewPage'
 import BookingHistoryPage from './pages/BookingHistory/BookingHistoryPage'
@@ -28,6 +31,7 @@ import RoomsPage from './pages/Rooms/RoomsPage'
 import StayPage from './pages/Stay/StayPage'
 import StayActivationPage from './pages/Stay/StayActivationPage'
 import WishlistPage from './pages/Wishlist/WishlistPage'
+import LandingPage from './pages/Landing/LandingPage'
 import { getStoredUser } from './services/authService'
 import { STAFF_ROLES, roleCanAccess, roleDefaultPath } from './utils/roleUtils'
 
@@ -103,6 +107,9 @@ function App() {
     return () => document.removeEventListener('click', handleInternalLink)
   }, [])
 
+  if (currentPath === '/landing' || currentPath === '/sanctuary' || currentPath === '/komorebi') {
+    return <LandingPage />
+  }
   if (currentPath === '/login') return <LoginPage />
   if (currentPath === '/register') return <RegisterPage />
   if (currentPath === '/forgot') return <ForgotPasswordPage />
@@ -129,8 +136,7 @@ function App() {
   if (currentPath.startsWith('/admin')) {
     const user = getStoredUser()
     if (!user || !STAFF_ROLES.has(user.role)) {
-      window.location.replace('/admin/login')
-      return null
+      return <AdminLoginPage />
     }
 
     const role = user.role
@@ -154,10 +160,12 @@ function App() {
     if (currentPath === '/admin/rooms') return <AdminRoomsPage />
     if (currentPath === '/admin/bookings') return <AdminBookingsPage />
     if (currentPath === '/admin/check-in-logs') return <AdminCheckInLogsPage />
+    if (currentPath === '/admin/cancellations') return <AdminCancellationsPage />
     if (currentPath === '/admin/services/categories') return <AdminServiceCategoriesPage />
     if (currentPath === '/admin/services/surcharges') return <AdminSurchargesPage />
     if (currentPath === '/admin/rules-penalties') return <AdminRulesPenaltiesPage />
     if (currentPath === '/admin/invoices') return <AdminInvoicesPage />
+    if (currentPath === '/admin/shifts') return <AdminShiftHandoversPage />
     if (currentPath === '/admin/reviews') return <AdminReviewsPage />
     if (currentPath === '/admin/housekeeping') {
       window.location.replace('/admin/housekeeping/tasks')
@@ -169,6 +177,9 @@ function App() {
     }
     if (currentPath === '/admin/housekeeping/checklists') {
       return <AdminHousekeepingChecklistsPage />
+    }
+    if (currentPath === '/admin/housekeeping/incidents' || currentPath === '/admin/incidents') {
+      return <AdminIncidentsPage />
     }
     if (currentPath === '/admin/receptionist') return <ReceptionistOverviewPage />
     if (currentPath === '/admin/marketing/ai-agent') return <MarketingAIAgentPage />

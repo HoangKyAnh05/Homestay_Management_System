@@ -1,0 +1,663 @@
+/* Admin Cancellations & Refund Management */
+.ac-page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 8px 0 32px;
+}
+
+/* Metric Cards */
+.ac-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.ac-metric-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.ac-metric-card--pending {
+  border-color: #fed7aa;
+  background: #fffbf5;
+}
+
+.ac-metric-card--completed {
+  border-color: #bbf7d0;
+  background: #f7fee7;
+}
+
+.ac-metric-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.ac-metric-value {
+  font-size: 28px;
+  font-weight: 900;
+  color: #1e293b;
+  line-height: 1.15;
+}
+
+.ac-text-pending {
+  color: #ea580c;
+}
+
+.ac-text-completed {
+  color: #16a34a;
+}
+
+.ac-metric-sub {
+  font-size: 12.5px;
+  color: #64748b;
+}
+
+.ac-metric-sub strong {
+  color: #1e293b;
+}
+
+/* Toast & Error Banners */
+.ac-toast-banner {
+  padding: 10px 16px;
+  background: #dcfce7;
+  color: #15803d;
+  border: 1px solid #86efac;
+  border-radius: 8px;
+  font-size: 13.5px;
+  font-weight: 600;
+  animation: fadeIn 0.2s ease-in;
+}
+
+.ac-error-banner {
+  padding: 12px 16px;
+  background: #fee2e2;
+  color: #b91c1c;
+  border: 1px solid #fca5a5;
+  border-radius: 8px;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Toolbar & Filter Tabs */
+.ac-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  background: #ffffff;
+  padding: 14px 18px;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+}
+
+.ac-search-box {
+  position: relative;
+  flex: 1;
+  min-width: 280px;
+  max-width: 460px;
+  display: flex;
+  align-items: center;
+}
+
+.ac-search-icon {
+  position: absolute;
+  left: 12px;
+  width: 17px;
+  height: 17px;
+  stroke: #94a3b8;
+  stroke-width: 2;
+  fill: none;
+  pointer-events: none;
+}
+
+.ac-search-box input {
+  width: 100%;
+  padding: 9px 36px 9px 38px;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  font-size: 13.5px;
+  color: #1e293b;
+  outline: none;
+  transition: all 0.15s ease;
+}
+
+.ac-search-box input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.ac-clear-btn {
+  position: absolute;
+  right: 12px;
+  background: none;
+  border: none;
+  font-size: 18px;
+  color: #94a3b8;
+  cursor: pointer;
+}
+
+.ac-filter-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ac-tab-btn {
+  padding: 8px 14px;
+  background: #f1f5f9;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.ac-tab-btn:hover {
+  background: #e2e8f0;
+  color: #1e293b;
+}
+
+.ac-tab-btn.is-active {
+  background: #1e293b;
+  color: #ffffff;
+}
+
+.ac-tab-btn--pending.is-active {
+  background: #ea580c;
+  color: #ffffff;
+}
+
+.ac-tab-btn--completed.is-active {
+  background: #16a34a;
+  color: #ffffff;
+}
+
+/* Table */
+.ac-table-container {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  overflow-x: auto;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.ac-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 13.5px;
+}
+
+.ac-table th {
+  background: #f8fafc;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 12px 16px;
+  border-bottom: 1.5px solid #e2e8f0;
+  white-space: nowrap;
+}
+
+.ac-table td {
+  padding: 14px 16px;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: middle;
+  color: #1e293b;
+}
+
+.ac-table tbody tr:hover {
+  background: #fafafa;
+}
+
+.ac-row--pending {
+  background: #fffdfa;
+}
+
+.ac-booking-code-box {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ac-booking-code-box strong {
+  font-size: 14px;
+  color: #1d4ed8;
+  font-weight: 800;
+}
+
+.ac-mini-copy-btn {
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 11px;
+  padding: 2px 5px;
+  cursor: pointer;
+  opacity: 0.8;
+  transition: opacity 0.15s;
+}
+
+.ac-mini-copy-btn:hover {
+  opacity: 1;
+  background: #e2e8f0;
+}
+
+/* Customer Cell */
+.ac-customer-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.ac-customer-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.ac-customer-sub {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.ac-clickable-copy {
+  cursor: pointer;
+  color: #0369a1;
+  font-weight: 600;
+}
+
+.ac-clickable-copy:hover {
+  text-decoration: underline;
+}
+
+.ac-email-text {
+  color: #64748b;
+}
+
+/* Time Cell */
+.ac-time-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 12.5px;
+}
+
+.ac-time-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ac-time-label {
+  font-size: 11px;
+  color: #94a3b8;
+  font-weight: 700;
+}
+
+.ac-cancelled-time {
+  color: #b91c1c;
+  font-weight: 600;
+}
+
+/* Reason Cell */
+.ac-reason-cell {
+  max-width: 200px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 13px;
+  color: #334155;
+  font-style: italic;
+}
+
+/* Amount Cells */
+.ac-paid-amount {
+  font-size: 14px;
+  color: #475569;
+}
+
+.ac-refund-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ac-refund-amount {
+  font-size: 15px;
+  font-weight: 900;
+  color: #dc2626;
+}
+
+.ac-rate-badge {
+  display: inline-block;
+  align-self: flex-start;
+  padding: 2px 7px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.ac-rate-badge--green {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.ac-rate-badge--yellow {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.ac-rate-badge--gray {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+/* Refund Info Cell */
+.ac-refund-info-cell {
+  max-width: 240px;
+}
+
+.ac-refund-info-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 12.5px;
+  line-height: 1.35;
+  color: #334155;
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 6px;
+  padding: 6px 8px;
+}
+
+/* Status Badges */
+.ac-status-badge {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 5px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.ac-status-badge--pending {
+  background: #fff7ed;
+  color: #c2410c;
+  border: 1px solid #fed7aa;
+}
+
+.ac-status-badge--refunded {
+  background: #f0fdf4;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+}
+
+.ac-status-badge--no-refund {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.ac-handler-sub {
+  font-size: 11px;
+  color: #166534;
+  font-weight: 600;
+}
+
+.ac-time-sub {
+  font-size: 10.5px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+/* Action Buttons */
+.ac-action-btn {
+  padding: 7px 14px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  border: none;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.ac-action-btn--refund {
+  background: #16a34a;
+  color: #ffffff;
+  box-shadow: 0 1px 3px rgba(22, 163, 74, 0.3);
+}
+
+.ac-action-btn--refund:hover:not(:disabled) {
+  background: #15803d;
+  transform: translateY(-1px);
+}
+
+.ac-action-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.ac-text-muted {
+  color: #94a3b8;
+  font-size: 12.5px;
+}
+
+/* Empty & Loading States */
+.ac-loading-state,
+.ac-empty-state {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 48px 24px;
+  text-align: center;
+  color: #64748b;
+}
+
+.ac-empty-icon {
+  font-size: 40px;
+  margin-bottom: 10px;
+}
+
+.ac-empty-state h3 {
+  margin: 0 0 6px;
+  color: #1e293b;
+  font-size: 17px;
+}
+
+.ac-empty-state p {
+  margin: 0;
+  font-size: 13.5px;
+}
+
+.ac-spinner {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border: 2px solid #cbd5e1;
+  border-top-color: #1e293b;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
+/* Confirmation Modal */
+.ac-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(4px);
+  display: grid;
+  place-items: center;
+  z-index: 9999;
+  padding: 20px;
+}
+
+.ac-modal-card {
+  background: #ffffff;
+  border-radius: 18px;
+  width: 100%;
+  max-width: 520px;
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+  animation: modalScale 0.2s ease-out;
+}
+
+@keyframes modalScale {
+  from { transform: scale(0.96); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.ac-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 22px 14px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.ac-modal-header h3 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.ac-modal-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: #94a3b8;
+  cursor: pointer;
+}
+
+.ac-modal-body {
+  padding: 20px 22px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ac-modal-info-box {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ac-modal-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13.5px;
+  color: #475569;
+}
+
+.ac-modal-row strong {
+  color: #0f172a;
+}
+
+.ac-modal-refund-highlight {
+  font-size: 18px;
+  color: #dc2626;
+  font-weight: 900;
+}
+
+.ac-modal-divider {
+  height: 1px;
+  background: #e2e8f0;
+  margin: 4px 0;
+}
+
+.ac-modal-bank-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ac-modal-bank-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.ac-modal-bank-text {
+  font-size: 13.5px;
+  color: #0f172a;
+  background: #ffffff;
+  border: 1px dashed #cbd5e1;
+  padding: 8px 12px;
+  border-radius: 8px;
+  white-space: pre-line;
+  line-height: 1.4;
+}
+
+.ac-modal-guide-text {
+  margin: 0;
+  font-size: 13px;
+  color: #b45309;
+  background: #fffbeb;
+  border: 1px solid #fef3c7;
+  padding: 10px 14px;
+  border-radius: 8px;
+  line-height: 1.45;
+}
+
+.ac-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.ac-btn-cancel {
+  padding: 10px 16px;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #475569;
+  cursor: pointer;
+}
+
+.ac-btn-confirm {
+  padding: 10px 18px;
+  background: #16a34a;
+  border: none;
+  border-radius: 8px;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #ffffff;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(22, 163, 74, 0.3);
+}
+
+.ac-btn-confirm:hover:not(:disabled) {
+  background: #15803d;
+}

@@ -21,6 +21,8 @@ public record AdminBookingScheduleItemResponse(
         BigDecimal priceAtBooking,
         String rentType,
         String bookingStatus,
-        String detailStatus
+        String detailStatus,
+        Integer extensionHours,
+        BigDecimal extensionAmount
 ) {
 }

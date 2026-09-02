@@ -1,444 +1,486 @@
-// CONFIGURATION FOR ALL 7 CORE CODE FLOWS
+// CONFIGURATION FOR ALL CORE CODE FLOWS
 window.FLOWS_CONFIG = {
-  "auth_security": {
-    "title": "Xác thực & Bảo mật (Auth & Security)",
-    "desc": "Luồng đăng nhập, xử lý phân quyền JWT, mã hóa mật khẩu, và bảo mật các endpoints hệ thống.",
+  "auth_login": {
+    "title": "STT 1: 3.2.1 Email & Password Login",
+    "desc": "Hướng dẫn đăng nhập bằng email và mật khẩu, lưu token JWT, chuyển hướng theo role.",
+    "presentationScript": "<strong>Kịch bản thuyết trình (Luồng 3.2.1):</strong><br>1. Người dùng nhập credentials trên UI tại file <code>LoginPage.jsx</code> (Khách) hoặc <code>AdminLoginPage.jsx</code> (Admin/Staff), chuyển qua component <code>LoginForm.jsx</code> để validate không để rỗng email/mật khẩu.<br>2. <code>LoginForm.jsx</code> gọi API <code>POST /api/auth/login</code> (hoặc <code>/admin-login</code>) tới <code>AuthController.java</code>.<br>3. Request đi qua <code>SecurityConfig.java</code> (Spring Security permitAll cho endpoint auth).<br>4. Lớp <code>AuthServiceImpl.java</code> kiểm tra mật khẩu BCrypt với DB <code>UserRepository.java</code>, sinh chuỗi JWT Bearer Token chứa Role (<code>ROLE_CUSTOMER</code> / <code>ROLE_ADMIN</code> / <code>ROLE_STAFF</code>).<br>5. <code>AuthResponseDto</code> trả về Client. Frontend lưu JWT Token vào <code>localStorage</code> và chuyển hướng (redirect) theo role về <code>/</code> hoặc <code>/admin/dashboard</code>.",
     "steps": [
+      {
+        "name": "LoginPage.jsx",
+        "path": "frontendHomestayManagement/src/pages/Login/LoginPage.jsx",
+        "layer": "Frontend UI",
+        "desc": "Trang đăng nhập dành cho khách hàng. Thu nhận email/mật khẩu.",
+        "dto": "LoginRequest (email, password)",
+        "validation": "Kiểm tra định dạng email và mật khẩu không được rỗng.",
+        "security": "Public Access."
+      },
+      {
+        "name": "AdminLoginPage.jsx",
+        "path": "frontendHomestayManagement/src/pages/Admin/AdminLoginPage.jsx",
+        "layer": "Frontend UI",
+        "desc": "Trang đăng nhập dành cho Quản trị viên và Lễ tân/Nhân viên.",
+        "dto": "AdminLoginRequest (usernameOrEmail, password)",
+        "validation": "Validate credentials tài khoản quản trị.",
+        "security": "Phân định quyền truy cập trang quản trị."
+      },
       {
         "name": "LoginForm.jsx",
         "path": "frontendHomestayManagement/src/components/LoginForm/LoginForm.jsx",
-        "layer": "Frontend UI",
-        "desc": "Nhận thông tin email và mật khẩu từ khách hàng hoặc quản trị viên. Xử lý sự kiện submit, validate form cơ bản và gọi authService để thực hiện API request.",
-        "dto": "LoginRequest (email, password)",
-        "validation": "Kiểm tra email đúng định dạng, mật khẩu không được trống.",
-        "security": "Không yêu cầu xác thực để vào trang này."
-      },
-      {
-        "name": "authService.js",
-        "path": "frontendHomestayManagement/src/services/authService.js",
-        "layer": "API Client",
-        "desc": "Sử dụng Axios gửi POST request lên backend. Khi nhận phản hồi thành công, lưu mã JWT token vào LocalStorage để gửi kèm trong Authorization header của các request sau.",
-        "dto": "JWTAuthResponse (accessToken, tokenType = 'Bearer')",
-        "validation": "Kiểm tra mã phản hồi HTTP 200 OK.",
-        "security": "Thực hiện lưu trữ token bảo mật."
+        "layer": "Frontend Component",
+        "desc": "Component Form đăng nhập dùng chung, xử lý submit và tương tác API Auth.",
+        "dto": "Form Submit Payload",
+        "validation": "Validate dữ liệu đầu vào client-side.",
+        "security": "Nhận và chuyển giao JWT Token an toàn."
       },
       {
         "name": "AuthController.java",
         "path": "homestayManagement/src/main/java/com/homestayManagement/homestayManagement/controller/AuthController.java",
         "layer": "Controller",
-        "desc": "REST API Controller nhận POST request đến '/api/auth/login'. Sử dụng Spring AuthenticationManager để xác thực credentials nhận vào.",
-        "dto": "LoginDto (usernameOrEmail, password)",
-        "validation": "@Valid tự động kiểm tra dữ liệu đầu vào không rỗng.",
-        "security": "Endpoint được mở công khai (permitAll) trong SecurityConfig."
+        "desc": "REST Controller xử lý các endpoint xác thực: '/api/auth/login' và '/api/auth/admin-login'.",
+        "dto": "LoginDto, AuthResponseDto (accessToken, tokenType, role)",
+        "validation": "@Valid kiểm tra tham số đầu vào.",
+        "security": "Endpoint công khai (permitAll)."
+      },
+      {
+        "name": "SecurityConfig.java",
+        "path": "homestayManagement/src/main/java/com/homestayManagement/homestayManagement/config/SecurityConfig.java",
+        "layer": "System Security Config",
+        "desc": "Cấu hình bảo mật Spring Security, CORS, mã hóa mật khẩu BCrypt và JwtAuthenticationFilter.",
+        "dto": "SecurityFilterChain Bean",
+        "validation": "Phân quyền chi tiết theo Role (ADMIN, STAFF, CUSTOMER).",
+        "security": "Chống tấn công CSRF, bảo vệ API."
       },
       {
         "name": "AuthServiceImpl.java",
         "path": "homestayManagement/src/main/java/com/homestayManagement/homestayManagement/service/impl/AuthServiceImpl.java",
         "layer": "Service",
-        "desc": "Thực hiện xác thực qua AuthenticationManager. Nếu khớp credentials, sinh JWT token dựa trên thông tin người dùng và phân quyền (Roles) rồi trả về cho Controller.",
-        "dto": "JWTAuthResponse chứa mã token đã được ký mã hóa SHA-256.",
-        "validation": "Ném ra BadCredentialsException nếu tài khoản hoặc mật khẩu sai.",
-        "security": "Mật khẩu người dùng được so khớp thông qua BCryptPasswordEncoder."
-      },
-      {
-        "name": "AccountRepository.java",
-        "path": "homestayManagement/src/main/java/com/homestayManagement/homestayManagement/repository/AccountRepository.java",
-        "layer": "Repository",
-        "desc": "Thực hiện tìm kiếm thông tin tài khoản người dùng từ database thông qua Spring Data JPA bằng email hoặc username.",
-        "dto": "Entity Account liên kết với Role và Employee/Customer.",
-        "validation": "Tìm kiếm trả về Optional để tránh lỗi NullPointerException.",
-        "security": "Chỉ đọc dữ liệu bảo mật mật khẩu đã được hash."
+        "desc": "Xác thực tài khoản với DB UserRepository và sinh JWT Token chứa danh sách quyền.",
+        "dto": "AuthResponseDto",
+        "validation": "Đối soát mật khẩu đã mã hóa BCrypt.",
+        "security": "Ký điện tử JWT với Secret Key."
       }
     ]
   },
-  "booking_mgmt": {
-    "title": "Quản lý Đặt phòng (Booking Management)",
-    "desc": "Luồng đặt phòng của khách hàng và quy trình tiếp nhận, phê duyệt của quản trị viên hệ thống.",
+  "auth_logout": {
+    "title": "STT 2: 3.2.3 Logout",
+    "desc": "Hướng dẫn đăng xuất, xoá token khỏi localStorage, kết thúc phiên làm việc.",
+    "presentationScript": "<strong>Kịch bản thuyết trình (Luồng 3.2.3):</strong><br>1. Người dùng bấm nút 'Đăng xuất' trên <code>Header.jsx</code> (Khách hàng) hoặc trên thanh điều hướng <code>AdminLayout.jsx</code> (Admin/Staff).<br>2. Sự kiện kích hoạt hàm <code>logout()</code> trong <code>AuthContext.jsx</code>.<br>3. <code>AuthContext.jsx</code> xóa sạch Token và thông tin User bằng lệnh <code>localStorage.removeItem('token')</code> và <code>localStorage.removeItem('user')</code>.<br>4. Reset state <code>user = null</code>, gỡ bỏ Authorization Bearer Header khỏi các request tiếp theo.<br>5. Điều hướng người dùng về trang đăng nhập <code>LoginPage.jsx</code> / <code>AdminLoginPage.jsx</code>, hoàn tất kết thúc phiên làm việc.",
     "steps": [
       {
-        "name": "RoomsPage.jsx",
-        "path": "frontendHomestayManagement/src/pages/Rooms/RoomsPage.jsx",
-        "layer": "Frontend UI",
-        "desc": "Trang hiển thị danh sách phòng trống, cho phép khách lọc phòng theo ngày check-in/check-out và bấm đặt phòng.",
-        "dto": "Booking parameters (checkInDate, checkOutDate, roomTypeId)",
-        "validation": "Ngày check-in phải lớn hơn hoặc bằng ngày hiện tại, ngày check-out phải sau ngày check-in.",
-        "security": "Khách vãng lai có thể xem phòng, nhưng cần đăng nhập để tiến hành đặt."
+        "name": "Header.jsx",
+        "path": "frontendHomestayManagement/src/components/Header/Header.jsx",
+        "layer": "Frontend UI Component",
+        "desc": "Thanh Header chính chứa nút Đăng xuất dành cho khách hàng.",
+        "dto": "User Context State",
+        "validation": "Kiểm tra trạng thái đã đăng nhập trước khi hiển thị nút Logout.",
+        "security": "Trigger sự kiện hủy session."
       },
       {
-        "name": "PublicBookingController.java",
-        "path": "homestayManagement/src/main/java/com/homestayManagement/homestayManagement/controller/PublicBookingController.java",
-        "layer": "Controller",
-        "desc": "Nhận request tạo đơn đặt phòng từ khách hàng tại API '/api/public/bookings'. Nhận request tính giá dự kiến.",
-        "dto": "BookingRequestDto (roomTypeId, checkInDate, checkOutDate, guestInfo...)",
-        "validation": "Kiểm tra định dạng ngày tháng và thông tin cá nhân khách hàng.",
-        "security": "Yêu cầu quyền truy cập vai trò CUSTOMER (JWT token)."
+        "name": "AdminLayout.jsx",
+        "path": "frontendHomestayManagement/src/pages/Admin/AdminLayout.jsx",
+        "layer": "Frontend Admin Layout",
+        "desc": "Khung giao diện Admin chứa nút Đăng xuất dành cho Quản trị viên và Nhân viên.",
+        "dto": "Admin Session State",
+        "validation": "Xóa thông tin quản trị viên khỏi bộ nhớ tạm.",
+        "security": "Bảo vệ các route quản trị sau khi đăng xuất."
       },
       {
-        "name": "PublicBookingServiceImpl.java",
-        "path": "homestayManagement/src/main/java/com/homestayManagement/homestayManagement/service/impl/PublicBookingServiceImpl.java",
-        "layer": "Service",
-        "desc": "Thực hiện nghiệp vụ kiểm tra phòng trống trên lịch thực tế, tính toán phụ thu check-in/out, áp dụng mã giảm giá và tính toán tổng tiền thanh toán.",
-        "dto": "Tạo thực thể Booking và BookingDetail tương ứng.",
-        "validation": "Kiểm tra phòng đã bị đặt chưa trong khoảng thời gian yêu cầu. Ném ra ngoại lệ nếu phòng bận.",
-        "security": "Ghi nhận mã UserID từ Token để gán chủ sở hữu đơn đặt."
-      },
-      {
-        "name": "BookingRepository.java",
-        "path": "homestayManagement/src/main/java/com/homestayManagement/homestayManagement/repository/BookingRepository.java",
-        "layer": "Repository",
-        "desc": "Ghi đơn đặt phòng mới vào cơ sở dữ liệu MySQL, khóa lịch phòng trong bảng RoomSchedule.",
-        "dto": "Thực thể JPA Booking cập nhật trạng thái PENDING_PAYMENT.",
-        "validation": "Lưu Cascade để đồng thời lưu cả chi tiết hóa đơn đặt phòng.",
-        "security": "Giao dịch được quản lý bởi annotation @Transactional."
+        "name": "AuthContext.jsx",
+        "path": "frontendHomestayManagement/src/context/AuthContext.jsx",
+        "layer": "Frontend State Management",
+        "desc": "Context quản lý trạng thái xác thực toàn cục, chứa hàm logout() thực thi dọn dẹp localStorage.",
+        "dto": "Context Value (user, token, logout)",
+        "validation": "Clear hoàn toàn localStorage và session state.",
+        "security": "Vô hiệu hóa token phía client."
       }
     ]
   },
-  "housekeeping": {
-    "title": "Quản lý Dọn phòng (Housekeeping)",
-    "desc": "Luồng lên lịch dọn dẹp phòng, phân công công việc cho nhân viên dọn phòng và cập nhật checklists công việc.",
-    "steps": [
-      {
-        "name": "AdminHousekeepingCalendarPage.jsx",
-        "path": "frontendHomestayManagement/src/pages/Admin/AdminHousekeepingCalendarPage.jsx",
-        "layer": "Frontend UI",
-        "desc": "Giao diện lịch phân công dọn phòng của Admin, hoặc trang xem danh sách việc cần làm của nhân viên Housekeeping.",
-        "dto": "HousekeepingTask object",
-        "validation": "Validate nhân viên được chọn phải có role HOUSEKEEPING.",
-        "security": "Chỉ Admin, Receptionist và Housekeeping được truy cập."
-      },
-      {
-        "name": "AdminHousekeepingCalendarController.java",
-        "path": "homestayManagement/src/main/java/com/homestayManagement/homestayManagement/controller/AdminHousekeepingCalendarController.java",
-        "layer": "Controller",
-        "desc": "REST API Controller cung cấp các endpoint lấy lịch dọn phòng, cập nhật trạng thái phòng bẩn/sạch.",
-        "dto": "HousekeepingTaskDto",
-        "validation": "Validate taskId không được null.",
-        "security": "Yêu cầu quyền ADMIN hoặc RECEPTIONIST để chỉnh sửa lịch."
-      },
-      {
-        "name": "AdminHousekeepingCalendarServiceImpl.java",
-        "path": "homestayManagement/src/main/java/com/homestayManagement/homestayManagement/service/impl/AdminHousekeepingCalendarServiceImpl.java",
-        "layer": "Service",
-        "desc": "Xử lý logic tự động tạo lịch dọn dẹp khi khách check-out, gán việc cho nhân viên rảnh, cập nhật trạng thái buồng phòng.",
-        "dto": "Chuyển đổi HousekeepingTask thành Dto phản hồi.",
-        "validation": "Kiểm tra phòng có đang bận hoặc có khách ở không trước khi đổi trạng thái.",
-        "security": "Đồng bộ hóa trạng thái phòng đảm bảo dữ liệu cập nhật chính xác."
-      },
-      {
-        "name": "HousekeepingTaskRepository.java",
-        "path": "homestayManagement/src/main/java/com/homestayManagement/homestayManagement/repository/HousekeepingTaskRepository.java",
-        "layer": "Repository",
-        "desc": "Truy vấn, cập nhật trạng thái các công việc dọn dẹp trong DB dựa trên ngày và nhân viên đảm nhận.",
-        "dto": "Thực thể HousekeepingTask.",
-        "validation": "Truy vấn tùy chỉnh bằng HQL để lọc theo ngày.",
-        "security": "Truy cập dữ liệu trực tiếp qua JPA."
-      }
-    ]
-  },
-  "payment_invoice": {
-    "title": "Hóa đơn & Thanh toán (Invoice & Payment)",
-    "desc": "Luồng sinh mã QR thanh toán động và tự động khớp lệnh chuyển khoản qua webhook SePay.",
-    "steps": [
-      {
-        "name": "SePayQrPayment.jsx",
-        "path": "frontendHomestayManagement/src/components/SePayQrPayment/SePayQrPayment.jsx",
-        "layer": "Frontend UI",
-        "desc": "Hiển thị thông tin chuyển khoản và mã QR VietQR động (chứa số tài khoản, số tiền và nội dung chuyển khoản mã hóa mã đặt phòng).",
-        "dto": "Payment details (amount, content, accountNo)",
-        "validation": "Kiểm tra số tiền thanh toán khớp với giá trị hóa đơn.",
-        "security": "Thông tin mã hóa tránh giả mạo nội dung chuyển khoản."
-      },
-      {
-        "name": "SePayPaymentController.java",
-        "path": "homestayManagement/src/main/java/com/homestayManagement/homestayManagement/controller/SePayPaymentController.java",
-        "layer": "Controller",
-        "desc": "Nhận request Webhook tự động từ hệ thống SePay khi có biến động số dư tài khoản ngân hàng. Nhận POST gửi dữ liệu giao dịch.",
-        "dto": "SePayWebhookDto (transactionId, amount, content, transferDate...)",
-        "validation": "Kiểm tra chữ ký (Signature) trong HTTP Header để xác thực request đến từ SePay thật.",
-        "security": "Sử dụng API Key bảo mật để giải mã và xác thực webhook."
-      },
-      {
-        "name": "SePayPaymentServiceImpl.java",
-        "path": "homestayManagement/src/main/java/com/homestayManagement/homestayManagement/service/impl/SePayPaymentServiceImpl.java",
-        "layer": "Service",
-        "desc": "Phân tích cú pháp nội dung chuyển khoản để lấy mã Đặt phòng (Booking ID). Kiểm tra số tiền chuyển khoản có khớp với số tiền cần thanh toán của hóa đơn không. Cập nhật trạng thái Booking thành PAID, tạo hóa đơn Invoice.",
-        "dto": "Transaction logs và thực thể Payment.",
-        "validation": "Ném ngoại lệ hoặc ghi log lỗi nếu nội dung chuyển khoản sai cú pháp hoặc sai số tiền.",
-        "security": "Khóa bản ghi (Locking) để tránh xử lý trùng lặp giao dịch (Idempotency)."
-      },
-      {
-        "name": "PaymentRepository.java",
-        "path": "homestayManagement/src/main/java/com/homestayManagement/homestayManagement/repository/PaymentRepository.java",
-        "layer": "Repository",
-        "desc": "Lưu lịch sử giao dịch ngân hàng thành công vào DB và đồng bộ trạng thái thanh toán của hóa đơn.",
-        "dto": "Thực thể Payment và Invoice.",
-        "validation": "Lưu thông tin tham chiếu mã giao dịch ngân hàng gốc.",
-        "security": "Lưu dấu kiểm toán giao dịch tài chính (Audit Log)."
-      }
-    ]
-  },
-  "room_mgmt": {
-    "title": "Quản lý Phòng (Room Management)",
-    "desc": "Luồng định cấu hình loại phòng, giá cơ bản, tải lên hình ảnh phòng và chính sách cọc phòng của Admin.",
+  "dynamic_pricing_penalties": {
+    "title": "STT 3: 3.10 Dynamic Pricing & Penalties Management",
+    "desc": "Quản lý giá động theo ngày trong tuần (weekend multiplier, peak pricing) và cấu hình nội quy, mức phạt (late check‑out, hư hỏng thiết bị).",
+    "presentationScript": "<strong>Kịch bản thuyết trình (Luồng 3.10):</strong><br>1. Admin cấu hình tỷ lệ nhân giá cuối tuần, mùa cao điểm và mức phạt tại <code>AdminRoomsPage.jsx</code> (tab Giá) và <code>AdminRulesPenaltiesPage.jsx</code>.<br>2. Frontend gửi request tới <code>AdminPriceConfigController.java</code> (<code>/api/admin/price-configs</code>) và <code>AdminRulesPenaltyController.java</code> (<code>/api/admin/rules-penalties</code>).<br>3. Controller validate dữ liệu và chuyển sang <code>RoomScheduleServiceImpl.java</code> và <code>AdminRulesPenaltyServiceImpl.java</code> để tính toán giá động & khung phạt tự động.<br>4. Dữ liệu được lưu bền vững vào CSDL qua các Entity <code>DepositPolicy.java</code>, <code>RoomType.java</code>, <code>RulesPenalty.java</code>.<br>5. Khi khách đặt phòng hoặc checkout, <code>PublicBookingController.java</code> & <code>AdminBookingController.java</code> tự động áp dụng công thức giá động và phí phạt vào tổng hóa đơn.",
     "steps": [
       {
         "name": "AdminRoomsPage.jsx",
         "path": "frontendHomestayManagement/src/pages/Admin/AdminRoomsPage.jsx",
-        "layer": "Frontend UI",
-        "desc": "Quản trị viên thao tác giao diện quản lý phòng: Thêm phòng mới, cập nhật giá loại phòng, gán chính sách đặt cọc.",
-        "dto": "Room/RoomType Form Data",
-        "validation": "Kiểm tra số phòng phải là số dương, tên loại phòng không được để trống.",
-        "security": "Chỉ dành cho tài khoản Admin/Receptionist."
+        "layer": "Frontend Admin UI",
+        "desc": "Giao diện quản lý cấu hình giá phòng động, hệ số nhân cuối tuần và gói thuê homestay.",
+        "dto": "PriceConfigForm Data",
+        "validation": "Hệ số nhân giá phải lớn hơn 0.",
+        "security": "Quyền ADMIN."
       },
-      {
-        "name": "AdminRoomController.java",
-        "path": "homestayManagement/src/main/java/com/homestayManagement/homestayManagement/controller/AdminRoomController.java",
-        "layer": "Controller",
-        "desc": "REST API tiếp nhận các yêu cầu POST, PUT, DELETE quản lý phòng và loại phòng.",
-        "dto": "RoomDto, RoomTypeDto",
-        "validation": "@Valid kiểm tra định dạng dữ liệu đầu vào.",
-        "security": "Chặn các role không phải ADMIN truy cập thông qua @PreAuthorize('hasRole(\"ADMIN\")')."
-      },
-      {
-        "name": "AdminRoomServiceImpl.java",
-        "path": "homestayManagement/src/main/java/com/homestayManagement/homestayManagement/service/impl/AdminRoomServiceImpl.java",
-        "layer": "Service",
-        "desc": "Xử lý logic nghiệp vụ: Tạo phòng, kiểm tra trùng số phòng, tạo cấu hình giá mặc định và chính sách đặt cọc cho phòng mới.",
-        "dto": "Thực thể Room, RoomType.",
-        "validation": "Ném ngoại lệ RoomNumberAlreadyExistsException nếu số phòng đã tồn tại.",
-        "security": "Transaction rollback nếu gặp lỗi trong lúc lưu hình ảnh phòng."
-      },
-      {
-        "name": "RoomRepository.java",
-        "path": "homestayManagement/src/main/java/com/homestayManagement/homestayManagement/repository/RoomRepository.java",
-        "layer": "Repository",
-        "desc": "Truy xuất danh sách phòng kèm theo thông tin loại phòng và lịch trạng thái phòng.",
-        "dto": "Thực thể JPA Room.",
-        "validation": "Truy vấn tự sinh và JPQL tùy chỉnh.",
-        "security": "Giao tiếp an toàn với cơ sở dữ liệu."
-      }
-    ]
-  },
-  "services_mgmt": {
-    "title": "Dịch vụ & Tiện ích (Services & Amenities)",
-    "desc": "Luồng quản lý danh mục dịch vụ đi kèm (như minibar, giặt là, thuê xe) và các tiện ích tại phòng.",
-    "steps": [
-      {
-        "name": "AdminServiceCategoriesPage.jsx",
-        "path": "frontendHomestayManagement/src/pages/Admin/AdminServiceCategoriesPage.jsx",
-        "layer": "Frontend UI",
-        "desc": "Trang cấu hình dịch vụ, thiết lập danh mục mặt hàng minibar và mức giá bán lẻ.",
-        "dto": "ServiceCatalog Form Data",
-        "validation": "Giá dịch vụ phải lớn hơn 0.",
-        "security": "Chỉ dành cho Admin và nhân viên Lễ tân."
-      },
-      {
-        "name": "AdminServiceCatalogController.java",
-        "path": "homestayManagement/src/main/java/com/homestayManagement/homestayManagement/controller/AdminServiceCatalogController.java",
-        "layer": "Controller",
-        "desc": "Tiếp nhận các HTTP request lấy danh sách dịch vụ hoặc tạo mới các mặt hàng minibar.",
-        "dto": "ServiceCatalogDto",
-        "validation": "Validate tên dịch vụ tối thiểu 3 ký tự.",
-        "security": "Quyền truy cập ADMIN hoặc RECEPTIONIST."
-      },
-      {
-        "name": "AdminServiceCatalogServiceImpl.java",
-        "path": "homestayManagement/src/main/java/com/homestayManagement/homestayManagement/service/impl/AdminServiceCatalogServiceImpl.java",
-        "layer": "Service",
-        "desc": "Xử lý logic CRUD dịch vụ, kiểm tra số lượng tồn kho minibar và cập nhật giá bán.",
-        "dto": "Thực thể ServiceCatalog.",
-        "validation": "Ném ngoại lệ ServiceNotFoundException nếu ID dịch vụ không khớp.",
-        "security": "Đồng bộ hóa dữ liệu danh mục tiện ích."
-      },
-      {
-        "name": "RoomMiniBarItemRepository.java",
-        "path": "homestayManagement/src/main/java/com/homestayManagement/homestayManagement/repository/RoomMiniBarItemRepository.java",
-        "layer": "Repository",
-        "desc": "Truy xuất danh sách đồ uống/đồ ăn nhẹ được xếp trong tủ lạnh của từng phòng cụ thể.",
-        "dto": "Thực thể RoomMiniBarItem.",
-        "validation": "Tải liên kết (Eager Loading) thông tin sản phẩm.",
-        "security": "Truy vấn cơ sở dữ liệu qua Hibernate."
-      }
-    ]
-  },
-  "rules_penalties": {
-    "title": "Quy định & Phụ thu (Rules & Surcharges)",
-    "desc": "Luồng quản lý quy định homestay, các khoản phụ thu check-in sớm, check-out muộn hoặc phạt vi phạm.",
-    "steps": [
       {
         "name": "AdminRulesPenaltiesPage.jsx",
         "path": "frontendHomestayManagement/src/pages/Admin/AdminRulesPenaltiesPage.jsx",
-        "layer": "Frontend UI",
-        "desc": "Giao diện quản lý các tham số phạt và bảng cấu hình phụ thu theo giờ đối với trường hợp check-in sớm hoặc check-out muộn.",
-        "dto": "RulesPenalty Form Data",
-        "validation": "Tỷ lệ phụ thu phải nằm trong khoảng 0% - 100%.",
-        "security": "Yêu cầu quyền truy cập ADMIN."
+        "layer": "Frontend Admin UI",
+        "desc": "Giao diện quản lý nội quy homestay và bảng tính phụ thu phạt check-out muộn / hư hỏng đồ.",
+        "dto": "RulesPenaltyFormData",
+        "validation": "Tỷ lệ phạt từ 0 đến 100%.",
+        "security": "Quyền ADMIN."
+      },
+      {
+        "name": "AdminPriceConfigController.java",
+        "path": "homestayManagement/src/main/java/com/homestayManagement/homestayManagement/controller/AdminPriceConfigController.java",
+        "layer": "Controller",
+        "desc": "REST API tiếp nhận thiết lập chính sách giá và tỷ lệ đặt cọc.",
+        "dto": "DepositPolicyDto, PriceConfigDto",
+        "validation": "@Valid kiểm tra định dạng dữ liệu.",
+        "security": "@PreAuthorize('hasRole(\"ADMIN\")')."
       },
       {
         "name": "AdminRulesPenaltyController.java",
         "path": "homestayManagement/src/main/java/com/homestayManagement/homestayManagement/controller/AdminRulesPenaltyController.java",
         "layer": "Controller",
-        "desc": "REST API Controller tiếp nhận cấu hình quy tắc phạt và thông số giá phụ thu từ admin.",
+        "desc": "REST API tiếp nhận thông số quy định phạt và phụ thu thời gian.",
         "dto": "RulesPenaltyDto",
-        "validation": "Đảm bảo các giá trị cấu hình không âm.",
-        "security": "Bảo vệ bởi phân quyền Spring Security cho ADMIN."
+        "validation": "@Valid kiểm tra số liệu không âm.",
+        "security": "@PreAuthorize('hasRole(\"ADMIN\")')."
       },
       {
         "name": "AdminRulesPenaltyServiceImpl.java",
         "path": "homestayManagement/src/main/java/com/homestayManagement/homestayManagement/service/impl/AdminRulesPenaltyServiceImpl.java",
         "layer": "Service",
-        "desc": "Xử lý nghiệp vụ tính toán: Dựa trên cấu hình giờ check-out muộn thực tế của khách, tính ra số tiền phạt/phụ thu tương ứng để cộng vào hóa đơn cuối cùng.",
-        "dto": "SurchargeCalculationResponse.",
-        "validation": "Tính toán chênh lệch thời gian chuẩn xác theo múi giờ hệ thống.",
-        "security": "Kiểm tra kiểm toán chỉnh sửa cấu hình giá."
+        "desc": "Xử lý logic tự động tính toán phí phạt dựa trên mốc thời gian check-out thực tế.",
+        "dto": "PenaltyCalculationResult",
+        "validation": "Tính toán chính xác chênh lệch giờ check-out.",
+        "security": "Bảo vệ thông tin cấu hình."
       },
       {
-        "name": "RulesPenaltyRepository.java",
-        "path": "homestayManagement/src/main/java/com/homestayManagement/homestayManagement/repository/RulesPenaltyRepository.java",
-        "layer": "Repository",
-        "desc": "Truy vấn danh mục quy định và các mức phụ thu từ database để hệ thống áp dụng tính toán hóa đơn.",
-        "dto": "Thực thể RulesPenalty.",
-        "validation": "Truy xuất danh sách active rules.",
-        "security": "Truy vấn trực tiếp qua JPA."
+        "name": "DepositPolicy.java",
+        "path": "homestayManagement/src/main/java/com/homestayManagement/homestayManagement/entity/DepositPolicy.java",
+        "layer": "Database Entity",
+        "desc": "Entity JPA lưu vết tỷ lệ đặt cọc và chính sách giá động.",
+        "dto": "Thực thể DepositPolicy",
+        "validation": "Ràng buộc dữ liệu bảng deposit_policies.",
+        "security": "Ánh xạ Hibernate CSDL."
       }
     ]
   },
-  "customer_ai_chat": {
-    "title": "Trợ lý AI Khách hàng (Customer AI Assistant)",
-    "desc": "Luồng tương tác tư vấn phòng trống, dịch vụ, chính sách và lịch sử đặt phòng qua mô hình GLM-5.2 trên FPT AI Factory.",
+  "invoice_sepay": {
+    "title": "STT 4: 3.11 Invoice & SePay Payment Management",
+    "desc": "Tự động tạo hoá đơn (tổng = phòng + dịch vụ + phạt – giảm giá) và xử lý thanh toán qua QR SePay (webhook tự động cập nhật trạng thái SUCCESS).",
+    "presentationScript": "<strong>Kịch bản thuyết trình (Luồng 3.11):</strong><br>1. Hệ thống kích hoạt sinh hóa đơn khi checkout trên <code>AdminInvoicesPage.jsx</code> hoặc <code>BookingHistoryPage.jsx</code> gửi request tạo hóa đơn tới <code>AdminInvoiceController.java</code>.<br>2. <code>AdminInvoiceServiceImpl.java</code> tổng hợp công thức: <code>Tổng = Phòng + Dịch vụ + Phạt - Giảm giá</code> và lưu bản ghi vào entity <code>Invoice.java</code> (trạng thái UNPAID).<br>3. Component <code>SePayQrPayment.jsx</code> hiển thị mã VietQR động chứa nội dung chuyển khoản chuẩn <code>BK9801</code>.<br>4. Khi khách chuyển tiền, SePay bắn Webhook <code>POST /api/sepay/webhook</code> tới <code>SePayPaymentController.java</code>.<br>5. <code>SePayPaymentServiceImpl.java</code> kiểm tra chữ ký an toàn, giải mã cú pháp 'BK9801', khớp số tiền -> Cập nhật <code>Invoice.java</code> sang <code>PAID</code> (SUCCESS) và ghi nhật ký <code>Payment.java</code>. UI <code>AdminInvoicesPage.jsx</code> cập nhật trạng thái ĐÃ THANH TOÁN ngay tức thì.",
     "steps": [
+      {
+        "name": "AdminInvoicesPage.jsx",
+        "path": "frontendHomestayManagement/src/pages/Admin/AdminInvoicesPage.jsx",
+        "layer": "Frontend Admin UI",
+        "desc": "Giao diện quản lý hóa đơn thanh toán toàn bộ hệ thống homestay.",
+        "dto": "InvoiceFilterQuery",
+        "validation": "Lọc trạng thái PAID / UNPAID.",
+        "security": "Quyền ADMIN / STAFF."
+      },
+      {
+        "name": "SePayQrPayment.jsx",
+        "path": "frontendHomestayManagement/src/components/SePayQrPayment/SePayQrPayment.jsx",
+        "layer": "Frontend Component",
+        "desc": "Component hiển thị mã VietQR động chứa cú pháp mã booking chuẩn định dạng SePay.",
+        "dto": "SePayQRData",
+        "validation": "Mã hóa chính xác nội dung chuyển khoản.",
+        "security": "Hiển thị QR công khai an toàn."
+      },
+      {
+        "name": "AdminInvoiceController.java",
+        "path": "homestayManagement/src/main/java/com/homestayManagement/homestayManagement/controller/AdminInvoiceController.java",
+        "layer": "Controller",
+        "desc": "REST API quản lý thông tin hóa đơn và tổng hợp chi phí lưu trú.",
+        "dto": "InvoiceDto",
+        "validation": "@Valid ID hóa đơn hợp lệ.",
+        "security": "@PreAuthorize('hasAnyRole(\"ADMIN\", \"STAFF\")')."
+      },
+      {
+        "name": "SePayPaymentController.java",
+        "path": "homestayManagement/src/main/java/com/homestayManagement/homestayManagement/controller/SePayPaymentController.java",
+        "layer": "Webhook Controller",
+        "desc": "Endpoint tiếp nhận tín hiệu Webhook tự động từ hệ thống cổng SePay.",
+        "dto": "SePayWebhookPayload (transactionId, amount, content...)",
+        "validation": "Xác thực chữ ký API Secret Header.",
+        "security": "Bảo mật Webhook chống giả mạo."
+      },
+      {
+        "name": "AdminInvoiceServiceImpl.java",
+        "path": "homestayManagement/src/main/java/com/homestayManagement/homestayManagement/service/impl/AdminInvoiceServiceImpl.java",
+        "layer": "Service",
+        "desc": "Tính toán tổng hóa đơn: tiền phòng + dịch vụ minibar/amenities + phụ thu check-out muộn - voucher giảm giá.",
+        "dto": "Invoice Entity & Dto",
+        "validation": "Đảm bảo tổng tiền khớp với chi tiết đơn.",
+        "security": "Ghi nhật ký tài chính."
+      },
+      {
+        "name": "SePayPaymentServiceImpl.java",
+        "path": "homestayManagement/src/main/java/com/homestayManagement/homestayManagement/service/impl/SePayPaymentServiceImpl.java",
+        "layer": "Webhook Service",
+        "desc": "Giải mã cú pháp chuyển khoản 'BK9801', đối soát biến động số dư và cập nhật trạng thái PAID tự động.",
+        "dto": "Payment Entity",
+        "validation": "Kiểm tra số tiền chuyển khớp hoặc lớn hơn số tiền hóa đơn.",
+        "security": "Tránh khớp trùng giao dịch (Idempotency)."
+      },
+      {
+        "name": "Invoice.java",
+        "path": "homestayManagement/src/main/java/com/homestayManagement/homestayManagement/entity/Invoice.java",
+        "layer": "Database Entity",
+        "desc": "Entity JPA lưu vết hóa đơn thanh toán.",
+        "dto": "Thực thể Invoice",
+        "validation": "Ràng buộc bảng invoices.",
+        "security": "Lưu trữ dữ liệu CSDL."
+      },
+      {
+        "name": "Payment.java",
+        "path": "homestayManagement/src/main/java/com/homestayManagement/homestayManagement/entity/Payment.java",
+        "layer": "Database Entity",
+        "desc": "Entity JPA lưu giao dịch thanh toán thực tế.",
+        "dto": "Thực thể Payment",
+        "validation": "Mã giao dịch ngân hàng referenceCode.",
+        "security": "Nhật ký giao dịch tài chính bất biến."
+      }
+    ]
+  },
+  "customer_ai": {
+    "title": "STT 5: 3.12.1 Customer AI Chat Box",
+    "desc": "Trợ lý AI cho khách hàng (widget trên trang chủ), trả lời câu hỏi về tiện nghi, chính sách, giờ check‑in, điểm tham quan.",
+    "presentationScript": "<strong>Kịch bản thuyết trình (Luồng 3.12.1):</strong><br>1. Khách hàng thao tác trên bong bóng chat <code>AIChatWidget.jsx</code> / <code>CustomerAiChat.jsx</code> trên giao diện <code>HomePage.jsx</code>.<br>2. Nhập câu hỏi (VD: 'Giờ check-in là mấy giờ?') -> Gọi API <code>POST /api/ai/customer/chat</code> tại <code>CustomerAiChatController.java</code>.<br>3. <code>CustomerAiChatServiceImpl.java</code> tập hợp context thông tin homestay, bảng giá, quy định và địa điểm du lịch lân cận.<br>4. Dữ liệu chuyển qua <code>CustomerAiSidecarManager.java</code> để gửi tới tiến trình Python Sidecar chạy độc lập.<br>5. Tiến trình Python FastAPI <code>openchatbi/customer_assistant/app.py</code> tiếp nhận prompt, gọi LLM AI (GLM-5.2/OpenAI) và trả câu trả lời tư vấn hiển thị ngay trên widget cho khách hàng.",
+    "steps": [
+      {
+        "name": "AIChatWidget.jsx",
+        "path": "frontendHomestayManagement/src/components/AIChatWidget/AIChatWidget.jsx",
+        "layer": "Frontend Component",
+        "desc": "Widget bong bóng chat AI nổi ở góc màn hình giao diện trang chủ.",
+        "dto": "Widget Visibility State",
+        "validation": "Quản lý bật/tắt cửa sổ chat.",
+        "security": "Hiển thị công khai."
+      },
       {
         "name": "CustomerAiChat.jsx",
         "path": "frontendHomestayManagement/src/components/CustomerAiChat/CustomerAiChat.jsx",
         "layer": "Frontend UI",
-        "desc": "Bong bóng chat góc màn hình cho phép khách hàng nhập câu hỏi trực quan. Hiển thị lịch sử trò chuyện và câu trả lời từ AI.",
-        "dto": "Tin nhắn của khách hàng (message), sessionId, lịch sử hội thoại.",
-        "validation": "Nội dung câu hỏi không được rỗng và giới hạn tối đa 1000 ký tự.",
-        "security": "Không yêu cầu đăng nhập, mở công khai cho toàn bộ khách hàng."
+        "desc": "Giao diện hội thoại chat của khách hàng với AI Assistant.",
+        "dto": "ChatMessagePayload (message, sessionId)",
+        "validation": "Kiểm tra độ dài câu hỏi không rỗng.",
+        "security": "Mở cho tất cả khách tham quan."
       },
       {
         "name": "CustomerAiChatController.java",
         "path": "homestayManagement/src/main/java/com/homestayManagement/homestayManagement/controller/CustomerAiChatController.java",
         "layer": "Controller",
-        "desc": "REST Controller nhận câu hỏi tại POST '/api/ai/customer/chat'. Áp dụng kiểm soát tần suất truy cập (Rate Limit) theo IP/Tài khoản.",
+        "desc": "REST API Controller nhận yêu cầu chat của khách hàng tại '/api/ai/customer/chat'.",
         "dto": "CustomerAiChatRequest, CustomerAiChatResponse",
-        "validation": "Tự động xác thực qua annotation @Valid.",
-        "security": "Chặn spam bằng CustomerAiRateLimiter (tối đa 20 yêu cầu/phút)."
+        "validation": "@Valid dữ liệu đầu vào.",
+        "security": "Rate Limiter chống spam request."
       },
       {
         "name": "CustomerAiChatServiceImpl.java",
         "path": "homestayManagement/src/main/java/com/homestayManagement/homestayManagement/service/impl/CustomerAiChatServiceImpl.java",
         "layer": "Service",
-        "desc": "Thu thập context nghiệp vụ hiện tại của hệ thống (danh mục phòng trống, chính sách giá, lịch sử booking của khách) để đưa vào context gọi AI.",
-        "dto": "CustomerAiClientRequest chứa payload context an toàn.",
-        "validation": "Xử lý timeout và các ngoại lệ khi kết nối dịch vụ AI.",
-        "security": "Chỉ lấy thông tin booking thuộc tài khoản JWT hiện hành của khách."
+        "desc": "Tổng hợp context homestay (tiện nghi, nội quy, giờ check-in, vị trí) gửi tới Python Sidecar.",
+        "dto": "AiPayloadContext",
+        "validation": "Xử lý timeout dịch vụ AI.",
+        "security": "Ẩn thông tin nhạy cảm."
+      },
+      {
+        "name": "CustomerAiSidecarManager.java",
+        "path": "homestayManagement/src/main/java/com/homestayManagement/homestayManagement/config/CustomerAiSidecarManager.java",
+        "layer": "System Manager",
+        "desc": "Quản lý tiến trình Python Sidecar AI chạy độc lập.",
+        "dto": "Process Health Status",
+        "validation": "Tự động khôi phục nếu tiến trình gặp lỗi.",
+        "security": "Kết nối localhost an toàn."
       },
       {
         "name": "app.py",
         "path": "openchatbi/customer_assistant/app.py",
-        "layer": "AI Sidecar (Python)",
-        "desc": "FastAPI sidecar nhận request, cấu hình System Prompt ngăn chặn rò rỉ dữ liệu nhạy cảm và gọi API FPT AI Factory GLM-5.2.",
-        "dto": "Cấu trúc tin nhắn Chat Completion chuẩn FPT/OpenAI.",
-        "validation": "Xác thực token bảo mật nội bộ X-Internal-Token.",
-        "security": "Bảo mật khóa API FPT_AI_API_KEY ở môi trường máy chủ nội bộ."
+        "layer": "AI Sidecar (Python FastAPI)",
+        "desc": "Service Python FastAPI tiếp nhận prompt, kết nối mô hình LLM AI sinh câu trả lời tự nhiên.",
+        "dto": "OpenAI Completion Response",
+        "validation": "Xác thực X-Internal-Token.",
+        "security": "Quản lý API Key bảo mật."
       }
     ]
   },
-  "ai_marketing": {
-    "title": "AI Agent Marketing Đăng bài (AI Marketing Agent)",
-    "desc": "Luồng tạo nội dung quảng cáo tự động bằng AI và lập lịch/đăng bài viết trực tiếp lên các kênh mạng xã hội (Facebook, YouTube).",
+  "staff_ai": {
+    "title": "STT 6: 3.12.2 Staff AI Assistant",
+    "desc": "Trợ lý AI cho nhân viên admin/lễ tân (trên thanh header), hỗ trợ thống kê vận hành, dự báo công suất, điều hướng nhanh.",
+    "presentationScript": "<strong>Kịch bản thuyết trình (Luồng 3.12.2):</strong><br>1. Lễ tân hoặc Admin nhấn vào nút AI Assistant trên thanh Header <code>AdminLayout.jsx</code>, mở component <code>StaffAiChat.jsx</code>.<br>2. Nhập câu hỏi tác nghiệp (VD: 'Thống kê phòng bẩn hôm nay' hoặc 'Dự báo công suất tuần tới') -> Gửi HTTP <code>POST /api/ai/staff/chat</code> tới <code>StaffAiChatController.java</code>.<br>3. Controller xác thực quyền <code>ROLE_STAFF</code> / <code>ROLE_ADMIN</code>, chuyển tới <code>StaffAiChatServiceImpl.java</code>.<br>4. Service tổng hợp dữ liệu vận hành nội bộ (Room Status, Housekeeping checklist, Booking occupancy).<br>5. Gửi qua <code>CustomerAiSidecarManager.java</code> tới Python Sidecar <code>openchatbi/customer_assistant/app.py</code>. AI phân tích, tổng hợp báo cáo và trả về phản hồi kèm các đường dẫn điều hướng nhanh (Quick Links) cho nhân viên thao tác.",
     "steps": [
       {
-        "name": "MarketingPages.jsx",
-        "path": "frontendHomestayManagement/src/pages/Admin/MarketingPages.jsx",
-        "layer": "Frontend UI",
-        "desc": "Giao diện quản trị marketing cho phép admin chọn kênh đăng bài, cấu hình giọng điệu (Tone), nhập mô tả chủ đề và quản lý bài viết.",
-        "dto": "MarketingPostRequest (platform, tone, description, scheduledTime).",
-        "validation": "Đảm bảo đã chọn ít nhất một kênh mạng xã hội, giờ hẹn giờ phải nằm trong tương lai.",
-        "security": "Yêu cầu tài khoản có quyền quản trị viên (ADMIN)."
+        "name": "AdminLayout.jsx",
+        "path": "frontendHomestayManagement/src/pages/Admin/AdminLayout.jsx",
+        "layer": "Frontend Admin Layout",
+        "desc": "Thanh điều hướng Admin chứa lối vào Trợ lý AI cho nhân viên trên Header.",
+        "dto": "Header Staff Action State",
+        "validation": "Kiểm tra quyền nhân viên trước khi hiển thị.",
+        "security": "Yêu cầu đăng nhập Staff/Admin."
       },
       {
-        "name": "AdminMarketingController.java",
-        "path": "homestayManagement/src/main/java/com/homestayManagement/homestayManagement/controller/AdminMarketingController.java",
+        "name": "StaffAiChat.jsx",
+        "path": "frontendHomestayManagement/src/components/StaffAiChat/StaffAiChat.jsx",
+        "layer": "Frontend Staff UI",
+        "desc": "Trợ lý AI dành cho nhân viên tra cứu thống kê vận hành và gợi ý điều hướng.",
+        "dto": "StaffChatMessagePayload",
+        "validation": "Validate câu hỏi không rỗng.",
+        "security": "Phân quyền truy cập nhân viên."
+      },
+      {
+        "name": "StaffAiChatController.java",
+        "path": "homestayManagement/src/main/java/com/homestayManagement/homestayManagement/controller/StaffAiChatController.java",
         "layer": "Controller",
-        "desc": "Nhận yêu cầu khởi tạo quy trình viết bài tự động bằng AI hoặc gửi bài viết đi xuất bản ngay lập tức.",
-        "dto": "MarketingPostDto, phản hồi MarketingPostResponse.",
-        "validation": "@Valid kiểm tra dữ liệu yêu cầu tạo bài đăng.",
-        "security": "Bảo vệ nghiêm ngặt bằng Spring Security phân quyền ROLE_ADMIN."
+        "desc": "REST API Controller nhận yêu cầu chat nghiệp vụ từ nhân viên tại '/api/ai/staff/chat'.",
+        "dto": "StaffAiChatRequest, StaffAiChatResponse",
+        "validation": "@Valid dữ liệu đầu vào.",
+        "security": "@PreAuthorize('hasAnyRole(\"ADMIN\", \"STAFF\")')."
       },
       {
-        "name": "AdminMarketingServiceImpl.java",
-        "path": "homestayManagement/src/main/java/com/homestayManagement/homestayManagement/service/impl/AdminMarketingServiceImpl.java",
+        "name": "StaffAiChatServiceImpl.java",
+        "path": "homestayManagement/src/main/java/com/homestayManagement/homestayManagement/service/impl/StaffAiChatServiceImpl.java",
         "layer": "Service",
-        "desc": "Điều phối dịch vụ: Kích hoạt mô hình AI sinh nội dung bài viết, lưu trữ nháp trong DB và thiết lập lập lịch đăng bài.",
-        "dto": "Đơn vị dữ liệu Post Entity cập nhật trạng thái SCHEDULED/PUBLISHED.",
-        "validation": "Kiểm tra giới hạn dung lượng phương tiện truyền thông đính kèm.",
-        "security": "Ghi log lịch sử người dùng thực hiện tạo chiến dịch."
+        "desc": "Tổng hợp dữ liệu vận hành nội bộ (trạng thái buồng phòng, checklist dọn dẹp, công suất) hỗ trợ AI.",
+        "dto": "StaffAiPayloadContext",
+        "validation": "Lọc bỏ dữ liệu bảo mật.",
+        "security": "Bảo vệ thông tin doanh nghiệp nội bộ."
       },
       {
-        "name": "MarketingAiTextGeneratorImpl.java",
-        "path": "homestayManagement/src/main/java/com/homestayManagement/homestayManagement/service/impl/MarketingAiTextGeneratorImpl.java",
-        "layer": "Service",
-        "desc": "Giao tiếp với mô hình OpenAI/FPT để sinh đoạn text quảng cáo sáng tạo theo đúng Tone yêu cầu (thân thiện, chuyên nghiệp...).",
-        "dto": "Prompt mang theo chỉ thị và mô tả chủ đề.",
-        "validation": "Lọc nội dung từ ngữ độc hại/nhạy cảm trước khi trả về.",
-        "security": "Sử dụng API Key cấu hình độc quyền trên Server."
+        "name": "CustomerAiSidecarManager.java",
+        "path": "homestayManagement/src/main/java/com/homestayManagement/homestayManagement/config/CustomerAiSidecarManager.java",
+        "layer": "System Manager",
+        "desc": "Quản lý tiến trình Python AI Sidecar cho cả Customer và Staff.",
+        "dto": "Process Health State",
+        "validation": "Health check định kỳ.",
+        "security": "Localhost IPC execution."
       },
       {
-        "name": "MarketingSocialPublisherImpl.java",
-        "path": "homestayManagement/src/main/java/com/homestayManagement/homestayManagement/service/impl/MarketingSocialPublisherImpl.java",
-        "layer": "Service Integration",
-        "desc": "Tích hợp API mạng xã hội để đăng bài viết lên Fanpage Facebook (sử dụng Facebook Graph API) hoặc tải video lên kênh YouTube.",
-        "dto": "Payload Graph API (message, link, access_token).",
-        "validation": "Kiểm tra mã lỗi trả về từ API của mạng xã hội (Token hết hạn, lỗi cấu trúc).",
-        "security": "Mã hóa và quản lý an toàn OAuth Access Token của các tài khoản mạng xã hội."
+        "name": "app.py",
+        "path": "openchatbi/customer_assistant/app.py",
+        "layer": "AI Sidecar (Python FastAPI)",
+        "desc": "Mô hình Python FastAPI phân tích số liệu vận hành và tạo liên kết điều hướng nhanh.",
+        "dto": "Staff Response JSON với Quick Links",
+        "validation": "Xác thực token nội bộ.",
+        "security": "Bảo mật khóa API Key."
       }
     ]
   },
-  "stay_portal": {
-    "title": "Cổng Thông Tin Lưu Trú (Guest Stay Portal)",
-    "desc": "Luồng dành cho khách hàng đang lưu trú tại homestay tự phục vụ: Kích hoạt tài khoản, xem thông tin phòng, và gọi đồ ăn/dịch vụ minibar.",
+  "reviews_wishlist": {
+    "title": "STT 7: 3.14 Customer Reviews & Wishlist Management",
+    "desc": "Quản lý đánh giá (1–5 sao + phản hồi + ảnh) và danh sách yêu thích (wishlist) của khách hàng.",
+    "presentationScript": "<strong>Kịch bản thuyết trình (Luồng 3.14):</strong><br>1. <strong>Đánh giá (Reviews):</strong> Khách gửi review 1-5 sao kèm ảnh tại <code>RoomDetailPage.jsx</code> -> Gọi <code>CustomerReviewController.java</code> (<code>POST /api/customer/reviews</code>) -> <code>ReviewServiceImpl.java</code> lưu vào <code>Review.java</code> (trạng thái PENDING). Admin vào <code>AdminReviewsPage.jsx</code> duyệt hoặc ẩn đánh giá qua <code>AdminReviewController.java</code>. Chỉ review trạng thái APPROVED được <code>PublicReviewController.java</code> trả về cho client.<br>2. <strong>Yêu thích (Wishlist):</strong> Khách bấm trái tim tại <code>HomePage.jsx</code> hoặc <code>RoomDetailPage.jsx</code> -> Request gửi <code>CustomerWishlistController.java</code> (<code>POST /api/customer/wishlist/toggle</code>) -> <code>WishlistServiceImpl.java</code> thêm/xóa khỏi CSDL <code>Wishlist.java</code> / <code>WishlistItem.java</code>. Khách truy cập <code>WishlistPage.jsx</code> để xem danh sách phòng yêu thích.",
     "steps": [
+      {
+        "name": "RoomDetailPage.jsx",
+        "path": "frontendHomestayManagement/src/pages/Rooms/RoomDetailPage.jsx",
+        "layer": "Frontend Page UI",
+        "desc": "Trang chi tiết phòng cho phép gửi đánh giá 1-5 sao + ảnh và bấm thả tim yêu thích.",
+        "dto": "ReviewFormData, WishlistTogglePayload",
+        "validation": "Đánh giá từ 1 đến 5 sao.",
+        "security": "Xác thực người dùng trước khi thực hiện."
+      },
+      {
+        "name": "WishlistPage.jsx",
+        "path": "frontendHomestayManagement/src/pages/Wishlist/WishlistPage.jsx",
+        "layer": "Frontend Page UI",
+        "desc": "Màn hình danh sách yêu thích lưu trữ các phòng homestay mà khách hàng quan tâm.",
+        "dto": "WishlistItems List",
+        "validation": "Lọc danh sách theo tài khoản khách hàng.",
+        "security": "Yêu cầu tài khoản Customer."
+      },
+      {
+        "name": "AdminReviewsPage.jsx",
+        "path": "frontendHomestayManagement/src/pages/Admin/AdminReviewsPage.jsx",
+        "layer": "Frontend Admin UI",
+        "desc": "Trang quản trị phê duyệt, phản hồi hoặc ẩn các bài đánh giá của khách hàng.",
+        "dto": "ReviewModerationAction",
+        "validation": "Cập nhật trạng thái APPROVED / HIDDEN.",
+        "security": "Quyền ADMIN / STAFF."
+      },
+      {
+        "name": "CustomerReviewController.java",
+        "path": "homestayManagement/src/main/java/com/homestayManagement/homestayManagement/controller/CustomerReviewController.java",
+        "layer": "Controller",
+        "desc": "API tiếp nhận bài đánh giá mới từ khách hàng sau khi lưu trú.",
+        "dto": "ReviewCreateRequestDto, ReviewResponseDto",
+        "validation": "@Valid số sao và nội dung.",
+        "security": "Xác thực JWT Customer."
+      },
+      {
+        "name": "CustomerWishlistController.java",
+        "path": "homestayManagement/src/main/java/com/homestayManagement/homestayManagement/controller/CustomerWishlistController.java",
+        "layer": "Controller",
+        "desc": "API bật/tắt trạng thái yêu thích phòng homestay tại '/api/customer/wishlist/toggle'.",
+        "dto": "WishlistToggleRequestDto, WishlistToggleResponseDto",
+        "validation": "Validate ID phòng tồn tại.",
+        "security": "Xác thực JWT Token."
+      },
+      {
+        "name": "AdminReviewController.java",
+        "path": "homestayManagement/src/main/java/com/homestayManagement/homestayManagement/controller/AdminReviewController.java",
+        "layer": "Controller Admin",
+        "desc": "API duyệt (Approve) hoặc Ẩn (Hide) đánh giá vi phạm.",
+        "dto": "ReviewStatusUpdateDto",
+        "validation": "@Valid trạng thái kiểm duyệt.",
+        "security": "@PreAuthorize('hasRole(\"ADMIN\")')."
+      },
+      {
+        "name": "PublicReviewController.java",
+        "path": "homestayManagement/src/main/java/com/homestayManagement/homestayManagement/controller/PublicReviewController.java",
+        "layer": "Controller Public",
+        "desc": "API lấy danh sách đánh giá đã phê duyệt (APPROVED) cho công chúng xem.",
+        "dto": "List<ReviewResponseDto>",
+        "validation": "Chỉ lấy các review trạng thái APPROVED.",
+        "security": "Public Access."
+      },
+      {
+        "name": "WishlistServiceImpl.java",
+        "path": "homestayManagement/src/main/java/com/homestayManagement/homestayManagement/service/impl/WishlistServiceImpl.java",
+        "layer": "Service",
+        "desc": "Xử lý logic thêm/xóa mục wishlist trong cơ sở dữ liệu.",
+        "dto": "WishlistItem Entity",
+        "validation": "Tránh thêm trùng lắp phòng yêu thích.",
+        "security": "Bảo vệ danh sách cá nhân khách hàng."
+      }
+    ]
+  },
+  "stay_service_email": {
+    "title": "STT 8: 3.15 Guest Stay Service & Email Notification",
+    "desc": "Luồng gửi Email thông báo tự động khi khách check-in và đặt dịch vụ tận phòng từ link Gmail.",
+    "presentationScript": "<strong>Kịch bản thuyết trình (Luồng 3.15):</strong><br>1. Hệ thống bắn sự kiện check-in, <code>StayAccessEmailListener.java</code> gửi Gmail chứa nút 'Mở trang dịch vụ lưu trú'.<br>2. Khách bấm nút trong Gmail -> Mở <code>StayActivationPage.jsx</code> xác thực Token qua <code>StayAccessController.java</code>.<br>3. Màn hình điều hướng tới <code>StayPage.jsx</code> cho phép khách đặt Minibar / Dịch vụ tận phòng.<br>4. Request gửi qua <code>stayService.js</code> tới <code>StayPortalController.java</code> và lưu vào CSDL qua <code>StayAccessServiceImpl.java</code>.",
+    "steps": [
+      {
+        "name": "StayAccessEmailListener.java",
+        "path": "homestayManagement/src/main/java/com/homestayManagement/homestayManagement/service/event/StayAccessEmailListener.java",
+        "layer": "Event Listener / Email Generator",
+        "desc": "Lắng nghe sự kiện check-in để gửi Email đính kèm URL kích hoạt token.",
+        "dto": "StayAccessEmailEvent",
+        "validation": "Kiểm tra địa chỉ email hợp lệ.",
+        "security": "Gửi thư bảo mật SSL/TLS."
+      },
+      {
+        "name": "StayAccessController.java",
+        "path": "homestayManagement/src/main/java/com/homestayManagement/homestayManagement/controller/StayAccessController.java",
+        "layer": "Controller (API)",
+        "desc": "Xử lý các endpoint '/api/stay/activate' và '/api/stay/info'.",
+        "dto": "StayActivationResponseDto",
+        "validation": "Kiểm tra Token chưa hết hạn.",
+        "security": "Bảo vệ thông tin phòng lưu trú."
+      },
+      {
+        "name": "StayActivationPage.jsx",
+        "path": "frontendHomestayManagement/src/pages/Stay/StayActivationPage.jsx",
+        "layer": "Frontend Activation UI",
+        "desc": "Trang tiếp nhận token từ URL Gmail và lưu vào LocalStorage.",
+        "dto": "Token Query Param",
+        "validation": "Validate token tồn tại.",
+        "security": "Lưu trữ phiên token an toàn."
+      },
       {
         "name": "StayPage.jsx",
         "path": "frontendHomestayManagement/src/pages/Stay/StayPage.jsx",
-        "layer": "Frontend UI",
-        "desc": "Cổng thông tin riêng tư cho khách đang ở. Hiển thị thông tin phòng, số điện thoại khẩn cấp, các dịch vụ minibar và nút gọi đồ.",
-        "dto": "Mã đặt phòng (access token/bookingId), yêu cầu dịch vụ (serviceId, quantity).",
-        "validation": "Kiểm tra số lượng dịch vụ đặt mua phải lớn hơn 0.",
-        "security": "Chỉ truy cập được thông qua đường dẫn bảo mật gửi riêng qua email của khách."
-      },
-      {
-        "name": "StayPortalController.java",
-        "path": "homestayManagement/src/main/java/com/homestayManagement/homestayManagement/controller/StayPortalController.java",
-        "layer": "Controller",
-        "desc": "Cung cấp API REST cho cổng lưu trú tại '/api/stays/current' và đặt thêm dịch vụ tiện ích.",
-        "dto": "AddBookingFacilityServiceRequest, StaySummaryResponse",
-        "validation": "Xác thực cấu trúc DTO đầu vào hợp lệ.",
-        "security": "Xác thực vai trò GUEST/CUSTOMER dựa vào Access Token lưu trú."
-      },
-      {
-        "name": "StayAccessServiceImpl.java",
-        "path": "homestayManagement/src/main/java/com/homestayManagement/homestayManagement/service/impl/StayAccessServiceImpl.java",
-        "layer": "Service",
-        "desc": "Thực hiện nghiệp vụ kiểm tra trạng thái lưu trú hiện tại, thêm yêu cầu dịch vụ vào hóa đơn phụ thu, và kích hoạt thông báo cho lễ tân dọn phòng/phục vụ.",
-        "dto": "Ghi nhận thực thể BookingServiceOrder mới.",
-        "validation": "Đảm bảo thời gian đặt dịch vụ nằm trong khoảng thời gian khách check-in và check-out thực tế.",
-        "security": "Xác thực token lưu trú trùng khớp với đơn đặt phòng đang active."
-      },
-      {
-        "name": "StayAccessRepository.java",
-        "path": "homestayManagement/src/main/java/com/homestayManagement/homestayManagement/repository/StayAccessRepository.java",
-        "layer": "Repository",
-        "desc": "Truy xuất bản ghi StayAccess, liên kết giữa khách hàng, phòng đang ở và thời hạn hiệu lực của mã token truy cập.",
-        "dto": "Thực thể StayAccess.",
-        "validation": "Lọc bản ghi theo trạng thái active.",
-        "security": "Giao dịch an toàn được quản lý bởi Spring Data JPA."
+        "layer": "Frontend Guest Portal UI",
+        "desc": "Cổng dịch vụ tận phòng dành cho khách đang lưu trú.",
+        "dto": "ServiceOrderRequest",
+        "validation": "Số lượng món > 0.",
+        "security": "Chỉ phòng đang check-in mới được gọi dịch vụ."
       }
     ]
   }
 };
+
 
 // OFFLINE SYNTAX HIGHLIGHTER FOR JAVA, JAVASCRIPT/JSX, CSS
 function highlightCode(code, lang) {
@@ -531,11 +573,22 @@ function renderExplanation(step) {
     badgesHtml += `<span class="exp-badge validation">🛡️ ${step.validation}</span>`;
   }
 
+  const screenImgHtml = step.image ? `
+    <div class="exp-section">
+      <div class="exp-sec-title">🖼️ Ảnh Màn Hình Giao Diện</div>
+      <div class="exp-img-preview-wrap" style="margin-top: 6px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border-color); background: rgba(0,0,0,0.3); text-align: center;">
+        <img src="${step.image}" alt="${step.name}" style="width: 100%; max-height: 180px; display: block; object-fit: cover; border-radius: 6px;" onError="this.onerror=null; this.src='../public/banner.png';" />
+      </div>
+    </div>
+  ` : '';
+
   sidebar.innerHTML = `
     <div class="exp-block">
       <div class="exp-title">${step.name}</div>
       <p class="exp-desc">${step.desc}</p>
       
+      ${screenImgHtml}
+
       <div class="exp-section">
         <div class="exp-sec-title">Phân lớp (Layer)</div>
         <div class="exp-sec-content">

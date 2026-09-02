@@ -42,6 +42,16 @@ public record AdminBookingDetailResponse(
         List<FacilityServiceResponse> facilityServices,
         List<InventoryServiceResponse> inventoryServices,
         List<RoomMiniBarItemResponse> miniBarItems,
-        List<RulesPenaltyResponse> penaltyRules
+        List<RulesPenaltyResponse> penaltyRules,
+        Integer extensionHours,
+        BigDecimal extensionAmount,
+        String cancellationReason,
+        LocalDateTime cancelledAt,
+        Integer refundRate,
+        BigDecimal refundAmount,
+        String refundStatus,
+        String refundInfo,
+        LocalDateTime refundCompletedAt,
+        String refundHandledBy
 ) {
 }

@@ -21,4 +21,13 @@ public class PublicVoucherController {
     public List<VoucherResponse> listActiveVouchers() {
         return publicVoucherService.listActiveVouchers();
     }
+
+    @GetMapping("/check/{code}")
+    public org.springframework.http.ResponseEntity<?> checkVoucher(@org.springframework.web.bind.annotation.PathVariable String code) {
+        try {
+            return org.springframework.http.ResponseEntity.ok(publicVoucherService.checkVoucher(code));
+        } catch (IllegalArgumentException e) {
+            return org.springframework.http.ResponseEntity.badRequest().body(java.util.Map.of("message", e.getMessage()));
+        }
+    }
 }

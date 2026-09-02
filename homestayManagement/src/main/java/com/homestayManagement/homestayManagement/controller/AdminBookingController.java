@@ -232,6 +232,19 @@ public class AdminBookingController {
         return adminBookingService.generateInvoice(bookingDetailId);
     }
 
+    @GetMapping("/cancellations")
+    public List<com.homestayManagement.homestayManagement.dto.response.AdminBookingCancellationResponse> getCancellations() {
+        return adminBookingService.getCancellations();
+    }
+
+    @PostMapping("/{bookingId}/confirm-refund")
+    public AdminBookingDetailResponse confirmRefund(
+            org.springframework.security.core.Authentication authentication,
+            @PathVariable Long bookingId
+    ) {
+        return adminBookingService.confirmRefund(bookingId, authentication != null ? authentication.getName() : "Admin");
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String, String>> handleIllegal(IllegalArgumentException e) {
         return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
