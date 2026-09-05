@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { getStoredToken } from '../../services/authService'
 import { useShiftGuard } from '../../context/ShiftGuardContext'
 import { formatClockTime, formatDateTime as formatAppDateTime } from '../../utils/dateTimeFormat'
@@ -7,7 +7,7 @@ import SePayQrPayment from '../../components/SePayQrPayment/SePayQrPayment'
 import AdminLayout from './AdminLayout'
 import './AdminCheckInLogsPage.css'
 
-const API_BASE = 'http://localhost:8080/api/admin/bookings'
+const API_BASE = (import.meta.env.VITE_API_URL || '') + '/api/admin/bookings'
 
 const CHECKOUT_PAYMENT_OPTIONS = [
   { value: 'CASH', label: 'Tiền mặt', description: 'Thu trực tiếp tại quầy' },
@@ -1234,7 +1234,7 @@ function AdminCheckInLogsPage() {
       const params = new URLSearchParams({ fromDate, toDate })
       const [response, housekeepingResponse] = await Promise.all([
         fetch(`${API_BASE}/check-in-logs?${params}`, { headers: authHeaders() }),
-        fetch('http://localhost:8080/api/housekeeping/tasks?status=ALL', { headers: authHeaders() }),
+        fetch((import.meta.env.VITE_API_URL || '') + '/api/housekeeping/tasks?status=ALL', { headers: authHeaders() }),
       ])
       const [data, housekeepingData] = await Promise.all([
         response.json().catch(() => ({})),
@@ -1306,7 +1306,7 @@ function AdminCheckInLogsPage() {
     setActionError('')
     try {
       const url = action === 'housekeeping-request'
-        ? `http://localhost:8080/api/housekeeping/booking-details/${bookingDetailId}/request`
+        ? `${import.meta.env.VITE_API_URL || ''}/api/housekeeping/booking-details/${bookingDetailId}/request`
         : `${API_BASE}/details/${bookingDetailId}/${action}`
       const response = await fetch(url, {
         method: 'POST',

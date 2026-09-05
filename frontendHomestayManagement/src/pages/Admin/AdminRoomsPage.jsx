@@ -1,12 +1,12 @@
-import { useEffect, useRef, useState } from 'react'
+﻿import { useEffect, useRef, useState } from 'react'
 import { getStoredToken } from '../../services/authService'
 import { resolveImageUrl } from '../../utils/imageUrl'
 import AdminLayout from './AdminLayout'
 import './AdminRoomsPage.css'
 
-const API        = 'http://localhost:8080/api/admin/rooms'
+const API        = (import.meta.env.VITE_API_URL || '') + '/api/admin/rooms'
 const DEPOSIT_API = `${API}/deposit-policies`
-const PRICE_API  = 'http://localhost:8080/api/admin/price-config'
+const PRICE_API  = (import.meta.env.VITE_API_URL || '') + '/api/admin/price-config'
 const PAGE_SIZE  = 6
 
 function authHeaders(isFormData = false) {
@@ -1031,19 +1031,15 @@ function RoomTypesTab({ roomTypes, setRoomTypes, depositPolicies, pricePolicies,
   const paginated = filtered.slice((page-1)*PAGE_SIZE, page*PAGE_SIZE)
 
   /**
-   * Lấy giá từ priceConfigs cho 1 loại nhà + 1 gói thuê.
-   * Trả về object { WEEKDAY: price, WEEKEND: price } hoặc null.
+   * Lấy giá ngày thường (WEEKDAY) và cuối tuần (WEEKEND) cho 1 loại phòng.
    */
   const getPriceForType = (roomTypeId) => {
-    if (!selectedPolicyId) return null
-    const matching = priceConfigs.filter(
-      c => c.roomTypeId === roomTypeId && c.pricePolicyId === Number(selectedPolicyId)
-    )
+    const matching = priceConfigs.filter(c => c.roomTypeId === roomTypeId)
     if (!matching.length) return null
-    return matching.reduce((acc, c) => ({ ...acc, [c.dayType]: c.price }), {})
+    const weekday = matching.find(c => String(c.dayType).toUpperCase() === 'WEEKDAY')?.price
+    const weekend = matching.find(c => String(c.dayType).toUpperCase() === 'WEEKEND')?.price
+    return { WEEKDAY: weekday, WEEKEND: weekend }
   }
-
-  const selectedPolicy = pricePolicies.find(p => p.id === Number(selectedPolicyId))
 
   const handleDelete = async () => {
     setDeleting(true)
@@ -1056,33 +1052,10 @@ function RoomTypesTab({ roomTypes, setRoomTypes, depositPolicies, pricePolicies,
     finally { setDeleting(false) }
   }
 
-  // Nhãn cột giá dựa theo gói đang chọn
-  const priceColLabel = selectedPolicy
-    ? `Giá · ${selectedPolicy.policyName}${selectedPolicy.limitHours ? ` (${selectedPolicy.limitHours}h)` : ''}`
-    : 'Giá'
-
   return (
     <>
       <div className="arm-toolbar">
         <input className="arm-search" placeholder="Tìm loại phòng..." value={search} onChange={e => setSearch(e.target.value)} />
-
-        {/* ── Dropdown lọc gói giá ── */}
-        <div className="arm-price-filter">
-          <span className="arm-price-filter-label">Xem giá theo:</span>
-          <select
-            className="arm-select"
-            value={selectedPolicyId}
-            onChange={e => setSelectedPolicyId(e.target.value)}
-          >
-            <option value="">— Chọn gói thuê —</option>
-            {pricePolicies.map(p => (
-              <option key={p.id} value={p.id}>
-                {p.policyName}
-                {p.limitHours ? ` (${p.limitHours}h)` : ''}
-              </option>
-            ))}
-          </select>
-        </div>
 
         <button className="arm-btn arm-btn--primary" type="button" onClick={() => setModalType(null)}>
           + Thêm loại phòng
@@ -1095,10 +1068,7 @@ function RoomTypesTab({ roomTypes, setRoomTypes, depositPolicies, pricePolicies,
             <thead><tr>
               <th>Ảnh đại diện</th>
               <th>Tên loại phòng</th>
-              <th>
-                {priceColLabel}
-                {selectedPolicy && <span className="arm-price-col-sub"> — chọn gói ở trên để xem giá</span>}
-              </th>
+              <th>Giá ngày thường / Cuối tuần (T7, CN)</th>
               <th>Sức chứa</th>
               <th>Chính sách đặt cọc</th>
               <th>Số phòng</th>
@@ -1118,9 +1088,7 @@ function RoomTypesTab({ roomTypes, setRoomTypes, depositPolicies, pricePolicies,
                     </td>
                     <td className="arm-fw">{t.name}</td>
                     <td>
-                      {!selectedPolicyId ? (
-                        <span className="arm-price-hint">← Chọn gói để xem giá</span>
-                      ) : prices ? (
+                      {prices && (prices.WEEKDAY != null || prices.WEEKEND != null) ? (
                         <div className="arm-price-cell">
                           {prices.WEEKDAY != null && (
                             <span className="arm-price-badge arm-price-badge--weekday">
@@ -1134,7 +1102,7 @@ function RoomTypesTab({ roomTypes, setRoomTypes, depositPolicies, pricePolicies,
                           )}
                         </div>
                       ) : (
-                        <span className="arm-price-hint arm-price-hint--none">Chưa cấu hình</span>
+                        <span style={{ color: '#94a3b8', fontSize: 13 }}>Chưa cấu hình giá</span>
                       )}
                     </td>
                     <td>{t.maxAdults} NL · {t.maxChildren} TE</td>

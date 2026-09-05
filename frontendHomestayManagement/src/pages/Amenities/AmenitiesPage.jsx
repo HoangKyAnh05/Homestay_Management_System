@@ -120,11 +120,11 @@ const amenities = [
   },
 ]
 
-const API_BASE_URL = 'http://localhost:8080/api'
+const API_BASE_URL = (import.meta.env.VITE_API_URL || '') + '/api'
 const PENDING_SERVICE_KEY = 'homeStayPendingAmenityService'
 
 // ── Đọc ảnh dịch vụ từ API response (field imageUrl) ───────────────
-const BACKEND = 'http://localhost:8080'
+const BACKEND = (import.meta.env.VITE_API_URL || '') + ''
 const DEFAULT_SERVICE_IMAGE = '/img.png'
 
 function resolveServiceImage(service) {
@@ -217,7 +217,7 @@ function AmenitiesHeader() {
         <a href="/rooms">Phòng</a>
         <a href="/wishlist">Yêu thích</a>
         <a href="/amenities" className="home-nav-active">Tiện nghi</a>
-        <a href="/home#contact">Liên hệ</a>
+        <a href="/giveaway" title="Vòng quay may mắn & Nhận ưu đãi">Liên hệ</a>
         <a href="/home#about">Giới thiệu</a>
       </nav>
       {currentUser ? (
@@ -538,7 +538,7 @@ function AmenitiesPage() {
 
       <footer className="amenities-footer">
         <div><a className="home-logo" href="/home">Home Stays</a><p>Ngôi nhà thứ hai của bạn giữa thiên nhiên.</p></div>
-        <nav><a href="/rooms">Phòng</a><a href="/amenities">Tiện nghi</a><a href="/home#contact">Liên hệ</a><a href="/home#about">Giới thiệu</a></nav>
+        <nav><a href="/rooms">Phòng</a><a href="/amenities">Tiện nghi</a><a href="/giveaway">Liên hệ</a><a href="/home#about">Giới thiệu</a></nav>
         <p>© 2026 Home Stays. All rights reserved.</p>
       </footer>
     </div>

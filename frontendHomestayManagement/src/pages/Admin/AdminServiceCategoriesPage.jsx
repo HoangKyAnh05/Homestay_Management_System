@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+﻿import { useEffect, useMemo, useRef, useState } from 'react'
 import { getStoredToken } from '../../services/authService'
 import AdminLayout from './AdminLayout'
 import './AdminServiceCategoriesPage.css'
 
-const API = 'http://localhost:8080/api/admin/services'
+const API = (import.meta.env.VITE_API_URL || '') + '/api/admin/services'
 
 // ── Image storage helpers ─────────────────────────────────────────────
 const DEFAULT_IMAGE = '/img.png'
@@ -25,8 +25,8 @@ function ServiceImageCell({ type, item, onImageUpdated }) {
       const formData = new FormData()
       formData.append('image', file)
       const endpoint = type === 'facility'
-        ? `http://localhost:8080/api/admin/services/facility/${item.id}/image`
-        : `http://localhost:8080/api/admin/services/inventory/${item.id}/image`
+        ? `${import.meta.env.VITE_API_URL || ''}/api/admin/services/facility/${item.id}/image`
+        : `${import.meta.env.VITE_API_URL || ''}/api/admin/services/inventory/${item.id}/image`
       const res = await fetch(endpoint, {
         method: 'PATCH',
         headers: { Authorization: `Bearer ${getStoredToken()}` },
@@ -47,7 +47,7 @@ function ServiceImageCell({ type, item, onImageUpdated }) {
   }
 
   const resolvedSrc = imgUrl
-    ? (imgUrl.startsWith('/uploads/') ? `http://localhost:8080${imgUrl}` : imgUrl)
+    ? (imgUrl.startsWith('/uploads/') ? `${import.meta.env.VITE_API_URL || ''}${imgUrl}` : imgUrl)
     : DEFAULT_IMAGE
 
   return (

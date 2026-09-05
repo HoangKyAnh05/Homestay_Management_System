@@ -23,6 +23,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.DayOfWeek;
 import java.time.Duration;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -266,11 +267,20 @@ public class PublicBookingServiceImpl implements PublicBookingService {
         }
         validateRoomTypeAvailability(selectedRooms, roomTypesById, request.checkInTarget(), request.checkOutTarget());
 
-        PricePolicy pricePolicy = pricePolicyRepository.findById(request.pricePolicyId())
-                .orElseThrow(() -> new IllegalArgumentException("Khong tim thay goi thue"));
-        validatePolicyTime(pricePolicy, request.checkInTarget(), request.checkOutTarget());
-        String dayType = isWeekend(request.checkInTarget()) ? "WEEKEND" : "WEEKDAY";
-        List<RoomBookingLine> roomLines = buildRoomBookingLines(selectedRooms, roomTypesById, pricePolicy, dayType);
+        PricePolicy pricePolicy = null;
+        if (request.pricePolicyId() != null) {
+            pricePolicy = pricePolicyRepository.findById(request.pricePolicyId()).orElse(null);
+        }
+        if (pricePolicy == null) {
+            pricePolicy = pricePolicyRepository.findAll().stream()
+                    .filter(p -> "OVERNIGHT".equalsIgnoreCase(p.getRentType()) || "DAILY".equalsIgnoreCase(p.getRentType()))
+                    .findFirst()
+                    .orElseGet(() -> pricePolicyRepository.findAll().stream().findFirst().orElse(null));
+        }
+        if (pricePolicy != null) {
+            validatePolicyTime(pricePolicy, request.checkInTarget(), request.checkOutTarget());
+        }
+        List<RoomBookingLine> roomLines = buildRoomBookingLines(selectedRooms, roomTypesById, request.checkInTarget(), request.checkOutTarget());
         BigDecimal roomChargeBeforeDiscount = roomLines.stream()
                 .map(RoomBookingLine::price)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -285,7 +295,7 @@ public class PublicBookingServiceImpl implements PublicBookingService {
                 .map(RoomType::getDepositPolicy)
                 .findFirst()
                 .orElse(null);
-        boolean hourlyPrepaymentRequired = isHourlyPolicy(pricePolicy);
+        boolean hourlyPrepaymentRequired = pricePolicy != null && isHourlyPolicy(pricePolicy);
         boolean requiresDeposit = hourlyPrepaymentRequired || depositPolicy != null;
         String bookingStatus = requiresDeposit ? "PENDING" : "CONFIRMED";
 
@@ -594,10 +604,10 @@ public class PublicBookingServiceImpl implements PublicBookingService {
 
     private void validateRange(LocalDateTime checkInTarget, LocalDateTime checkOutTarget) {
         if (checkInTarget == null || checkOutTarget == null) {
-            throw new IllegalArgumentException("Vui lÃƒÂ²ng chÃ¡Â»Ân giÃ¡Â»Â nhÃ¡ÂºÂ­n vÃƒÂ  trÃ¡ÂºÂ£ phÃƒÂ²ng");
+            throw new IllegalArgumentException("Vui lòng chọn giờ nhận và trả phòng");
         }
         if (!checkOutTarget.isAfter(checkInTarget)) {
-            throw new IllegalArgumentException("GiÃ¡Â»Â trÃ¡ÂºÂ£ phÃƒÂ²ng phÃ¡ÂºÂ£i sau giÃ¡Â»Â nhÃ¡ÂºÂ­n phÃƒÂ²ng");
+            throw new IllegalArgumentException("Giờ trả phòng phải sau giờ nhận phòng");
         }
     }
 
@@ -607,7 +617,7 @@ public class PublicBookingServiceImpl implements PublicBookingService {
             int limitHours = policy.getLimitHours() != null && policy.getLimitHours() > 0 ? policy.getLimitHours() : 1;
             LocalDateTime expectedCheckOut = checkInTarget.plusHours(limitHours);
             if (!checkOutTarget.equals(expectedCheckOut)) {
-                throw new IllegalArgumentException("GÃ³i theo giá»/combo chá»‰ cáº§n chá»n giá» nháº­n phÃ²ng, giá» tráº£ phÃ²ng sáº½ Ä‘Æ°á»£c há»‡ thá»‘ng tá»± tÃ­nh");
+                throw new IllegalArgumentException("Gói theo giờ/combo chỉ cần chọn giờ nhận phòng, giờ trả phòng sẽ được hệ thống tự tính");
             }
         }
     }
@@ -678,10 +688,10 @@ public class PublicBookingServiceImpl implements PublicBookingService {
 
     private void validateCapacity(RoomType roomType, Integer adults, Integer children) {
         if (roomType == null) {
-            throw new IllegalArgumentException("PhÃƒÂ²ng chÃ†Â°a cÃƒÂ³ loÃ¡ÂºÂ¡i phÃƒÂ²ng");
+            throw new IllegalArgumentException("Phòng chưa có loại phòng");
         }
         if (adults > roomType.getMaxAdults() || children > roomType.getMaxChildren()) {
-            throw new IllegalArgumentException("SÃ¡Â»â€˜ khÃƒÂ¡ch vÃ†Â°Ã¡Â»Â£t quÃƒÂ¡ sÃ¡Â»Â©c chÃ¡Â»Â©a cÃ¡Â»Â§a phÃƒÂ²ng");
+            throw new IllegalArgumentException("Số khách vượt quá sức chứa của phòng");
         }
     }
 
@@ -690,7 +700,7 @@ public class PublicBookingServiceImpl implements PublicBookingService {
                 .filter(detail -> detail.getRoom() != null && room.getId().equals(detail.getRoom().getId()))
                 .anyMatch(this::isActive);
         if (busy) {
-            throw new IllegalArgumentException("PhÃƒÂ²ng Ã„â€˜ÃƒÂ£ cÃƒÂ³ booking trong khung giÃ¡Â»Â nÃƒÂ y");
+            throw new IllegalArgumentException("Phòng đã có booking trong khung giờ này");
         }
     }
 
@@ -834,21 +844,57 @@ public class PublicBookingServiceImpl implements PublicBookingService {
     private List<RoomBookingLine> buildRoomBookingLines(
             List<PublicBookingRoomRequest> selectedRooms,
             Map<Long, RoomType> roomTypesById,
-            PricePolicy pricePolicy,
-            String dayType
+            LocalDateTime checkInTarget,
+            LocalDateTime checkOutTarget
     ) {
         List<RoomBookingLine> lines = new ArrayList<>();
         for (PublicBookingRoomRequest selectedRoom : selectedRooms) {
             RoomType roomType = roomTypesById.get(resolveRoomTypeId(selectedRoom));
-            BigDecimal currentRoomPrice = roomPriceConfigRepository
-                    .findByRoomTypeIdAndPricePolicyIdAndDayType(roomType.getId(), pricePolicy.getId(), dayType)
-                    .map(RoomPriceConfig::getPrice)
-                    .orElseThrow(() -> new IllegalArgumentException("Chua cau hinh gia cho loai phong " + roomType.getName() + " va goi thue nay"));
+            BigDecimal currentRoomPrice = calculateRoomTypePriceForRange(roomType.getId(), checkInTarget, checkOutTarget);
             for (int index = 0; index < quantityOf(selectedRoom); index++) {
                 lines.add(new RoomBookingLine(selectedRoom, roomType, currentRoomPrice));
             }
         }
         return lines;
+    }
+
+    private BigDecimal calculateRoomTypePriceForRange(Long roomTypeId, LocalDateTime checkIn, LocalDateTime checkOut) {
+        LocalDate start = checkIn != null ? checkIn.toLocalDate() : LocalDate.now();
+        LocalDate end = checkOut != null ? checkOut.toLocalDate() : start.plusDays(1);
+        if (!end.isAfter(start)) {
+            end = start.plusDays(1);
+        }
+
+        BigDecimal weekdayPrice = getRoomTypePriceForDayType(roomTypeId, "WEEKDAY");
+        BigDecimal weekendPrice = getRoomTypePriceForDayType(roomTypeId, "WEEKEND");
+        if (weekendPrice == null || weekendPrice.compareTo(BigDecimal.ZERO) <= 0) {
+            weekendPrice = weekdayPrice;
+        }
+
+        BigDecimal total = BigDecimal.ZERO;
+        LocalDate curr = start;
+        while (curr.isBefore(end)) {
+            java.time.DayOfWeek dow = curr.getDayOfWeek();
+            boolean isWeekend = (dow == java.time.DayOfWeek.SATURDAY || dow == java.time.DayOfWeek.SUNDAY);
+            BigDecimal nightPrice = isWeekend ? weekendPrice : weekdayPrice;
+            total = total.add(nightPrice);
+            curr = curr.plusDays(1);
+        }
+        return total;
+    }
+
+    private BigDecimal getRoomTypePriceForDayType(Long roomTypeId, String dayType) {
+        return roomPriceConfigRepository.findByRoomTypeIdAndDayType(roomTypeId, dayType).stream()
+                .map(RoomPriceConfig::getPrice)
+                .filter(Objects::nonNull)
+                .filter(p -> p.compareTo(BigDecimal.ZERO) > 0)
+                .min(BigDecimal::compareTo)
+                .orElseGet(() -> roomPriceConfigRepository.findByRoomTypeId(roomTypeId).stream()
+                        .map(RoomPriceConfig::getPrice)
+                        .filter(Objects::nonNull)
+                        .filter(p -> p.compareTo(BigDecimal.ZERO) > 0)
+                        .findFirst()
+                        .orElse(BigDecimal.valueOf(500000)));
     }
 
     private VoucherDiscount resolveVoucherDiscount(String voucherCode, BigDecimal roomChargeBeforeDiscount) {

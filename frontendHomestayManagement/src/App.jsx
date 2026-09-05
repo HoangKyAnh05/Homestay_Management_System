@@ -16,8 +16,11 @@ import CustomerAiChat from './components/CustomerAiChat/CustomerAiChat'
 import DashboardPage from './pages/Admin/DashboardPage'
 import HousekeepingPage from './pages/Admin/HousekeepingPage'
 import AdminIncidentsPage from './pages/Admin/AdminIncidentsPage'
-import AdminShiftHandoversPage from './pages/Admin/AdminShiftHandoversPage'
 import { MarketingAIAgentPage, MarketingPostLogsPage, MarketingVouchersPage } from './pages/Admin/MarketingPages'
+import RemotionStudioPage from './pages/Admin/RemotionStudioPage'
+import AdminTravelArticlesPage from './pages/Admin/AdminTravelArticlesPage'
+import AdminGiveawayLeadsPage from './pages/Admin/AdminGiveawayLeadsPage'
+import GiveawayLuckyWheelPage from './pages/Giveaway/GiveawayLuckyWheelPage'
 import ReceptionistOverviewPage from './pages/Admin/ReceptionistOverviewPage'
 import BookingHistoryPage from './pages/BookingHistory/BookingHistoryPage'
 import ForgotPasswordPage from './pages/ForgotPassword/ForgotPasswordPage'
@@ -112,6 +115,9 @@ function App() {
   if (currentPath === '/landing' || currentPath === '/sanctuary' || currentPath === '/komorebi') {
     return <LandingPage />
   }
+  if (currentPath === '/giveaway' || currentPath === '/minigame' || currentPath === '/vong-quay-may-man') {
+    return <GiveawayLuckyWheelPage />
+  }
   if (currentPath === '/login') return <LoginPage />
   if (currentPath === '/register') return <RegisterPage />
   if (currentPath === '/forgot') return <ForgotPasswordPage />
@@ -167,7 +173,6 @@ function App() {
     if (currentPath === '/admin/services/surcharges') return <AdminSurchargesPage />
     if (currentPath === '/admin/rules-penalties') return <AdminRulesPenaltiesPage />
     if (currentPath === '/admin/invoices') return <AdminInvoicesPage />
-    if (currentPath === '/admin/shifts') return <AdminShiftHandoversPage />
     if (currentPath === '/admin/reviews') return <AdminReviewsPage />
     if (currentPath === '/admin/housekeeping') {
       window.location.replace('/admin/housekeeping/tasks')
@@ -185,8 +190,11 @@ function App() {
     }
     if (currentPath === '/admin/receptionist') return <ReceptionistOverviewPage />
     if (currentPath === '/admin/marketing/ai-agent') return <MarketingAIAgentPage />
+    if (currentPath === '/admin/marketing/video-editor' || currentPath === '/admin/marketing/remotion-studio') return <RemotionStudioPage />
     if (currentPath === '/admin/marketing/post-logs') return <MarketingPostLogsPage />
     if (currentPath === '/admin/marketing/vouchers') return <MarketingVouchersPage />
+    if (currentPath === '/admin/marketing/travel-articles') return <AdminTravelArticlesPage />
+    if (currentPath === '/admin/marketing/giveaway-leads') return <AdminGiveawayLeadsPage />
 
     return <DashboardPage />
   }

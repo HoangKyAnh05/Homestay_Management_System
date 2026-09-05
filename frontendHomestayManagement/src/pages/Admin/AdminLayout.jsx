@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { getStoredToken, getStoredUser, logout } from '../../services/authService'
 import StaffAiChat from '../../components/StaffAiChat/StaffAiChat'
-import ShiftHandoverModal from '../../components/ShiftHandover/ShiftHandoverModal'
-import { ShiftGuardProvider, useShiftGuard } from '../../context/ShiftGuardContext'
+import { ShiftGuardProvider } from '../../context/ShiftGuardContext'
+import AdminDailyReportsModal from '../../components/DailyClosingReport/AdminDailyReportsModal'
 import { NAV_KEYS_BY_ROLE } from '../../utils/roleUtils'
 import './AdminLayout.css'
 
@@ -82,7 +82,6 @@ const NAV_ITEMS = [
   { key: 'rules', label: 'Cấu hình Nội quy & Phạt & Phụ thu', path: '/admin/rules-penalties', icon: ICONS.rules },
   { key: 'reviews', label: 'Quản lý Đánh giá', path: '/admin/reviews', icon: ICONS.rules },
   { key: 'invoices', label: 'Quản lý Hóa đơn', path: '/admin/invoices', icon: ICONS.invoices },
-  { key: 'shifts', label: 'Quản lý Giao ca & Quỹ', path: '/admin/shifts', icon: ICONS.shifts },
   {
     key: 'housekeeping',
     label: 'Quản lý Housekeeping',
@@ -100,8 +99,11 @@ const NAV_ITEMS = [
     icon: ICONS.marketing,
     children: [
       { key: 'ai-post-agent', label: 'AI Agent Đăng bài', path: '/admin/marketing/ai-agent' },
+      { key: 'remotion-studio', label: '🎬 Remotion Video Studio', path: '/admin/marketing/video-editor' },
       { key: 'post-logs', label: 'Nhật ký Bài đăng', path: '/admin/marketing/post-logs' },
       { key: 'vouchers', label: 'Mã giảm giá (Vouchers)', path: '/admin/marketing/vouchers' },
+      { key: 'travel-articles', label: 'Điểm đến & Bài review Sa Pa', path: '/admin/marketing/travel-articles' },
+      { key: 'giveaway-leads', label: '🎁 Khách hàng tiềm năng & Minigame', path: '/admin/marketing/giveaway-leads' },
     ],
   },
 ]
@@ -131,11 +133,11 @@ function getActiveGroupKey(activePage, navItems) {
   return navItems.find(item => item.children && isGroupActive(item, activePage))?.key || null
 }
 
-function AdminLayoutInner({ activePage, children, onOpenShiftModal }) {
+function AdminLayoutInner({ activePage, children }) {
   const user = getStoredUser()
   const role = user?.role || 'ROLE_ADMIN'
   const [collapsed, setCollapsed] = useState(false)
-  const { isReceptionist, isInShift, loadingShift, openHandoverModal, refreshShiftStatus } = useShiftGuard()
+  const [showAdminReportsModal, setShowAdminReportsModal] = useState(false)
 
   // Lọc menu theo role: null = toàn bộ (admin)
   // Dùng useMemo để tránh tạo array mới mỗi render (gây reset openGroupKey)
@@ -167,10 +169,65 @@ function AdminLayoutInner({ activePage, children, onOpenShiftModal }) {
     users: false,
   })
 
+  const [marketingUnreadCount, setMarketingUnreadCount] = useState(0)
+  const [showNotificationDropdown, setShowNotificationDropdown] = useState(false)
+  const [marketingNotifications, setMarketingNotifications] = useState([])
+  const [loadingNotifications, setLoadingNotifications] = useState(false)
+  const notifDropdownRef = useRef(null)
+
   const maxBookingIdRef = useRef(0)
   const latestIncidentCountRef = useRef(0)
   const latestTaskCountRef = useRef(0)
   const latestReviewCountRef = useRef(0)
+
+  const fetchMarketingNotifications = async () => {
+    const token = getStoredToken()
+    if (!token) return
+    setLoadingNotifications(true)
+    try {
+      const res = await fetch((import.meta.env.VITE_API_URL || '') + '/api/admin/marketing/notifications', {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (res.ok) {
+        const list = await res.json()
+        setMarketingNotifications(Array.isArray(list) ? list : [])
+      }
+    } catch (_) {}
+    finally {
+      setLoadingNotifications(false)
+    }
+  }
+
+  const markAllNotificationsAsRead = async () => {
+    const token = getStoredToken()
+    if (!token) return
+    try {
+      await fetch((import.meta.env.VITE_API_URL || '') + '/api/admin/marketing/notifications/read-all', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      setMarketingUnreadCount(0)
+      setMarketingNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })))
+      setNavAlerts((prev) => ({ ...prev, marketing: false }))
+    } catch (_) {}
+  }
+
+  const markNotificationAsRead = async (id) => {
+    const token = getStoredToken()
+    if (!token) return
+    try {
+      await fetch((import.meta.env.VITE_API_URL || '') + `/api/admin/marketing/notifications/${id}/read`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      setMarketingNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)))
+      setMarketingUnreadCount((prev) => {
+        const next = Math.max(0, prev - 1)
+        if (next === 0) setNavAlerts((a) => ({ ...a, marketing: false }))
+        return next
+      })
+    } catch (_) {}
+  }
 
   const clearAlert = (key) => {
     const maxId = maxBookingIdRef.current
@@ -223,7 +280,7 @@ function AdminLayoutInner({ activePage, children, onOpenShiftModal }) {
 
     // 1. Quản lý Đặt & Trả phòng (Bookings & Check-in logs)
     try {
-      const res = await fetch('http://localhost:8080/api/admin/bookings/check-in-logs', { headers })
+      const res = await fetch((import.meta.env.VITE_API_URL || '') + '/api/admin/bookings/check-in-logs', { headers })
       if (res.ok) {
         const bookings = await res.json()
         if (Array.isArray(bookings) && bookings.length > 0) {
@@ -263,8 +320,8 @@ function AdminLayoutInner({ activePage, children, onOpenShiftModal }) {
     // 2. Quản lý Housekeeping (Đồ hỏng & mất, Nhiệm vụ vệ sinh)
     try {
       const [incidentRes, taskRes] = await Promise.allSettled([
-        fetch('http://localhost:8080/api/admin/incidents/summary', { headers }),
-        fetch('http://localhost:8080/api/housekeeping/tasks', { headers }),
+        fetch((import.meta.env.VITE_API_URL || '') + '/api/admin/incidents/summary', { headers }),
+        fetch((import.meta.env.VITE_API_URL || '') + '/api/housekeeping/tasks', { headers }),
       ])
 
       let hasIncidentAlert = false
@@ -303,21 +360,9 @@ function AdminLayoutInner({ activePage, children, onOpenShiftModal }) {
       updated.housekeeping = hasIncidentAlert || hasTaskAlert
     } catch (_) {}
 
-    // 3. Quản lý Giao ca & Quỹ (Shifts)
-    try {
-      const shiftRes = await fetch('http://localhost:8080/api/admin/shifts/current-status', { headers })
-      if (shiftRes.ok) {
-        const shiftData = await shiftRes.json()
-        const hasPendingHandover = Boolean(shiftData?.pendingHandover || shiftData?.hasPendingApproval || shiftData?.requiresAction)
-        const seenShiftsAt = Number(localStorage.getItem('admin_seen_shifts_at') || 0)
-        const shiftAlert = hasPendingHandover && (Date.now() - seenShiftsAt > 300000)
-        updated.shifts = activePage === 'shifts' ? false : shiftAlert
-      }
-    } catch (_) {}
-
     // 4. Quản lý Đánh giá (Reviews)
     try {
-      const reviewRes = await fetch('http://localhost:8080/api/admin/reviews', { headers })
+      const reviewRes = await fetch((import.meta.env.VITE_API_URL || '') + '/api/admin/reviews', { headers })
       if (reviewRes.ok) {
         const reviews = await reviewRes.json()
         if (Array.isArray(reviews)) {
@@ -335,7 +380,7 @@ function AdminLayoutInner({ activePage, children, onOpenShiftModal }) {
 
     // 5. Quản lý Phòng (Phòng bảo trì / sự cố)
     try {
-      const roomRes = await fetch('http://localhost:8080/api/rooms', { headers })
+      const roomRes = await fetch((import.meta.env.VITE_API_URL || '') + '/api/rooms', { headers })
       if (roomRes.ok) {
         const rooms = await roomRes.json()
         if (Array.isArray(rooms)) {
@@ -344,6 +389,17 @@ function AdminLayoutInner({ activePage, children, onOpenShiftModal }) {
           const roomAlert = maintenanceRooms.length > 0 && (Date.now() - seenRoomsAt > 300000)
           updated.rooms = activePage === 'rooms' ? false : roomAlert
         }
+      }
+    } catch (_) {}
+
+    // 6. Thông báo tương tác Marketing (Like, Bình luận mới từ MXH)
+    try {
+      const notifRes = await fetch((import.meta.env.VITE_API_URL || '') + '/api/admin/marketing/notifications/unread-count', { headers })
+      if (notifRes.ok) {
+        const notifData = await notifRes.json()
+        const count = Number(notifData?.count || 0)
+        setMarketingUnreadCount(count)
+        updated.marketing = count > 0
       }
     } catch (_) {}
 
@@ -387,6 +443,17 @@ function AdminLayoutInner({ activePage, children, onOpenShiftModal }) {
       return next || prev
     })
   }, [activePage, navItems])
+
+  useEffect(() => {
+    if (!showNotificationDropdown) return
+    const handleClickOutside = (e) => {
+      if (notifDropdownRef.current && !notifDropdownRef.current.contains(e.target)) {
+        setShowNotificationDropdown(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [showNotificationDropdown])
 
   const handleLogout = () => {
     logout()
@@ -528,22 +595,112 @@ function AdminLayoutInner({ activePage, children, onOpenShiftModal }) {
           </div>
 
           <div className="admin-topbar-right">
-            {role === 'ROLE_RECEPTIONIST' && (
+            {role === 'ROLE_ADMIN' && (
               <button
                 type="button"
-                className={`admin-topbar-shift-btn ${isInShift ? 'admin-topbar-shift-btn--active' : 'admin-topbar-shift-btn--warning'}`}
-                onClick={onOpenShiftModal}
-                title={isInShift ? 'Bạn đang trong ca trực (Bấm để Giao ca)' : 'Bạn chưa nhận ca trực (Bấm để vào ca)'}
+                onClick={() => setShowAdminReportsModal(true)}
+                title="Xem các Báo cáo cuối ngày do Lễ tân gửi"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '6px 14px',
+                  borderRadius: 8,
+                  border: '1px solid #cbd5e1',
+                  background: '#f8fafc',
+                  color: '#0f172a',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  marginRight: 8,
+                  transition: 'all 0.2s',
+                }}
               >
-                <span className="admin-shift-status-dot" />
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                <span>{isInShift ? 'Đang trong ca (Giao ca)' : 'Chưa nhận ca (Vào ca ngay)'}</span>
+                <span style={{ fontSize: 15 }}>📋</span>
+                <span>Báo cáo cuối ngày</span>
               </button>
             )}
 
-            <button className="admin-topbar-bell" type="button" aria-label="Thông báo">
-              <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-            </button>
+            <div ref={notifDropdownRef} style={{ position: 'relative' }}>
+              <button
+                className="admin-topbar-bell"
+                type="button"
+                aria-label="Thông báo"
+                onClick={() => {
+                  setShowNotificationDropdown((prev) => {
+                    const next = !prev
+                    if (next) fetchMarketingNotifications()
+                    return next
+                  })
+                }}
+                title={marketingUnreadCount > 0 ? `${marketingUnreadCount} thông báo tương tác mới` : 'Thông báo'}
+              >
+                <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                {marketingUnreadCount > 0 && (
+                  <span className="admin-bell-badge">
+                    {marketingUnreadCount > 99 ? '99+' : marketingUnreadCount}
+                  </span>
+                )}
+              </button>
+
+              {showNotificationDropdown && (
+                <div className="admin-notification-dropdown" onClick={(e) => e.stopPropagation()}>
+                  <div className="admin-notif-header">
+                    <div className="admin-notif-title">
+                      <span>🔔 Thông báo tương tác</span>
+                      {marketingUnreadCount > 0 && (
+                        <span className="admin-notif-pill">{marketingUnreadCount} mới</span>
+                      )}
+                    </div>
+                    {marketingUnreadCount > 0 && (
+                      <button
+                        type="button"
+                        className="admin-notif-read-all-btn"
+                        onClick={markAllNotificationsAsRead}
+                      >
+                        Đã đọc tất cả
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="admin-notif-body">
+                    {loadingNotifications ? (
+                      <div className="admin-notif-empty">Đang tải thông báo...</div>
+                    ) : marketingNotifications.length === 0 ? (
+                      <div className="admin-notif-empty">
+                        <span style={{ fontSize: 24, display: 'block', marginBottom: 4 }}>☕</span>
+                        Chưa có thông báo tương tác mới nào.
+                      </div>
+                    ) : (
+                      marketingNotifications.map((item) => (
+                        <div
+                          key={item.id}
+                          className={`admin-notif-item ${!item.isRead ? 'admin-notif-item--unread' : ''}`}
+                          onClick={() => {
+                            if (!item.isRead) markNotificationAsRead(item.id)
+                            if (item.externalUrl) window.open(item.externalUrl, '_blank')
+                          }}
+                        >
+                          <span className="admin-notif-icon">
+                            {item.type === 'LIKE' ? '❤️' : item.type === 'COMMENT' ? '💬' : item.type === 'SHARE' ? '🔄' : '⚡'}
+                          </span>
+                          <div className="admin-notif-content">
+                            <div className="admin-notif-item-title">{item.title}</div>
+                            <div className="admin-notif-item-message">{item.message}</div>
+                            <div className="admin-notif-item-meta">
+                              <span>{item.platform || 'MXH'}</span>
+                              <span>•</span>
+                              <span>{item.createdAt ? new Date(item.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : ''}</span>
+                            </div>
+                          </div>
+                          {!item.isRead && <span className="admin-notif-dot" />}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
             <div className="admin-topbar-user">
               <span className="admin-topbar-avatar">
                 {user?.fullName?.split(' ').pop()?.[0]?.toUpperCase() || 'A'}
@@ -557,53 +714,24 @@ function AdminLayoutInner({ activePage, children, onOpenShiftModal }) {
         </header>
 
         <main className="admin-content">
-          {/* Banner chế độ chỉ xem khi Lễ tân chưa nhận ca */}
-          {isReceptionist && !isInShift && !loadingShift && (
-            <div className="admin-shift-locked-banner">
-              <div className="admin-shift-locked-left">
-                <span className="admin-shift-locked-icon">🔒</span>
-                <div>
-                  <strong>Chế độ Xem (Bạn chưa nhận ca làm việc)</strong>
-                  <p>
-                    Bạn chưa hoàn tất nhận bàn giao ca làm. Trong chế độ này bạn có thể xem tất cả dữ liệu nhưng <strong>không thể chỉnh sửa / tạo mới / check-in / check-out</strong>.
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                className="btn-shift-unlock"
-                onClick={onOpenShiftModal}
-              >
-                <span>📝 Đối soát & Nhận ca ngay</span>
-              </button>
-            </div>
-          )}
-
           {children}
         </main>
       </div>
 
-      {/* {['ROLE_ADMIN', 'ROLE_RECEPTIONIST'].includes(role) && <StaffAiChat />} */}
+      <AdminDailyReportsModal
+        isOpen={showAdminReportsModal}
+        onClose={() => setShowAdminReportsModal(false)}
+      />
     </div>
   )
 }
 
 function AdminLayout({ activePage, children }) {
-  const [showTopShiftModal, setShowTopShiftModal] = useState(false)
-
   return (
-    <ShiftGuardProvider onOpenHandoverModal={() => setShowTopShiftModal(true)}>
-      <AdminLayoutInner activePage={activePage} onOpenShiftModal={() => setShowTopShiftModal(true)}>
+    <ShiftGuardProvider>
+      <AdminLayoutInner activePage={activePage}>
         {children}
       </AdminLayoutInner>
-
-      <ShiftHandoverModal
-        isOpen={showTopShiftModal}
-        onClose={() => setShowTopShiftModal(false)}
-        onSuccess={() => {
-          window.location.reload()
-        }}
-      />
     </ShiftGuardProvider>
   )
 }

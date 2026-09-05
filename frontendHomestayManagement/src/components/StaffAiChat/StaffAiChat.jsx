@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
+﻿import { useEffect, useRef, useState } from 'react'
 import { getStoredToken, getStoredUser } from '../../services/authService'
 import { readNdjsonStream } from '../../utils/readNdjsonStream'
 import './StaffAiChat.css'
 
-const STREAM_API_URL = 'http://localhost:8080/api/ai/staff/chat/stream'
+const STREAM_API_URL = (import.meta.env.VITE_API_URL || '') + '/api/ai/staff/chat/stream'
 const SESSION_STORAGE_KEY = 'homeStayStaffAiChatSessionId'
 const WELCOME_MESSAGE = {
   role: 'assistant',

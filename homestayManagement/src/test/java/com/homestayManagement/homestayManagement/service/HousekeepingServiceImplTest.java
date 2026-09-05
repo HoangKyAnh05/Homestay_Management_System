@@ -117,7 +117,7 @@ class HousekeepingServiceImplTest {
         assertEquals("IN_PROGRESS", task.getCleaningStatus());
         verify(roomAmenitiesUsageRepository).deleteByCheckInRecordId(6L);
         verify(roomAmenitiesUsageRepository).saveAll(argThat(items -> items.iterator().next().getQuantityUsed() == 3));
-        verify(appliedPenaltyRepository).deleteByCheckRecordId(6L);
+        verify(appliedPenaltyRepository).deleteStandardRulePenaltiesByCheckRecordId(6L);
         verify(adminBookingService).generateInvoice(5L);
     }
 

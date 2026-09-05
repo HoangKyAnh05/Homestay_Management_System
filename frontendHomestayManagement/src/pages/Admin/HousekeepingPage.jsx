@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { getStoredToken } from '../../services/authService'
 import AdminLayout from './AdminLayout'
 import './HousekeepingPage.css'
 
-const API = 'http://localhost:8080/api/housekeeping'
+const API = (import.meta.env.VITE_API_URL || '') + '/api/housekeeping'
 
 function bookingDisplay(booking) {
   return booking?.bookingCode || `#${booking?.bookingId || ''}`
@@ -370,7 +370,7 @@ function HousekeepingPage() {
     try {
       const formData = new FormData()
       formData.append('file', file)
-      const res = await fetch('http://localhost:8080/api/admin/incidents/upload-image', {
+      const res = await fetch((import.meta.env.VITE_API_URL || '') + '/api/admin/incidents/upload-image', {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${getStoredToken()}`,
@@ -396,7 +396,7 @@ function HousekeepingPage() {
     setIncidentSubmitting(true)
     setError('')
     try {
-      const res = await fetch('http://localhost:8080/api/admin/incidents', {
+      const res = await fetch((import.meta.env.VITE_API_URL || '') + '/api/admin/incidents', {
         method: 'POST',
         headers: authHeaders(),
         body: JSON.stringify({
@@ -483,7 +483,7 @@ function HousekeepingPage() {
                       placeholder="VD: Điều khiển tivi, Khăn tắm, Ly thủy tinh, Vòi sen..."
                       value={incidentForm.itemName}
                       onChange={e => setIncidentForm({ ...incidentForm, itemName: e.target.value })}
-                      style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #cbd5e1', boxSizing: 'border-box' }}
+                      style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #cbd5e1', background: '#ffffff', color: '#0f172a', boxSizing: 'border-box' }}
                     />
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
@@ -492,7 +492,7 @@ function HousekeepingPage() {
                       <select
                         value={incidentForm.incidentType}
                         onChange={e => setIncidentForm({ ...incidentForm, incidentType: e.target.value })}
-                        style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #cbd5e1', background: '#fff' }}
+                        style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #cbd5e1', background: '#ffffff', color: '#0f172a' }}
                       >
                         <option value="DAMAGED">💥 Đồ bị hỏng hóc</option>
                         <option value="LOST">🔍 Đồ thất lạc / bị mất</option>
@@ -507,7 +507,7 @@ function HousekeepingPage() {
                         required
                         value={incidentForm.quantity}
                         onChange={e => setIncidentForm({ ...incidentForm, quantity: e.target.value })}
-                        style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #cbd5e1', boxSizing: 'border-box' }}
+                        style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #cbd5e1', background: '#ffffff', color: '#0f172a', boxSizing: 'border-box' }}
                       />
                     </div>
                   </div>
@@ -517,7 +517,7 @@ function HousekeepingPage() {
                       <select
                         value={incidentForm.severity}
                         onChange={e => setIncidentForm({ ...incidentForm, severity: e.target.value })}
-                        style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #cbd5e1', background: '#fff' }}
+                        style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #cbd5e1', background: '#ffffff', color: '#0f172a' }}
                       >
                         <option value="LOW">Thấp (Trầy xước nhỏ, đồ phụ)</option>
                         <option value="MEDIUM">Trung bình (Đồ dùng thường ngày)</option>
@@ -534,7 +534,7 @@ function HousekeepingPage() {
                         placeholder="VD: 150000"
                         value={incidentForm.estimatedCost}
                         onChange={e => setIncidentForm({ ...incidentForm, estimatedCost: e.target.value })}
-                        style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #cbd5e1', boxSizing: 'border-box' }}
+                        style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #cbd5e1', background: '#ffffff', color: '#0f172a', boxSizing: 'border-box' }}
                       />
                     </div>
                   </div>
@@ -574,13 +574,13 @@ function HousekeepingPage() {
                         placeholder="https://... hoặc link ảnh chụp hiện trường"
                         value={incidentForm.evidenceImageUrl}
                         onChange={e => setIncidentForm({ ...incidentForm, evidenceImageUrl: e.target.value })}
-                        style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #cbd5e1', boxSizing: 'border-box' }}
+                        style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #cbd5e1', background: '#ffffff', color: '#0f172a', boxSizing: 'border-box' }}
                       />
 
                       {incidentForm.evidenceImageUrl && (
                         <div style={{ position: 'relative', display: 'inline-block', maxWidth: 160, borderRadius: 8, overflow: 'hidden', border: '1px solid #cbd5e1', marginTop: 4 }}>
                           <img
-                            src={incidentForm.evidenceImageUrl.startsWith('/uploads/') ? `http://localhost:8080${incidentForm.evidenceImageUrl}` : incidentForm.evidenceImageUrl}
+                            src={incidentForm.evidenceImageUrl.startsWith('/uploads/') ? `${import.meta.env.VITE_API_URL || ''}${incidentForm.evidenceImageUrl}` : incidentForm.evidenceImageUrl}
                             alt="Preview"
                             style={{ width: '100%', maxHeight: 110, objectFit: 'cover', display: 'block' }}
                           />
@@ -617,7 +617,7 @@ function HousekeepingPage() {
                       placeholder="Mô tả cụ thể hiện trạng hư hại, vị trí, hoặc tình trạng khi kiểm tra phòng..."
                       value={incidentForm.description}
                       onChange={e => setIncidentForm({ ...incidentForm, description: e.target.value })}
-                      style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #cbd5e1', boxSizing: 'border-box', resize: 'vertical' }}
+                      style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #cbd5e1', background: '#ffffff', color: '#0f172a', boxSizing: 'border-box', resize: 'vertical' }}
                     />
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 8 }}>

@@ -38,11 +38,29 @@ import java.util.Map;
 public class AdminMarketingController {
 
     private final AdminMarketingService adminMarketingService;
+    private final com.homestayManagement.homestayManagement.service.HumanizedMarketingContentService humanizedMarketingContentService;
     private final ObjectMapper objectMapper;
 
-    public AdminMarketingController(AdminMarketingService adminMarketingService, ObjectMapper objectMapper) {
+    public AdminMarketingController(
+            AdminMarketingService adminMarketingService,
+            com.homestayManagement.homestayManagement.service.HumanizedMarketingContentService humanizedMarketingContentService,
+            ObjectMapper objectMapper
+    ) {
         this.adminMarketingService = adminMarketingService;
+        this.humanizedMarketingContentService = humanizedMarketingContentService;
         this.objectMapper = objectMapper;
+    }
+
+    @GetMapping("/humanized/presets")
+    public Map<String, Object> getHumanizedPresets() {
+        return humanizedMarketingContentService.getPresets();
+    }
+
+    @PostMapping("/humanized/generate")
+    public com.homestayManagement.homestayManagement.dto.response.HumanizedContentResponse generateHumanizedContent(
+            @RequestBody com.homestayManagement.homestayManagement.dto.request.HumanizedContentGenerateRequest request
+    ) {
+        return humanizedMarketingContentService.generateContent(request);
     }
 
     @GetMapping("/dashboard")
@@ -81,6 +99,20 @@ public class AdminMarketingController {
             Authentication authentication
     ) {
         return adminMarketingService.createSocialAccount(request, authentication);
+    }
+
+    @PostMapping("/social-accounts/detect-facebook-token")
+    public List<com.homestayManagement.homestayManagement.dto.response.DetectedFacebookPageResponse> detectFacebookToken(
+            @RequestBody com.homestayManagement.homestayManagement.dto.request.DetectFacebookTokenRequest request
+    ) {
+        return adminMarketingService.detectFacebookPages(request.getToken());
+    }
+
+    @PostMapping("/social-accounts/detect-youtube-token")
+    public List<com.homestayManagement.homestayManagement.dto.response.DetectedYouTubeChannelResponse> detectYouTubeToken(
+            @RequestBody com.homestayManagement.homestayManagement.dto.request.DetectYouTubeTokenRequest request
+    ) {
+        return adminMarketingService.detectYouTubeChannels(request.getToken(), request.getChannelQuery());
     }
 
     @DeleteMapping("/social-accounts/{id}")
@@ -200,6 +232,20 @@ public class AdminMarketingController {
     @PostMapping("/channels/{id}/publish")
     public MarketingPostResponse publishChannel(@PathVariable Long id) {
         return adminMarketingService.publishChannel(id);
+    }
+
+    @GetMapping("/channels/{id}/engagement")
+    public com.homestayManagement.homestayManagement.dto.response.PostEngagementMetricsResponse getChannelEngagement(@PathVariable Long id) {
+        return adminMarketingService.getChannelEngagement(id);
+    }
+
+    @PostMapping("/channels/{channelId}/comments/{commentId}/reply")
+    public com.homestayManagement.homestayManagement.dto.response.PostCommentReplyResponse replyComment(
+            @PathVariable Long channelId,
+            @PathVariable String commentId,
+            @RequestBody @Valid com.homestayManagement.homestayManagement.dto.request.PostCommentReplyRequest request
+    ) {
+        return adminMarketingService.replyComment(channelId, commentId, request);
     }
 
     @ExceptionHandler({IllegalArgumentException.class, IllegalStateException.class})

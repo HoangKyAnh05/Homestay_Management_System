@@ -1,4 +1,4 @@
-const BACKEND = 'http://localhost:8080'
+import { BACKEND_URL as BACKEND } from '../config/api'
 
 /** Resolve image path: /uploads/* → backend, /home_* etc. → frontend public */
 export function resolveImageUrl(url) {

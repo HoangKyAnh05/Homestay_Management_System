@@ -91,7 +91,7 @@ public class StayAccessServiceImpl implements StayAccessService {
 
         String email = normalizeEmail(representativeEmail);
         Account account = accountRepository.findByEmailIgnoreCase(email)
-                .orElseGet(() -> createCustomerAccount(email, representativeName));
+                .orElseGet(() -> createCustomerAccount(email));
         requireCustomerAccount(account);
         ensureCustomerProfile(account, representativeName);
 
@@ -265,21 +265,15 @@ public class StayAccessServiceImpl implements StayAccessService {
         return new StayServiceOrderResponse(access.getId(), roomNumber, serviceResponse);
     }
 
-    private Account createCustomerAccount(String email, String representativeName) {
+    private Account createCustomerAccount(String email) {
         Role customerRole = roleRepository.findByName(CUSTOMER_ROLE)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy vai trò khách hàng"));
-        Account account = accountRepository.save(Account.builder()
+        return accountRepository.save(Account.builder()
                 .email(email)
                 .password(passwordEncoder.encode(UUID.randomUUID().toString()))
                 .role(customerRole)
                 .isActive(false)
                 .build());
-        customerRepository.save(Customer.builder()
-                .account(account)
-                .email(account.getEmail())
-                .fullName(representativeName.trim())
-                .build());
-        return account;
     }
 
     private void ensureCustomerProfile(Account account, String representativeName) {

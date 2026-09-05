@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+﻿import { useCallback, useEffect, useMemo, useState } from 'react'
 import { getStoredToken } from '../../services/authService'
 import { houseTypeName } from '../../utils/houseType'
 import AdminLayout from './AdminLayout'
 import './AdminHousekeepingCalendarPage.css'
 
-const API = 'http://localhost:8080/api/admin/housekeeping/calendar'
+const API = (import.meta.env.VITE_API_URL || '') + '/api/admin/housekeeping/calendar'
 
 function bookingDisplay(booking) {
   return booking?.bookingCode || `#${booking?.bookingId || ''}`

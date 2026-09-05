@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState } from 'react'
+﻿import { useEffect, useMemo, useState } from 'react'
 import { getStoredToken } from '../../services/authService'
 import AdminLayout from './AdminLayout'
 import './AdminServiceCategoriesPage.css'
 
-const API = 'http://localhost:8080/api/admin/rules-penalties'
+const API = (import.meta.env.VITE_API_URL || '') + '/api/admin/rules-penalties'
 
 function authHeaders() {
   return { 'Content-Type': 'application/json', Authorization: `Bearer ${getStoredToken()}` }

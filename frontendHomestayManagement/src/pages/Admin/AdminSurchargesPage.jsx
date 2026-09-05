@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+﻿import { useEffect, useMemo, useRef, useState } from 'react'
 import { getStoredToken } from '../../services/authService'
 import AdminLayout from './AdminLayout'
 import './AdminServiceCategoriesPage.css'
 
-const API = 'http://localhost:8080/api/admin/services/mini-bar-items'
-const BACKEND = 'http://localhost:8080'
+const API = (import.meta.env.VITE_API_URL || '') + '/api/admin/services/mini-bar-items'
+const BACKEND = (import.meta.env.VITE_API_URL || '') + ''
 const DEFAULT_IMAGE = '/img.png'
 
 function authHeaders() {

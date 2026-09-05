@@ -22,6 +22,15 @@ body {
 }
 
 button,
-input {
+input,
+textarea,
+select {
   font: inherit;
+  background-color: #ffffff;
+  color: #1e293b;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #94a3b8;
 }

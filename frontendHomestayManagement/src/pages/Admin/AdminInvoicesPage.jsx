@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useState } from 'react'
+﻿import { useEffect, useMemo, useState } from 'react'
 import { getStoredToken } from '../../services/authService'
 import { formatDateTime as formatAppDateTime } from '../../utils/dateTimeFormat'
 import AdminLayout from './AdminLayout'
 import './AdminInvoicesPage.css'
 
-const API = 'http://localhost:8080/api/admin/invoices'
+const API = (import.meta.env.VITE_API_URL || '') + '/api/admin/invoices'
 const PAGE_SIZE = 6
 
 function bookingDisplay(booking) {

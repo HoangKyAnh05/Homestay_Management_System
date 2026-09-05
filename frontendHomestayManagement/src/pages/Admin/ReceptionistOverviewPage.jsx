@@ -2,13 +2,10 @@ import { useCallback, useEffect, useState } from 'react'
 import { getStoredToken, getStoredUser } from '../../services/authService'
 import { navigate } from './AdminLayout'
 import AdminLayout from './AdminLayout'
-import ShiftHandoverModal from '../../components/ShiftHandover/ShiftHandoverModal'
-import ShiftHistoryModal from '../../components/ShiftHandover/ShiftHistoryModal'
-import { getCurrentShiftStatus } from '../../services/shiftService'
-import { useShiftGuard } from '../../context/ShiftGuardContext'
+import DailyClosingModal from '../../components/DailyClosingReport/DailyClosingModal'
 import './ReceptionistOverviewPage.css'
 
-const API_BASE = 'http://localhost:8080/api/admin/bookings'
+const API_BASE = (import.meta.env.VITE_API_URL || '') + '/api/admin/bookings'
 
 function bookingDisplay(booking) {
   return booking?.bookingCode || `#${booking?.bookingId || ''}`
@@ -70,24 +67,11 @@ function SummaryCard({ icon, label, value, sub, tone }) {
 
 function ReceptionistOverviewPage() {
   const user = getStoredUser()
-  const { isInShift, guardAction, refreshShiftStatus } = useShiftGuard()
   const today = toDateInput(new Date())
   const [logs, setLogs] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-
-  const [shiftStatus, setShiftStatus] = useState(null)
-  const [showHandoverModal, setShowHandoverModal] = useState(false)
-  const [showHistoryModal, setShowHistoryModal] = useState(false)
-
-  const loadShiftStatus = useCallback(async () => {
-    try {
-      const data = await getCurrentShiftStatus()
-      setShiftStatus(data)
-    } catch {
-      // ignore
-    }
-  }, [])
+  const [showDailyClosingModal, setShowDailyClosingModal] = useState(false)
 
   const loadLogs = useCallback(async () => {
     setLoading(true)
@@ -107,10 +91,8 @@ function ReceptionistOverviewPage() {
 
   useEffect(() => {
     loadLogs()
-    loadShiftStatus()
-  }, [loadLogs, loadShiftStatus])
+  }, [loadLogs])
 
-  // Tổng hợp tất cả details từ tất cả bookings hôm nay
   const allDetails = logs.flatMap(b => (b.details || []).map(d => ({ ...d, booking: b })))
 
   const stayingCount   = allDetails.filter(d => d.checkInRecord?.actualCheckIn && !d.checkInRecord?.actualCheckOut).length
@@ -118,7 +100,6 @@ function ReceptionistOverviewPage() {
   const completedToday = allDetails.filter(d => d.checkInRecord?.actualCheckOut).length
   const totalToday     = logs.length
 
-  // Top 5 booking đang lưu trú hoặc chờ check-in
   const activeBookings = logs
     .filter(b => ['CHECKED_IN', 'CONFIRMED', 'PENDING'].includes(String(b.bookingStatus || '').toUpperCase()))
     .slice(0, 6)
@@ -129,57 +110,6 @@ function ReceptionistOverviewPage() {
   return (
     <AdminLayout activePage="receptionist-overview">
       <div className="rcp-page">
-
-        {/* ── Bàn giao & Đối soát ca làm việc ── */}
-        <div className={`rcp-shift-banner ${shiftStatus?.isCurrentStaffInShift ? 'rcp-shift-banner--active' : 'rcp-shift-banner--pending'}`}>
-          <div className="rcp-shift-info">
-            <div className="rcp-shift-tag">
-              {shiftStatus?.isCurrentStaffInShift ? '✅ Đang trong ca làm' : '⚠️ Chưa vào ca làm'}
-            </div>
-            <div className="rcp-shift-text">
-              {shiftStatus?.isCurrentStaffInShift ? (
-                <>
-                  <strong>Bạn đang trực ca làm việc hiện tại</strong>
-                  <span>
-                    Bàn giao lúc: {formatDateTime(shiftStatus.currentActiveShift?.handoverTime)} &nbsp;•&nbsp; 
-                    Quỹ tiền bàn giao: <strong>{formatMoney(shiftStatus.currentActiveShift?.actualCash)}</strong> &nbsp;•&nbsp;
-                    Người giao: {shiftStatus.currentActiveShift?.outgoingStaffName || '—'}
-                  </span>
-                </>
-              ) : (
-                <>
-                  <strong>Bạn chưa nhận bàn giao ca làm việc</strong>
-                  <span>
-                    {shiftStatus?.currentActiveShift
-                      ? `Ca trước do ${shiftStatus.currentActiveShift.incomingStaffName || 'nhân viên khác'} trực. Vui lòng đối soát và giao ca để bắt đầu ca mới.`
-                      : 'Hệ thống chưa có ca làm hoạt động. Vui lòng đối soát và điền biên bản giao ca để vào ca làm.'}
-                  </span>
-                </>
-              )}
-            </div>
-          </div>
-
-          <div className="rcp-shift-actions">
-            <button
-              type="button"
-              className="rcp-btn-shift-history"
-              onClick={() => setShowHistoryModal(true)}
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-              Lịch sử giao ca
-            </button>
-            <button
-              type="button"
-              className="rcp-btn-shift-handover"
-              onClick={() => setShowHandoverModal(true)}
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-              {shiftStatus?.isCurrentStaffInShift ? 'Đối soát & Giao ca tiếp theo' : 'Đối soát & Điền giao ca vào làm'}
-            </button>
-          </div>
-        </div>
-
-        {/* ── Chào ── */}
         <div className="rcp-hello">
           <div>
             <h1>{greeting}, {user?.fullName?.split(' ').pop() || 'Lễ tân'} 👋</h1>
@@ -188,10 +118,40 @@ function ReceptionistOverviewPage() {
               Dưới đây là tổng quan lưu trú trong ngày.
             </p>
           </div>
-          <button type="button" className="rcp-refresh" onClick={loadLogs} disabled={loading}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>
-            {loading ? 'Đang tải...' : 'Làm mới'}
-          </button>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+            <button
+              type="button"
+              className="rcp-daily-closing-btn"
+              onClick={() => setShowDailyClosingModal(true)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '10px 18px',
+                borderRadius: 10,
+                border: 'none',
+                background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
+                color: '#ffffff',
+                fontWeight: 700,
+                fontSize: 14,
+                cursor: 'pointer',
+                boxShadow: '0 4px 12px rgba(5, 150, 105, 0.3)',
+                transition: 'all 0.2s',
+              }}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 18, height: 18 }}>
+                <line x1="18" y1="20" x2="18" y2="10"/>
+                <line x1="12" y1="20" x2="12" y2="4"/>
+                <line x1="6" y1="20" x2="6" y2="14"/>
+              </svg>
+              <span>Tổng kết cuối ngày</span>
+            </button>
+
+            <button type="button" className="rcp-refresh" onClick={loadLogs} disabled={loading}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>
+              {loading ? 'Đang tải...' : 'Làm mới'}
+            </button>
+          </div>
         </div>
 
         {/* ── Summary cards ── */}
@@ -310,23 +270,11 @@ function ReceptionistOverviewPage() {
           </button>
         </div>
 
-        {/* ── Modal Đối soát & Giao ca ── */}
-        <ShiftHandoverModal
-          isOpen={showHandoverModal}
-          onClose={() => setShowHandoverModal(false)}
-          onSuccess={() => {
-            loadShiftStatus()
-            refreshShiftStatus()
-            loadLogs()
-          }}
+        <DailyClosingModal
+          isOpen={showDailyClosingModal}
+          onClose={() => setShowDailyClosingModal(false)}
+          onSuccess={loadLogs}
         />
-
-        {/* ── Modal Lịch sử giao ca ── */}
-        <ShiftHistoryModal
-          isOpen={showHistoryModal}
-          onClose={() => setShowHistoryModal(false)}
-        />
-
       </div>
     </AdminLayout>
   )

@@ -176,10 +176,10 @@ class PublicBookingServiceImplTest {
         when(roomRepository.findByRoomTypeId(10L)).thenReturn(List.of(Room.builder().id(11L).roomType(vipSuite).build()));
         when(roomRepository.findByRoomTypeId(20L)).thenReturn(List.of(Room.builder().id(21L).roomType(connectingRoom).build()));
         when(pricePolicyRepository.findById(30L)).thenReturn(java.util.Optional.of(dailyPolicy));
-        when(roomPriceConfigRepository.findByRoomTypeIdAndPricePolicyIdAndDayType(10L, 30L, "WEEKDAY"))
-                .thenReturn(java.util.Optional.of(RoomPriceConfig.builder().price(BigDecimal.valueOf(7_000)).build()));
-        when(roomPriceConfigRepository.findByRoomTypeIdAndPricePolicyIdAndDayType(20L, 30L, "WEEKDAY"))
-                .thenReturn(java.util.Optional.of(RoomPriceConfig.builder().price(BigDecimal.valueOf(15_000)).build()));
+        when(roomPriceConfigRepository.findByRoomTypeIdAndDayType(org.mockito.ArgumentMatchers.eq(10L), any()))
+                .thenReturn(List.of(RoomPriceConfig.builder().price(BigDecimal.valueOf(7_000)).build()));
+        when(roomPriceConfigRepository.findByRoomTypeIdAndDayType(org.mockito.ArgumentMatchers.eq(20L), any()))
+                .thenReturn(List.of(RoomPriceConfig.builder().price(BigDecimal.valueOf(15_000)).build()));
         when(bookingRepository.save(any(Booking.class))).thenAnswer(invocation -> {
             Booking booking = invocation.getArgument(0);
             booking.setId(60L);
@@ -252,8 +252,8 @@ class PublicBookingServiceImplTest {
         when(bookingDetailRepository.findOverlappingSchedule(any(), any())).thenReturn(List.of());
         when(roomRepository.findByRoomTypeId(10L)).thenReturn(List.of(Room.builder().id(11L).roomType(roomType).build()));
         when(pricePolicyRepository.findById(30L)).thenReturn(java.util.Optional.of(dailyPolicy));
-        when(roomPriceConfigRepository.findByRoomTypeIdAndPricePolicyIdAndDayType(10L, 30L, "WEEKDAY"))
-                .thenReturn(java.util.Optional.of(RoomPriceConfig.builder().price(BigDecimal.valueOf(1_200_000)).build()));
+        when(roomPriceConfigRepository.findByRoomTypeIdAndDayType(org.mockito.ArgumentMatchers.eq(10L), any()))
+                .thenReturn(List.of(RoomPriceConfig.builder().price(BigDecimal.valueOf(1_200_000)).build()));
         when(bookingRepository.save(any(Booking.class))).thenAnswer(invocation -> {
             Booking booking = invocation.getArgument(0);
             booking.setId(60L);
@@ -312,8 +312,8 @@ class PublicBookingServiceImplTest {
         when(bookingDetailRepository.findOverlappingSchedule(any(), any())).thenReturn(List.of());
         when(roomRepository.findByRoomTypeId(10L)).thenReturn(List.of(Room.builder().id(11L).roomType(roomType).build()));
         when(pricePolicyRepository.findById(31L)).thenReturn(java.util.Optional.of(hourlyPolicy));
-        when(roomPriceConfigRepository.findByRoomTypeIdAndPricePolicyIdAndDayType(10L, 31L, "WEEKDAY"))
-                .thenReturn(java.util.Optional.of(RoomPriceConfig.builder().price(BigDecimal.valueOf(500_000)).build()));
+        when(roomPriceConfigRepository.findByRoomTypeIdAndDayType(org.mockito.ArgumentMatchers.eq(10L), any()))
+                .thenReturn(List.of(RoomPriceConfig.builder().price(BigDecimal.valueOf(500_000)).build()));
         when(bookingRepository.save(any(Booking.class))).thenAnswer(invocation -> {
             Booking booking = invocation.getArgument(0);
             booking.setId(61L);

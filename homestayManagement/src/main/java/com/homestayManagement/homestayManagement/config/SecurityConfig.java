@@ -51,6 +51,9 @@ public class SecurityConfig {
                         .requestMatchers("/uploads/**").permitAll()
                         .requestMatchers("/api/rooms/**").permitAll()
                         .requestMatchers("/api/public/reviews/**").permitAll()
+                        .requestMatchers("/api/public/travel-articles/**").permitAll()
+                        .requestMatchers("/api/public/giveaway/**").permitAll()
+                        .requestMatchers("/api/public/marketing/**").permitAll()
                         .requestMatchers("/api/customer/**").hasAuthority("ROLE_CUSTOMER")
                         .requestMatchers(HttpMethod.GET, "/api/vouchers/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/amenities").permitAll()
@@ -68,6 +71,10 @@ public class SecurityConfig {
                         .hasAnyAuthority("ROLE_ADMIN", "ROLE_HOUSEKEEPING")
 
                         // ── Admin + Lễ tân ────────────────────────────────────────────
+                        .requestMatchers(HttpMethod.PUT, "/api/admin/daily-reports/*/acknowledge")
+                        .hasAuthority("ROLE_ADMIN")
+                        .requestMatchers("/api/admin/daily-reports/**")
+                        .hasAnyAuthority("ROLE_ADMIN", "ROLE_RECEPTIONIST")
                         .requestMatchers("/api/admin/shifts/**")
                         .hasAnyAuthority("ROLE_ADMIN", "ROLE_RECEPTIONIST")
                         // Hủy phòng & hoàn tiền: chỉ riêng Admin được truy cập và xác nhận
@@ -128,9 +135,9 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOriginPatterns(List.of("http://localhost:*", "http://127.0.0.1:*"));
+        configuration.setAllowedOriginPatterns(List.of("*"));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type"));
+        configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

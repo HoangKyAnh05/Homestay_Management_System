@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+﻿import { useEffect, useMemo, useState } from 'react'
 import { getStoredToken } from '../../services/authService'
 import { useShiftGuard } from '../../context/ShiftGuardContext'
 import { formatClockTime, formatDateTime as formatAppDateTime } from '../../utils/dateTimeFormat'
@@ -7,9 +7,9 @@ import SePayQrPayment from '../../components/SePayQrPayment/SePayQrPayment'
 import AdminLayout from './AdminLayout'
 import './AdminBookingsPage.css'
 
-const API_BASE = 'http://localhost:8080/api/admin/bookings'
-const ADMIN_SERVICE_API = 'http://localhost:8080/api/admin/services'
-const HOUSEKEEPING_API = 'http://localhost:8080/api/housekeeping'
+const API_BASE = (import.meta.env.VITE_API_URL || '') + '/api/admin/bookings'
+const ADMIN_SERVICE_API = (import.meta.env.VITE_API_URL || '') + '/api/admin/services'
+const HOUSEKEEPING_API = (import.meta.env.VITE_API_URL || '') + '/api/housekeeping'
 const SCHEDULE_API = `${API_BASE}/schedule`
 const PAGE_SIZE_OPTIONS = [6, 8, 12]
 const ADMIN_SCHEDULE_STATUSES = new Set(['CONFIRMED', 'CHECKED_IN', 'COMPLETED'])
@@ -24,7 +24,7 @@ function authHeaders() {
 
 function serviceImageSrc(imageUrl) {
   if (!imageUrl) return '/img.png'
-  return imageUrl.startsWith('/uploads/') ? `http://localhost:8080${imageUrl}` : imageUrl
+  return imageUrl.startsWith('/uploads/') ? `${import.meta.env.VITE_API_URL || ''}${imageUrl}` : imageUrl
 }
 
 function toDate(value) {
@@ -472,7 +472,7 @@ function InvoicePreviewModal({ detail, onClose }) {
 }
 
 function BookingDetailModal({ detail, loading, error, actionLoading, actionError, onClose, onRefresh, onAction }) {
-  const PRICE_API_MODAL = 'http://localhost:8080/api/admin/price-config'
+  const PRICE_API_MODAL = (import.meta.env.VITE_API_URL || '') + '/api/admin/price-config'
 
   const [stayOpen, setStayOpen]       = useState(false)
   const [editCustomer, setEditCustomer] = useState(false)
@@ -1194,7 +1194,7 @@ function BookingDetailModal({ detail, loading, error, actionLoading, actionError
 }
 
 function DirectBookingModal({ onClose, onCreated }) {
-  const PRICE_API = 'http://localhost:8080/api/admin/price-config'
+  const PRICE_API = (import.meta.env.VITE_API_URL || '') + '/api/admin/price-config'
 
   const initialCheckIn = defaultCheckInValue()
   const [form, setForm] = useState({

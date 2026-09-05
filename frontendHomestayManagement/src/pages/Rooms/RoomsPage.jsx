@@ -10,7 +10,7 @@ import '../Home/HomePage.css'
 import './RoomsPage.css'
 import './RoomDetailPage.css'
 
-const API_BASE_URL = 'http://localhost:8080/api'
+const API_BASE_URL = (import.meta.env.VITE_API_URL || '') + '/api'
 
 function formatPrice(price) {
   return new Intl.NumberFormat('vi-VN').format(Number(price || 0)) + 'đ'
@@ -320,6 +320,7 @@ function parseSearchCriteria() {
     children: Number(params.get('children') || 0),
     focusRoomId: params.get('focusRoomId'),
     roomTypeId,
+    roomTypeName: params.get('roomTypeName') || '',
   }
 }
 
@@ -360,8 +361,54 @@ function formatNoticeTime(value) {
   return formatAppDateTime(value)
 }
 
+function getStayBreakdown(checkInTarget, checkOutTarget) {
+  if (!checkInTarget || !checkOutTarget) return { totalNights: 1, weekdayNights: 1, weekendNights: 0 }
+  const dIn = new Date(checkInTarget)
+  const dOut = new Date(checkOutTarget)
+  if (isNaN(dIn.getTime()) || isNaN(dOut.getTime()) || dOut <= dIn) {
+    return { totalNights: 1, weekdayNights: 1, weekendNights: 0 }
+  }
+  let curr = new Date(dIn)
+  curr.setHours(0, 0, 0, 0)
+  const end = new Date(dOut)
+  end.setHours(0, 0, 0, 0)
+  if (end.getTime() <= curr.getTime()) {
+    end.setDate(curr.getDate() + 1)
+  }
+  let weekdayNights = 0
+  let weekendNights = 0
+  while (curr.getTime() < end.getTime()) {
+    const day = curr.getDay()
+    if (day === 0 || day === 6) weekendNights++
+    else weekdayNights++
+    curr.setDate(curr.getDate() + 1)
+  }
+  return { totalNights: weekdayNights + weekendNights, weekdayNights, weekendNights }
+}
+
+function calculateDynamicRoomPrice(room, checkInTarget, checkOutTarget) {
+  if (!room) return 0
+  const weekdayPrice = Number(
+    room.weekdayPrice
+    || room.price
+    || room.prices?.find(p => String(p.dayType).toUpperCase() === 'WEEKDAY')?.price
+    || 0
+  )
+  const weekendPrice = Number(
+    room.weekendPrice
+    || room.prices?.find(p => String(p.dayType).toUpperCase() === 'WEEKEND')?.price
+    || weekdayPrice
+  )
+
+  const { weekdayNights, weekendNights } = getStayBreakdown(checkInTarget, checkOutTarget)
+  return (weekdayNights * weekdayPrice) + (weekendNights * (weekendPrice > 0 ? weekendPrice : weekdayPrice))
+}
+
 function findRoomPolicyPrice(room, policy, dayType) {
-  if (!room || !policy) return null
+  if (!room) return null
+  if (!policy) {
+    return { price: calculateDynamicRoomPrice(room) }
+  }
   return (room.prices || []).find((price) =>
     String(price.policyName) === String(policy.policyName)
     && String(price.rentType).toUpperCase() === String(policy.rentType).toUpperCase()
@@ -531,7 +578,7 @@ function PublicHeader() {
         <a href="/rooms" className="home-nav-active">Phòng</a>
         <a href="/wishlist">Yêu thích</a>
         <a href="/amenities">Tiện nghi</a>
-        <a href="/home#contact">Liên hệ</a>
+        <a href="/giveaway" title="Vòng quay may mắn & Nhận ưu đãi">Liên hệ</a>
         <a href="/home#about">Giới thiệu</a>
       </nav>
 
@@ -1082,6 +1129,9 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
   }, [])
 
   const selectedDayType = bookingDayType(form.checkInTarget)
+  const stayBreakdown = useMemo(() => {
+    return getStayBreakdown(form.checkInTarget, form.checkOutTarget)
+  }, [form.checkInTarget, form.checkOutTarget])
   const availablePolicies = useMemo(() => {
     return policies.filter((policy) =>
       selectedRooms.every((room) => findRoomPolicyPrice(room, policy, selectedDayType))
@@ -1091,7 +1141,7 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
   const timeError = validateBookingTime(form)
   const roomPriceItems = selectedRooms.map((room) => ({
     room,
-    price: Number(findRoomPolicyPrice(room, selectedPolicy, selectedDayType)?.price || 0),
+    price: calculateDynamicRoomPrice(room, form.checkInTarget, form.checkOutTarget),
     quantity: roomQuantities[roomKey(room)] || selectedQuantity(room),
   }))
   const roomTotal = roomPriceItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
@@ -1524,7 +1574,7 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
           </section>
 
           <section>
-            <h3>Thời gian và gói thuê</h3>
+            <h3>Thời gian nhận & trả phòng</h3>
             <div className="public-booking-grid">
               <label>
                 <span>Nhận phòng</span>
@@ -1536,30 +1586,34 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
                   onChange={updateCheckInTarget}
                 />
               </label>
-              {isHourlyPolicy(selectedPolicy) ? (
-                <label><span>Trả phòng</span><input type="text" value="00:00" disabled readOnly /></label>
-              ) : (
-                <label>
-                  <span>Trả phòng</span>
-                  <LocalizedDateTimeInput
-                    ariaLabel="Ngày giờ trả phòng"
-                    required
-                    allowBeforeMin
-                    invalid={Boolean(timeError)}
-                    value={form.checkOutTarget}
-                    min={form.checkInTarget || nowDateTimeLocalMin()}
-                    disabled={isAutoCheckoutPolicy(selectedPolicy)}
-                    onChange={updateCheckOutTarget}
-                  />
-                </label>
-              )}
-              <label className="public-booking-wide"><span>Gói thuê</span><select required value={form.pricePolicyId} onChange={(e) => updatePolicy(e.target.value)}>{availablePolicies.map((policy) => <option key={policy.id} value={policy.id}>{policy.policyName}</option>)}</select></label>
+              <label>
+                <span>Trả phòng</span>
+                <LocalizedDateTimeInput
+                  ariaLabel="Ngày giờ trả phòng"
+                  required
+                  allowBeforeMin
+                  invalid={Boolean(timeError)}
+                  value={form.checkOutTarget}
+                  min={form.checkInTarget || nowDateTimeLocalMin()}
+                  onChange={updateCheckOutTarget}
+                  disabled={isAutoCheckoutPolicy(selectedPolicy)}
+                />
+              </label>
             </div>
             {timeError && <p className="public-booking-field-error">{timeError}</p>}
-            {!availablePolicies.length && <p className="public-booking-search-note public-booking-search-note--warning">Chưa có gói thuê nào được cấu hình đủ giá cho tất cả phòng đã chọn.</p>}
-            {isOvernightPolicy(selectedPolicy) && <p className="public-booking-search-note">Khung giờ qua đêm tham khảo là 19h–11h hôm sau; bạn có thể chọn giờ nhận và trả phòng phù hợp.</p>}
-            {isHourlyPolicy(selectedPolicy) && <p className="public-booking-search-note">Đặt theo giờ chỉ cần chọn giờ nhận phòng. Hệ thống tạm tính 1 giờ đầu tiên.</p>}
-            {!isHourlyPolicy(selectedPolicy) && isAutoCheckoutPolicy(selectedPolicy) && <p className="public-booking-search-note">Giờ trả phòng được hệ thống tự tính theo gói thuê đã chọn.</p>}
+            <div style={{ marginTop: 10, padding: '10px 14px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0', color: '#1e293b', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span>
+                Thời gian lưu trú: <strong style={{ color: '#0f172a' }}>{stayBreakdown.totalNights} đêm</strong>
+                {stayBreakdown.weekendNights > 0 ? (
+                  <span style={{ marginLeft: 6, color: '#64748b' }}>
+                    ({stayBreakdown.weekdayNights} đêm thường + <strong style={{ color: '#ea580c' }}>{stayBreakdown.weekendNights} đêm Thứ 7/CN</strong>)
+                  </span>
+                ) : (
+                  <span style={{ marginLeft: 6, color: '#64748b' }}>(Giá ngày thường)</span>
+                )}
+              </span>
+              <span style={{ fontSize: 12, color: '#94a3b8' }}>* Nhận phòng: 14:00 · Trả phòng: 12:00</span>
+            </div>
           </section>
 
           <section className="multi-selected-section">
@@ -1825,7 +1879,7 @@ function RoomsPage() {
   const [bookingModalOpen, setBookingModalOpen] = useState(false)
   const [createdBooking, setCreatedBooking] = useState(null)
   const [luckyReward, setLuckyReward] = useState(null)
-  const [focusRoomApplied, setFocusRoomApplied] = useState(() => readBookingCart().length > 0)
+  const [unavailableNotice, setUnavailableNotice] = useState('')
 
   useEffect(() => {
     const hasSearchDates = Boolean(searchCriteria?.checkInDate && searchCriteria?.checkOutDate)
@@ -1842,25 +1896,31 @@ function RoomsPage() {
       .then((response) => response.json())
       .then((data) => {
         const allRooms = Array.isArray(data) ? data : []
-        const nextRooms = searchCriteria?.roomTypeId
-          ? allRooms.filter((room) => String(room.roomTypeId || room.id) === String(searchCriteria.roomTypeId))
-          : allRooms
-        setRooms(nextRooms)
-        const highest = Math.max(...nextRooms.map((room) => roomPrice(room, searchCriteria?.checkInDate)), 0)
+        setRooms(allRooms)
+
+        const targetId = searchCriteria?.focusRoomId || searchCriteria?.roomTypeId
+        if (targetId) {
+          const matched = allRooms.find((room) => String(room.roomTypeId || room.id || room.roomId) === String(targetId))
+          if (matched) {
+            setSelectedRooms([{ ...matched, quantity: 1 }])
+            writeBookingCart([{ ...matched, quantity: 1 }])
+            setUnavailableNotice('')
+            setTimeout(() => {
+              document.querySelector('.rooms-booking-cart')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+            }, 250)
+          } else {
+            const targetName = searchCriteria?.roomTypeName || 'Hạng phòng bạn chọn'
+            const dateRange = hasSearchDates ? `từ ${searchCriteria.checkInDate} đến ${searchCriteria.checkOutDate}` : 'ngày bạn chọn'
+            setUnavailableNotice(`⚠️ ${targetName} hiện đã hết phòng ${dateRange}. Dưới đây là các hạng phòng còn trống khác để bạn lựa chọn:`)
+          }
+        }
+
+        const highest = Math.max(...allRooms.map((room) => roomPrice(room, searchCriteria?.checkInDate)), 0)
         setMaxPrice(Math.max(highest, 100000))
       })
       .catch(() => setError('Không thể tải danh sách phòng.'))
       .finally(() => setLoading(false))
   }, [searchCriteria])
-
-  useEffect(() => {
-    if (!searchCriteria?.focusRoomId || !rooms.length || selectedRooms.length || focusRoomApplied) return
-    const focusedRoom = rooms.find((room) => String(room.roomId || room.roomTypeId) === String(searchCriteria.focusRoomId))
-    if (focusedRoom) {
-      setSelectedRooms([{ ...focusedRoom, quantity: 1 }])
-      setFocusRoomApplied(true)
-    }
-  }, [focusRoomApplied, rooms, searchCriteria, selectedRooms.length])
 
   useEffect(() => {
     if (!rooms.length || !selectedRooms.length) return
@@ -1983,6 +2043,22 @@ function RoomsPage() {
               </div>
               <span>{visibleRooms.length} phù hợp</span>
             </div>
+
+            {unavailableNotice && (
+              <div style={{
+                background: '#fff7ed',
+                border: '1.5px solid #fdba74',
+                color: '#9a3412',
+                padding: '14px 18px',
+                borderRadius: '14px',
+                marginBottom: '20px',
+                fontSize: '14px',
+                lineHeight: '1.5',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
+              }}>
+                <strong>{unavailableNotice}</strong>
+              </div>
+            )}
 
             {loading ? (
               <div className="rooms-state">Đang tải danh sách phòng...</div>

@@ -1,0 +1,539 @@
+/* AdminTravelArticlesPage.css */
+.ata-page {
+  padding: 24px 32px 48px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.ata-header-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 28px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.ata-badge {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #059669;
+  background: #ecfdf5;
+  padding: 4px 10px;
+  border-radius: 6px;
+  display: inline-block;
+  margin-bottom: 6px;
+}
+
+.ata-header-bar h1 {
+  font-size: 24px;
+  color: #0f172a;
+  margin: 0 0 4px;
+  font-weight: 700;
+}
+
+.ata-header-bar p {
+  font-size: 14px;
+  color: #64748b;
+  margin: 0;
+}
+
+.ata-btn-add {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #059669;
+  color: #ffffff;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.25);
+  transition: all 0.2s ease;
+}
+
+.ata-btn-add:hover {
+  background: #047857;
+  transform: translateY(-1px);
+}
+
+.ata-toast-success {
+  background: #dcfce7;
+  border: 1px solid #86efac;
+  color: #166534;
+  padding: 12px 18px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 20px;
+}
+
+.ata-toast-error {
+  background: #fee2e2;
+  border: 1px solid #fca5a5;
+  color: #991b1b;
+  padding: 12px 18px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 20px;
+}
+
+.ata-loading-card,
+.ata-empty-card {
+  padding: 48px;
+  text-align: center;
+  background: #ffffff;
+  border-radius: 16px;
+  border: 1px dashed #cbd5e1;
+  color: #64748b;
+  font-size: 15px;
+}
+
+/* Grid of articles */
+.ata-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 24px;
+}
+
+.ata-article-card {
+  background: #ffffff;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+  transition: all 0.25s ease;
+}
+
+.ata-article-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.08);
+  border-color: #cbd5e1;
+}
+
+.ata-article-card.is-inactive {
+  opacity: 0.65;
+  background: #f8fafc;
+}
+
+.ata-card-media {
+  position: relative;
+  width: 100%;
+  height: 180px;
+  background: #0f172a;
+  overflow: hidden;
+}
+
+.ata-card-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ata-card-tag {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  background: rgba(15, 23, 42, 0.75);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 999px;
+  backdrop-filter: blur(6px);
+}
+
+.ata-status-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+
+.ata-status-badge.active {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.ata-status-badge.hidden {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.ata-card-body {
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.ata-card-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.ata-cat {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #059669;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.ata-order {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+.ata-card-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0 0 8px;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.ata-card-desc {
+  font-size: 13px;
+  color: #64748b;
+  line-height: 1.5;
+  margin: 0 0 14px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  flex: 1;
+}
+
+.ata-card-specs {
+  background: #f8fafc;
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+  font-size: 12px;
+}
+
+.ata-card-specs small {
+  color: #64748b;
+  font-weight: 600;
+  display: inline-block;
+  width: 75px;
+}
+
+.ata-card-specs span {
+  color: #1e293b;
+  font-weight: 500;
+}
+
+.ata-card-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.ata-act-preview {
+  grid-column: span 2;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  color: #334155;
+  font-weight: 600;
+  padding: 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 12.5px;
+  transition: all 0.2s;
+}
+
+.ata-act-preview:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.ata-act-edit,
+.ata-act-toggle,
+.ata-act-delete {
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid transparent;
+}
+
+.ata-act-edit {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border-color: #bfdbfe;
+}
+
+.ata-act-edit:hover {
+  background: #dbeafe;
+}
+
+.ata-act-toggle {
+  background: #fefce8;
+  color: #a16207;
+  border-color: #fef08a;
+}
+
+.ata-act-toggle:hover {
+  background: #fef9c3;
+}
+
+.ata-act-delete {
+  grid-column: span 2;
+  background: #fff1f2;
+  color: #be123c;
+  border-color: #fecdd3;
+}
+
+.ata-act-delete:hover {
+  background: #ffe4e6;
+}
+
+/* Edit Modal */
+.ata-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  overflow-y: auto;
+}
+
+.ata-modal-card {
+  width: min(100%, 840px);
+  max-height: 90vh;
+  background: #ffffff;
+  border-radius: 20px;
+  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.35);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.ata-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 28px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.ata-modal-head h2 {
+  font-size: 18px;
+  color: #0f172a;
+  margin: 0 0 2px;
+}
+
+.ata-modal-head p {
+  font-size: 12.5px;
+  color: #64748b;
+  margin: 0;
+}
+
+.ata-close-x {
+  font-size: 28px;
+  border: none;
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.ata-close-x:hover {
+  color: #0f172a;
+}
+
+.ata-form {
+  padding: 24px 28px;
+}
+
+.ata-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.ata-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ata-field.full {
+  grid-column: span 2;
+}
+
+.ata-field label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #334155;
+}
+
+.ata-field input[type="text"],
+.ata-field input[type="number"],
+.ata-field textarea {
+  padding: 10px 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  font-size: 13.5px;
+  color: #0f172a;
+  outline: none;
+  transition: border-color 0.2s;
+  font-family: inherit;
+}
+
+.ata-field input:focus,
+.ata-field textarea:focus {
+  border-color: #059669;
+  box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.12);
+}
+
+.ata-field-checkbox {
+  flex-direction: row;
+  align-items: center;
+}
+
+.ata-field-checkbox label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.ata-cover-picker {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.ata-cover-picker input {
+  flex: 1;
+}
+
+.ata-cover-preview {
+  width: 70px;
+  height: 50px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+}
+
+.ata-preset-pills {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.ata-preset-pills span {
+  font-size: 12px;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.ata-preset-btn {
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.ata-preset-btn:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+  border-color: #cbd5e1;
+}
+
+.ata-form-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
+  padding-top: 18px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.ata-btn-ghost {
+  background: transparent;
+  border: 1px solid #cbd5e1;
+  padding: 10px 20px;
+  border-radius: 10px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.ata-btn-ghost:hover {
+  background: #f8fafc;
+  color: #0f172a;
+}
+
+.ata-btn-primary {
+  background: #059669;
+  color: #ffffff;
+  border: none;
+  padding: 10px 24px;
+  border-radius: 10px;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ata-btn-primary:hover {
+  background: #047857;
+}
+
+@media (max-width: 768px) {
+  .ata-page {
+    padding: 16px;
+  }
+
+  .ata-cards-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ata-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ata-field.full {
+    grid-column: span 1;
+  }
+}

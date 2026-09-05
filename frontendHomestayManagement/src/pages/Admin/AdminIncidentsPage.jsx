@@ -1,12 +1,12 @@
-import React, { useState, useEffect, useCallback } from 'react'
+﻿import React, { useState, useEffect, useCallback } from 'react'
 import AdminLayout from './AdminLayout'
 import { getStoredToken, getStoredUser } from '../../services/authService'
 import { useShiftGuard } from '../../context/ShiftGuardContext'
 import './AdminIncidentsPage.css'
 
-const API_BASE = 'http://localhost:8080/api/admin/incidents'
-const ROOMS_API = 'http://localhost:8080/api/rooms'
-const BACKEND = 'http://localhost:8080'
+const API_BASE = (import.meta.env.VITE_API_URL || '') + '/api/admin/incidents'
+const ROOMS_API = (import.meta.env.VITE_API_URL || '') + '/api/rooms'
+const BACKEND = (import.meta.env.VITE_API_URL || '') + ''
 
 function authHeaders() {
   return {
@@ -935,6 +935,21 @@ export default function AdminIncidentsPage() {
                       onClick={async () => {
                         try {
                           setSubmitting(true)
+                          // 1. Save compensation decision
+                          if (actionForm.liability) {
+                            await fetch(`${API_BASE}/${selectedIncident.id}/compensation`, {
+                              method: 'PUT',
+                              headers: authHeaders(),
+                              body: JSON.stringify({
+                                liability: actionForm.liability,
+                                compensationAmount: actionForm.compensationAmount ? Number(actionForm.compensationAmount) : 0,
+                                chargeToInvoice: actionForm.chargeToInvoice,
+                                adminNotes: actionForm.adminNotes,
+                              }),
+                            })
+                          }
+
+                          // 2. Set status RESOLVED
                           const res = await fetch(`${API_BASE}/${selectedIncident.id}/status`, {
                             method: 'PUT',
                             headers: authHeaders(),
@@ -947,7 +962,7 @@ export default function AdminIncidentsPage() {
                             const errData = await res.json().catch(() => ({}))
                             throw new Error(errData.message || 'Lỗi khi cập nhật trạng thái')
                           }
-                          setSuccessMsg(`✓ Đã hoàn tất xử lý sự cố cho phòng ${selectedIncident.roomNumber}. Phòng đã mở lại đón khách!`)
+                          setSuccessMsg(`✓ Đã hoàn tất xử lý sự cố cho phòng ${selectedIncident.roomNumber}. Khoản bồi thường đã được cập nhật vào hóa đơn và phòng đã mở lại!`)
                           setShowActionModal(false)
                           setSelectedIncident(null)
                           loadData()

@@ -881,3 +881,185 @@
     gap: 7px;
   }
 }
+
+/* ================= EXCEL EXPORT & WEEKLY REPORTS ================= */
+.dash-btn-excel {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 6px;
+  padding: 0 16px !important;
+  border: none !important;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+}
+
+.dash-btn-excel:hover:not(:disabled) {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);
+  transform: translateY(-1px);
+}
+
+.dash-btn-excel:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.dash-btn-weekly {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 6px;
+  padding: 0 14px !important;
+  border: 1.5px solid #6366f1 !important;
+  border-radius: 8px;
+  background: #ffffff !important;
+  color: #4f46e5 !important;
+  font-weight: 700 !important;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.dash-btn-weekly:hover:not(:disabled) {
+  background: #eef2ff !important;
+  border-color: #4f46e5 !important;
+  transform: translateY(-1px);
+}
+
+/* Modal Báo cáo tuần */
+.dash-weekly-modal {
+  max-width: 680px;
+  width: 90vw;
+}
+
+.dash-weekly-actions-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  flex-wrap: wrap;
+}
+
+.dash-btn-generate-now {
+  padding: 8px 14px;
+  border: none;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.dash-btn-generate-now:hover:not(:disabled) {
+  background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+}
+
+.dash-btn-generate-now:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.dash-weekly-msg {
+  font-size: 13px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.dash-weekly-loading,
+.dash-weekly-empty {
+  padding: 36px 20px;
+  text-align: center;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.dash-weekly-empty p {
+  margin: 0 0 6px;
+  font-weight: 600;
+  color: #334155;
+}
+
+.dash-weekly-empty small {
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+.dash-weekly-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 380px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.dash-weekly-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  transition: all 0.15s ease;
+}
+
+.dash-weekly-item:hover {
+  border-color: #cbd5e1;
+  background: #f8fafc;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+}
+
+.dash-weekly-item-icon {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.dash-weekly-item-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.dash-weekly-item-info strong {
+  display: block;
+  font-size: 14px;
+  color: #0f172a;
+  margin-bottom: 2px;
+}
+
+.dash-weekly-item-info span {
+  display: block;
+  font-size: 12px;
+  color: #64748b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dash-weekly-download-btn {
+  padding: 6px 12px;
+  border: 1px solid #10b981;
+  border-radius: 6px;
+  background: #ecfdf5;
+  color: #059669;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.dash-weekly-download-btn:hover {
+  background: #10b981;
+  color: #ffffff;
+}
+

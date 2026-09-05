@@ -2782,3 +2782,524 @@ body {
   }
 }
 
+/* ==========================================================================
+   MOBILE RESPONSIVE OPTIMIZATION (max-width: 768px)
+   Applied ONLY on phone / tablet screens, preserving 100% PC desktop design
+   ========================================================================== */
+@media (max-width: 768px) {
+  /* 1. Global Container & Typography */
+  html, body {
+    font-size: 15px;
+  }
+
+  .container {
+    padding: 0 1rem !important;
+  }
+
+  .section {
+    padding: 3.5rem 0 !important;
+  }
+
+  .section-badge {
+    font-size: 0.68rem !important;
+    letter-spacing: 0.1em !important;
+    margin-bottom: 0.6rem !important;
+  }
+
+  .section-title {
+    font-size: clamp(1.45rem, 5.5vw, 1.85rem) !important;
+    line-height: 1.25 !important;
+    margin-bottom: 0.75rem !important;
+    word-break: break-word !important;
+  }
+
+  .section-subtitle {
+    font-size: 0.9rem !important;
+    line-height: 1.6 !important;
+  }
+
+  .section-header-row {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 1rem !important;
+    margin-bottom: 1.8rem !important;
+  }
+
+  /* 2. Header & Nav */
+  .site-header {
+    padding: 0.6rem 0 !important;
+  }
+
+  .site-header.scrolled {
+    padding: 0.5rem 0 !important;
+  }
+
+  .nav-container {
+    padding: 0 0.75rem !important;
+    gap: 0.4rem !important;
+  }
+
+  .header-left {
+    gap: 0.45rem !important;
+  }
+
+  .landing-back-btn {
+    font-size: 0.7rem !important;
+    padding: 0.28rem 0.55rem !important;
+    gap: 0.25rem !important;
+  }
+
+  .logo-leaf {
+    font-size: 1.15rem !important;
+    padding-right: 0.35rem !important;
+  }
+
+  .brand-name {
+    font-size: 0.82rem !important;
+    letter-spacing: 0.03em !important;
+  }
+
+  .brand-tagline {
+    font-size: 0.5rem !important;
+    letter-spacing: 0.04em !important;
+  }
+
+  .nav-actions {
+    gap: 0.35rem !important;
+  }
+
+  .mood-btn {
+    width: 28px !important;
+    height: 28px !important;
+  }
+
+  .mood-btn svg {
+    width: 14px !important;
+    height: 14px !important;
+  }
+
+  .sound-toggle-btn {
+    padding: 0.3rem 0.55rem !important;
+    font-size: 0.7rem !important;
+    gap: 0.35rem !important;
+  }
+
+  .sound-toggle-btn span:last-child {
+    display: none !important;
+  }
+
+  /* 3. Hero Section */
+  .hero-section {
+    min-height: auto !important;
+    padding: 5.2rem 1rem 2rem !important;
+  }
+
+  .hero-badge {
+    padding: 0.35rem 0.85rem !important;
+    margin-bottom: 1rem !important;
+    gap: 0.5rem !important;
+  }
+
+  .badge-text {
+    font-size: 0.68rem !important;
+    letter-spacing: 0.08em !important;
+  }
+
+  .live-weather {
+    padding-left: 0.5rem !important;
+    font-size: 0.7rem !important;
+  }
+
+  .title-sub {
+    font-size: 1.25rem !important;
+    margin-bottom: 0.35rem !important;
+  }
+
+  .title-main {
+    font-size: clamp(1.75rem, 7vw, 2.4rem) !important;
+    line-height: 1.15 !important;
+    margin-bottom: 1rem !important;
+    word-break: break-word !important;
+  }
+
+  .hero-description {
+    font-size: 0.92rem !important;
+    line-height: 1.6 !important;
+    margin-bottom: 1.8rem !important;
+  }
+
+  .hero-actions {
+    flex-direction: column !important;
+    gap: 0.75rem !important;
+    width: 100% !important;
+    margin-bottom: 2rem !important;
+  }
+
+  .hero-actions .primary-hero-btn,
+  .hero-actions .virtual-tour-btn {
+    width: 100% !important;
+    padding: 0.85rem 1.2rem !important;
+    font-size: 0.92rem !important;
+    justify-content: center !important;
+    text-align: center !important;
+  }
+
+  .hero-stats {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 1rem !important;
+    width: 100% !important;
+  }
+
+  .stat-divider {
+    display: none !important;
+  }
+
+  .stat-num {
+    font-size: 1.5rem !important;
+  }
+
+  .stat-lbl {
+    font-size: 0.72rem !important;
+  }
+
+  /* 4. Booking Dock */
+  .booking-dock {
+    position: relative !important;
+    bottom: auto !important;
+    left: auto !important;
+    right: auto !important;
+    margin: 1.5rem auto 0 !important;
+    width: 100% !important;
+  }
+
+  .booking-dock-inner {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    padding: 1.2rem 1rem !important;
+    gap: 0.85rem !important;
+    border-radius: 18px !important;
+  }
+
+  .dock-divider {
+    display: none !important;
+  }
+
+  .dock-col {
+    width: 100% !important;
+    border-bottom: 1px solid var(--border-subtle);
+    padding-bottom: 0.6rem;
+  }
+
+  .dock-col input,
+  .dock-col select {
+    font-size: 0.92rem !important;
+    width: 100% !important;
+    padding: 0.2rem 0 !important;
+  }
+
+  .dock-action {
+    width: 100% !important;
+  }
+
+  .dock-btn {
+    width: 100% !important;
+    justify-content: center !important;
+    padding: 0.85rem !important;
+    font-size: 0.92rem !important;
+  }
+
+  /* 5. Infinite Marquee */
+  .marquee-strip {
+    padding: 0.6rem 0 !important;
+  }
+
+  .marquee-item {
+    font-size: 0.76rem !important;
+    letter-spacing: 0.1em !important;
+  }
+
+  /* 6. Philosophy Cards */
+  .philosophy-grid {
+    grid-template-columns: 1fr !important;
+    gap: 1rem !important;
+    margin-top: 1.8rem !important;
+  }
+
+  .philo-card {
+    padding: 1.5rem 1.2rem !important;
+    border-radius: 16px !important;
+  }
+
+  .philo-card h3 {
+    font-size: 1.15rem !important;
+  }
+
+  .philo-card p {
+    font-size: 0.88rem !important;
+  }
+
+  /* 7. Villa Filter Tabs (Horizontal Scroll on Mobile) */
+  .villa-filter-tabs {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    width: 100% !important;
+    padding: 4px 2px 8px 2px !important;
+    gap: 6px !important;
+    scrollbar-width: none !important;
+  }
+
+  .villa-filter-tabs::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  .tab-btn {
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+    padding: 0.42rem 0.85rem !important;
+    font-size: 0.78rem !important;
+    border-radius: 999px !important;
+  }
+
+  /* 8. Villa Stack Cards - Khôi phục hiệu ứng xếp lớp (Sticky Stacking Deck on Mobile) */
+  .villas-stack-container {
+    padding-bottom: 12rem !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0 !important;
+    position: relative !important;
+  }
+
+  .villa-card.stack-card {
+    position: sticky !important;
+    top: calc(65px + (var(--card-index, 1) - 1) * 20px) !important;
+    margin-bottom: 50px !important;
+    border-radius: 20px !important;
+    overflow: hidden !important;
+    box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.7), 0 15px 35px rgba(0, 0, 0, 0.85) !important;
+    z-index: var(--card-index, 1) !important;
+    background: rgba(13, 20, 16, 0.98) !important;
+    backdrop-filter: blur(20px) !important;
+    border: 1px solid var(--border-active) !important;
+  }
+
+  .stack-card-header-bar {
+    padding: 0.75rem 1rem !important;
+  }
+
+  .stack-card-identity {
+    gap: 0.65rem !important;
+  }
+
+  .stack-number {
+    font-size: 1.05rem !important;
+  }
+
+  .stack-villa-name {
+    font-size: 0.82rem !important;
+    letter-spacing: 0.1em !important;
+  }
+
+  .stack-pill-tag {
+    font-size: 0.62rem !important;
+    padding: 0.2rem 0.55rem !important;
+  }
+
+  .stack-card-inner {
+    grid-template-columns: 1fr !important;
+    min-height: auto !important;
+  }
+
+  .stack-card .villa-image-wrapper {
+    height: 180px !important;
+    min-height: 180px !important;
+  }
+
+  /* Reposition price tag to avoid overlapping floating buttons on right */
+  .villa-price-tag {
+    bottom: 0.65rem !important;
+    left: 0.65rem !important;
+    right: auto !important;
+    padding: 0.35rem 0.75rem !important;
+    border-radius: 10px !important;
+  }
+
+  .villa-price-tag .price {
+    font-size: 0.95rem !important;
+  }
+
+  .villa-price-tag .unit {
+    font-size: 0.7rem !important;
+  }
+
+  .stack-card .villa-body {
+    padding: 1.25rem 1rem !important;
+  }
+
+  .villa-meta {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 0.65rem 1rem !important;
+    font-size: 0.76rem !important;
+    margin-bottom: 0.85rem !important;
+  }
+
+  .stack-card .villa-title {
+    font-size: 1.35rem !important;
+    margin-bottom: 0.6rem !important;
+  }
+
+  .stack-card .villa-excerpt {
+    font-size: 0.86rem !important;
+    line-height: 1.55 !important;
+    margin-bottom: 1rem !important;
+  }
+
+  .villa-amenities {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 0.4rem !important;
+    margin-bottom: 1.2rem !important;
+  }
+
+  .amenity-chip {
+    font-size: 0.7rem !important;
+    padding: 0.25rem 0.55rem !important;
+  }
+
+  .villa-footer {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.65rem !important;
+  }
+
+  .villa-footer .detail-btn,
+  .villa-footer .book-villa-btn {
+    width: 100% !important;
+    justify-content: center !important;
+    text-align: center !important;
+    padding: 0.75rem 1rem !important;
+    font-size: 0.88rem !important;
+    border-radius: 12px !important;
+  }
+
+  /* 9. Sensory & Soundscape */
+  .sensory-box {
+    grid-template-columns: 1fr !important;
+    padding: 1.4rem 1rem !important;
+    border-radius: 18px !important;
+    gap: 1.2rem !important;
+  }
+
+  .sensory-controls {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 1rem !important;
+  }
+
+  .sound-wave-canvas-wrap {
+    height: 90px !important;
+  }
+
+  .track-selector {
+    grid-template-columns: 1fr !important;
+    gap: 0.65rem !important;
+  }
+
+  /* 10. Experience / Seasonal Grid */
+  .experience-grid {
+    grid-template-columns: 1fr !important;
+    gap: 1.2rem !important;
+  }
+
+  .exp-card {
+    height: 320px !important;
+    border-radius: 18px !important;
+  }
+
+  .exp-card-body {
+    padding: 1.4rem 1.1rem !important;
+  }
+
+  .exp-title {
+    font-size: 1.25rem !important;
+  }
+
+  /* 11. Testimonials & Reviews */
+  .reviews-slider {
+    grid-template-columns: 1fr !important;
+    gap: 1.2rem !important;
+  }
+
+  .review-card {
+    padding: 1.5rem 1.2rem !important;
+    border-radius: 18px !important;
+  }
+
+  /* 12. Modal on Mobile */
+  .villa-modal-content {
+    width: 95% !important;
+    max-height: 90vh !important;
+    padding: 1.25rem !important;
+    border-radius: 20px !important;
+    overflow-y: auto !important;
+  }
+
+  .villa-modal-grid {
+    grid-template-columns: 1fr !important;
+    gap: 1.2rem !important;
+  }
+
+  /* 13. Map / Location */
+  .map-wrapper {
+    height: 300px !important;
+    border-radius: 18px !important;
+  }
+
+  .map-card {
+    border-radius: 18px !important;
+  }
+
+  /* 14. CTA Banner & Footer */
+  .cta-banner-card {
+    flex-direction: column !important;
+    padding: 2rem 1.2rem !important;
+    border-radius: 20px !important;
+    text-align: center !important;
+    gap: 1.5rem !important;
+  }
+
+  .cta-title {
+    font-size: 1.6rem !important;
+  }
+
+  .footer-container {
+    grid-template-columns: 1fr !important;
+    gap: 2rem !important;
+  }
+}
+
+/* Extra small devices (<= 420px) like iPhone 13 mini, SE */
+@media (max-width: 420px) {
+  .brand-tagline {
+    display: none !important;
+  }
+
+  .landing-back-btn span:last-child {
+    display: inline !important;
+  }
+
+  .hero-stats {
+    grid-template-columns: 1fr !important;
+    gap: 0.8rem !important;
+  }
+
+  .stack-card .villa-image-wrapper {
+    height: 190px !important;
+    min-height: 190px !important;
+  }
+}
+
+

@@ -37,4 +37,24 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
             @org.springframework.data.repository.query.Param("fromTime") java.time.LocalDateTime fromTime,
             @org.springframework.data.repository.query.Param("toTime") java.time.LocalDateTime toTime
     );
+
+    @org.springframework.data.jpa.repository.Query("SELECT COALESCE(SUM(p.amount), 0) FROM Payment p WHERE " +
+            "p.paymentMethod <> 'CASH' AND p.status = 'SUCCESS' AND " +
+            "(:fromTime IS NULL OR p.paymentTime >= :fromTime) AND " +
+            "(:toTime IS NULL OR p.paymentTime <= :toTime)")
+    java.math.BigDecimal sumNonCashPaymentsBetween(
+            @org.springframework.data.repository.query.Param("fromTime") java.time.LocalDateTime fromTime,
+            @org.springframework.data.repository.query.Param("toTime") java.time.LocalDateTime toTime
+    );
+
+    @org.springframework.data.jpa.repository.Query("SELECT p FROM Payment p " +
+            "JOIN FETCH p.invoice inv " +
+            "JOIN FETCH inv.booking b " +
+            "WHERE p.status = 'SUCCESS' AND " +
+            "(:fromTime IS NULL OR p.paymentTime >= :fromTime) AND " +
+            "(:toTime IS NULL OR p.paymentTime <= :toTime) ORDER BY p.paymentTime DESC")
+    List<Payment> findSuccessfulPaymentsBetween(
+            @org.springframework.data.repository.query.Param("fromTime") java.time.LocalDateTime fromTime,
+            @org.springframework.data.repository.query.Param("toTime") java.time.LocalDateTime toTime
+    );
 }

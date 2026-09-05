@@ -1,0 +1,193 @@
+.remotion-studio-page {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 75px);
+  padding: 16px 24px 20px;
+  box-sizing: border-box;
+  background: #f0f2f5;
+  color: #1e293b;
+  overflow: hidden;
+  gap: 14px;
+}
+
+.remotion-studio-page--fullscreen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 99999;
+  padding: 12px 16px;
+  background: #f0f2f5;
+}
+
+.remotion-studio-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 14px 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.03);
+  flex-shrink: 0;
+}
+
+.remotion-studio-header-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.remotion-studio-icon-wrap {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: #1a6ef5;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.remotion-studio-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #0f172a;
+  letter-spacing: -0.2px;
+}
+
+.remotion-studio-subtitle {
+  margin: 2px 0 0;
+  font-size: 12.5px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.remotion-studio-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.remotion-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.16s ease;
+  border: none;
+  font-family: inherit;
+}
+
+.remotion-action-btn--secondary {
+  background: #ffffff;
+  color: #334155;
+  border: 1px solid #e2e8f0;
+}
+
+.remotion-action-btn--secondary:hover {
+  background: #f8fafc;
+  color: #0f172a;
+  border-color: #cbd5e1;
+}
+
+.remotion-action-btn--primary {
+  background: #1a6ef5;
+  color: #ffffff;
+  border: 1px solid #1a6ef5;
+}
+
+.remotion-action-btn--primary:hover {
+  background: #1557c0;
+  border-color: #1557c0;
+}
+
+.remotion-studio-workspace {
+  position: relative;
+  flex: 1;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.remotion-studio-iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: #f8fafc;
+}
+
+.remotion-studio-error-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.95);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.remotion-studio-error-card {
+  background: #ffffff;
+  border: 1px solid #fecaca;
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 440px;
+  text-align: center;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+}
+
+.remotion-studio-error-card h3 {
+  margin: 0 0 8px;
+  color: #dc2626;
+  font-size: 16px;
+}
+
+.remotion-studio-error-card p {
+  color: #475569;
+  font-size: 13px;
+  margin: 0 0 16px;
+  line-height: 1.5;
+}
+
+.remotion-studio-loading-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
+  padding: 32px 40px;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e2e8f0;
+}
+
+.remotion-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid #e2e8f0;
+  border-top-color: #1a73e8;
+  border-radius: 50%;
+  animation: remotion-spin 0.8s linear infinite;
+}
+
+@keyframes remotion-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+

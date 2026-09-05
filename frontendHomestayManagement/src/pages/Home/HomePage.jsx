@@ -5,7 +5,7 @@ import { houseTypeName } from '../../utils/houseType'
 import { resolveImageUrl } from '../../utils/imageUrl'
 import './HomePage.css'
 
-const API_BASE_URL = 'http://localhost:8080/api'
+const API_BASE_URL = (import.meta.env.VITE_API_URL || '') + '/api'
 
 function formatPrice(price) {
   return new Intl.NumberFormat('vi-VN').format(Number(price || 0)) + 'đ'
@@ -585,7 +585,9 @@ function GallerySection({ rooms }) {
 // Footer
 function HomeFooter() {
   return (
-    <footer className="home-footer" id="contact">
+    <footer className="home-footer" id="about">
+      <div id="footpage" style={{ position: 'relative', top: '-70px' }} />
+      <div id="contact" style={{ position: 'relative', top: '-70px' }} />
       <div className="home-footer-inner">
         <div className="footer-brand">
           <div className="footer-brand-header">
@@ -601,6 +603,20 @@ function HomeFooter() {
             </a>
             <a href="https://instagram.com" target="_blank" rel="noreferrer" aria-label="Instagram" className="footer-social-btn">
               <svg viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+            </a>
+            <a
+              href={import.meta.env.VITE_DEPLOY_URL || 'https://middle-nerve-barry-laptop.trycloudflare.com'}
+              target="_blank"
+              rel="noreferrer"
+              aria-label="Cloudflare Deploy Link"
+              title="Truy cập hệ thống Cloudflare Online"
+              className="footer-social-btn footer-deploy-btn"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z" />
+                <polyline points="13 11 9 16 13 16 11 21 17 14 13 14 14 11" />
+              </svg>
+              <span className="deploy-pulse" title="Trạng thái: Trực tuyến (Cloudflare)" />
             </a>
           </div>
         </div>
@@ -765,6 +781,16 @@ function HomePage() {
   const [maxPrice, setMaxPrice] = useState(10000000)
   const { rooms, loading } = useRoomTypes()
 
+  useEffect(() => {
+    const hash = window.location.hash
+    if (hash === '#about' || hash === '#footpage' || hash === '#contact') {
+      setTimeout(() => {
+        const target = document.getElementById('about') || document.getElementById('footpage')
+        target?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }, 150)
+    }
+  }, [])
+
   const handleLogout = () => {
     logout()
     window.location.assign('/home')
@@ -810,8 +836,21 @@ function HomePage() {
           <a href="/rooms">Phòng</a>
           <a href="/wishlist">Yêu thích</a>
           <a href="/amenities">Tiện nghi</a>
-          <a href="#contact">Liên hệ</a>
-          <a href="#about">Giới thiệu</a>
+          <a href="/giveaway" title="Vòng quay may mắn & Nhận ưu đãi">Liên hệ</a>
+          <a
+            href="#about"
+            title="Giới thiệu Lá Đỏ Homestay"
+            onClick={(e) => {
+              e.preventDefault()
+              const target = document.getElementById('about') || document.getElementById('footpage')
+              if (target) {
+                target.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                window.history.replaceState(null, '', '#about')
+              }
+            }}
+          >
+            Giới thiệu
+          </a>
         </nav>
 
         {currentUser ? (

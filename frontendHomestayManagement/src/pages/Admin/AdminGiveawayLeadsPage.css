@@ -1,0 +1,268 @@
+/* Admin Giveaway Leads Page Styles */
+.gw-leads-page {
+  padding: 24px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.gw-leads-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.gw-leads-title-wrap h1 {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 4px 0;
+}
+
+.gw-leads-title-wrap p {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.95rem;
+}
+
+.gw-leads-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Stats Cards */
+.gw-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.gw-stat-card {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 20px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.gw-stat-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+}
+
+.gw-stat-info h3 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.gw-stat-info p {
+  margin: 2px 0 0 0;
+  font-size: 0.85rem;
+  color: #64748b;
+  font-weight: 500;
+}
+
+/* Filters & Search Toolbar */
+.gw-toolbar {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 16px 20px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.gw-search-box {
+  display: flex;
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 8px 14px;
+  gap: 10px;
+  width: min(320px, 100%);
+}
+
+.gw-search-box input {
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: 0.95rem;
+  width: 100%;
+}
+
+.gw-filter-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.gw-filter-select {
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  font-size: 0.9rem;
+  outline: none;
+}
+
+/* Table Container */
+.gw-table-card {
+  background: #ffffff;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+}
+
+.gw-table-wrap {
+  overflow-x: auto;
+}
+
+.gw-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.gw-table th {
+  background: #f8fafc;
+  padding: 14px 18px;
+  font-size: 0.825rem;
+  font-weight: 700;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.gw-table td {
+  padding: 14px 18px;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 0.925rem;
+  color: #1e293b;
+  vertical-align: middle;
+}
+
+.gw-table tr:hover td {
+  background: #f8fafc;
+}
+
+/* Badges */
+.gw-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.gw-badge--new {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.gw-badge--contacted {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.gw-badge--booked {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.gw-badge--cancelled {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+/* Quick Action Buttons */
+.gw-action-btn-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gw-action-btn {
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  color: #1e293b;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  text-decoration: none;
+  transition: all 0.15s;
+}
+
+.gw-action-btn:hover {
+  background: #f1f5f9;
+}
+
+.gw-action-btn--zalo {
+  color: #0284c7;
+  border-color: #bae6fd;
+  background: #f0f9ff;
+}
+
+.gw-action-btn--zalo:hover {
+  background: #e0f2fe;
+}
+
+.gw-action-btn--call {
+  color: #059669;
+  border-color: #a7f3d0;
+  background: #ecfdf5;
+}
+
+.gw-action-btn--call:hover {
+  background: #d1fae5;
+}
+
+/* Modal Edit Status */
+.gw-admin-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.gw-admin-modal {
+  background: #ffffff;
+  border-radius: 16px;
+  width: 100%;
+  max-width: 500px;
+  padding: 24px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+}

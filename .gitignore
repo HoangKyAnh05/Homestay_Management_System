@@ -69,13 +69,92 @@ dist/
 
 # 1-click push script
 quick_push.bat
+# IntelliJ IDEA
+
+.idea/
+*.iml
+.kiro
+.github
+# Maven
+
+AGENTS.md
+database.md
+DESIGN.md
+PROJECT_CONTEXT.md
+
+aiagent/
+
+target/
+
+# Gradle
+# Gradle
+
+.gradle/
+build/
+
+# Logs
+
+*.log
+
+# OS files
+
+.DS_Store
+Thumbs.db
+
+# Environment variables
+
+.env
+
+# Application local config (nếu chứa mật khẩu)
+
+application-local.properties
+application-local.yml
+
+# Spring Boot
+
+spring.log
+
+# Generated files
+
+out/
+
+# VS Code
+
+.vscode/
+
+# Eclipse
+
+.project
+.classpath
+.settings/
+
+# NetBeans
+
+nbproject/private/
+build/
+dist/
+
+# Java
+
+*.class
+
+# 1-click push script
+quick_push.bat
 push_ky_anh.bat
 render_diagrams.bat
 code_flow_docs/
 Deploy_Bank/
 *.exe
 
-
-
-
-
+# Dependencies & Build artifacts
+node_modules/
+**/node_modules/
+dist/
+**/dist/
+dist-electron/
+**/dist-electron/
+.remotion/
+**/.remotion/
+out/
+**/out/
+tool_remotion/.git_backup/

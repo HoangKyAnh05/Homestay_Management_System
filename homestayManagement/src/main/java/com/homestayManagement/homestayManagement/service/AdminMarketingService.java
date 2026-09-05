@@ -48,4 +48,8 @@ public interface AdminMarketingService {
     MarketingSocialAuthStatusResponse getSocialAuthStatus(String platform, String sessionId);
     List<MarketingConnectedAccountResponse> listConnectedSocialAccounts(String platform);
     MarketingMediaUploadResponse uploadMedia(MultipartFile file) throws IOException;
+    List<com.homestayManagement.homestayManagement.dto.response.DetectedFacebookPageResponse> detectFacebookPages(String token);
+    List<com.homestayManagement.homestayManagement.dto.response.DetectedYouTubeChannelResponse> detectYouTubeChannels(String token, String channelQuery);
+    com.homestayManagement.homestayManagement.dto.response.PostEngagementMetricsResponse getChannelEngagement(Long channelId);
+    com.homestayManagement.homestayManagement.dto.response.PostCommentReplyResponse replyComment(Long channelId, String commentId, com.homestayManagement.homestayManagement.dto.request.PostCommentReplyRequest request);
 }

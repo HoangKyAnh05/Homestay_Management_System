@@ -80,6 +80,23 @@ public class RoomIncidentServiceImpl implements RoomIncidentService {
         this.adminBookingService = adminBookingService;
     }
 
+    @jakarta.annotation.PostConstruct
+    @Transactional
+    public void syncActiveIncidentRoomsOnStartup() {
+        try {
+            List<Long> lockedRoomIds = roomIncidentRepository.findRoomIdsWithInProgressIncidents();
+            for (Long roomId : lockedRoomIds) {
+                roomRepository.findById(roomId).ifPresent(room -> {
+                    if (!"MAINTENANCE".equalsIgnoreCase(room.getStatus())) {
+                        room.setStatus("MAINTENANCE");
+                        roomRepository.save(room);
+                    }
+                });
+            }
+        } catch (Exception ignored) {
+        }
+    }
+
     @Override
     @Transactional(readOnly = true)
     public List<RoomIncidentResponse> getIncidents(String status, String type, Long roomId) {
@@ -167,7 +184,16 @@ public class RoomIncidentServiceImpl implements RoomIncidentService {
             }
         }
 
+        if (bookingDetail == null) {
+            CheckInRecord latestRecord = checkInRecordRepository.findLatestByRoomId(room.getId()).orElse(null);
+            if (latestRecord != null) {
+                bookingDetail = latestRecord.getBookingDetail();
+            }
+        }
+
         Employee reporter = getCurrentEmployee();
+        BigDecimal estimatedCost = request.estimatedCost();
+        boolean hasEstimatedCost = estimatedCost != null && estimatedCost.compareTo(BigDecimal.ZERO) > 0;
 
         RoomIncident incident = RoomIncident.builder()
                 .room(room)
@@ -180,12 +206,27 @@ public class RoomIncidentServiceImpl implements RoomIncidentService {
                 .severity(severity)
                 .description(request.description())
                 .evidenceImageUrl(request.evidenceImageUrl())
-                .estimatedCost(request.estimatedCost())
+                .estimatedCost(estimatedCost)
+                .compensationAmount(hasEstimatedCost ? estimatedCost : BigDecimal.ZERO)
+                .liability(hasEstimatedCost ? "CUSTOMER" : null)
                 .status("REPORTED")
                 .reportedAt(LocalDateTime.now())
                 .build();
 
         RoomIncident saved = roomIncidentRepository.save(incident);
+
+        // 1. Khóa phòng sang MAINTENANCE ngay lập tức khi phát hiện sự cố
+        room.setStatus("MAINTENANCE");
+        roomRepository.save(room);
+
+        // 2. Tự động cộng thẳng tiền bồi thường vào hóa đơn của khách
+        if (hasEstimatedCost) {
+            CheckInRecord record = getCheckInRecordForIncident(saved);
+            if (record != null) {
+                syncIncidentPenalty(saved, record, estimatedCost);
+            }
+        }
+
         return toResponse(saved);
     }
 
@@ -212,16 +253,16 @@ public class RoomIncidentServiceImpl implements RoomIncidentService {
 
         Room room = incident.getRoom();
         if (room != null) {
-            if ("IN_PROGRESS".equals(newStatus)) {
+            if ("IN_PROGRESS".equals(newStatus) || "REPORTED".equals(newStatus)) {
                 room.setStatus("MAINTENANCE");
                 roomRepository.save(room);
             } else if ("RESOLVED".equals(newStatus) || "DISMISSED".equals(newStatus)) {
-                long remainingInProgress = roomIncidentRepository.findAll().stream()
+                long remainingActive = roomIncidentRepository.findAll().stream()
                         .filter(other -> !other.getId().equals(incident.getId()))
                         .filter(other -> other.getRoom() != null && other.getRoom().getId().equals(room.getId()))
-                        .filter(other -> "IN_PROGRESS".equals(other.getStatus()))
+                        .filter(other -> "REPORTED".equalsIgnoreCase(other.getStatus()) || "IN_PROGRESS".equalsIgnoreCase(other.getStatus()))
                         .count();
-                if (remainingInProgress == 0 && "MAINTENANCE".equalsIgnoreCase(room.getStatus())) {
+                if (remainingActive == 0 && "MAINTENANCE".equalsIgnoreCase(room.getStatus())) {
                     room.setStatus("AVAILABLE");
                     roomRepository.save(room);
                 }
@@ -243,43 +284,20 @@ public class RoomIncidentServiceImpl implements RoomIncidentService {
             throw new IllegalArgumentException("Bên chịu trách nhiệm không hợp lệ (CUSTOMER, HOMESTAY, NONE)");
         }
 
+        BigDecimal compensation = request.compensationAmount() != null ? request.compensationAmount() : BigDecimal.ZERO;
         incident.setLiability(liability);
-        incident.setCompensationAmount(request.compensationAmount() != null ? request.compensationAmount() : BigDecimal.ZERO);
+        incident.setCompensationAmount(compensation);
         incident.setHandledBy(getCurrentEmployee());
         if (request.adminNotes() != null && !request.adminNotes().isBlank()) {
             incident.setAdminNotes(request.adminNotes().trim());
         }
 
-        // Tự động ghi nhận phụ phí phạt vào hóa đơn booking nếu khách bồi thường và chargeToInvoice = true
-        if ("CUSTOMER".equals(liability) && Boolean.TRUE.equals(request.chargeToInvoice())
-                && incident.getBookingDetail() != null
-                && request.compensationAmount() != null
-                && request.compensationAmount().compareTo(BigDecimal.ZERO) > 0) {
-
-            CheckInRecord record = checkInRecordRepository.findByBookingDetailId(incident.getBookingDetail().getId())
-                    .orElse(null);
-
-            if (record != null) {
-                RulesPenalty penaltyRule = rulesPenaltyRepository.findAll().stream().findFirst().orElse(null);
-                if (penaltyRule != null) {
-                    String typeName = "LOST".equals(incident.getIncidentType()) ? "Mất đồ"
-                            : ("MAINTENANCE".equals(incident.getIncidentType()) ? "Bảo trì" : "Hỏng hóc");
-                    String fineDescription = "Bồi thường: " + incident.getItemName() + " (" + typeName + ")";
-
-                    AppliedPenalty penalty = AppliedPenalty.builder()
-                            .checkRecord(record)
-                            .rulesPenalty(penaltyRule)
-                            .actualFine(request.compensationAmount())
-                            .description(fineDescription)
-                            .build();
-
-                    appliedPenaltyRepository.save(penalty);
-                    try {
-                        adminBookingService.generateInvoice(incident.getBookingDetail().getId());
-                    } catch (Exception ignored) {
-                        // Bỏ qua nếu chưa thể sinh lại hóa đơn ngay
-                    }
-                }
+        CheckInRecord record = getCheckInRecordForIncident(incident);
+        if (record != null) {
+            if ("CUSTOMER".equals(liability) && Boolean.TRUE.equals(request.chargeToInvoice()) && compensation.compareTo(BigDecimal.ZERO) > 0) {
+                syncIncidentPenalty(incident, record, compensation);
+            } else {
+                syncIncidentPenalty(incident, record, BigDecimal.ZERO);
             }
         }
 
@@ -292,7 +310,88 @@ public class RoomIncidentServiceImpl implements RoomIncidentService {
     public void deleteIncident(Long id) {
         RoomIncident incident = roomIncidentRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy báo cáo sự cố #" + id));
+
+        CheckInRecord record = getCheckInRecordForIncident(incident);
+        if (record != null) {
+            syncIncidentPenalty(incident, record, BigDecimal.ZERO);
+        }
+
+        Room room = incident.getRoom();
         roomIncidentRepository.delete(incident);
+
+        if (room != null) {
+            long remainingActive = roomIncidentRepository.findAll().stream()
+                    .filter(other -> other.getRoom() != null && other.getRoom().getId().equals(room.getId()))
+                    .filter(other -> "REPORTED".equalsIgnoreCase(other.getStatus()) || "IN_PROGRESS".equalsIgnoreCase(other.getStatus()))
+                    .count();
+            if (remainingActive == 0 && "MAINTENANCE".equalsIgnoreCase(room.getStatus())) {
+                room.setStatus("AVAILABLE");
+                roomRepository.save(room);
+            }
+        }
+    }
+
+    private CheckInRecord getCheckInRecordForIncident(RoomIncident incident) {
+        if (incident.getHousekeepingTask() != null && incident.getHousekeepingTask().getCheckInRecord() != null) {
+            return incident.getHousekeepingTask().getCheckInRecord();
+        }
+        if (incident.getBookingDetail() != null) {
+            return checkInRecordRepository.findByBookingDetailId(incident.getBookingDetail().getId()).orElse(null);
+        }
+        if (incident.getRoom() != null) {
+            return checkInRecordRepository.findLatestByRoomId(incident.getRoom().getId()).orElse(null);
+        }
+        return null;
+    }
+
+    private void syncIncidentPenalty(RoomIncident incident, CheckInRecord record, BigDecimal amount) {
+        if (record == null || record.getBookingDetail() == null) return;
+
+        RulesPenalty penaltyRule = rulesPenaltyRepository.findAll().stream().findFirst().orElse(null);
+        if (penaltyRule == null) {
+            penaltyRule = rulesPenaltyRepository.save(RulesPenalty.builder()
+                    .title("Bồi thường hư hại / mất mát tài sản")
+                    .penaltyAmount(BigDecimal.ZERO)
+                    .build());
+        }
+
+        String typeName = "LOST".equals(incident.getIncidentType()) ? "Mất đồ"
+                : ("MAINTENANCE".equals(incident.getIncidentType()) ? "Bảo trì" : "Hỏng hóc");
+        String prefix = "Bồi thường sự cố #" + incident.getId() + ":";
+        String fineDescription = prefix + " " + incident.getItemName() + " (" + typeName + ")";
+
+        List<AppliedPenalty> existingList = appliedPenaltyRepository.findByBookingDetailIdForAdmin(record.getBookingDetail().getId())
+                .stream()
+                .filter(p -> p.getDescription() != null && (p.getDescription().startsWith(prefix) || p.getDescription().contains("sự cố #" + incident.getId())))
+                .toList();
+
+        if (amount != null && amount.compareTo(BigDecimal.ZERO) > 0) {
+            if (!existingList.isEmpty()) {
+                AppliedPenalty p = existingList.get(0);
+                p.setActualFine(amount);
+                p.setDescription(fineDescription);
+                appliedPenaltyRepository.save(p);
+            } else {
+                AppliedPenalty penalty = AppliedPenalty.builder()
+                        .checkRecord(record)
+                        .rulesPenalty(penaltyRule)
+                        .actualFine(amount)
+                        .description(fineDescription)
+                        .build();
+                appliedPenaltyRepository.save(penalty);
+            }
+        } else {
+            if (!existingList.isEmpty()) {
+                appliedPenaltyRepository.deleteAll(existingList);
+            }
+        }
+
+        appliedPenaltyRepository.flush();
+
+        try {
+            adminBookingService.generateInvoice(record.getBookingDetail().getId());
+        } catch (Exception ignored) {
+        }
     }
 
     @Override

@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react'
+﻿import { useEffect, useState } from 'react'
 import { getStoredToken } from '../../services/authService'
 import { houseTypeName } from '../../utils/houseType'
 import AdminLayout from './AdminLayout'
 import './AdminUsersPage.css'
 
-const API = 'http://localhost:8080/api/admin/users'
-const BACKEND = 'http://localhost:8080'
+const API = (import.meta.env.VITE_API_URL || '') + '/api/admin/users'
+const BACKEND = (import.meta.env.VITE_API_URL || '') + ''
 
 function bookingDisplay(booking) {
   return booking?.bookingCode || `#${booking?.bookingId || ''}`

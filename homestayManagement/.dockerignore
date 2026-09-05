@@ -1,7 +1,0 @@
-target/
-*.log
-.mvn/
-uploads/
-invoive/
-exports/
-.env

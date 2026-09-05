@@ -2,6 +2,7 @@ package com.homestayManagement.homestayManagement.repository;
 
 import com.homestayManagement.homestayManagement.entity.AppliedPenalty;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -11,6 +12,10 @@ public interface AppliedPenaltyRepository extends JpaRepository<AppliedPenalty, 
     boolean existsByRulesPenaltyId(Long rulesPenaltyId);
 
     void deleteByCheckRecordId(Long checkRecordId);
+
+    @Modifying
+    @Query("delete from AppliedPenalty p where p.checkRecord.id = :checkRecordId and (p.description is null or p.description not like 'Bồi thường%')")
+    void deleteStandardRulePenaltiesByCheckRecordId(@Param("checkRecordId") Long checkRecordId);
 
     @Query("""
             select p from AppliedPenalty p

@@ -1,4 +1,4 @@
-const API_BASE_URL = 'http://localhost:8080/api'
+﻿const API_BASE_URL = (import.meta.env.VITE_API_URL || '') + '/api'
 const TOKEN_KEY = 'homeStayAccessToken'
 const USER_KEY = 'homeStayUser'
 const REMEMBER_KEY = 'homeStayRememberEmail'

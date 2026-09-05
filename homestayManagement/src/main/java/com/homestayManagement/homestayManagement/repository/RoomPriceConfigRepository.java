@@ -16,6 +16,8 @@ public interface RoomPriceConfigRepository extends JpaRepository<RoomPriceConfig
 
     List<RoomPriceConfig> findByPricePolicyId(Long pricePolicyId);
 
+    List<RoomPriceConfig> findByRoomTypeIdAndDayType(Long roomTypeId, String dayType);
+
     Optional<RoomPriceConfig> findByRoomTypeIdAndPricePolicyIdAndDayType(
             Long roomTypeId, Long pricePolicyId, String dayType);
 

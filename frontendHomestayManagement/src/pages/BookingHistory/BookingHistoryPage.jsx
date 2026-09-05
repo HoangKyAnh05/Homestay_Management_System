@@ -6,7 +6,7 @@ import { resolveImageUrl } from '../../utils/imageUrl'
 import '../Home/HomePage.css'
 import './BookingHistoryPage.css'
 
-const API_BASE_URL = 'http://localhost:8080/api'
+const API_BASE_URL = (import.meta.env.VITE_API_URL || '') + '/api'
 const HISTORY_PAGE_SIZE = 3
 
 function bookingDisplay(booking) {
@@ -86,7 +86,7 @@ function PublicHeader() {
         <a href="/rooms">Phòng</a>
         <a href="/wishlist">Yêu thích</a>
         <a href="/amenities">Tiện nghi</a>
-        <a href="/home#contact">Liên hệ</a>
+        <a href="/giveaway" title="Vòng quay may mắn & Nhận ưu đãi">Liên hệ</a>
         <a href="/home#about">Giới thiệu</a>
       </nav>
 

@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: tool-remotion
+    env: node
+    plan: free
+    buildCommand: npm run build
+    startCommand: node server.mjs

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+﻿import { useEffect, useMemo, useState } from 'react'
 import {
   getCurrentProfile,
   getStoredUser,
@@ -325,7 +325,7 @@ function getAssetUrl(url) {
     return url
   }
 
-  return `http://localhost:8080${url}`
+  return `${import.meta.env.VITE_API_URL || ''}${url}`
 }
 
 function getInitials(value) {

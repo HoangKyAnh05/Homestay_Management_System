@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+﻿import { useEffect, useMemo, useState } from 'react'
 import { getStoredToken } from '../../services/authService'
 import { formatDateTime } from '../../utils/dateTimeFormat'
 import { houseTypeName } from '../../utils/houseType'
@@ -6,7 +6,7 @@ import { resolveImageUrl } from '../../utils/imageUrl'
 import AdminLayout from './AdminLayout'
 import './AdminReviewsPage.css'
 
-const API_ADMIN_REVIEWS = 'http://localhost:8080/api/admin/reviews'
+const API_ADMIN_REVIEWS = (import.meta.env.VITE_API_URL || '') + '/api/admin/reviews'
 const PAGE_SIZE = 8
 
 function authHeaders() {
@@ -140,10 +140,6 @@ export default function AdminReviewsPage() {
   // Selected review for Modal view
   const [selectedReview, setSelectedReview] = useState(null)
 
-  useEffect(() => {
-    fetchReviews()
-  }, [])
-
   const fetchReviews = async () => {
     setLoading(true)
     setErrorMsg('')
@@ -159,6 +155,10 @@ export default function AdminReviewsPage() {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    fetchReviews()
+  }, [])
 
   const handleUpdateStatus = async (reviewId, newStatus) => {
     setActionLoadingId(reviewId)

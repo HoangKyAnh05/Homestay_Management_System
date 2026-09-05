@@ -42,6 +42,6 @@ public interface RoomIncidentRepository extends JpaRepository<RoomIncident, Long
 
     long countByStatus(String status);
 
-    @Query("SELECT DISTINCT i.room.id FROM RoomIncident i WHERE i.status = 'IN_PROGRESS' AND i.room.id IS NOT NULL")
+    @Query("SELECT DISTINCT i.room.id FROM RoomIncident i WHERE i.status IN ('REPORTED', 'IN_PROGRESS') AND i.room.id IS NOT NULL")
     List<Long> findRoomIdsWithInProgressIncidents();
 }

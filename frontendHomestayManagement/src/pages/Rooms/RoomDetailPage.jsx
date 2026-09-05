@@ -10,7 +10,7 @@ import '../Home/HomePage.css'
 import './RoomsPage.css'
 import './RoomDetailPage.css'
 
-const API_BASE_URL = 'http://localhost:8080/api'
+const API_BASE_URL = (import.meta.env.VITE_API_URL || '') + '/api'
 
 function formatDateInput(date) {
   return date.toISOString().slice(0, 10)
@@ -182,7 +182,7 @@ function PublicHeader() {
         <a href="/rooms" className="home-nav-active">Phòng</a>
         <a href="/wishlist">Yêu thích</a>
         <a href="/amenities">Tiện nghi</a>
-        <a href="/home#contact">Liên hệ</a>
+        <a href="/giveaway" title="Vòng quay may mắn & Nhận ưu đãi">Liên hệ</a>
         <a href="/home#about">Giới thiệu</a>
       </nav>
 
@@ -340,23 +340,53 @@ function BookingModal({ room, initialBookingData, onClose, onCreated }) {
       .finally(() => setLoadingMeta(false))
   }, [])
 
-  const selectedPolicy = policies.find((policy) => String(policy.id) === String(form.pricePolicyId))
+  const selectedPolicy = policies.find((policy) => String(policy.id) === String(form.pricePolicyId)) || policies[0]
   const overlappingSlot = useMemo(
     () => findOverlappingBusySlot(room.busySlots, form.checkInTarget, form.checkOutTarget),
     [form.checkInTarget, form.checkOutTarget, room.busySlots]
   )
   const serviceTotal = selectedServices.reduce((sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 0), 0)
+
+  const stayBreakdown = useMemo(() => {
+    if (!form.checkInTarget || !form.checkOutTarget) return { totalNights: 1, weekdayNights: 1, weekendNights: 0 }
+    const dIn = new Date(form.checkInTarget)
+    const dOut = new Date(form.checkOutTarget)
+    if (isNaN(dIn.getTime()) || isNaN(dOut.getTime()) || dOut <= dIn) {
+      return { totalNights: 1, weekdayNights: 1, weekendNights: 0 }
+    }
+    let curr = new Date(dIn)
+    curr.setHours(0, 0, 0, 0)
+    const end = new Date(dOut)
+    end.setHours(0, 0, 0, 0)
+    if (end.getTime() <= curr.getTime()) {
+      end.setDate(curr.getDate() + 1)
+    }
+    let weekdayNights = 0
+    let weekendNights = 0
+    while (curr.getTime() < end.getTime()) {
+      const day = curr.getDay()
+      if (day === 0 || day === 6) weekendNights++
+      else weekdayNights++
+      curr.setDate(curr.getDate() + 1)
+    }
+    return { totalNights: weekdayNights + weekendNights, weekdayNights, weekendNights }
+  }, [form.checkInTarget, form.checkOutTarget])
+
   const roomPrice = useMemo(() => {
-    if (!selectedPolicy || !room?.prices) return 0
-    const isWeekend = [0, 6].includes(new Date(form.checkInTarget).getDay())
-    const dayType = isWeekend ? 'WEEKEND' : 'WEEKDAY'
-    const price = room.prices.find((item) =>
-      String(item.rentType).toUpperCase() === String(selectedPolicy.rentType).toUpperCase()
-      && String(item.policyName) === String(selectedPolicy.policyName)
-      && String(item.dayType).toUpperCase() === dayType
+    if (!room) return 0
+    const weekdayPrice = Number(
+      room.weekdayPrice
+      || room.price
+      || room.prices?.find(p => String(p.dayType).toUpperCase() === 'WEEKDAY')?.price
+      || 0
     )
-    return Number(price?.price || 0)
-  }, [form.checkInTarget, room?.prices, selectedPolicy])
+    const weekendPrice = Number(
+      room.weekendPrice
+      || room.prices?.find(p => String(p.dayType).toUpperCase() === 'WEEKEND')?.price
+      || weekdayPrice
+    )
+    return (stayBreakdown.weekdayNights * weekdayPrice) + (stayBreakdown.weekendNights * (weekendPrice > 0 ? weekendPrice : weekdayPrice))
+  }, [room, stayBreakdown])
 
   const addService = () => {
     const option = serviceOptions.find((item) => `${item.type}-${item.id}` === serviceForm.optionKey)
@@ -538,11 +568,21 @@ function BookingModal({ room, initialBookingData, onClose, onCreated }) {
                 if (value && form.checkInTarget && new Date(value) <= new Date(form.checkInTarget)) return
                 setForm({ ...form, checkOutTarget: value })
               }} /></label>
-              <label className="public-booking-wide"><span>Gói thuê</span><select required value={form.pricePolicyId} onChange={(e) => setForm({ ...form, pricePolicyId: e.target.value })}>
-                {policies.map((policy) => <option key={policy.id} value={policy.id}>{policy.policyName}</option>)}
-              </select></label>
               <label><span>Người lớn</span><input type="number" min="1" max={room.maxAdults || undefined} value={form.numberOfAdults} onChange={(e) => setForm({ ...form, numberOfAdults: e.target.value })} /></label>
               <label><span>Trẻ em</span><input type="number" min="0" max={room.maxChildren || undefined} value={form.numberOfChildren} onChange={(e) => setForm({ ...form, numberOfChildren: e.target.value })} /></label>
+            </div>
+            <div style={{ marginTop: 10, padding: '8px 12px', background: '#f8fafc', borderRadius: 6, color: '#334155', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span>📅</span>
+              <span>
+                Thời gian lưu trú: <strong>{stayBreakdown.totalNights} đêm</strong>
+                {stayBreakdown.weekendNights > 0 ? (
+                  <span style={{ marginLeft: 6, color: '#64748b' }}>
+                    ({stayBreakdown.weekdayNights} đêm thường + <strong style={{ color: '#ea580c' }}>{stayBreakdown.weekendNights} đêm Thứ 7/CN</strong>)
+                  </span>
+                ) : (
+                  <span style={{ marginLeft: 6, color: '#64748b' }}>(Giá ngày thường)</span>
+                )}
+              </span>
             </div>
           </section>
 

@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useState } from 'react'
+﻿import { useEffect, useMemo, useState } from 'react'
 import { getStoredToken, getStoredUser, logout } from '../../services/authService'
 import { houseTypeName } from '../../utils/houseType'
 import { resolveImageUrl } from '../../utils/imageUrl'
 import './StayPage.css'
 
-const API_BASE = 'http://localhost:8080/api/stays'
+const API_BASE = (import.meta.env.VITE_API_URL || '') + '/api/stays'
 
 function authHeaders(json = false) {
   return {

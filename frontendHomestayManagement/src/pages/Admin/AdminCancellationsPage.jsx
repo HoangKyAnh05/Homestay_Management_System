@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useState } from 'react'
+﻿import { useEffect, useMemo, useState } from 'react'
 import { getStoredToken } from '../../services/authService'
 import { formatDateTime as formatAppDateTime } from '../../utils/dateTimeFormat'
 import AdminLayout from './AdminLayout'
 import './AdminCancellationsPage.css'
 
-const API_BASE = 'http://localhost:8080/api/admin/bookings'
+const API_BASE = (import.meta.env.VITE_API_URL || '') + '/api/admin/bookings'
 
 function authHeaders() {
   return { 'Content-Type': 'application/json', Authorization: `Bearer ${getStoredToken()}` }

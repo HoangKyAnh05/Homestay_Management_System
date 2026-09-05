@@ -215,7 +215,7 @@ public class HousekeepingServiceImpl implements HousekeepingService {
                 throw new IllegalArgumentException("Không tìm thấy khoản phạt #" + ruleId);
             }
         }
-        appliedPenaltyRepository.deleteByCheckRecordId(checkInRecordId);
+        appliedPenaltyRepository.deleteStandardRulePenaltiesByCheckRecordId(checkInRecordId);
         appliedPenaltyRepository.flush();
         appliedPenaltyRepository.saveAll(penaltyRuleIds.stream()
                 .map(ruleId -> {

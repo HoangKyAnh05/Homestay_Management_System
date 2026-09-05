@@ -3,10 +3,11 @@ import { getStoredToken } from '../../services/authService'
 import AdminLayout from './AdminLayout'
 import './DashboardPage.css'
 
-const API_BASE = 'http://localhost:8080/api/admin/dashboard'
+const API_BASE = (import.meta.env.VITE_API_URL || '') + '/api/admin/dashboard'
 
 function authHeaders() {
-  return { 'Content-Type': 'application/json', Authorization: `Bearer ${getStoredToken()}` }
+  const token = getStoredToken()
+  return token ? { Authorization: `Bearer ${token}` } : {}
 }
 
 function toDateInputValue(date) {
@@ -569,6 +570,81 @@ function RankingPanel({ title, subtitle, items, valueType = 'money', totalBasis 
   )
 }
 
+function WeeklyReportsModal({
+  onClose,
+  reports,
+  loading,
+  generating,
+  message,
+  onGenerateNow,
+  onDownload,
+}) {
+  return (
+    <div className="dash-inspect-overlay" onClick={onClose}>
+      <div className="dash-inspect-modal dash-weekly-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="dash-inspect-modal-header">
+          <div>
+            <span className="dash-inspect-badge">📅 BÁO CÁO TUẦN TỰ ĐỘNG</span>
+            <h3>Bản Báo Cáo Excel Tự Động Hàng Tuần</h3>
+            <p>Hệ thống tự động tổng hợp số liệu 7 ngày và sinh file Excel vào lúc 06:00 sáng Thứ Hai hàng tuần.</p>
+          </div>
+          <button type="button" className="dash-inspect-modal-close-btn" onClick={onClose}>✕</button>
+        </div>
+
+        <div className="dash-inspect-modal-body">
+          <div className="dash-weekly-actions-bar">
+            <button
+              type="button"
+              className="dash-btn-generate-now"
+              onClick={onGenerateNow}
+              disabled={generating}
+            >
+              {generating ? '⏳ Đang tạo bản tuần này...' : '⚡ Tạo ngay báo cáo tuần này'}
+            </button>
+            {message && <span className="dash-weekly-msg">{message}</span>}
+          </div>
+
+          {loading ? (
+            <div className="dash-weekly-loading">Đang tải danh sách báo cáo tuần...</div>
+          ) : reports.length === 0 ? (
+            <div className="dash-weekly-empty">
+              <p>Chưa có bản báo cáo tuần nào được lưu trữ.</p>
+              <small>Hệ thống sẽ tự động tạo vào 06:00 thứ Hai, hoặc bạn có thể bấm nút "Tạo ngay báo cáo tuần này" ở trên.</small>
+            </div>
+          ) : (
+            <div className="dash-weekly-list">
+              {reports.map((report) => (
+                <div className="dash-weekly-item" key={report.fileName}>
+                  <div className="dash-weekly-item-icon">📊</div>
+                  <div className="dash-weekly-item-info">
+                    <strong>{report.dateRangeLabel || report.fileName}</strong>
+                    <span>
+                      {report.fileName} · {(report.fileSizeBytes / 1024).toFixed(1)} KB · Tạo: {new Date(report.createdAt).toLocaleString('vi-VN')}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    className="dash-weekly-download-btn"
+                    onClick={() => onDownload(report.fileName)}
+                  >
+                    ⬇️ Tải Excel
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="dash-inspect-modal-footer">
+          <button type="button" className="btn-dash-inspect-done" onClick={onClose}>
+            Đóng
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function DashboardPage() {
   const [fromDate, setFromDate] = useState(defaultFromDate)
   const [toDate, setToDate] = useState(defaultToDate)
@@ -576,11 +652,113 @@ function DashboardPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
+  // State cho Xuất Excel & Báo cáo tuần
+  const [exporting, setExporting] = useState(false)
+  const [showWeeklyModal, setShowWeeklyModal] = useState(false)
+  const [weeklyReports, setWeeklyReports] = useState([])
+  const [loadingWeekly, setLoadingWeekly] = useState(false)
+  const [generatingWeekly, setGeneratingWeekly] = useState(false)
+  const [weeklyMessage, setWeeklyMessage] = useState('')
+
   // State cho Popover Hover & Modal Click Hold
   const [hoverInspectInfo, setHoverInspectInfo] = useState(null)
   const [popoverPos, setPopoverPos] = useState({ x: 0, y: 0 })
   const [modalInspectInfo, setModalInspectInfo] = useState(null)
   const hoverTimeoutRef = useRef(null)
+
+function triggerFileDownload(blob, fileName) {
+  const url = window.URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.style.display = 'none'
+  link.href = url
+  link.setAttribute('download', fileName)
+  document.body.appendChild(link)
+  link.click()
+  setTimeout(() => {
+    window.URL.revokeObjectURL(url)
+    if (link.parentNode) {
+      link.parentNode.removeChild(link)
+    }
+  }, 2000)
+}
+
+  const handleExportExcel = async () => {
+    try {
+      setExporting(true)
+      setError('')
+      const response = await fetch(`${API_BASE}/export-excel?fromDate=${fromDate}&toDate=${toDate}`, {
+        headers: authHeaders(),
+      })
+      if (!response.ok) {
+        const errJson = await response.json().catch(() => ({}))
+        throw new Error(errJson.message || `Lỗi (${response.status}): Không thể xuất file Excel báo cáo.`)
+      }
+      const rawBlob = await response.blob()
+      const excelBlob = new Blob([rawBlob], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      })
+      triggerFileDownload(excelBlob, `Bao_Cao_Tong_Quan_${fromDate}_Den_${toDate}.xlsx`)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  const loadWeeklyReports = async () => {
+    try {
+      setLoadingWeekly(true)
+      setWeeklyMessage('')
+      const response = await fetch(`${API_BASE}/weekly-reports`, {
+        headers: authHeaders(),
+      })
+      if (!response.ok) throw new Error('Không thể tải danh sách báo cáo tuần.')
+      const data = await response.json()
+      setWeeklyReports(data)
+    } catch (err) {
+      setWeeklyMessage(err.message)
+    } finally {
+      setLoadingWeekly(false)
+    }
+  }
+
+  const handleDownloadWeekly = async (fileName) => {
+    try {
+      const response = await fetch(`${API_BASE}/weekly-reports/download?file=${encodeURIComponent(fileName)}`, {
+        headers: authHeaders(),
+      })
+      if (!response.ok) {
+        const errJson = await response.json().catch(() => ({}))
+        throw new Error(errJson.message || `Lỗi (${response.status}): Không thể tải file báo cáo tuần.`)
+      }
+      const rawBlob = await response.blob()
+      const excelBlob = new Blob([rawBlob], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      })
+      triggerFileDownload(excelBlob, fileName)
+    } catch (err) {
+      alert(err.message)
+    }
+  }
+
+  const handleGenerateWeeklyNow = async () => {
+    try {
+      setGeneratingWeekly(true)
+      setWeeklyMessage('')
+      const response = await fetch(`${API_BASE}/weekly-reports/generate-now`, {
+        method: 'POST',
+        headers: authHeaders(),
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.message || 'Không thể tạo báo cáo tuần.')
+      setWeeklyMessage('✅ Đã tạo thành công bản báo cáo tuần mới nhất!')
+      loadWeeklyReports()
+    } catch (err) {
+      setWeeklyMessage('❌ ' + err.message)
+    } finally {
+      setGeneratingWeekly(false)
+    }
+  }
 
   const loadSummary = useCallback(async () => {
     if (fromDate > toDate) {
@@ -770,6 +948,39 @@ function DashboardPage() {
           <input type="date" value={fromDate} onChange={event => setFromDate(event.target.value)} />
           <input type="date" value={toDate} onChange={event => setToDate(event.target.value)} />
           <button type="button" onClick={loadSummary} disabled={loading}>{loading ? 'Đang tải...' : 'Làm mới'}</button>
+          <button
+            type="button"
+            className="dash-btn-excel"
+            onClick={handleExportExcel}
+            disabled={exporting || loading}
+            title="Xuất toàn bộ số liệu tổng quan ra file Excel (.xlsx)"
+          >
+            {exporting ? (
+              <>⏳ Đang xuất Excel...</>
+            ) : (
+              <>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                  <line x1="8" y1="13" x2="16" y2="13"></line>
+                  <line x1="8" y1="17" x2="16" y2="17"></line>
+                  <polyline points="10 9 9 9 8 9"></polyline>
+                </svg>
+                Xuất Excel báo cáo
+              </>
+            )}
+          </button>
+          <button
+            type="button"
+            className="dash-btn-weekly"
+            onClick={() => {
+              setShowWeeklyModal(true)
+              loadWeeklyReports()
+            }}
+            title="Xem và tải các bản báo cáo Excel tự động tạo hàng tuần"
+          >
+            📅 Báo cáo tuần tự động
+          </button>
         </div>
       </div>
 
@@ -899,6 +1110,19 @@ function DashboardPage() {
         <MetricInspectModal
           info={modalInspectInfo}
           onClose={() => setModalInspectInfo(null)}
+        />
+      )}
+
+      {/* Modal Quản lý & Tải Báo Cáo Tuần Tự Động */}
+      {showWeeklyModal && (
+        <WeeklyReportsModal
+          onClose={() => setShowWeeklyModal(false)}
+          reports={weeklyReports}
+          loading={loadingWeekly}
+          generating={generatingWeekly}
+          message={weeklyMessage}
+          onGenerateNow={handleGenerateWeeklyNow}
+          onDownload={handleDownloadWeekly}
         />
       )}
     </AdminLayout>

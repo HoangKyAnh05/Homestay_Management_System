@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+﻿import { useCallback, useEffect, useMemo, useState } from 'react'
 import { getStoredToken } from '../../services/authService'
 import { houseTypeName } from '../../utils/houseType'
 import AdminLayout from './AdminLayout'
 import './AdminHousekeepingChecklistsPage.css'
 
-const API = 'http://localhost:8080/api/admin/housekeeping/checklists'
+const API = (import.meta.env.VITE_API_URL || '') + '/api/admin/housekeeping/checklists'
 
 const STARTER_ITEMS = [
   { title: 'Thay chăn ga gối', description: 'Thay mới và kiểm tra chăn, ga, vỏ gối sạch.', required: true, active: true },

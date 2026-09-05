@@ -1,6 +1,6 @@
-import { getStoredToken } from './authService'
+﻿import { getStoredToken } from './authService'
 
-const API_BASE_URL = 'http://localhost:8080/api/admin/shifts'
+const API_BASE_URL = (import.meta.env.VITE_API_URL || '') + '/api/admin/shifts'
 
 function authHeaders() {
   const token = getStoredToken()

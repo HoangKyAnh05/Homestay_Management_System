@@ -3,8 +3,10 @@ import './LandingPage.css';
 import { LandingApp, VILLAS_DATA } from './LandingController';
 import { resolveImageUrl } from '../../utils/imageUrl';
 import FloatingContactWidget from '../../components/FloatingContact/FloatingContactWidget';
+import ArticleReviewModal from './ArticleReviewModal';
+import { SCENERY_ARTICLES } from './sceneryArticles';
 
-const API_BASE_URL = 'http://localhost:8080/api';
+const API_BASE_URL = (import.meta.env.VITE_API_URL || '') + '/api';
 
 function formatVND(num) {
   return new Intl.NumberFormat('vi-VN').format(Number(num) || 0) + '₫';
@@ -44,6 +46,8 @@ function LandingPage() {
   const [dbRooms, setDbRooms] = useState([]);
   const dbRoomsRef = useRef([]);
   const [loadingRooms, setLoadingRooms] = useState(true);
+  const [selectedArticle, setSelectedArticle] = useState(null);
+  const [liveArticles, setLiveArticles] = useState([]);
 
   const today = new Date().toISOString().split('T')[0];
   const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
@@ -75,6 +79,49 @@ function LandingPage() {
         }
       })
       .catch(() => {});
+
+    fetch(`${API_BASE_URL}/public/travel-articles`)
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          const formatted = data.map((item) => {
+            let highlights = []
+            try {
+              highlights = JSON.parse(item.highlightsJson || '[]')
+            } catch {
+              highlights = []
+            }
+            let sections = []
+            try {
+              sections = JSON.parse(item.sectionsJson || '[]')
+            } catch {
+              sections = []
+            }
+            return {
+              id: item.articleKey || item.id,
+              title: item.title,
+              subtitle: item.subtitle,
+              tag: item.tag,
+              category: item.category,
+              readTime: item.readTime,
+              author: item.author,
+              date: item.dateTag,
+              coverImage: item.coverImageUrl,
+              rating: item.rating,
+              location: item.location,
+              distance: item.distance,
+              bestTime: item.bestTime,
+              cost: item.cost,
+              highlights,
+              intro: item.intro,
+              sections,
+              homestayAdvice: item.homestayAdvice,
+            }
+          })
+          setLiveArticles(formatted);
+        }
+      })
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -86,7 +133,9 @@ function LandingPage() {
       const checkinVal = options.checkIn || document.getElementById('dock-checkin')?.value || '';
       const checkoutVal = options.checkOut || document.getElementById('dock-checkout')?.value || '';
       const guestsVal = options.guests || document.getElementById('dock-guests')?.value || '2';
-      const villaSelectVal = options.roomTypeId || document.getElementById('dock-villa')?.value || '';
+      const villaSelectEl = document.getElementById('dock-villa');
+      const villaSelectVal = options.roomTypeId || villaSelectEl?.value || '';
+      const selectedRoomName = options.roomTypeName || (villaSelectEl?.selectedOptions?.[0]?.text?.split('(')[0]?.trim() || '');
 
       const params = new URLSearchParams();
       if (checkinVal) params.set('checkInDate', checkinVal);
@@ -96,6 +145,9 @@ function LandingPage() {
       if (villaSelectVal && !isNaN(Number(villaSelectVal))) {
         params.set('roomTypeId', String(villaSelectVal));
         params.set('focusRoomId', String(villaSelectVal));
+      }
+      if (selectedRoomName) {
+        params.set('roomTypeName', selectedRoomName);
       }
 
       const query = params.toString();
@@ -750,64 +802,43 @@ function LandingPage() {
             <div className="section-header-row">
               <div>
                 <div className="section-badge">
-                  <i data-lucide="camera"></i>
-                  <span>BỘ SƯU TẬP PHONG CẢNH</span>
+                  <i data-lucide="compass"></i>
+                  <span>ĐỊA ĐIỂM ĂN CHƠI & PHONG CẢNH SA PA</span>
                 </div>
-                <h2 className="section-title">Hành Trình Băng Qua Thung Lũng Mây</h2>
+                <h2 className="section-title">Hành Trình Khám Phá & Ăn Chơi Sa Pa</h2>
               </div>
               <p className="section-subtitle">
-                Khám phá vẻ đẹp chuyển dịch của thung lũng Mường Hoa qua ống kính nhiếp ảnh.
+                Bấm vào từng địa điểm bên dưới để xem bài viết review chi tiết, cẩm nang ẩm thực & kinh nghiệm check-in từ Lá Đỏ Homestay.
               </p>
             </div>
 
             <div className="scenery-grid">
-              <div className="scenery-card large" data-cursor="XEM ẢNH">
-                <div className="scenery-img-wrap">
-                  <img src="/landing/images/check-in-canh-dep/8-dia-diem-check-in-dep-quen-sau-o-hoa-binh-image-exa0-1720971802-683-width780height439.jpg" alt="Sương Phủ Hoàng Liên Sơn" loading="lazy" />
-                  <div className="scenery-overlay"></div>
-                  <div className="scenery-info">
-                    <span className="scenery-tag">Bình Minh • 05:45 AM</span>
-                    <h4>Biển Mây Tràn Qua Khe Núi Hoàng Liên</h4>
-                    <p>Khoảnh khắc những vạt mây đầu tiên thức giấc ôm ấp rặng thông đại ngàn.</p>
+              {(liveArticles.length > 0 ? liveArticles : SCENERY_ARTICLES).map((article, idx) => (
+                <div
+                  key={article.id || idx}
+                  className={`scenery-card ${idx === 0 || idx === 3 ? 'large' : 'small'}`}
+                  data-cursor="ĐỌC REVIEW"
+                  onClick={() => setSelectedArticle(article)}
+                  title={`Xem bài review: ${article.title}`}
+                >
+                  <div className="scenery-img-wrap">
+                    <img src={article.coverImage} alt={article.title} loading="lazy" />
+                    <div className="scenery-overlay"></div>
+                    <div className="scenery-badge-action">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
+                        <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+                      </svg>
+                      <span>Đọc bài review</span>
+                    </div>
+                    <div className="scenery-info">
+                      <span className="scenery-tag">{article.tag}</span>
+                      <h4>{article.title.split(':')[0]}</h4>
+                      <p>{article.subtitle}</p>
+                    </div>
                   </div>
                 </div>
-              </div>
-
-              <div className="scenery-card small" data-cursor="XEM ẢNH">
-                <div className="scenery-img-wrap">
-                  <img src="/landing/images/check-in-canh-dep/images-1.jpg" alt="Cầu Gỗ Bên Suối Mơ" loading="lazy" />
-                  <div className="scenery-overlay"></div>
-                  <div className="scenery-info">
-                    <span className="scenery-tag">Suối Ngầm Tự Nhiên</span>
-                    <h4>Cầu Gỗ Nối Liền Hai Bờ Suối</h4>
-                    <p>Dòng suối Mơ róc rách đêm ngày mang lại vượng khí và nguồn năng lượng thuần khiết.</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="scenery-card small" data-cursor="XEM ẢNH">
-                <div className="scenery-img-wrap">
-                  <img src="/landing/images/check-in-canh-dep/images-2.jpg" alt="Rừng Trúc & Trà Quán" loading="lazy" />
-                  <div className="scenery-overlay"></div>
-                  <div className="scenery-info">
-                    <span className="scenery-tag">Không Gian Thiền Định</span>
-                    <h4>Trà Quán Giữa Rừng Trúc Bạt Ngàn</h4>
-                    <p>Nơi dừng chân thưởng trà Shan Tuyết và lắng nghe thanh âm của núi rừng tĩnh lặng.</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="scenery-card large" data-cursor="XEM ẢNH">
-                <div className="scenery-img-wrap">
-                  <img src="/landing/images/check-in-canh-dep/images.jpg" alt="Hoàng Hôn Nắng Vàng" loading="lazy" />
-                  <div className="scenery-overlay"></div>
-                  <div className="scenery-info">
-                    <span className="scenery-tag">Hoàng Hôn • 17:30 PM</span>
-                    <h4>Ánh Nắng Vàng Xuyên Qua Kẽ Lá Rừng Thông</h4>
-                    <p>Hiện tượng Komorebi nguyên bản rực rỡ nhất khi chiều tà buông xuống thung lũng.</p>
-                  </div>
-                </div>
-              </div>
+              ))}
             </div>
           </div>
         </section>
@@ -978,6 +1009,15 @@ function LandingPage() {
               <a href="#" aria-label="Facebook"><i data-lucide="facebook"></i></a>
               <a href="#" aria-label="Youtube"><i data-lucide="youtube"></i></a>
               <a href="#" aria-label="Mail"><i data-lucide="mail"></i></a>
+              <a
+                href={import.meta.env.VITE_DEPLOY_URL || 'https://middle-nerve-barry-laptop.trycloudflare.com'}
+                target="_blank"
+                rel="noreferrer"
+                aria-label="Cloudflare Deploy Link"
+                title="Truy cập hệ thống Cloudflare Online"
+              >
+                <i data-lucide="cloud"></i>
+              </a>
             </div>
           </div>
 
@@ -1144,6 +1184,18 @@ function LandingPage() {
         <i data-lucide="check" className="toast-icon"></i>
         <span className="toast-message" id="toast-msg">Thành công!</span>
       </div>
+
+      {/* Travel Scenery & Food Article Review Modal */}
+      {selectedArticle && (
+        <ArticleReviewModal
+          article={selectedArticle}
+          onClose={() => setSelectedArticle(null)}
+          onBookRoom={() => {
+            setSelectedArticle(null);
+            window.goToBookingPage();
+          }}
+        />
+      )}
 
       {/* Floating 3 Contact Buttons */}
       <FloatingContactWidget />
