@@ -1010,11 +1010,11 @@ function LandingPage() {
               <a href="#" aria-label="Youtube"><i data-lucide="youtube"></i></a>
               <a href="#" aria-label="Mail"><i data-lucide="mail"></i></a>
               <a
-                href={import.meta.env.VITE_DEPLOY_URL || 'https://middle-nerve-barry-laptop.trycloudflare.com'}
+                href={import.meta.env.VITE_DEPLOY_URL || 'https://reminder-strife-awoke.ngrok-free.dev'}
                 target="_blank"
                 rel="noreferrer"
-                aria-label="Cloudflare Deploy Link"
-                title="Truy cập hệ thống Cloudflare Online"
+                aria-label="Deploy Link Co Dinh"
+                title="Truy cập hệ thống Online (Link Cố Định Vĩnh Viễn)"
               >
                 <i data-lucide="cloud"></i>
               </a>

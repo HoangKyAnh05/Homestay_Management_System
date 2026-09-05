@@ -605,18 +605,18 @@ function HomeFooter() {
               <svg viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
             </a>
             <a
-              href={import.meta.env.VITE_DEPLOY_URL || 'https://middle-nerve-barry-laptop.trycloudflare.com'}
+              href={import.meta.env.VITE_DEPLOY_URL || 'https://reminder-strife-awoke.ngrok-free.dev'}
               target="_blank"
               rel="noreferrer"
-              aria-label="Cloudflare Deploy Link"
-              title="Truy cập hệ thống Cloudflare Online"
+              aria-label="Deploy Link Co Dinh"
+              title="Truy cập hệ thống Online (Link Cố Định Vĩnh Viễn)"
               className="footer-social-btn footer-deploy-btn"
             >
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z" />
                 <polyline points="13 11 9 16 13 16 11 21 17 14 13 14 14 11" />
               </svg>
-              <span className="deploy-pulse" title="Trạng thái: Trực tuyến (Cloudflare)" />
+              <span className="deploy-pulse" title="Trạng thái: Trực tuyến (Link Cố Định Vĩnh Viễn)" />
             </a>
           </div>
         </div>
