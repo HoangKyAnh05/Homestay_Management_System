@@ -2,25 +2,27 @@ import React, { useState, useRef, useEffect, useCallback } from 'react'
 import AdminLayout, { navigate } from './AdminLayout'
 import './RemotionStudioPage.css'
 
+const REMOTION_LOCAL_URL = 'http://localhost:3000'
+const REMOTION_DEPLOY_URL =
+  import.meta.env.VITE_REMOTION_DEPLOY_URL || 'https://man-aqua-restaurant-cool.trycloudflare.com'
+
 export default function RemotionStudioPage() {
-  const [studioUrl] = useState('http://localhost:3000')
+  const isHttps =
+    typeof window !== 'undefined' &&
+    (window.location.protocol === 'https:' ||
+      (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1'))
+
+  const [activeMode, setActiveMode] = useState(isHttps ? 'deploy' : 'local')
+  const [studioUrl, setStudioUrl] = useState(isHttps ? REMOTION_DEPLOY_URL : REMOTION_LOCAL_URL)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [isServerRunning, setIsServerRunning] = useState(false)
   const [isChecking, setIsChecking] = useState(true)
-  const [isHttpsMode, setIsHttpsMode] = useState(false)
   const iframeRef = useRef(null)
   const iframeLoaded = useRef(false)
 
-  // Check if current browser is running on HTTPS (Cloudflare tunnel)
-  useEffect(() => {
-    if (typeof window !== 'undefined' && window.location.protocol === 'https:') {
-      setIsHttpsMode(true)
-    }
-  }, [])
-
-  const verifyServer = useCallback(async () => {
+  const verifyServer = useCallback(async (targetUrl = studioUrl) => {
     try {
-      const res = await fetch('http://localhost:3000/health', {
+      const res = await fetch(`${targetUrl}/health`, {
         method: 'GET',
         cache: 'no-cache',
         mode: 'cors',
@@ -28,8 +30,8 @@ export default function RemotionStudioPage() {
       if (res.ok) {
         setIsServerRunning(true)
         setIsChecking(false)
-        if (iframeRef.current && !iframeLoaded.current) {
-          iframeRef.current.src = studioUrl
+        if (iframeRef.current && (!iframeLoaded.current || iframeRef.current.src !== targetUrl)) {
+          iframeRef.current.src = targetUrl
           iframeLoaded.current = true
         }
         return true
@@ -45,21 +47,30 @@ export default function RemotionStudioPage() {
 
   // Continuous background auto-reconnect heartbeat
   useEffect(() => {
-    verifyServer()
+    verifyServer(studioUrl)
     const interval = setInterval(() => {
-      verifyServer()
+      verifyServer(studioUrl)
     }, 4000)
     return () => clearInterval(interval)
-  }, [verifyServer])
+  }, [verifyServer, studioUrl])
+
+  const handleSwitchMode = (mode) => {
+    setActiveMode(mode)
+    const newUrl = mode === 'deploy' ? REMOTION_DEPLOY_URL : REMOTION_LOCAL_URL
+    setStudioUrl(newUrl)
+    setIsChecking(true)
+    iframeLoaded.current = false
+    verifyServer(newUrl)
+  }
 
   const handleRefresh = () => {
     setIsChecking(true)
     iframeLoaded.current = false
-    verifyServer()
+    verifyServer(studioUrl)
   }
 
-  const handleOpenStandalone = () => {
-    window.open(studioUrl, '_blank', 'noopener,noreferrer')
+  const handleOpenStandalone = (url = studioUrl) => {
+    window.open(url, '_blank', 'noopener,noreferrer')
   }
 
   const handleToggleFullscreen = () => {
@@ -89,7 +100,7 @@ export default function RemotionStudioPage() {
               </svg>
             </div>
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                 <h1 className="remotion-studio-title">Studio Biên Tập Video Lá Đỏ Homestay</h1>
                 <span
                   style={{
@@ -105,9 +116,66 @@ export default function RemotionStudioPage() {
                     gap: '4px',
                   }}
                 >
-                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: isServerRunning ? '#10b981' : '#ef4444' }} />
-                  {isServerRunning ? 'Studio Online (:3000)' : 'Chờ máy chủ...'}
+                  <span
+                    style={{
+                      width: '6px',
+                      height: '6px',
+                      borderRadius: '50%',
+                      background: isServerRunning ? '#10b981' : '#ef4444',
+                    }}
+                  />
+                  {isServerRunning
+                    ? `Studio Online (${activeMode === 'deploy' ? 'Cloudflare Deploy' : ':3000'})`
+                    : 'Đang kết nối...'}
                 </span>
+
+                {/* Switcher Mode: Deploy vs Localhost */}
+                <div
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    background: '#f1f5f9',
+                    padding: '2px',
+                    borderRadius: '8px',
+                    gap: '2px',
+                    fontSize: '11px',
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => handleSwitchMode('deploy')}
+                    style={{
+                      border: 'none',
+                      background: activeMode === 'deploy' ? '#2563eb' : 'transparent',
+                      color: activeMode === 'deploy' ? '#ffffff' : '#64748b',
+                      padding: '3px 8px',
+                      borderRadius: '6px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                    }}
+                    title="Dùng link Cloudflare HTTPS đã deploy công khai"
+                  >
+                    🌐 Cloudflare Deploy
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSwitchMode('local')}
+                    style={{
+                      border: 'none',
+                      background: activeMode === 'local' ? '#2563eb' : 'transparent',
+                      color: activeMode === 'local' ? '#ffffff' : '#64748b',
+                      padding: '3px 8px',
+                      borderRadius: '6px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                    }}
+                    title="Dùng link nội bộ máy tính http://localhost:3000"
+                  >
+                    💻 Localhost:3000
+                  </button>
+                </div>
               </div>
               <p className="remotion-studio-subtitle">
                 Biên tập phân cảnh, lồng tiếng thuyết minh tiếng Việt & xuất bản video marketing Homestay đa nền tảng.
@@ -119,7 +187,7 @@ export default function RemotionStudioPage() {
             <button
               type="button"
               className="remotion-action-btn remotion-action-btn--secondary"
-              onClick={handleOpenStandalone}
+              onClick={() => handleOpenStandalone(studioUrl)}
               title="Mở Studio trong tab riêng không giới hạn iframe"
               style={{ background: '#eff6ff', color: '#1d4ed8', borderColor: '#bfdbfe' }}
             >
@@ -190,7 +258,7 @@ export default function RemotionStudioPage() {
               <div className="remotion-studio-loading-card">
                 <div className="remotion-spinner" />
                 <p style={{ marginTop: '12px', color: '#475569', fontSize: '14px', fontWeight: 500 }}>
-                  Đang kết nối Remotion Video Studio (:3000)...
+                  Đang kết nối Remotion Video Studio ({activeMode === 'deploy' ? 'Cloudflare Deploy' : ':3000'})...
                 </p>
               </div>
             </div>
@@ -198,30 +266,45 @@ export default function RemotionStudioPage() {
 
           {!isChecking && !isServerRunning && (
             <div className="remotion-studio-error-overlay">
-              <div className="remotion-studio-error-card" style={{ maxWidth: '480px', padding: '28px', textAlign: 'center' }}>
+              <div
+                className="remotion-studio-error-card"
+                style={{ maxWidth: '520px', padding: '28px', textAlign: 'center' }}
+              >
                 <span style={{ fontSize: '36px', display: 'block', marginBottom: '8px' }}>🎬</span>
                 <h3 style={{ fontSize: '18px', fontWeight: 700, color: '#0f172a', marginBottom: '8px' }}>
-                  {isHttpsMode ? 'Đang duyệt qua Cloudflare HTTPS' : 'Chưa kết nối được với Remotion Server (:3000)'}
+                  {activeMode === 'deploy'
+                    ? 'Remotion Studio Deploy (Cloudflare)'
+                    : 'Chưa kết nối được với Remotion Server (:3000)'}
                 </h3>
                 <p style={{ fontSize: '13.5px', color: '#64748b', lineHeight: 1.5, marginBottom: '18px' }}>
-                  {isHttpsMode
-                    ? 'Trình duyệt chặn nhúng link nội bộ http://localhost:3000 vào iframe của trang HTTPS. Hãy bấm nút dưới để mở Studio trực tiếp mượt mà 100%!'
-                    : 'Máy chủ Remotion đang khởi động hoặc chưa bật. Hệ thống đang tự động kết nối lại liên tục...'}
+                  {isHttps
+                    ? 'Bạn đang truy cập qua link deploy HTTPS. Để trải nghiệm video studio mượt mà và bảo đảm quyền truy cập từ xa, hãy chọn mở qua link Deploy Cloudflare bên dưới:'
+                    : 'Máy chủ Remotion đang khởi động hoặc chưa bật. Bạn có thể chọn mở tab riêng hoặc kết nối lại.'}
                 </p>
-                <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+                <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
                   <button
                     type="button"
-                    onClick={handleOpenStandalone}
+                    onClick={() => handleOpenStandalone(REMOTION_DEPLOY_URL)}
                     className="remotion-action-btn remotion-action-btn--primary"
-                    style={{ padding: '8px 20px', fontSize: '13.5px' }}
+                    style={{ padding: '9px 18px', fontSize: '13.5px' }}
+                    title="Mở link deploy Cloudflare trực tiếp trên tab mới"
                   >
-                    🚀 Mở Remotion Studio (Tab mới)
+                    🚀 Mở Remotion Studio (Deploy Cloudflare)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleOpenStandalone(REMOTION_LOCAL_URL)}
+                    className="remotion-action-btn remotion-action-btn--secondary"
+                    style={{ padding: '9px 14px', fontSize: '13.5px' }}
+                    title="Mở localhost:3000 trên máy của bạn"
+                  >
+                    💻 Mở Localhost:3000
                   </button>
                   <button
                     type="button"
                     onClick={handleRefresh}
                     className="remotion-action-btn remotion-action-btn--secondary"
-                    style={{ padding: '8px 16px', fontSize: '13.5px' }}
+                    style={{ padding: '9px 14px', fontSize: '13.5px' }}
                   >
                     🔄 Thử kết nối lại
                   </button>
