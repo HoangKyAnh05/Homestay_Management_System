@@ -6,6 +6,13 @@ echo   KHOI DONG BACKEND SPRING BOOT (PORT 8080)
 echo ===================================================
 echo.
 
+:: Kiem tra neu port 8080 dang bi chiem boi tien trinh cu, tu dong giai phong
+for /f "tokens=5" %%a in ('netstat -aon ^| findstr ":8080" ^| findstr "LISTENING"') do (
+    echo [*] Phat hien port 8080 dang duoc su dung boi PID %%a. Dang giai phong...
+    taskkill /F /PID %%a >nul 2>&1
+    timeout /t 1 /nobreak >nul
+)
+
 :: Uu tien thu muc JDK hop le co bin\java.exe
 if exist "D:\jdk\bin\java.exe" (
     set "JAVA_HOME=D:\jdk"
