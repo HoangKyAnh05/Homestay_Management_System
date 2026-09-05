@@ -35,43 +35,47 @@ interface ScriptGeneratorProps {
   onOpenBatchVocab?: () => void;
 }
 
-const DEFAULT_SCRIPT = `Sa Pa sáng nay mây tràn qua ô cửa sổ, không gian tĩnh lặng chỉ có tiếng chim hót và hương núi rừng thoang thoảng.
-Tự thưởng cho bản thân một buổi sáng thong thả: nhấp ngụm cà phê phin đậm đà, cuộn mình trong chăn ấm và ngắm nhìn từng dải mây lững lờ trôi.
-Nếu bạn đang tìm một nơi để chữa lành và tạm gác lại những bộn bề nơi phố thị, Lá Đỏ Homestay luôn sẵn sàng mở cửa chào đón bạn.
-Hãy đến và cảm nhận sự bình yên trọn vẹn giữa mây trời Tây Bắc!`;
+const DEFAULT_SCRIPT = `Bún cá cay Hải Phòng là món ăn đặc sản nức tiếng đậm đà khó quên.
+Từng miếng cá rô phi được chiên vàng ươm giòn rụm trong miệng.
+Rất nhiều thực khách đã tìm kiếm công thức nấu nước dùng thanh ngọt này trên Google.
+Doanh thu của quán đã bùng nổ tăng trưởng hơn 320% sau khi lên xu hướng.
+Hãy bắt đầu hành trình trải nghiệm ẩm thực đỉnh cao ngay hôm nay!`;
 
 const SCRIPT_PRESETS = [
   {
-    title: '🌲 Săn Mây & Nghỉ Dưỡng',
-    desc: 'Biển mây bồng bềnh, không gian tĩnh lặng & thư thái',
-    script: `Sa Pa sáng nay mây tràn qua ô cửa sổ, không gian tĩnh lặng chỉ có tiếng chim hót và hương núi rừng thoang thoảng.
-Tự thưởng cho bản thân một buổi sáng thong thả: nhấp ngụm cà phê phin đậm đà, cuộn mình trong chăn ấm và ngắm nhìn từng dải mây lững lờ trôi.
-Nếu bạn đang tìm một nơi để chữa lành và tạm gác lại những bộn bề nơi phố thị, Lá Đỏ Homestay luôn sẵn sàng mở cửa chào đón bạn.
-Hãy đến và cảm nhận sự bình yên trọn vẹn giữa mây trời Tây Bắc!`
+    title: '🍜 Review Ẩm Thực',
+    desc: 'Món ngon, đặc sản, tìm kiếm & tăng trưởng',
+    script: `Bún cá cay Hải Phòng là món ăn đặc sản nức tiếng đậm đà khó quên.
+Từng miếng cá rô phi được chiên vàng ươm giòn rụm trong miệng.
+Rất nhiều thực khách đã tìm kiếm công thức nấu nước dùng thanh ngọt này trên Google.
+Doanh thu của quán đã bùng nổ tăng trưởng hơn 320% sau khi lên xu hướng.
+Hãy bắt đầu hành trình trải nghiệm ẩm thực đỉnh cao ngay hôm nay!`
   },
   {
-    title: '☕ Góc Chill Thung Lũng Mường Hoa',
-    desc: 'View ngắm trọn thung lũng, trà nóng & bình yên',
-    script: `Một sớm mai thức dậy giữa biển mây bồng bềnh tại Lá Đỏ Homestay Sa Pa.
-Thưởng thức tách trà ấm nóng, hít hà không khí trong lành và ngắm trọn vẻ đẹp kỳ vĩ của thung lũng Mường Hoa.
-Từng nếp nhà gỗ mộc mạc nép mình bên sườn đồi, đem lại cảm giác bình yên đến lạ kỳ.
-Đặt phòng ngay hôm nay để nhận ưu đãi trải nghiệm đặc biệt bạn nhé!`
+    title: '💰 Tài Chính & Đầu Tư',
+    desc: 'Cổ phiếu, tài sản, ngân hàng & tự do tài chính',
+    script: `Đây là 3 thói quen quản lý tài chính giúp người giàu ngày càng giàu hơn.
+Thay vì tiêu hết thu nhập hàng tháng vào những thứ tiêu sản vô bổ.
+Họ luôn ưu tiên trích 30% để đầu tư vào cổ phiếu và tài sản sinh lời.
+Thông báo số dư tài khoản ngân hàng sẽ liên tục tăng trưởng theo thời gian.
+Lãi suất kép chính là chìa khóa kỳ diệu giúp bạn chạm tới tự do tài chính!`
   },
   {
-    title: '🍲 Ẩm Thực Tây Bắc',
-    desc: 'Lẩu cá tầm, thịt nướng thơm lừng bên bếp lửa',
-    script: `Giữa tiết trời se lạnh của Sa Pa, còn gì tuyệt vời hơn khi quây quần bên nồi lẩu cá tầm nghi ngút khói.
-Từng lát cá tươi ngon đậm đà hòa quyện cùng các loại rau rừng tươi xanh bản địa.
-Bên bếp lửa hồng ấm áp, cùng bạn bè và người thân chia sẻ những câu chuyện thật rôm rả.
-Đừng quên ghé gian bếp Lá Đỏ để thưởng thức trọn vị ẩm thực Tây Bắc!`
+    title: '💻 Công Nghệ & AI',
+    desc: 'Trí tuệ nhân tạo, code tự động & bứt phá',
+    script: `Trí tuệ nhân tạo đang làm thay đổi hoàn toàn cuộc chơi của thế giới hiện đại.
+Làm sao để ứng dụng AI tự động hóa toàn bộ công việc của bạn?
+Bằng cách kết hợp các dòng code tự động và mô hình ngôn ngữ lớn siêu tốc.
+Tốc độ xử lý công việc của bạn sẽ nhanh hơn gấp 10 lần bình thường.
+Hãy nắm bắt cơ hội để bứt phá dẫn đầu tương lai công nghệ!`
   },
   {
-    title: '🏡 Check-in & Trải Nghiệm Bản Địa',
-    desc: 'Kiến trúc mộc mạc, góc sống ảo cực thơ',
-    script: `Khám phá vẻ đẹp Sa Pa qua những góc check-in siêu thơ mộng tại Lá Đỏ Homestay.
-Từ ban công săn mây ngút ngàn đến lối đi lát đá ngập tràn sắc hoa cỏ.
-Mỗi góc nhỏ tại homestay đều được chăm chút tỉ mỉ để mang đến cho bạn những khung hình lung linh nhất.
-Lên lịch trình khám phá Sa Pa cùng Lá Đỏ Homestay ngay thôi nào!`
+    title: '🔥 Động Lực Phát Triển',
+    desc: 'Bứt phá giới hạn, kỷ luật & thành công',
+    script: `Đừng bao giờ từ bỏ ước mơ chỉ vì chặng đường phía trước đang đầy gian nan.
+Mỗi cú vấp ngã ngày hôm nay chính là bài học giúp bạn tôi luyện ý chí kiên cường.
+Kỷ luật thép mỗi ngày chính là cây cầu vững chắc nhất kết nối bạn tới thành công.
+Hãy hành động quyết liệt ngay bây giờ vì thời điểm hoàn hảo nhất chính là giây phút này!`
   }
 ];
 
@@ -252,49 +256,52 @@ export const ScriptGenerator: React.FC<ScriptGeneratorProps> = ({
   };
 
   return (
-    <div className="bg-white rounded-xl p-5 border border-slate-200 flex flex-col gap-4 shadow-sm">
+    <div className="bg-gray-900/70 rounded-2xl p-5 border border-gray-800 glass-panel flex flex-col gap-4 shadow-xl">
       {/* Mode Switcher Tabs */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-800 pb-3">
         <div className="flex items-center gap-2">
-          {/* Tab 1: Dán kịch bản có sẵn */}
+          {/* Tab 1: Dán kịch bản có sẵn (Active by default) */}
           <button
             type="button"
             onClick={() => setActiveTab('paste_script')}
-            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
               activeTab === 'paste_script'
-                ? 'bg-blue-600 text-white shadow-xs'
-                : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                ? 'bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white shadow-lg shadow-indigo-500/25'
+                : 'bg-gray-800/80 hover:bg-gray-800 text-gray-300 hover:text-white border border-gray-700/50'
             }`}
           >
-            <Zap className="w-3.5 h-3.5 text-amber-300" />
-            <span>Kịch Bản Video</span>
+            <Zap className="w-4 h-4 text-amber-300" />
+            <span>🎬 Dán Kịch Bản (Auto 100% Motion & Ảnh)</span>
+            <span className="px-1.5 py-0.2 text-[9px] font-black rounded bg-amber-400 text-black uppercase tracking-wider">
+              1-Click
+            </span>
           </button>
 
           {/* Tab 2: Tạo từ chủ đề */}
           <button
             type="button"
             onClick={() => setActiveTab('ai_topic')}
-            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all ${
               activeTab === 'ai_topic'
-                ? 'bg-blue-600 text-white shadow-xs'
-                : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
+                ? 'bg-indigo-600 text-white shadow-md'
+                : 'bg-gray-800/80 hover:bg-gray-800 text-gray-400 hover:text-gray-200 border border-gray-700/40'
             }`}
           >
-            <Sparkles className="w-3.5 h-3.5 text-blue-500" />
-            <span>Gợi Ý Kịch Bản Từ Chủ Đề</span>
+            <Sparkles className="w-3.5 h-3.5 text-purple-400" />
+            <span>Viết Kịch Bản Từ Chủ Đề</span>
           </button>
         </div>
 
         {/* Voice Selector Header Compact */}
         <div className="flex items-center gap-2">
-          <label className="text-xs font-medium text-slate-600 flex items-center gap-1">
-            <Mic className="w-3.5 h-3.5 text-blue-600" />
-            <span>Giọng Thuyết Minh:</span>
+          <label className="text-[11px] font-medium text-gray-400 flex items-center gap-1">
+            <Mic className="w-3.5 h-3.5 text-indigo-400" />
+            <span>Giọng:</span>
           </label>
           <select
             value={selectedVoice}
             onChange={(e) => setSelectedVoice(e.target.value)}
-            className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 text-xs text-slate-800 focus:outline-none focus:border-blue-500"
+            className="bg-gray-950 border border-gray-800 rounded-lg px-2.5 py-1 text-xs text-gray-200 focus:outline-none focus:border-indigo-500"
           >
             {VIETNAMESE_VOICES.map((v) => (
               <option key={v.id} value={v.id}>
@@ -306,25 +313,25 @@ export const ScriptGenerator: React.FC<ScriptGeneratorProps> = ({
       </div>
 
       {/* ================================================================= */}
-      {/* TAB 1: PASTE YOUR SCRIPT */}
+      {/* TAB 1: PASTE YOUR SCRIPT (AUTO MOTION & IMAGE 1-CLICK) */}
       {/* ================================================================= */}
       {activeTab === 'paste_script' && (
         <div className="flex flex-col gap-3.5">
           {/* Quick Script Presets */}
           <div className="flex flex-col gap-1.5">
-            <div className="flex items-center justify-between text-xs font-semibold text-slate-700">
+            <div className="flex items-center justify-between text-xs font-semibold text-gray-300">
               <span className="flex items-center gap-1.5">
-                <FileText className="w-3.5 h-3.5 text-blue-600" />
-                <span>Nội dung kịch bản video:</span>
+                <FileText className="w-3.5 h-3.5 text-indigo-400" />
+                <span>Nhập kịch bản video của bạn:</span>
               </span>
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="text-[11px] text-slate-500 hidden sm:inline">Mẫu Homestay:</span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] text-gray-500 hidden sm:inline">Mẫu thử nhanh:</span>
                 {SCRIPT_PRESETS.map((preset) => (
                   <button
                     key={preset.title}
                     type="button"
                     onClick={() => setUserScript(preset.script)}
-                    className="text-[11px] px-2.5 py-1 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition-all cursor-pointer"
+                    className="text-[11px] px-2 py-0.5 rounded-lg bg-gray-800/80 hover:bg-indigo-600/30 text-gray-300 hover:text-white border border-gray-700/50 transition-all"
                     title={preset.desc}
                   >
                     {preset.title}
@@ -339,46 +346,49 @@ export const ScriptGenerator: React.FC<ScriptGeneratorProps> = ({
                 value={userScript}
                 onChange={(e) => setUserScript(e.target.value)}
                 rows={5}
-                className="w-full bg-slate-50 hover:bg-white focus:bg-white border border-slate-200 focus:border-blue-500 rounded-lg px-3.5 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all leading-relaxed resize-y"
-                placeholder="Nhập hoặc dán nội dung kịch bản video homestay của bạn vào đây..."
+                className="w-full bg-gray-950/90 border border-indigo-500/30 focus:border-indigo-500 rounded-xl px-4 py-3 text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all font-mono leading-relaxed resize-y"
+                placeholder="Dán toàn bộ kịch bản của bạn vào đây (hỗ trợ văn bản tự do, ngắt câu bằng dấu chấm, xuống dòng, hoặc số thứ tự 1. 2. 3.)..."
               />
               <div className="absolute right-3 bottom-3 flex items-center gap-2">
-                <span className="px-2 py-0.5 rounded-md bg-white border border-slate-200 text-slate-600 text-[11px] font-semibold shadow-xs">
-                  {detectedScenesCount} phân cảnh
+                <span className="px-2 py-0.5 rounded-md bg-indigo-950/80 border border-indigo-500/40 text-indigo-300 text-[11px] font-bold">
+                  {detectedScenesCount} phân cảnh tự động
                 </span>
               </div>
             </div>
           </div>
 
-          {/* Feature Highlights Note */}
-          <div className="bg-blue-50/70 border border-blue-100 rounded-lg p-3 flex items-start gap-2.5 text-xs text-blue-900">
-            <Rocket className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+          {/* Feature Highlights & AI Intelligence Badge */}
+          <div className="bg-indigo-950/30 border border-indigo-500/20 rounded-xl p-3 flex items-start gap-2.5 text-xs text-indigo-200">
+            <Rocket className="w-4 h-4 text-pink-400 mt-0.5 flex-shrink-0" />
             <div className="space-y-0.5">
-              <div className="font-semibold text-blue-950 text-xs">
-                Tự Động Tạo Phân Cảnh & Lồng Tiếng:
+              <div className="font-bold text-white text-[12px]">
+                Tự Động 100% - Không Cần Chọn Gì Nữa:
               </div>
-              <p className="text-blue-800 text-[11px] leading-relaxed">
-                Hệ thống sẽ tự động tách từng câu thành các phân cảnh độc lập, tạo giọng thuyết minh tiếng Việt chuẩn và đồng bộ phụ đề chạy chữ theo từng khung hình.
+              <p className="text-gray-300 text-[11px] leading-relaxed">
+                Hệ thống tự phân tích từng câu để gán{' '}
+                <span className="text-pink-300 font-semibold">Motion Graphics</span> (Biểu đồ tăng trưởng +320%, Google Search, Terminal Code, VS Battle, Ting Ting, Quỹ đạo AI...) kết hợp{' '}
+                <span className="text-cyan-300 font-semibold">Ảnh nền mờ Cinematic</span> và{' '}
+                <span className="text-amber-300 font-semibold">Giọng đọc Edge-TTS chuẩn tiếng Việt</span> có phụ đề nhảy chữ.
               </p>
             </div>
           </div>
 
           {/* Action Row */}
           <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
-            <div className="text-xs text-slate-600 flex items-center gap-2">
+            <div className="text-xs text-indigo-300 flex items-center gap-2">
               {isGenerating ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+                  <Loader2 className="w-4 h-4 animate-spin text-indigo-400" />
                   <span className="font-medium animate-pulse">{statusText}</span>
                 </>
               ) : statusText ? (
                 <>
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                  <span className="text-emerald-700 font-medium">{statusText}</span>
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                  <span className="text-emerald-400 font-medium">{statusText}</span>
                 </>
               ) : (
-                <span className="text-slate-500">
-                  Sẵn sàng tạo toàn bộ video phân cảnh và lồng tiếng.
+                <span className="text-gray-400">
+                  Sẵn sàng tạo toàn bộ video từ kịch bản trên với 1 cú click.
                 </span>
               )}
             </div>
@@ -388,29 +398,29 @@ export const ScriptGenerator: React.FC<ScriptGeneratorProps> = ({
                 <button
                   onClick={onOpenBatchVocab}
                   type="button"
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 font-semibold text-xs transition-all cursor-pointer"
-                  title="Nạp nhiều câu kịch bản từ tệp hoặc JSON"
+                  className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-gray-800 hover:bg-gray-700 text-indigo-300 hover:text-white border border-indigo-500/30 font-semibold text-xs transition-all shadow-md active:scale-95"
+                  title="Nạp nhiều câu kịch bản hoặc danh sách từ vựng từ tệp hoặc dán JSON"
                 >
-                  <ListPlus className="w-3.5 h-3.5 text-blue-600" />
+                  <ListPlus className="w-4 h-4 text-indigo-400" />
                   <span className="hidden sm:inline">Nạp file / JSON</span>
                 </button>
               )}
 
-              {/* GENERATE BUTTON */}
+              {/* GIANT 1-CLICK GENERATE BUTTON */}
               <button
                 onClick={handleGenerateFromUserScript}
                 disabled={isGenerating || !userScript.trim()}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95 cursor-pointer"
+                className="flex items-center gap-2.5 px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-500 hover:to-pink-500 text-white font-black text-sm shadow-xl shadow-indigo-500/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all transform active:scale-95 glow-primary"
               >
                 {isGenerating ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Đang Tạo Phân Cảnh & Lồng Tiếng...</span>
+                    <span>Đang Tạo Toàn Bộ Video...</span>
                   </>
                 ) : (
                   <>
-                    <Zap className="w-3.5 h-3.5 text-amber-300" />
-                    <span>Tạo Phân Cảnh & Lồng Tiếng</span>
+                    <Zap className="w-4 h-4 text-amber-300" />
+                    <span>TẠO VIDEO MOTION GRAPHIC TỰ ĐỘNG (1-CLICK)</span>
                   </>
                 )}
               </button>
@@ -420,30 +430,30 @@ export const ScriptGenerator: React.FC<ScriptGeneratorProps> = ({
       )}
 
       {/* ================================================================= */}
-      {/* TAB 2: AI TOPIC WRITER */}
+      {/* TAB 2: AI TOPIC WRITER (CREATE SCRIPT FROM TOPIC PROMPT) */}
       {/* ================================================================= */}
       {activeTab === 'ai_topic' && (
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
-            <label className="text-xs font-semibold text-slate-700 flex items-center justify-between">
-              <span>Chủ đề / Ý tưởng video homestay:</span>
-              <span className="text-slate-500 text-[11px]">Hỗ trợ tiếng Việt hoặc tiếng Anh</span>
+            <label className="text-xs font-semibold text-gray-300 flex items-center justify-between">
+              <span>Chủ đề / Ý tưởng video bạn muốn AI viết:</span>
+              <span className="text-gray-500 text-[11px]">Hỗ trợ tiếng Việt hoặc tiếng Anh</span>
             </label>
             <div className="relative">
               <textarea
                 value={topic}
                 onChange={(e) => setTopic(e.target.value)}
                 rows={2}
-                className="w-full bg-slate-50 hover:bg-white focus:bg-white border border-slate-200 rounded-lg px-3.5 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all resize-none"
-                placeholder="Nhập chủ đề video bạn muốn tạo (Ví dụ: Săn mây Sa Pa, Thưởng thức lẩu cá tầm Tây Bắc...)"
+                className="w-full bg-gray-950/80 border border-gray-800 rounded-xl px-3.5 py-2.5 text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all resize-none"
+                placeholder="Nhập chủ đề video bạn muốn tạo (Ví dụ: 3 Bí quyết sống khỏe mỗi ngày, Sự thật về kim tự tháp Ai Cập...)"
               />
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-slate-700 flex items-center gap-1.5">
-                <Layers className="w-3.5 h-3.5 text-blue-600" />
+              <label className="text-xs font-medium text-gray-300 flex items-center gap-1.5">
+                <Layers className="w-3.5 h-3.5 text-purple-400" />
                 <span>Chủ đề / Phong cách:</span>
               </label>
               <select

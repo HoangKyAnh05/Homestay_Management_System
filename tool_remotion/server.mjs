@@ -30,7 +30,6 @@ const MIME_TYPES = {
   '.ico': 'image/x-icon'
 };
 
-// Prevent server crash on network drops or stream aborts
 process.on('uncaughtException', (err) => {
   console.error('[Remotion Server] Uncaught exception caught safely:', err?.message || err);
 });

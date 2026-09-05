@@ -170,40 +170,41 @@ export const PlayerStudio: React.FC<PlayerStudioProps> = ({ project, setProject 
   };
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-5">
       {/* Player Frame Card */}
-      <div className="bg-white rounded-xl p-4 border border-slate-200 flex flex-col items-center shadow-sm">
-        <div className="w-full flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
+      <div className="bg-gray-900/80 rounded-2xl p-4 border border-gray-800 glass-panel flex flex-col items-center">
+        <div className="w-full flex items-center justify-between pb-3 border-b border-gray-800/80 mb-3">
           {/* Mode Switcher: Xem Video vs Kéo Thả Chuột */}
-          <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-lg border border-slate-200">
+          <div className="flex items-center gap-1.5 bg-gray-950 p-1 rounded-xl border border-gray-800">
             <button
               type="button"
               onClick={() => setStudioMode('preview')}
-              className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 studioMode === 'preview'
-                  ? 'bg-white text-blue-600 shadow-xs border border-slate-200'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md'
+                  : 'text-gray-400 hover:text-gray-200'
               }`}
             >
               <Play className="w-3.5 h-3.5" />
-              <span>Xem Video</span>
+              <span>🎬 Xem Video</span>
             </button>
             <button
               type="button"
               onClick={() => setStudioMode('interactive_canvas')}
-              className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-black transition-all cursor-pointer ${
                 studioMode === 'interactive_canvas'
-                  ? 'bg-white text-blue-600 shadow-xs border border-slate-200'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md shadow-cyan-500/30'
+                  : 'text-gray-400 hover:text-cyan-300'
               }`}
               title="Click và kéo di chuyển các ô chữ, icon, sticker tự do bằng chuột"
             >
-              <Move className="w-3.5 h-3.5 text-blue-600" />
-              <span>Kéo Thả Vị Trí</span>
+              <Move className="w-3.5 h-3.5 text-cyan-300 animate-pulse" />
+              <span>✋ Kéo Thả Vị Trí (Chuột)</span>
+              <span className="text-[9px] bg-cyan-400/20 text-cyan-300 px-1 rounded border border-cyan-400/30">MỚI</span>
             </button>
           </div>
 
-          <span className="text-xs text-slate-500 font-mono">
+          <span className="text-xs text-gray-400 font-mono">
             {totalFrames} Frames • {(totalFrames / (project.fps || 30)).toFixed(1)}s
           </span>
         </div>
@@ -213,24 +214,23 @@ export const PlayerStudio: React.FC<PlayerStudioProps> = ({ project, setProject 
           <div className="w-full flex flex-col items-center gap-3">
             {/* Bộ chọn phân cảnh để kéo thả */}
             <div className="flex items-center gap-2 overflow-x-auto max-w-full pb-1">
-              <span className="text-xs text-slate-500 font-medium whitespace-nowrap">Chọn cảnh:</span>
+              <span className="text-xs text-gray-400 font-bold whitespace-nowrap">Chọn cảnh xếp:</span>
               {project.scenes.map((s, idx) => (
                 <button
                   key={s.id}
                   type="button"
                   onClick={() => setSelectedSceneIndex(idx)}
-                  className={`px-2.5 py-1 rounded-md text-xs font-semibold transition-all whitespace-nowrap cursor-pointer ${
+                  className={`px-3 py-1 rounded-lg text-xs font-bold transition cursor-pointer whitespace-nowrap ${
                     selectedSceneIndex === idx
-                      ? 'bg-blue-600 text-white shadow-xs'
-                      : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                      ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/30'
+                      : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
                   }`}
                 >
-                  Cảnh {s.order || idx + 1}
+                  Cảnh {idx + 1}
                 </button>
               ))}
             </div>
 
-            {/* Interactive Canvas Drag Frame */}
             {project.scenes[selectedSceneIndex] ? (
               <InteractiveCanvasOverlay
                 scene={project.scenes[selectedSceneIndex]}
@@ -242,12 +242,11 @@ export const PlayerStudio: React.FC<PlayerStudioProps> = ({ project, setProject 
             ) : null}
           </div>
         ) : (
-          /* Chế độ 2: Remotion Live Player thông thường */
+          /* Chế độ 2: Remotion Player Container */
           <div
-            className="relative shadow-md rounded-lg overflow-hidden bg-black flex items-center justify-center border border-slate-300"
+            className="relative bg-black rounded-xl overflow-hidden shadow-2xl border border-gray-800 flex items-center justify-center"
             style={{
-              width: '100%',
-              maxWidth: project.aspectRatio === '9:16' ? '270px' : '100%',
+              width: project.aspectRatio === '9:16' ? '280px' : '100%',
               aspectRatio: project.aspectRatio === '9:16' ? '9/16' : '16/9',
               maxHeight: '480px'
             }}
@@ -269,7 +268,7 @@ export const PlayerStudio: React.FC<PlayerStudioProps> = ({ project, setProject 
                 loop
               />
             ) : (
-              <div className="text-center p-6 text-slate-400 text-xs">
+              <div className="text-center p-6 text-gray-500 text-xs">
                 Chưa có phân cảnh nào. Hãy nhấn tạo kịch bản ở trên!
               </div>
             )}
@@ -277,20 +276,20 @@ export const PlayerStudio: React.FC<PlayerStudioProps> = ({ project, setProject 
         )}
       </div>
 
-      {/* Retention Elements Customizer (Watermark, Progress Bar) */}
-      <div className="bg-white rounded-xl p-4 border border-slate-200 space-y-3 shadow-sm">
-        <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
-          <Activity className="w-4 h-4 text-blue-600" />
-          <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-            Thương Hiệu & Tiến Trình Video
+      {/* Retention Elements Customizer (Watermark, Progress Bar, Sound FX) */}
+      <div className="bg-gray-900/80 rounded-2xl p-4 border border-gray-800 glass-card space-y-3">
+        <div className="flex items-center gap-2 pb-2 border-b border-gray-800">
+          <Activity className="w-4 h-4 text-pink-400" />
+          <h4 className="text-xs font-bold text-white uppercase tracking-wider">
+            Yếu Tố Giữ Chân & Thương Hiệu (Retention)
           </h4>
         </div>
 
         {/* Watermark Branding */}
         <div className="space-y-2">
           <div className="flex items-center justify-between text-xs">
-            <span className="text-slate-700 flex items-center gap-1.5">
-              <Tag className="w-3.5 h-3.5 text-blue-600" />
+            <span className="text-gray-300 flex items-center gap-1.5">
+              <Tag className="w-3.5 h-3.5 text-indigo-400" />
               <span>Logo / Tên thương hiệu góc video:</span>
             </span>
             <label className="relative inline-flex items-center cursor-pointer">
@@ -300,7 +299,7 @@ export const PlayerStudio: React.FC<PlayerStudioProps> = ({ project, setProject 
                 onChange={(e) => updateWatermark({ enabled: e.target.checked })}
                 className="sr-only peer"
               />
-              <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+              <div className="w-9 h-5 bg-gray-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
             </label>
           </div>
 
@@ -310,13 +309,13 @@ export const PlayerStudio: React.FC<PlayerStudioProps> = ({ project, setProject 
                 type="text"
                 value={project.watermark.text || ''}
                 onChange={(e) => updateWatermark({ text: e.target.value })}
-                placeholder="@LáĐỏHomestaySaPa"
-                className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 focus:outline-none focus:border-blue-500"
+                placeholder="@TênKênhCủaBạn"
+                className="bg-gray-950 border border-gray-800 rounded-lg px-2.5 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-indigo-500"
               />
               <select
                 value={project.watermark.position}
                 onChange={(e) => updateWatermark({ position: e.target.value as any })}
-                className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 focus:outline-none"
+                className="bg-gray-950 border border-gray-800 rounded-lg px-2.5 py-1.5 text-xs text-gray-200 focus:outline-none"
               >
                 <option value="top-right">Góc trên bên phải</option>
                 <option value="top-left">Góc trên bên trái</option>
@@ -328,35 +327,35 @@ export const PlayerStudio: React.FC<PlayerStudioProps> = ({ project, setProject 
         </div>
 
         {/* Progress Bar Toggle & Sound FX */}
-        <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-100">
-          <label className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
+        <div className="grid grid-cols-2 gap-3 pt-2 border-t border-gray-800/80">
+          <label className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer">
             <input
               type="checkbox"
               checked={project.showProgressBar ?? true}
               onChange={(e) => setProject((prev) => ({ ...prev, showProgressBar: e.target.checked }))}
-              className="rounded bg-slate-100 border-slate-300 text-blue-600 focus:ring-0"
+              className="rounded bg-gray-950 border-gray-800 text-indigo-600 focus:ring-0"
             />
             <span>Thanh Progress Bar đáy</span>
           </label>
 
-          <label className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
+          <label className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer">
             <input
               type="checkbox"
               checked={project.soundFx?.enableWhoosh ?? true}
               onChange={(e) => updateSoundFx({ enableWhoosh: e.target.checked })}
-              className="rounded bg-slate-100 border-slate-300 text-blue-600 focus:ring-0"
+              className="rounded bg-gray-950 border-gray-800 text-indigo-600 focus:ring-0"
             />
-            <span>Âm thanh chuyển cảnh</span>
+            <span>Âm thanh Whoosh chuyển cảnh</span>
           </label>
         </div>
       </div>
 
       {/* Subtitle & Audio Styling Customizer */}
-      <div className="bg-white rounded-xl p-4 border border-slate-200 space-y-4 shadow-sm">
-        <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
-          <Type className="w-4 h-4 text-blue-600" />
-          <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-            Tùy Chỉnh Phụ Đề Chạy Chữ & Âm Nhạc
+      <div className="bg-gray-900/80 rounded-2xl p-4 border border-gray-800 glass-card space-y-4">
+        <div className="flex items-center gap-2 pb-2 border-b border-gray-800">
+          <Type className="w-4 h-4 text-indigo-400" />
+          <h4 className="text-xs font-bold text-white uppercase tracking-wider">
+            Tùy Chỉnh Phụ Đề Karaoke & Âm Nhạc
           </h4>
         </div>
 
@@ -364,11 +363,11 @@ export const PlayerStudio: React.FC<PlayerStudioProps> = ({ project, setProject 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {/* Font Family */}
           <div className="flex flex-col gap-1">
-            <label className="text-[11px] text-slate-500 font-medium">Kiểu Font chữ:</label>
+            <label className="text-[11px] text-gray-400">Kiểu Font chữ:</label>
             <select
               value={project.subtitleStyle.fontFamily}
               onChange={(e) => updateSubtitleStyle({ fontFamily: e.target.value })}
-              className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 focus:outline-none focus:border-blue-500"
+              className="bg-gray-950 border border-gray-800 rounded-lg px-2.5 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-indigo-500"
             >
               {PRESET_FONTS.map((f) => (
                 <option key={f.value} value={f.value}>
@@ -380,15 +379,15 @@ export const PlayerStudio: React.FC<PlayerStudioProps> = ({ project, setProject 
 
           {/* Highlight Color */}
           <div className="flex flex-col gap-1">
-            <label className="text-[11px] text-slate-500 font-medium">Màu chữ Highlight:</label>
+            <label className="text-[11px] text-gray-400">Màu chữ Highlight (Karaoke):</label>
             <div className="flex items-center gap-2">
               {PRESET_HIGHLIGHT_COLORS.map((c) => (
                 <button
                   key={c.color}
                   onClick={() => updateSubtitleStyle({ highlightColor: c.color })}
-                  className={`w-6 h-6 rounded-full border-2 transition-all cursor-pointer ${
+                  className={`w-6 h-6 rounded-full border-2 transition-all ${
                     project.subtitleStyle.highlightColor === c.color
-                      ? 'border-slate-900 scale-110 shadow-sm'
+                      ? 'border-white scale-110 shadow-lg'
                       : 'border-transparent hover:scale-105'
                   }`}
                   style={{ backgroundColor: c.color }}
@@ -399,16 +398,131 @@ export const PlayerStudio: React.FC<PlayerStudioProps> = ({ project, setProject 
           </div>
         </div>
 
-        {/* Background Music Selector */}
-        <div className="pt-2 border-t border-slate-100 flex flex-col gap-2">
+        {/* Position Y Slider & Font Size */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="flex flex-col gap-1">
+            <div className="flex justify-between text-[11px] text-gray-400">
+              <span>Vị trí Phụ đề (Trục Y):</span>
+              <span className="text-indigo-400 font-mono">{project.subtitleStyle.positionY}%</span>
+            </div>
+            <input
+              type="range"
+              min="20"
+              max="90"
+              value={project.subtitleStyle.positionY}
+              onChange={(e) => updateSubtitleStyle({ positionY: parseInt(e.target.value) })}
+              className="w-full accent-indigo-500 h-1.5 bg-gray-800 rounded-lg cursor-pointer"
+            />
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <div className="flex justify-between text-[11px] text-gray-400">
+              <span>Kích thước chữ:</span>
+              <span className="text-indigo-400 font-mono">{project.subtitleStyle.fontSize}px</span>
+            </div>
+            <input
+              type="range"
+              min="24"
+              max="80"
+              value={project.subtitleStyle.fontSize}
+              onChange={(e) => updateSubtitleStyle({ fontSize: parseInt(e.target.value) })}
+              className="w-full accent-indigo-500 h-1.5 bg-gray-800 rounded-lg cursor-pointer"
+            />
+          </div>
+        </div>
+
+        {/* Remotion Supercharged Effects Toggles */}
+        <div className="pt-3 border-t border-gray-800 flex flex-col gap-2">
+          <label className="text-[11px] text-gray-300 font-semibold flex items-center gap-1.5">
+            <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+            <span>Hiệu ứng Video & Chuyển động Remotion Pro:</span>
+          </label>
+
+          <div className="grid grid-cols-2 gap-2">
+            {/* Audio Visualizer Toggle */}
+            <button
+              onClick={() =>
+                setProject((prev) => ({
+                  ...prev,
+                  showAudioVisualizer: !(prev.showAudioVisualizer ?? true)
+                }))
+              }
+              className={`flex items-center justify-between p-2 rounded-xl border text-xs font-medium transition-all ${
+                project.showAudioVisualizer ?? true
+                  ? 'bg-cyan-950/40 border-cyan-500/50 text-cyan-200'
+                  : 'bg-gray-950 border-gray-800 text-gray-400'
+              }`}
+            >
+              <span>🎵 Sóng âm Visualizer</span>
+              <span className="text-[10px] font-bold">{project.showAudioVisualizer ?? true ? 'ON' : 'OFF'}</span>
+            </button>
+
+            {/* Dynamic Emojis Toggle */}
+            <button
+              onClick={() =>
+                setProject((prev) => ({
+                  ...prev,
+                  enableDynamicEmojis: !(prev.enableDynamicEmojis ?? true)
+                }))
+              }
+              className={`flex items-center justify-between p-2 rounded-xl border text-xs font-medium transition-all ${
+                project.enableDynamicEmojis ?? true
+                  ? 'bg-amber-950/40 border-amber-500/50 text-amber-200'
+                  : 'bg-gray-950 border-gray-800 text-gray-400'
+              }`}
+            >
+              <span>🔥 Emoji Động (Hormozi)</span>
+              <span className="text-[10px] font-bold">{project.enableDynamicEmojis ?? true ? 'ON' : 'OFF'}</span>
+            </button>
+
+            {/* Cinematic Particles Toggle */}
+            <button
+              onClick={() =>
+                setProject((prev) => ({
+                  ...prev,
+                  showCinematicParticles: !(prev.showCinematicParticles ?? true)
+                }))
+              }
+              className={`flex items-center justify-between p-2 rounded-xl border text-xs font-medium transition-all ${
+                project.showCinematicParticles ?? true
+                  ? 'bg-purple-950/40 border-purple-500/50 text-purple-200'
+                  : 'bg-gray-950 border-gray-800 text-gray-400'
+              }`}
+            >
+              <span>✨ Hạt Bụi Điện Ảnh</span>
+              <span className="text-[10px] font-bold">{project.showCinematicParticles ?? true ? 'ON' : 'OFF'}</span>
+            </button>
+
+            {/* Camera Shake Toggle */}
+            <button
+              onClick={() =>
+                setProject((prev) => ({
+                  ...prev,
+                  showCameraShake: !(prev.showCameraShake ?? true)
+                }))
+              }
+              className={`flex items-center justify-between p-2 rounded-xl border text-xs font-medium transition-all ${
+                project.showCameraShake ?? true
+                  ? 'bg-pink-950/40 border-pink-500/50 text-pink-200'
+                  : 'bg-gray-950 border-gray-800 text-gray-400'
+              }`}
+            >
+              <span>📳 Rung Lắc Camera</span>
+              <span className="text-[10px] font-bold">{project.showCameraShake ?? true ? 'ON' : 'OFF'}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Background Music Selector & Volume Ducking */}
+        <div className="pt-3 border-t border-gray-800 flex flex-col gap-3">
           <div className="flex items-center justify-between">
-            <label className="text-xs text-slate-700 font-medium flex items-center gap-1.5">
-              <Music className="w-3.5 h-3.5 text-blue-600" />
-              <span>Nhạc nền BGM:</span>
+            <label className="text-[11px] text-gray-300 font-semibold flex items-center gap-1.5">
+              <Music className="w-3.5 h-3.5 text-pink-400" />
+              <span>Nhạc nền BGM (Tự động giảm âm khi có giọng đọc):</span>
             </label>
             <button
               onClick={handleSelectCustomBgmFile}
-              className="flex items-center gap-1 text-[11px] text-blue-600 hover:text-blue-700 py-0.5 px-2 rounded bg-blue-50 border border-blue-200 cursor-pointer"
+              className="flex items-center gap-1 text-[10px] text-indigo-400 hover:text-indigo-300 py-0.5 px-2 rounded-md bg-indigo-950/50 border border-indigo-500/30"
               title="Chọn file MP3 từ máy tính"
             >
               <FolderOpen className="w-3 h-3" />
@@ -419,7 +533,7 @@ export const PlayerStudio: React.FC<PlayerStudioProps> = ({ project, setProject 
           <select
             value={project.bgm?.url || ''}
             onChange={(e) => handleSelectBgm(e.target.value)}
-            className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 focus:outline-none focus:border-blue-500"
+            className="bg-gray-950 border border-gray-800 rounded-lg px-2.5 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-indigo-500"
           >
             {BGM_OPTIONS.map((b) => (
               <option key={b.name} value={b.url}>
@@ -432,6 +546,32 @@ export const PlayerStudio: React.FC<PlayerStudioProps> = ({ project, setProject 
               </option>
             )}
           </select>
+
+          {/* Ducking Volume Slider */}
+          {project.bgm?.url && (
+            <div className="flex flex-col gap-1 pt-1">
+              <div className="flex justify-between text-[10px] text-gray-400">
+                <span>Âm lượng nhạc nền khi có giọng đọc (Audio Ducking):</span>
+                <span className="text-pink-400 font-mono">
+                  {Math.round((project.bgm.duckingVolume ?? 0.15) * 100)}%
+                </span>
+              </div>
+              <input
+                type="range"
+                min="0.05"
+                max="0.5"
+                step="0.05"
+                value={project.bgm.duckingVolume ?? 0.15}
+                onChange={(e) =>
+                  setProject((prev) => ({
+                    ...prev,
+                    bgm: { ...prev.bgm, duckingVolume: parseFloat(e.target.value) }
+                  }))
+                }
+                className="w-full accent-pink-500 h-1.5 bg-gray-800 rounded-lg cursor-pointer"
+              />
+            </div>
+          )}
         </div>
       </div>
     </div>

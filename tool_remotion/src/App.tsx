@@ -8,6 +8,7 @@ import { SettingsModal } from './components/SettingsModal';
 import { BatchVocabularyModal } from './components/BatchVocabularyModal';
 import { Roadmap100Canvas } from './components/Roadmap100Canvas';
 import { VideoProject } from './types/video';
+import { defaultProject } from './remotion/Root';
 import { maxShowcaseProject } from './remotion/sampleShowcaseProject';
 import { synthesizeEdgeTTS } from './services/edgeTtsService';
 
@@ -110,17 +111,18 @@ export const App: React.FC = () => {
     }));
   }, [voiceRate, voicePitch]);
 
-  // Persist project changes safely
+  // Persist project changes safely (handles 5MB localStorage quota limit gracefully)
   useEffect(() => {
     try {
       localStorage.setItem('CURRENT_PROJECT', JSON.stringify(project));
     } catch (e) {
-      console.warn('LocalStorage quota reached, saving lean project structure');
+      console.warn('LocalStorage quota reached, saving lean project structure without large base64 buffers');
       try {
         const leanProject = {
           ...project,
           scenes: project.scenes.map((s) => ({
             ...s,
+            // Keep local file URLs or remote URLs, omit huge base64 strings to prevent quota crash
             audioUrl: s.audioUrl?.startsWith('data:') ? undefined : s.audioUrl
           }))
         };
@@ -132,8 +134,8 @@ export const App: React.FC = () => {
   }, [project]);
 
   return (
-    <div className="h-screen max-h-screen overflow-hidden bg-[#f0f2f5] text-slate-800 flex flex-col font-sans">
-      {/* Top Navbar with Tab Switcher */}
+    <div className="h-screen max-h-screen overflow-hidden bg-[#0B0F19] text-gray-100 flex flex-col">
+      {/* Top Navbar */}
       <Navbar
         project={project}
         setProject={setProject}
@@ -154,10 +156,10 @@ export const App: React.FC = () => {
           />
         </main>
       ) : (
-        <main className="flex-1 overflow-hidden p-4 max-w-[1750px] w-full mx-auto">
-          <div className="grid grid-cols-1 xl:grid-cols-12 gap-5 h-full items-stretch">
-            {/* Left Column: Script & Scene Timeline (7 cols) */}
-            <div className="xl:col-span-7 h-full overflow-y-auto pr-2 space-y-5">
+        <main className="flex-1 overflow-hidden p-4 lg:p-6 max-w-[1750px] w-full mx-auto">
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 h-full items-stretch">
+            {/* Left Column: Script Generation & Storyboard Timeline (7 cols) - Independently scrollable */}
+            <div className="xl:col-span-7 h-full overflow-y-auto pr-3 space-y-6">
               <ScriptGenerator
                 project={project}
                 setProject={setProject}
@@ -179,8 +181,8 @@ export const App: React.FC = () => {
               />
             </div>
 
-            {/* Right Column: Live Video Player Preview (5 cols) */}
-            <div className="xl:col-span-5 h-full overflow-y-auto pl-1 space-y-5">
+            {/* Right Column: Remotion Live Preview Studio & Customizer (5 cols) - Independently scrollable */}
+            <div className="xl:col-span-5 h-full overflow-y-auto pl-1 space-y-6">
               <PlayerStudio
                 project={project}
                 setProject={setProject}
@@ -190,7 +192,7 @@ export const App: React.FC = () => {
         </main>
       )}
 
-      {/* Modals */}
+      {/* Batch Vocabulary & Script Modal (Root Level to prevent Stacking Context clipping) */}
       <BatchVocabularyModal
         isOpen={isBatchVocabOpen}
         onClose={() => setIsBatchVocabOpen(false)}
@@ -199,12 +201,14 @@ export const App: React.FC = () => {
         apiKeyPexels={apiKeyPexels}
       />
 
+      {/* Render Modal */}
       <RenderModal
         project={project}
         isOpen={isRenderOpen}
         onClose={() => setIsRenderOpen(false)}
       />
 
+      {/* Settings Modal */}
       <SettingsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}

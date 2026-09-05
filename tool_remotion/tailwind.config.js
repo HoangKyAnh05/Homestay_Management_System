@@ -8,23 +8,23 @@ export default {
     extend: {
       colors: {
         brand: {
-          50: '#eff6ff',
-          100: '#dbeafe',
-          500: '#2563eb',
-          600: '#1d4ed8',
-          700: '#1e40af',
-          900: '#1e3a8a',
+          50: '#f0f4ff',
+          100: '#dbe4fe',
+          500: '#4f46e5',
+          600: '#4338ca',
+          700: '#3730a3',
+          900: '#1e1b4b',
         },
         dark: {
-          bg: '#0f172a',
-          card: '#1e293b',
-          surface: '#293548',
-          border: '#334155',
-          hover: '#3b4b62',
+          bg: '#0B0F19',
+          card: '#111827',
+          surface: '#1F2937',
+          border: '#374151',
+          hover: '#2D3748',
         }
       },
       fontFamily: {
-        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+        sans: ['Inter', 'system-ui', 'sans-serif'],
       }
     },
   },
