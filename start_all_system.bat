@@ -20,16 +20,16 @@ pause
 
 echo.
 echo [*] Dang khoi dong Backend Spring Boot (Cong 8080)...
-start "Homestay Backend (:8080)" cmd /k "cd /d %~dp0homestayManagement && mvnw.cmd spring-boot:run"
+start "Homestay Backend (:8080)" cmd /k "cd /d %~dp0 && call start_backend.bat"
 
 echo [*] Cho Backend khoi tao (5 giay)...
 timeout /t 5 /nobreak >nul
 
 echo [*] Dang khoi dong Frontend Vite (Cong 5173)...
-start "Homestay Frontend (:5173)" cmd /k "cd /d %~dp0frontendHomestayManagement && npm run dev"
+start "Homestay Frontend (:5173)" cmd /k "cd /d %~dp0 && call start_frontend.bat"
 
 echo [*] Dang khoi dong Remotion Video Studio (Cong 3000)...
-start "Remotion Video Studio (:3000)" cmd /k "cd /d %~dp0tool_remotion && node server.mjs"
+start "Remotion Video Studio (:3000)" cmd /k "cd /d %~dp0 && call start_remotion_studio.bat"
 
 echo [*] Cho cac server san sang (3 giay)...
 timeout /t 3 /nobreak >nul
