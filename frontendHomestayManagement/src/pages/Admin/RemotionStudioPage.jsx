@@ -3,8 +3,6 @@ import AdminLayout, { navigate } from './AdminLayout'
 import './RemotionStudioPage.css'
 
 const REMOTION_LOCAL_URL = 'http://localhost:3000'
-const REMOTION_DEPLOY_URL =
-  import.meta.env.VITE_REMOTION_DEPLOY_URL || 'https://man-aqua-restaurant-cool.trycloudflare.com'
 
 export default function RemotionStudioPage() {
   const isHttps =
@@ -12,8 +10,15 @@ export default function RemotionStudioPage() {
     (window.location.protocol === 'https:' ||
       (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1'))
 
+  const getDeployUrl = () => {
+    if (typeof window !== 'undefined') {
+      return `${window.location.origin}/remotion-app/`
+    }
+    return '/remotion-app/'
+  }
+
   const [activeMode, setActiveMode] = useState(isHttps ? 'deploy' : 'local')
-  const [studioUrl, setStudioUrl] = useState(isHttps ? REMOTION_DEPLOY_URL : REMOTION_LOCAL_URL)
+  const [studioUrl, setStudioUrl] = useState(isHttps ? getDeployUrl() : REMOTION_LOCAL_URL)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [isServerRunning, setIsServerRunning] = useState(false)
   const [isChecking, setIsChecking] = useState(true)
@@ -22,7 +27,8 @@ export default function RemotionStudioPage() {
 
   const verifyServer = useCallback(async (targetUrl = studioUrl) => {
     try {
-      const res = await fetch(`${targetUrl}/health`, {
+      const checkUrl = targetUrl.includes('/remotion-app') ? '/remotion-health' : `${targetUrl}/health`
+      const res = await fetch(checkUrl, {
         method: 'GET',
         cache: 'no-cache',
         mode: 'cors',
@@ -56,7 +62,7 @@ export default function RemotionStudioPage() {
 
   const handleSwitchMode = (mode) => {
     setActiveMode(mode)
-    const newUrl = mode === 'deploy' ? REMOTION_DEPLOY_URL : REMOTION_LOCAL_URL
+    const newUrl = mode === 'deploy' ? getDeployUrl() : REMOTION_LOCAL_URL
     setStudioUrl(newUrl)
     setIsChecking(true)
     iframeLoaded.current = false
@@ -125,7 +131,7 @@ export default function RemotionStudioPage() {
                     }}
                   />
                   {isServerRunning
-                    ? `Studio Online (${activeMode === 'deploy' ? 'Cloudflare Deploy' : ':3000'})`
+                    ? `Studio Online (${activeMode === 'deploy' ? 'Ngrok Deploy' : ':3000'})`
                     : 'Đang kết nối...'}
                 </span>
 
@@ -154,9 +160,9 @@ export default function RemotionStudioPage() {
                       cursor: 'pointer',
                       transition: 'all 0.15s ease',
                     }}
-                    title="Dùng link Cloudflare HTTPS đã deploy công khai"
+                    title="Dùng link Ngrok HTTPS đã deploy cố định vĩnh viễn"
                   >
-                    🌐 Cloudflare Deploy
+                    🌐 Ngrok Deploy
                   </button>
                   <button
                     type="button"
@@ -258,7 +264,7 @@ export default function RemotionStudioPage() {
               <div className="remotion-studio-loading-card">
                 <div className="remotion-spinner" />
                 <p style={{ marginTop: '12px', color: '#475569', fontSize: '14px', fontWeight: 500 }}>
-                  Đang kết nối Remotion Video Studio ({activeMode === 'deploy' ? 'Cloudflare Deploy' : ':3000'})...
+                  Đang kết nối Remotion Video Studio ({activeMode === 'deploy' ? 'Ngrok Deploy' : ':3000'})...
                 </p>
               </div>
             </div>
@@ -273,23 +279,21 @@ export default function RemotionStudioPage() {
                 <span style={{ fontSize: '36px', display: 'block', marginBottom: '8px' }}>🎬</span>
                 <h3 style={{ fontSize: '18px', fontWeight: 700, color: '#0f172a', marginBottom: '8px' }}>
                   {activeMode === 'deploy'
-                    ? 'Remotion Studio Deploy (Cloudflare)'
+                    ? 'Remotion Studio Deploy (Ngrok)'
                     : 'Chưa kết nối được với Remotion Server (:3000)'}
                 </h3>
                 <p style={{ fontSize: '13.5px', color: '#64748b', lineHeight: 1.5, marginBottom: '18px' }}>
-                  {isHttps
-                    ? 'Bạn đang truy cập qua link deploy HTTPS. Để trải nghiệm video studio mượt mà và bảo đảm quyền truy cập từ xa, hãy chọn mở qua link Deploy Cloudflare bên dưới:'
-                    : 'Máy chủ Remotion đang khởi động hoặc chưa bật. Bạn có thể chọn mở tab riêng hoặc kết nối lại.'}
+                  Trình biên tập Video Studio AI hoạt động trực tiếp qua đường link Ngrok cố định vĩnh viễn. Bạn có thể mở trực tiếp hoặc mở tab riêng:
                 </p>
                 <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
                   <button
                     type="button"
-                    onClick={() => handleOpenStandalone(REMOTION_DEPLOY_URL)}
+                    onClick={() => handleOpenStandalone(getDeployUrl())}
                     className="remotion-action-btn remotion-action-btn--primary"
                     style={{ padding: '9px 18px', fontSize: '13.5px' }}
-                    title="Mở link deploy Cloudflare trực tiếp trên tab mới"
+                    title="Mở link deploy Ngrok trực tiếp trên tab mới"
                   >
-                    🚀 Mở Remotion Studio (Deploy Cloudflare)
+                    🚀 Mở Remotion Studio (Deploy Ngrok)
                   </button>
                   <button
                     type="button"
