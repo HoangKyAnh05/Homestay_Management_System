@@ -1,5 +1,5 @@
 @echo off
-title Khoi dong he thong Homestay (Chay ngam 1-Click)
+title Khoi dong he thong Homestay (Chay ngam)
 chcp 65001 >nul
 cd /d "%~dp0"
 echo ======================================================================
