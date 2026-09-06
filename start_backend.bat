@@ -10,7 +10,7 @@ echo.
 for /f "tokens=5" %%a in ('netstat -aon ^| findstr ":8080" ^| findstr "LISTENING"') do (
     echo [*] Phat hien port 8080 dang duoc su dung boi PID %%a. Dang giai phong...
     taskkill /F /PID %%a >nul 2>&1
-    timeout /t 1 /nobreak >nul
+    ping 127.0.0.1 -n 2 >nul
 )
 
 :: Uu tien thu muc JDK hop le co bin\java.exe

@@ -1,0 +1,20 @@
+======================================================================
+     HE THONG HOMESTAY DA DEPLOY LEN CLOUDFLARE THANH CONG
+======================================================================
+
+ [1] LINK WEB HOMESTAY (Frontend + Backend API):
+     https://prospective-utilization-evaluation-christopher.trycloudflare.com
+
+ [2] LINK REMOTION VIDEO STUDIO (Truc tiep Studio):
+     https://discrimination-modern-syndication-submissions.trycloudflare.com
+
+ [3] LINK REMOTION TREN WEB HOMESTAY:
+     https://prospective-utilization-evaluation-christopher.trycloudflare.com/remotion-app/
+
+======================================================================
+ * Uu diem vuot troi cua Cloudflare:
+   - BANG THONG VO HAN (khong bi gioi han 1GB nhu Ngrok)
+   - Khong bao gio bi loi ERR_NGROK_725
+   - Moi thiet bi (dien thoai, may tinh khac, 4G/Wifi) deu vao duoc
+   - Toc do cuc nhanh qua may chu Cloudflare Hong Kong
+======================================================================

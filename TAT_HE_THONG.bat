@@ -4,11 +4,12 @@ chcp 65001 >nul
 cd /d "%~dp0"
 cls
 echo ======================================================================
-echo          DANG DUNG TOAN BO HE THONG HOMESTAY & NGROK...
+echo          DANG DUNG TOAN BO HE THONG HOMESTAY VA TUNNEL...
 echo ======================================================================
 echo.
 
-echo [*] Dang dong tien trinh Ngrok...
+echo [*] Dang dong tien trinh Cloudflare Tunnel va Ngrok...
+taskkill /F /IM cloudflared.exe >nul 2>&1
 taskkill /F /IM ngrok.exe >nul 2>&1
 
 echo [*] Dang giai phong cac cong 8080 (Backend), 5173 (Frontend), 3000 (Remotion)...
@@ -19,5 +20,5 @@ echo ======================================================================
 echo   DA DUNG THANH CONG TOAN BO HE THONG! CAC CONG DA DUOC GIAI PHONG.
 echo   Cua so nay se tu dong dong sau 2 giay...
 echo ======================================================================
-timeout /t 2 /nobreak >nul
+ping 127.0.0.1 -n 3 >nul
 exit

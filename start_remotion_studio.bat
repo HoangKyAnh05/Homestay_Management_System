@@ -10,7 +10,7 @@ echo.
 for /f "tokens=5" %%a in ('netstat -aon ^| findstr ":3000" ^| findstr "LISTENING"') do (
     echo [*] Phat hien port 3000 dang duoc su dung boi PID %%a. Dang giai phong de khoi dong moi...
     taskkill /F /PID %%a >nul 2>&1
-    timeout /t 1 /nobreak >nul
+    ping 127.0.0.1 -n 2 >nul
 )
 
 cd /d "%~dp0tool_remotion"
@@ -21,5 +21,5 @@ echo.
 node server.mjs
 echo.
 echo [CANH BAO] Remotion Server bi ngat ket noi. Tu dong khoi dong lai sau 2 giay...
-timeout /t 2 /nobreak >nul
+ping 127.0.0.1 -n 3 >nul
 goto loop
