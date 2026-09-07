@@ -1,18 +1,21 @@
 ======================================================================
-     HE THONG HOMESTAY DA TRIEN KHAI THANH CONG TREN VPS VIETNIX (24/7)
+     HE THONG HOMESTAY DA TRIEN KHAI THANH CONG TREN VPS (HTTPS 24/7)
 ======================================================================
 
- [1] LINK WEB HOMESTAY CHINH THUC (Frontend + Backend API):
-     http://14.225.253.234
+ [1] LINK WEB HOMESTAY CHINH THUC (Co SSL HTTPS - O Khoa Xanh):
+     https://homestay-sapa.myvnc.com
+     (Hoac truy cap qua IP: http://14.225.253.234)
 
  [2] CAU HINH SEPAY WEBHOOK CO DINH (Tren https://my.sepay.vn):
-     URL Webhook: http://14.225.253.234/api/payments/sepay/webhook
+     URL Webhook: https://homestay-sapa.myvnc.com/api/payments/sepay/webhook
+     (Hoac: http://14.225.253.234/api/payments/sepay/webhook)
      Kieu du lieu: JSON
      Phuong thuc xac thuc: Chu ky HMAC-SHA256 (hoac API Key)
 
  [3] MOI TRUONG MAY CHU VPS:
+     Domain: homestay-sapa.myvnc.com
      IP: 14.225.253.234 (Datacenter Vietnix, Viet Nam)
-     OS: Ubuntu 24.04 LTS (64-bit)
+     Chung chi bao mat: Let's Encrypt SSL (HTTPS tu dong gia han)
      Ha tang: Docker MySQL 8.0, Spring Boot Java 21 (Systemd), Nginx Reverse Proxy
      Hoat dong doc lap 24/7 khong can bat may tinh ca nhan.
 
