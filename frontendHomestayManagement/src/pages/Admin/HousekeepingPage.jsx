@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { getStoredToken } from '../../services/authService'
 import AdminLayout from './AdminLayout'
 import './HousekeepingPage.css'
@@ -570,7 +570,7 @@ function HousekeepingPage() {
                       </div>
 
                       <input
-                        type="url"
+                        type="text"
                         placeholder="https://... hoặc link ảnh chụp hiện trường"
                         value={incidentForm.evidenceImageUrl}
                         onChange={e => setIncidentForm({ ...incidentForm, evidenceImageUrl: e.target.value })}

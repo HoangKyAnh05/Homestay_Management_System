@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import AdminLayout from './AdminLayout'
 import { getStoredToken, getStoredUser } from '../../services/authService'
 import { useShiftGuard } from '../../context/ShiftGuardContext'
@@ -578,6 +578,92 @@ export default function AdminIncidentsPage() {
           )}
         </div>
 
+        {/* Mobile Card List (< 768px) */}
+        {!loading && filteredIncidents.length > 0 && (
+          <div className="incidents-cards-mobile">
+            {filteredIncidents.map((item) => (
+              <div className="incident-card-item" key={item.id}>
+                <div className="incident-card-top">
+                  <div>
+                    <span className="incident-card-id">#{item.id}</span>
+                    <span className="room-badge" style={{ marginLeft: 6 }}>Phòng {item.roomNumber}</span>
+                    <span style={{ marginLeft: 6, fontSize: 12, color: '#64748b' }}>{item.roomTypeName}</span>
+                  </div>
+                  <span className={`status-pill status--${item.status ? item.status.toLowerCase() : 'reported'}`}>
+                    {item.status === 'RESOLVED'
+                      ? 'Đã giải quyết'
+                      : item.status === 'IN_PROGRESS'
+                      ? 'Đang xử lý'
+                      : item.status === 'DISMISSED'
+                      ? 'Đã bỏ qua'
+                      : 'Chờ xử lý'}
+                  </span>
+                </div>
+                <div className="incident-card-body">
+                  <div className="incident-card-item-title">
+                    <strong>{item.itemName}</strong>
+                    <span style={{ color: '#64748b', marginLeft: 4 }}>× {item.quantity}</span>
+                    <span className={`type-pill ${item.incidentType === 'LOST' ? 'type-pill--lost' : item.incidentType === 'MAINTENANCE' ? 'type-pill--maintenance' : 'type-pill--damaged'}`} style={{ marginLeft: 8 }}>
+                      {item.incidentType === 'LOST' ? '🔍 Bị mất' : item.incidentType === 'MAINTENANCE' ? '🛠️ Cần bảo trì' : '💥 Hỏng hóc'}
+                    </span>
+                  </div>
+                  {item.description && (
+                    <div className="incident-card-desc">{item.description}</div>
+                  )}
+                  <div className="incident-card-meta">
+                    <div><span>Thời gian:</span> {formatDateTime(item.reportedAt)}</div>
+                    <div><span>Người báo cáo:</span> {item.reportedByName} (Housekeeping)</div>
+                    {item.bookingCode && (
+                      <div><span>Booking:</span> {item.bookingCode} ({item.customerName || 'Khách lưu trú'})</div>
+                    )}
+                    <div>
+                      <span>Trách nhiệm:</span>{' '}
+                      {item.liability === 'CUSTOMER' ? (
+                        <span style={{ color: '#dc2626', fontWeight: 700 }}>Khách đền: {formatMoney(item.compensationAmount)}</span>
+                      ) : item.liability === 'HOMESTAY' ? (
+                        <span style={{ color: '#2563eb', fontWeight: 600 }}>Homestay bảo trì</span>
+                      ) : item.liability === 'NONE' ? (
+                        <span style={{ color: '#16a34a' }}>Miễn bồi thường</span>
+                      ) : (
+                        <span style={{ color: '#94a3b8' }}>Chưa xác định</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <div className="incident-card-actions">
+                  <button
+                    type="button"
+                    className="btn-action-view incident-card-btn-view"
+                    onClick={() => handleOpenActionModal(item)}
+                  >
+                    {isAdmin ? (item.status === 'RESOLVED' ? '👁️ Xem chi tiết' : '⚡ Xử lý / Chi tiết') : '👁️ Xem chi tiết'}
+                  </button>
+                  {isAdmin && item.status !== 'RESOLVED' && item.status !== 'DISMISSED' && (
+                    <button
+                      type="button"
+                      className="btn-action-resolve incident-card-btn-resolve"
+                      onClick={() => handleQuickResolve(item)}
+                      title="Hoàn tất xử lý sự cố"
+                    >
+                      ✓ Xử lý xong
+                    </button>
+                  )}
+                  {isAdmin && (
+                    <button
+                      type="button"
+                      className="btn-action-delete incident-card-btn-delete"
+                      onClick={() => handleDelete(item.id)}
+                      title="Xóa bản ghi"
+                    >
+                      🗑️
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* Modal: Báo Cáo Đồ Hỏng / Mất Mới */}
         {showReportModal && (
           <div className="incident-modal-overlay" onClick={() => setShowReportModal(false)}>
@@ -707,7 +793,7 @@ export default function AdminIncidentsPage() {
                         </div>
 
                         <input
-                          type="url"
+                          type="text"
                           className="form-input"
                           placeholder="https://... hoặc link ảnh chụp hiện trường"
                           value={reportForm.evidenceImageUrl}

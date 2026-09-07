@@ -13,6 +13,9 @@ function PasswordToggleIcon({ isVisible }) {
   )
 }
 
+const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
+const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};:,.<>?])[^\s]{8,64}$/
+
 // Bước 1: Form đăng ký
 function StepRegister({ onNext }) {
   const [fullName, setFullName] = useState('')
@@ -22,20 +25,56 @@ function StepRegister({ onNext }) {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [fieldErrors, setFieldErrors] = useState({})
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
 
+  const validateEmail = (val) => {
+    const trimmed = (val || '').trim()
+    if (!trimmed) return 'Vui lòng nhập email'
+    if (!EMAIL_REGEX.test(trimmed)) return 'Email không hợp lệ (Ví dụ: user@example.com)'
+    return ''
+  }
+
+  const validatePassword = (val) => {
+    if (!val) return 'Vui lòng nhập mật khẩu'
+    if (val.length < 8 || val.length > 64) return 'Mật khẩu phải từ 8 đến 64 ký tự'
+    if (/\s/.test(val)) return 'Mật khẩu không được chứa khoảng trắng'
+    if (!/(?=.*[a-z])/.test(val)) return 'Mật khẩu phải có ít nhất 1 chữ cái viết thường (a-z)'
+    if (!/(?=.*[A-Z])/.test(val)) return 'Mật khẩu phải có ít nhất 1 chữ cái viết hoa (A-Z)'
+    if (!/(?=.*\d)/.test(val)) return 'Mật khẩu phải có ít nhất 1 chữ số (0-9)'
+    if (!/(?=.*[!@#$%^&*()_+\-=[\]{};:,.<>?])/.test(val)) return 'Mật khẩu phải có ít nhất 1 ký tự đặc biệt (!@#$%^&*)'
+    return ''
+  }
+
   const handleSubmit = async (event) => {
     event.preventDefault()
+    const trimmedEmail = email.trim()
+    const trimmedName = fullName.trim()
+
+    const emailErr = validateEmail(trimmedEmail)
+    const passwordErr = validatePassword(password)
+    let confirmErr = ''
     if (password !== confirmPassword) {
-      setError('Mật khẩu nhập lại không khớp')
+      confirmErr = 'Mật khẩu nhập lại không khớp'
+    }
+
+    if (emailErr || passwordErr || confirmErr) {
+      setFieldErrors({
+        email: emailErr,
+        password: passwordErr,
+        confirmPassword: confirmErr,
+      })
+      setError(emailErr || passwordErr || confirmErr)
       return
     }
+
+    setFieldErrors({})
     setError('')
     setIsLoading(true)
     try {
-      await register(fullName, email, phone, password)
-      onNext(email)
+      await register(trimmedName, trimmedEmail, phone.trim(), password)
+      onNext(trimmedEmail)
     } catch (err) {
       setError(err.message)
     } finally {
@@ -49,7 +88,7 @@ function StepRegister({ onNext }) {
         <h2 id="register-title">Đăng ký</h2>
       </div>
 
-      <form className="login-form register-form" onSubmit={handleSubmit}>
+      <form className="login-form register-form" onSubmit={handleSubmit} noValidate>
         <label className="field-group" htmlFor="fullName">
           <span>Họ và tên</span>
           <input
@@ -70,12 +109,24 @@ function StepRegister({ onNext }) {
             id="registerEmail"
             name="email"
             type="email"
-            placeholder="Nhập email của bạn"
+            placeholder="user@example.com"
             autoComplete="email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => {
+              setEmail(e.target.value)
+              if (fieldErrors.email) {
+                setFieldErrors((prev) => ({ ...prev, email: validateEmail(e.target.value) }))
+              }
+            }}
+            onBlur={(e) => {
+              const err = validateEmail(e.target.value)
+              setFieldErrors((prev) => ({ ...prev, email: err }))
+            }}
             required
           />
+          {fieldErrors.email && (
+            <span className="field-error" role="alert">{fieldErrors.email}</span>
+          )}
         </label>
 
         <label className="field-group" htmlFor="phone">
@@ -84,7 +135,7 @@ function StepRegister({ onNext }) {
             id="phone"
             name="phone"
             type="tel"
-            placeholder="Nhập số điện thoại"
+            placeholder="Nhập số điện thoại (10 chữ số)"
             autoComplete="tel"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
@@ -98,12 +149,20 @@ function StepRegister({ onNext }) {
               id="registerPassword"
               name="password"
               type={showPassword ? 'text' : 'password'}
-              placeholder="Ít nhất 6 ký tự"
+              placeholder="8-64 ký tự, gồm chữ hoa, thường, số & ký tự đặc biệt"
               autoComplete="new-password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e) => {
+                setPassword(e.target.value)
+                if (fieldErrors.password) {
+                  setFieldErrors((prev) => ({ ...prev, password: validatePassword(e.target.value) }))
+                }
+              }}
+              onBlur={(e) => {
+                const err = validatePassword(e.target.value)
+                setFieldErrors((prev) => ({ ...prev, password: err }))
+              }}
               required
-              minLength={6}
             />
             <button
               type="button"
@@ -113,6 +172,9 @@ function StepRegister({ onNext }) {
               <PasswordToggleIcon isVisible={showPassword} />
             </button>
           </div>
+          {fieldErrors.password && (
+            <span className="field-error" role="alert">{fieldErrors.password}</span>
+          )}
         </label>
 
         <label className="field-group" htmlFor="confirmPassword">
@@ -125,7 +187,21 @@ function StepRegister({ onNext }) {
               placeholder="Nhập lại mật khẩu"
               autoComplete="new-password"
               value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
+              onChange={(e) => {
+                setConfirmPassword(e.target.value)
+                if (fieldErrors.confirmPassword) {
+                  setFieldErrors((prev) => ({
+                    ...prev,
+                    confirmPassword: e.target.value !== password ? 'Mật khẩu nhập lại không khớp' : '',
+                  }))
+                }
+              }}
+              onBlur={(e) => {
+                setFieldErrors((prev) => ({
+                  ...prev,
+                  confirmPassword: e.target.value !== password ? 'Mật khẩu nhập lại không khớp' : '',
+                }))
+              }}
               required
             />
             <button
@@ -136,9 +212,14 @@ function StepRegister({ onNext }) {
               <PasswordToggleIcon isVisible={showConfirmPassword} />
             </button>
           </div>
+          {fieldErrors.confirmPassword && (
+            <span className="field-error" role="alert">{fieldErrors.confirmPassword}</span>
+          )}
         </label>
 
-        {error && <p className="auth-error">{error}</p>}
+        {error && !fieldErrors.email && !fieldErrors.password && !fieldErrors.confirmPassword && (
+          <p className="auth-error">{error}</p>
+        )}
 
         <button className="primary-button" type="submit" disabled={isLoading}>
           {isLoading ? 'Đang xử lý...' : 'Tạo tài khoản'}
@@ -163,21 +244,24 @@ function StepVerifyEmail({ email, onSuccess }) {
   const [otp, setOtp] = useState('')
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [isLocked, setIsLocked] = useState(false)
   const [secondsLeft, setSecondsLeft] = useState(OTP_SECONDS)
   const [isResending, setIsResending] = useState(false)
   const inputsRef = useRef([])
+  const resendBtnRef = useRef(null)
 
   useEffect(() => {
     inputsRef.current[0]?.focus()
   }, [])
 
   useEffect(() => {
-    if (secondsLeft <= 0) return
+    if (secondsLeft <= 0 || isLocked) return
     const timer = setInterval(() => setSecondsLeft((s) => s - 1), 1000)
     return () => clearInterval(timer)
-  }, [secondsLeft])
+  }, [secondsLeft, isLocked])
 
   const handleInput = (index, value) => {
+    if (isLocked) return
     if (!/^\d?$/.test(value)) return
     const digits = otp.split('')
     digits[index] = value
@@ -187,12 +271,14 @@ function StepVerifyEmail({ email, onSuccess }) {
   }
 
   const handleKeyDown = (index, event) => {
+    if (isLocked) return
     if (event.key === 'Backspace' && !otp[index] && index > 0) {
       inputsRef.current[index - 1]?.focus()
     }
   }
 
   const handlePaste = (event) => {
+    if (isLocked) return
     const pasted = event.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6)
     setOtp(pasted)
     inputsRef.current[Math.min(pasted.length, 5)]?.focus()
@@ -201,6 +287,7 @@ function StepVerifyEmail({ email, onSuccess }) {
 
   const handleSubmit = async (event) => {
     event.preventDefault()
+    if (isLocked) return
     if (otp.length < 6) { setError('Vui lòng nhập đủ 6 chữ số'); return }
     setError('')
     setIsLoading(true)
@@ -208,7 +295,13 @@ function StepVerifyEmail({ email, onSuccess }) {
       await verifyEmail(email, otp)
       onSuccess()
     } catch (err) {
-      setError(err.message)
+      if (err.code === 'OTP_LOCKED' || err.message?.includes('quá 5 lần')) {
+        setIsLocked(true)
+        setError('Bạn đã nhập sai 5 lần. Mã OTP hiện tại đã bị vô hiệu hóa. Vui lòng bấm \'Gửi lại mã\' để nhận mã mới.')
+        setTimeout(() => resendBtnRef.current?.focus(), 150)
+      } else {
+        setError(err.message)
+      }
     } finally {
       setIsLoading(false)
     }
@@ -220,9 +313,10 @@ function StepVerifyEmail({ email, onSuccess }) {
     try {
       const { resendVerifyEmail } = await import('../../services/authService')
       await resendVerifyEmail(email)
+      setIsLocked(false)
       setSecondsLeft(OTP_SECONDS)
       setOtp('')
-      inputsRef.current[0]?.focus()
+      setTimeout(() => inputsRef.current[0]?.focus(), 150)
     } catch (err) {
       setError(err.message)
     } finally {
@@ -256,12 +350,17 @@ function StepVerifyEmail({ email, onSuccess }) {
               onChange={(e) => handleInput(i, e.target.value)}
               onKeyDown={(e) => handleKeyDown(i, e)}
               aria-label={`Chữ số OTP thứ ${i + 1}`}
+              disabled={isLocked || isLoading}
             />
           ))}
         </div>
 
         <div className="fp-timer-row">
-          {secondsLeft > 0 ? (
+          {isLocked ? (
+            <span className="fp-timer fp-timer--expired" style={{ color: '#dc2626', fontWeight: 600 }}>
+              Mã OTP đã bị khóa
+            </span>
+          ) : secondsLeft > 0 ? (
             <span className={secondsLeft <= 30 ? 'fp-timer fp-timer--urgent' : 'fp-timer'}>
               Hết hạn sau {formatTime(secondsLeft)}
             </span>
@@ -269,18 +368,38 @@ function StepVerifyEmail({ email, onSuccess }) {
             <span className="fp-timer fp-timer--expired">Mã đã hết hạn</span>
           )}
           <button
+            ref={resendBtnRef}
             type="button"
-            className="fp-resend"
+            className={`fp-resend ${isLocked ? 'fp-resend--locked-focus' : ''}`}
             onClick={handleResend}
-            disabled={secondsLeft > 0 || isResending}
+            disabled={(!isLocked && secondsLeft > 0) || isResending}
+            style={isLocked ? {
+              background: '#2d5a3d',
+              color: '#ffffff',
+              padding: '6px 14px',
+              borderRadius: '6px',
+              fontWeight: 600,
+              boxShadow: '0 0 0 3px rgba(45,90,61,0.3)',
+              cursor: 'pointer'
+            } : {}}
           >
             {isResending ? 'Đang gửi lại...' : 'Gửi lại mã'}
           </button>
         </div>
 
-        {error && <p className="auth-error">{error}</p>}
+        {error && (
+          <p className="auth-error" style={isLocked ? {
+            background: '#fef2f2',
+            borderColor: '#f87171',
+            color: '#b91c1c',
+            fontWeight: 600,
+            padding: '12px'
+          } : {}}>
+            {error}
+          </p>
+        )}
 
-        <button className="primary-button" type="submit" disabled={isLoading || otp.length < 6}>
+        <button className="primary-button" type="submit" disabled={isLoading || otp.length < 6 || isLocked}>
           {isLoading ? 'Đang xác minh...' : 'Xác minh'}
         </button>
       </form>

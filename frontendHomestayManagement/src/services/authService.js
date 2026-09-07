@@ -1,4 +1,4 @@
-﻿const API_BASE_URL = (import.meta.env.VITE_API_URL || '') + '/api'
+const API_BASE_URL = (import.meta.env.VITE_API_URL || '') + '/api'
 const TOKEN_KEY = 'homeStayAccessToken'
 const USER_KEY = 'homeStayUser'
 const REMEMBER_KEY = 'homeStayRememberEmail'
@@ -197,7 +197,12 @@ export async function verifyEmail(email, otp) {
   }
 
   const data = await parseJson(response)
-  if (!response.ok) throw new Error(data.message || 'Xác minh thất bại')
+  if (!response.ok) {
+    const error = new Error(data.message || 'Xác minh thất bại')
+    error.code = data.code
+    error.status = response.status
+    throw error
+  }
 
   saveAuthSession(data)
   return data

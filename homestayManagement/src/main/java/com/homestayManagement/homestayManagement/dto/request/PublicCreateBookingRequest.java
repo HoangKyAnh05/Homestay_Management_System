@@ -5,6 +5,7 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -15,6 +16,7 @@ public record PublicCreateBookingRequest(
         String fullName,
 
         @NotBlank(message = "Vui lòng nhập số điện thoại")
+        @Pattern(regexp = "^0\\d{9}$", message = "Số điện thoại không hợp lệ (Phải gồm 10 chữ số, ví dụ: 0912345678)")
         String phone,
 
         @Email(message = "Email không hợp lệ")

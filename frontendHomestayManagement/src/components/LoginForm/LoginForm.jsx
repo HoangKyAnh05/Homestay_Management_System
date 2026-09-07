@@ -62,6 +62,21 @@ function LoginForm() {
     }
   }, [nextPath])
 
+  const handleGoogleError = useCallback((error) => {
+    setIsGoogleLoading(false)
+    if (error?.type === 'popup_closed') {
+      // Người dùng chủ động tắt popup đăng nhập
+      return
+    }
+    if (error?.type === 'popup_failed_to_open') {
+      setErrorMessage('Trình duyệt đã chặn popup Google. Vui lòng cho phép popup để đăng nhập.')
+      return
+    }
+    if (error?.message) {
+      setErrorMessage(error.message)
+    }
+  }, [])
+
   const initializeGoogleClient = useCallback(async () => {
     if (googleTokenClientRef.current) {
       return googleTokenClientRef.current
@@ -70,7 +85,7 @@ function LoginForm() {
     await loadGoogleIdentityScript()
 
     if (!window.google?.accounts?.oauth2) {
-      throw new Error('Khong the tai Google Login')
+      throw new Error('Không thể tải Google Login')
     }
 
     googleTokenClientRef.current = window.google.accounts.oauth2.initTokenClient({
@@ -78,11 +93,12 @@ function LoginForm() {
       scope: 'openid email profile',
       prompt: 'select_account',
       callback: handleGoogleAccessToken,
+      error_callback: handleGoogleError,
     })
 
     setIsGoogleReady(true)
     return googleTokenClientRef.current
-  }, [handleGoogleAccessToken])
+  }, [handleGoogleAccessToken, handleGoogleError])
 
   useEffect(() => {
     if (!hasGoogleClientId) {
@@ -102,20 +118,21 @@ function LoginForm() {
           scope: 'openid email profile',
           prompt: 'select_account',
           callback: handleGoogleAccessToken,
+          error_callback: handleGoogleError,
         })
 
         setIsGoogleReady(true)
       })
       .catch(() => {
         if (isMounted) {
-          setErrorMessage('Khong the tai Google Login')
+          setErrorMessage('Không thể tải Google Login')
         }
       })
 
     return () => {
       isMounted = false
     }
-  }, [handleGoogleAccessToken])
+  }, [handleGoogleAccessToken, handleGoogleError])
 
   const handleSubmit = async (event) => {
     event.preventDefault()

@@ -17,6 +17,9 @@ import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.math.BigDecimal;
@@ -31,11 +34,14 @@ import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Service
 public class SePayPaymentServiceImpl implements SePayPaymentService {
 
+    private static final Logger log = LoggerFactory.getLogger(SePayPaymentServiceImpl.class);
     private static final long WEBHOOK_MAX_AGE_SECONDS = 300;
     private final BookingRepository bookingRepository;
     private final BookingDetailRepository bookingDetailRepository;
@@ -233,23 +239,38 @@ public class SePayPaymentServiceImpl implements SePayPaymentService {
     @Override
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public void handleWebhook(byte[] rawBody, String signature, String timestamp) {
-        verifySignature(rawBody, signature, timestamp);
+        handleWebhook(rawBody, signature, timestamp, "");
+    }
+
+    @Override
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    public void handleWebhook(byte[] rawBody, String signature, String timestamp, String authorization) {
+        if (rawBody == null || rawBody.length == 0) {
+            throw new IllegalArgumentException("Payload webhook SePay trống");
+        }
+        verifyAuthentication(rawBody, signature, timestamp, authorization);
         SePayWebhookRequest webhook = readWebhook(rawBody);
         validateWebhook(webhook);
 
         if (paymentRepository.findBySepayTransactionId(webhook.id()).isPresent()) {
+            log.info("SePay transaction {} already processed, skipping", webhook.id());
             return;
         }
 
-        Payment payment = paymentRepository.findByPaymentCodeIgnoreCase(webhook.code()).orElse(null);
+        String paymentCode = extractPaymentCode(webhook);
+        Payment payment = paymentRepository.findByPaymentCodeIgnoreCase(paymentCode).orElse(null);
         if (payment == null) {
+            log.warn("Payment with code '{}' not found in database. Webhook id={}", paymentCode, webhook.id());
             // A valid SePay test payload or an unrelated transfer must not trigger retries.
             return;
         }
         if ("SUCCESS".equalsIgnoreCase(payment.getStatus())) {
+            log.info("Payment code {} already marked SUCCESS", paymentCode);
             return;
         }
         if (webhook.transferAmount().compareTo(payment.getAmount()) < 0) {
+            log.warn("Underpayment for payment {}: required={}, received={}",
+                    paymentCode, payment.getAmount(), webhook.transferAmount());
             throw new IllegalArgumentException("Số tiền SePay nhận được chưa đủ");
         }
 
@@ -487,34 +508,60 @@ public class SePayPaymentServiceImpl implements SePayPaymentService {
     }
 
     private void verifySignature(byte[] rawBody, String signature, String timestamp) {
+        verifyAuthentication(rawBody, signature, timestamp, "");
+    }
+
+    private void verifyAuthentication(byte[] rawBody, String signature, String timestamp, String authorization) {
         if (webhookSecret.isBlank()) {
             throw new IllegalStateException("SePay chưa được cấu hình webhook secret");
         }
-        long timestampValue;
-        try {
-            timestampValue = Long.parseLong(timestamp);
-        } catch (NumberFormatException exception) {
-            throw new IllegalArgumentException("Webhook SePay thiếu timestamp hợp lệ");
-        }
-        if (Math.abs(Instant.now().getEpochSecond() - timestampValue) > WEBHOOK_MAX_AGE_SECONDS) {
-            throw new IllegalArgumentException("Webhook SePay đã hết hạn");
-        }
-        try {
-            Mac mac = Mac.getInstance("HmacSHA256");
-            mac.init(new SecretKeySpec(webhookSecret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
-            mac.update((timestamp + ".").getBytes(StandardCharsets.UTF_8));
-            String expected = "sha256=" + HexFormat.of().formatHex(mac.doFinal(rawBody));
-            if (!MessageDigest.isEqual(
-                    expected.getBytes(StandardCharsets.UTF_8),
-                    blankToFallback(signature, "").getBytes(StandardCharsets.UTF_8)
-            )) {
-                throw new IllegalArgumentException("Chữ ký webhook SePay không hợp lệ");
+
+        // 1. Support API Key authentication (Authorization: Apikey <token> or Bearer <token>)
+        if (authorization != null && !authorization.isBlank()) {
+            String token = authorization;
+            if (token.regionMatches(true, 0, "Apikey ", 0, 7)) {
+                token = token.substring(7).trim();
+            } else if (token.regionMatches(true, 0, "Bearer ", 0, 7)) {
+                token = token.substring(7).trim();
             }
-        } catch (IllegalArgumentException exception) {
-            throw exception;
-        } catch (Exception exception) {
-            throw new IllegalStateException("Không thể xác minh webhook SePay", exception);
+            if (MessageDigest.isEqual(webhookSecret.getBytes(StandardCharsets.UTF_8), token.getBytes(StandardCharsets.UTF_8))) {
+                return;
+            }
         }
+
+        // 2. Support HMAC-SHA256 signature
+        if (timestamp != null && !timestamp.isBlank() && signature != null && !signature.isBlank()) {
+            long timestampValue;
+            try {
+                timestampValue = Long.parseLong(timestamp);
+            } catch (NumberFormatException exception) {
+                throw new IllegalArgumentException("Webhook SePay thiếu timestamp hợp lệ");
+            }
+            if (Math.abs(Instant.now().getEpochSecond() - timestampValue) > WEBHOOK_MAX_AGE_SECONDS) {
+                throw new IllegalArgumentException("Webhook SePay đã hết hạn");
+            }
+            try {
+                Mac mac = Mac.getInstance("HmacSHA256");
+                mac.init(new SecretKeySpec(webhookSecret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+                mac.update((timestamp + ".").getBytes(StandardCharsets.UTF_8));
+                String hexHash = HexFormat.of().formatHex(mac.doFinal(rawBody));
+                String expectedPrefixed = "sha256=" + hexHash;
+
+                String normalizedSig = signature.trim();
+                boolean matches = MessageDigest.isEqual(expectedPrefixed.getBytes(StandardCharsets.UTF_8), normalizedSig.getBytes(StandardCharsets.UTF_8))
+                        || MessageDigest.isEqual(hexHash.getBytes(StandardCharsets.UTF_8), normalizedSig.getBytes(StandardCharsets.UTF_8));
+                if (matches) {
+                    return;
+                }
+                throw new IllegalArgumentException("Chữ ký webhook SePay không hợp lệ");
+            } catch (IllegalArgumentException exception) {
+                throw exception;
+            } catch (Exception exception) {
+                throw new IllegalStateException("Không thể xác minh webhook SePay", exception);
+            }
+        }
+
+        throw new IllegalArgumentException("Xác thực webhook SePay không hợp lệ");
     }
 
     private SePayWebhookRequest readWebhook(byte[] rawBody) {
@@ -525,6 +572,25 @@ public class SePayPaymentServiceImpl implements SePayPaymentService {
         }
     }
 
+    private String extractPaymentCode(SePayWebhookRequest webhook) {
+        if (webhook.code() != null && !webhook.code().isBlank()) {
+            return webhook.code().trim();
+        }
+        String prefix = normalizedPaymentCodePrefix();
+        Pattern pattern = Pattern.compile("(?i)(?:" + Pattern.quote(prefix) + "|HST|HMS)\\d+");
+        for (String candidate : List.of(
+                blankToFallback(webhook.content(), ""),
+                blankToFallback(webhook.description(), ""),
+                blankToFallback(webhook.referenceCode(), "")
+        )) {
+            Matcher matcher = pattern.matcher(candidate);
+            if (matcher.find()) {
+                return matcher.group().toUpperCase();
+            }
+        }
+        return null;
+    }
+
     private void validateWebhook(SePayWebhookRequest webhook) {
         if (webhook.id() == null || webhook.transferAmount() == null) {
             throw new IllegalArgumentException("Webhook SePay thiếu dữ liệu giao dịch");
@@ -532,12 +598,30 @@ public class SePayPaymentServiceImpl implements SePayPaymentService {
         if (!"in".equalsIgnoreCase(webhook.transferType())) {
             throw new IllegalArgumentException("Webhook SePay không phải giao dịch tiền vào");
         }
-        if (webhook.code() == null || webhook.code().isBlank()) {
+        String paymentCode = extractPaymentCode(webhook);
+        if (paymentCode == null || paymentCode.isBlank()) {
             throw new IllegalArgumentException("Webhook SePay không có mã thanh toán");
         }
-        if (!accountNumber.equals(webhook.accountNumber())) {
+        if (!isAccountNumberMatching(accountNumber, webhook.accountNumber())) {
             throw new IllegalArgumentException("Tài khoản nhận tiền SePay không khớp");
         }
+    }
+
+    private boolean isAccountNumberMatching(String expected, String actual) {
+        if (expected == null || expected.isBlank()) {
+            return true;
+        }
+        if (actual == null || actual.isBlank()) {
+            return true;
+        }
+        String cleanExp = expected.replaceAll("[^0-9a-zA-Z]", "");
+        String cleanAct = actual.replaceAll("[^0-9a-zA-Z]", "");
+        if (cleanExp.equalsIgnoreCase(cleanAct)) {
+            return true;
+        }
+        String stripExp = cleanExp.replaceFirst("^0+", "");
+        String stripAct = cleanAct.replaceFirst("^0+", "");
+        return !stripExp.isBlank() && stripExp.equalsIgnoreCase(stripAct);
     }
 
     private SePayPaymentResponse toResponse(Booking booking, Payment payment, String transferContent) {

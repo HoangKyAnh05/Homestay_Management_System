@@ -347,13 +347,13 @@ public class RoomIncidentServiceImpl implements RoomIncidentService {
     private void syncIncidentPenalty(RoomIncident incident, CheckInRecord record, BigDecimal amount) {
         if (record == null || record.getBookingDetail() == null) return;
 
-        RulesPenalty penaltyRule = rulesPenaltyRepository.findAll().stream().findFirst().orElse(null);
-        if (penaltyRule == null) {
-            penaltyRule = rulesPenaltyRepository.save(RulesPenalty.builder()
-                    .title("Bồi thường hư hại / mất mát tài sản")
-                    .penaltyAmount(BigDecimal.ZERO)
-                    .build());
-        }
+        RulesPenalty penaltyRule = rulesPenaltyRepository.findAll().stream()
+                .filter(r -> r.getTitle() != null && (r.getTitle().contains("Bồi thường") || r.getTitle().contains("hư hại") || r.getTitle().contains("hỏng")))
+                .findFirst()
+                .orElseGet(() -> rulesPenaltyRepository.save(RulesPenalty.builder()
+                        .title("Bồi thường tài sản / Đồ hỏng & mất")
+                        .penaltyAmount(BigDecimal.ZERO)
+                        .build()));
 
         String typeName = "LOST".equals(incident.getIncidentType()) ? "Mất đồ"
                 : ("MAINTENANCE".equals(incident.getIncidentType()) ? "Bảo trì" : "Hỏng hóc");

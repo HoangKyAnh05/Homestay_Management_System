@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { getStoredToken } from '../../services/authService'
 import { useShiftGuard } from '../../context/ShiftGuardContext'
 import { formatClockTime, formatDateTime as formatAppDateTime } from '../../utils/dateTimeFormat'
@@ -20,6 +20,10 @@ function bookingDisplay(booking) {
 
 function authHeaders() {
   return { 'Content-Type': 'application/json', Authorization: `Bearer ${getStoredToken()}` }
+}
+
+function authUploadHeaders() {
+  return { Authorization: `Bearer ${getStoredToken()}` }
 }
 
 function serviceImageSrc(imageUrl) {
@@ -1204,11 +1208,23 @@ function DirectBookingModal({ onClose, onCreated }) {
     address: '',
     dateOfBirth: '',
     identityDocumentNumber: '',
+    paymentMethod: 'CASH', // 'CASH' | 'SEPAY' | 'PAY_AT_CHECKIN'
     checkInTarget: initialCheckIn,
     checkOutTarget: defaultCheckOutValue(initialCheckIn),
     pricePolicyId: '',   // ID gói thuê đã chọn
     selectedRooms: {},
   })
+
+  // OCR CCCD states
+  const [ocrLoading, setOcrLoading] = useState(false)
+  const [ocrNotice, setOcrNotice] = useState('')
+  const [ocrImages, setOcrImages] = useState({ front: null, back: null })
+  const [ocrImagePreviews, setOcrImagePreviews] = useState({ front: '', back: '' })
+
+  // Pending booking states (khi khách đóng QR mà chưa thanh toán)
+  const [pendingCreatedBooking, setPendingCreatedBooking] = useState(null)
+  const [pendingPaymentPayload, setPendingPaymentPayload] = useState(null)
+  const [confirmCashLoading, setConfirmCashLoading] = useState(false)
 
   // Danh sách gói thuê từ price_policies
   const [pricePolicies, setPricePolicies] = useState([])
@@ -1344,6 +1360,54 @@ function DirectBookingModal({ onClose, onCreated }) {
         : defaultCheckOutValue(value),
       selectedRooms: {},
     }))
+  }
+
+  const handleOcrImageChange = (side, file) => {
+    if (!file) return
+    setError('')
+    const nextImages = { ...ocrImages, [side]: file }
+    setOcrImages(nextImages)
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      setOcrImagePreviews(prev => ({ ...prev, [side]: e.target.result }))
+    }
+    reader.readAsDataURL(file)
+    if (nextImages.front && nextImages.back) {
+      scanOcrDocuments(nextImages.front, nextImages.back)
+    } else {
+      setOcrNotice(`Đã chọn ${side === 'front' ? 'mặt trước' : 'mặt sau'} CCCD. Vui lòng chọn thêm mặt còn lại để hệ thống AI tự động trích xuất thông tin.`)
+    }
+  }
+
+  const scanOcrDocuments = async (frontFile, backFile) => {
+    setOcrLoading(true)
+    setOcrNotice('')
+    setError('')
+    try {
+      const formData = new FormData()
+      formData.append('image_front', frontFile)
+      formData.append('image_back', backFile)
+      const res = await fetch(`${API_BASE}/identity-ocr`, {
+        method: 'POST',
+        headers: authUploadHeaders(),
+        body: formData,
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.message || 'Không thể trích xuất thông tin căn cước')
+
+      setForm(prev => ({
+        ...prev,
+        fullName: data.fullName || prev.fullName,
+        identityDocumentNumber: data.identityDocumentNumber || prev.identityDocumentNumber,
+        dateOfBirth: data.dateOfBirth ? (data.dateOfBirth.substring(0, 10)) : prev.dateOfBirth,
+        address: data.address || prev.address,
+      }))
+      setOcrNotice('✓ Đã trích xuất thông tin CCCD thành công! Vui lòng kiểm tra lại họ tên, số CCCD, ngày sinh và địa chỉ.')
+    } catch (err) {
+      setError(`Lỗi quét CCCD: ${err.message}. Bạn vẫn có thể tự nhập thông tin vào các ô bên dưới.`)
+    } finally {
+      setOcrLoading(false)
+    }
   }
 
   const toggleRoom = (room) => {
@@ -1507,6 +1571,7 @@ function DirectBookingModal({ onClose, onCreated }) {
         checkOutTarget: form.checkOutTarget,
         rentType:       selectedPolicy?.rentType || 'OVERNIGHT',
         pricePolicyId:  Number(form.pricePolicyId),
+        paymentMethod:  form.paymentMethod || 'CASH',
         rooms: selectedRoomEntries.map(r => ({
           roomId:          Number(r.roomId),
           numberOfAdults:  Number(r.numberOfAdults),
@@ -1533,6 +1598,7 @@ function DirectBookingModal({ onClose, onCreated }) {
       .then(data => {
         if (data.requiresPayment && data.payment) {
           setPaymentResult(data)
+          setPendingPaymentPayload(data.payment)
           return
         }
         onCreated(data.booking)
@@ -1559,21 +1625,87 @@ function DirectBookingModal({ onClose, onCreated }) {
 
             {/* ── Cột trái: form ── */}
             <section className="abk-direct-form">
-              <h4>Thông tin khách hàng</h4>
+              <div className="abk-section-title-row">
+                <h4>Thông tin khách hàng</h4>
+                <span className="abk-section-hint">Tự động điền qua CCCD hoặc nhập tay</span>
+              </div>
+
+              {/* ── Box OCR CCCD tự động ── */}
+              <div className="abk-ocr-scanner-box">
+                <div className="abk-ocr-header">
+                  <div className="abk-ocr-title">
+                    <span className="abk-ocr-badge">AI OCR</span>
+                    <strong>Quét Căn cước công dân (CCCD) tự động</strong>
+                  </div>
+                  <span className="abk-ocr-subtitle">Tải 2 mặt ảnh CCCD để tự động trích xuất thông tin người đại diện</span>
+                </div>
+
+                <div className="abk-ocr-inputs">
+                  <label className={`abk-ocr-upload-btn ${ocrImages.front ? 'has-file' : ''} ${ocrLoading ? 'is-loading' : ''}`}>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      disabled={ocrLoading}
+                      style={{ display: 'none' }}
+                      onChange={e => handleOcrImageChange('front', e.target.files?.[0])}
+                    />
+                    {ocrImagePreviews.front ? (
+                      <img src={ocrImagePreviews.front} alt="Mặt trước" className="abk-ocr-thumb" />
+                    ) : (
+                      <span className="abk-ocr-icon">📷</span>
+                    )}
+                    <div className="abk-ocr-label-text">
+                      <strong>{ocrImages.front ? 'Mặt trước: Đã chọn ✓' : 'Tải mặt trước CCCD'}</strong>
+                      <small>{ocrImages.front ? 'Bấm để đổi ảnh' : 'JPG, PNG hoặc ảnh chụp'}</small>
+                    </div>
+                  </label>
+
+                  <label className={`abk-ocr-upload-btn ${ocrImages.back ? 'has-file' : ''} ${ocrLoading ? 'is-loading' : ''}`}>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      disabled={ocrLoading}
+                      style={{ display: 'none' }}
+                      onChange={e => handleOcrImageChange('back', e.target.files?.[0])}
+                    />
+                    {ocrImagePreviews.back ? (
+                      <img src={ocrImagePreviews.back} alt="Mặt sau" className="abk-ocr-thumb" />
+                    ) : (
+                      <span className="abk-ocr-icon">📷</span>
+                    )}
+                    <div className="abk-ocr-label-text">
+                      <strong>{ocrImages.back ? 'Mặt sau: Đã chọn ✓' : 'Tải mặt sau CCCD'}</strong>
+                      <small>{ocrImages.back ? 'Bấm để đổi ảnh' : 'JPG, PNG hoặc ảnh chụp'}</small>
+                    </div>
+                  </label>
+                </div>
+
+                {ocrLoading && (
+                  <div className="abk-ocr-status is-loading">
+                    <div className="abk-spinner" /> Đang trích xuất thông tin căn cước qua AI OCR...
+                  </div>
+                )}
+                {ocrNotice && !ocrLoading && (
+                  <div className="abk-ocr-status is-success">
+                    {ocrNotice}
+                  </div>
+                )}
+              </div>
+
               <div className="abk-form-grid">
-                <label><span>Họ tên</span>
+                <label><span>Họ tên *</span>
                   <input required value={form.fullName} onChange={e => updateForm('fullName', e.target.value)} />
                 </label>
-                <label><span>Số điện thoại</span>
+                <label><span>Số điện thoại *</span>
                   <input required maxLength="10" value={form.phone} onChange={e => updateForm('phone', e.target.value)} />
                 </label>
-                <label><span>Email</span>
+                <label><span>Email *</span>
                   <input required type="email" value={form.email} onChange={e => updateForm('email', e.target.value)} />
                 </label>
                 <label><span>Ngày sinh</span>
                   <input type="date" value={form.dateOfBirth} onChange={e => updateForm('dateOfBirth', e.target.value)} />
                 </label>
-                <label><span>CCCD người đại diện</span>
+                <label><span>CCCD người đại diện *</span>
                   <input required maxLength="30" value={form.identityDocumentNumber} onChange={e => updateForm('identityDocumentNumber', e.target.value)} />
                 </label>
                 <label className="abk-form-wide"><span>Địa chỉ</span>
@@ -1627,6 +1759,61 @@ function DirectBookingModal({ onClose, onCreated }) {
                   </span>
                 </div>
               )}
+
+              {/* ── Tuỳ chọn phương thức thanh toán ── */}
+              <h4>Phương thức thanh toán</h4>
+              <div className="abk-payment-methods">
+                <label className={`abk-payment-method-card ${form.paymentMethod === 'CASH' ? 'is-selected' : ''}`}>
+                  <input
+                    type="radio"
+                    name="directPaymentMethod"
+                    value="CASH"
+                    checked={form.paymentMethod === 'CASH'}
+                    onChange={() => updateForm('paymentMethod', 'CASH')}
+                  />
+                  <div className="abk-pm-content">
+                    <span className="abk-pm-icon">💵</span>
+                    <div className="abk-pm-text">
+                      <strong>Tiền mặt tại quầy (Khuyên dùng)</strong>
+                      <p>Khách thanh toán tiền mặt trực tiếp cho lễ tân. Đơn chuyển ngay sang Đã xác nhận (CONFIRMED).</p>
+                    </div>
+                  </div>
+                </label>
+
+                <label className={`abk-payment-method-card ${form.paymentMethod === 'SEPAY' ? 'is-selected' : ''}`}>
+                  <input
+                    type="radio"
+                    name="directPaymentMethod"
+                    value="SEPAY"
+                    checked={form.paymentMethod === 'SEPAY'}
+                    onChange={() => updateForm('paymentMethod', 'SEPAY')}
+                  />
+                  <div className="abk-pm-content">
+                    <span className="abk-pm-icon">📲</span>
+                    <div className="abk-pm-text">
+                      <strong>Chuyển khoản QR VietQR</strong>
+                      <p>Hiển thị mã QR SePay tự động cho khách quét thanh toán ngay tại quầy lễ tân.</p>
+                    </div>
+                  </div>
+                </label>
+
+                <label className={`abk-payment-method-card ${form.paymentMethod === 'PAY_AT_CHECKIN' ? 'is-selected' : ''}`}>
+                  <input
+                    type="radio"
+                    name="directPaymentMethod"
+                    value="PAY_AT_CHECKIN"
+                    checked={form.paymentMethod === 'PAY_AT_CHECKIN'}
+                    onChange={() => updateForm('paymentMethod', 'PAY_AT_CHECKIN')}
+                  />
+                  <div className="abk-pm-content">
+                    <span className="abk-pm-icon">🕒</span>
+                    <div className="abk-pm-text">
+                      <strong>Thanh toán sau khi nhận phòng</strong>
+                      <p>Giữ phòng cho khách trước, thanh toán tiền phòng/cọc khi khách đến check-in hoặc trả phòng.</p>
+                    </div>
+                  </div>
+                </label>
+              </div>
 
               {/* Phòng đã chọn */}
               <div className="abk-selected-rooms">
@@ -1791,12 +1978,95 @@ function DirectBookingModal({ onClose, onCreated }) {
           statusField="bookingStatus"
           successStatus="CONFIRMED"
           title="Thanh toán đặt phòng tại quầy"
-          onSuccess={onCreated}
-          onClose={() => {
+          onSuccess={(booking) => {
             setPaymentResult(null)
-            onClose()
+            onCreated(booking || paymentResult.booking)
+          }}
+          onClose={() => {
+            // Sửa lỗi: KHÔNG đóng toàn bộ modal đặt phòng trực tiếp!
+            const booking = paymentResult.booking
+            setPaymentResult(null)
+            setPendingCreatedBooking(booking)
           }}
         />
+      )}
+      {pendingCreatedBooking && (
+        <div className="abk-overlay abk-pending-overlay">
+          <div className="abk-modal abk-pending-modal" role="dialog" aria-modal="true">
+            <div className="abk-pending-icon">📋</div>
+            <h3>Đã tạo đơn đặt phòng #{bookingDisplay(pendingCreatedBooking)}</h3>
+            <p className="abk-pending-subtitle">
+              Đơn đặt phòng đã được lưu trong hệ thống ở trạng thái <strong>Chờ thanh toán</strong>.
+            </p>
+            <div className="abk-pending-info-box">
+              <div className="abk-pending-info-row">
+                <span>Khách hàng:</span>
+                <strong>{pendingCreatedBooking.customer?.fullName || 'Khách vãng lai'}</strong>
+              </div>
+              <div className="abk-pending-info-row">
+                <span>Số điện thoại:</span>
+                <strong>{pendingCreatedBooking.customer?.phone || '—'}</strong>
+              </div>
+              <div className="abk-pending-info-row">
+                <span>Phòng:</span>
+                <strong>Phòng {pendingCreatedBooking.roomNumber} ({pendingCreatedBooking.roomTypeName || 'Homestay'})</strong>
+              </div>
+              <div className="abk-pending-info-row">
+                <span>Nhận phòng:</span>
+                <strong>{formatAppDateTime(pendingCreatedBooking.checkInTarget)}</strong>
+              </div>
+            </div>
+
+            <div className="abk-pending-actions">
+              {pendingPaymentPayload && (
+                <button
+                  type="button"
+                  className="abk-btn-reopen-qr"
+                  onClick={() => {
+                    setPaymentResult({ payment: pendingPaymentPayload, booking: pendingCreatedBooking, requiresPayment: true })
+                    setPendingCreatedBooking(null)
+                  }}
+                >
+                  📲 Mở lại mã QR thanh toán
+                </button>
+              )}
+              <button
+                type="button"
+                className="abk-btn-confirm-cash"
+                disabled={confirmCashLoading}
+                onClick={async () => {
+                  setConfirmCashLoading(true)
+                  try {
+                    const res = await fetch(`${API_BASE}/${pendingCreatedBooking.bookingId}/confirm-cash-payment`, {
+                      method: 'POST',
+                      headers: authHeaders(),
+                    })
+                    const updated = await res.json().catch(() => ({}))
+                    if (!res.ok) throw new Error(updated.message || 'Không thể xác nhận tiền mặt')
+                    setPendingCreatedBooking(null)
+                    onCreated(updated)
+                  } catch (err) {
+                    setError(err.message)
+                  } finally {
+                    setConfirmCashLoading(false)
+                  }
+                }}
+              >
+                {confirmCashLoading ? 'Đang xử lý...' : '💵 Khách đã trả tiền mặt tại quầy (Xác nhận)'}
+              </button>
+              <button
+                type="button"
+                className="abk-btn-finish-pending"
+                onClick={() => {
+                  setPendingCreatedBooking(null)
+                  onCreated(pendingCreatedBooking)
+                }}
+              >
+                ✓ Hoàn tất & Về danh sách đơn
+              </button>
+            </div>
+          </div>
+        </div>
       )}
       {servicePickerRoom && (
         <div className="abk-overlay abk-service-picker-overlay" onClick={e => e.target === e.currentTarget && setServicePickerRoomId(null)}>

@@ -287,6 +287,15 @@
   line-height: 1.35;
 }
 
+.field-error {
+  display: block;
+  margin-top: 5px;
+  color: #dc2626;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
 .auth-success {
   margin: -4px 0 4px;
   padding: 10px 12px;

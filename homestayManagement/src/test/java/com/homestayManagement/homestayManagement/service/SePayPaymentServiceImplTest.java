@@ -436,6 +436,114 @@ class SePayPaymentServiceImplTest {
         assertEquals(true, eventCaptor.getValue().paymentConfirmed());
     }
 
+    @Test
+    void handleWebhookWithApiKeyAuthentication() {
+        Booking booking = Booking.builder().id(10L).status("PENDING").build();
+        Invoice invoice = Invoice.builder().id(20L).booking(booking).build();
+        Payment payment = Payment.builder()
+                .id(30L)
+                .invoice(invoice)
+                .paymentCode("HMS30")
+                .amount(BigDecimal.valueOf(250_000))
+                .status("PENDING")
+                .build();
+        BookingDetail detail = BookingDetail.builder().id(40L).booking(booking).status("PENDING").build();
+        byte[] body = webhookBody(92706L, 250_000);
+
+        when(paymentRepository.findBySepayTransactionId(92706L)).thenReturn(Optional.empty());
+        when(paymentRepository.findByPaymentCodeIgnoreCase("HMS30")).thenReturn(Optional.of(payment));
+        when(bookingRepository.findByIdForPaymentUpdate(10L)).thenReturn(Optional.of(booking));
+        when(bookingDetailRepository.findByBookingId(10L)).thenReturn(List.of(detail));
+
+        service.handleWebhook(body, "", "", "Apikey " + SECRET);
+
+        assertEquals("SUCCESS", payment.getStatus());
+        assertEquals(92706L, payment.getSepayTransactionId());
+        assertEquals("CONFIRMED", booking.getStatus());
+        verify(paymentRepository).save(payment);
+    }
+
+    @Test
+    void handleWebhookExtractsPaymentCodeFromContentWhenCodeIsNull() {
+        Booking booking = Booking.builder().id(10L).status("PENDING").build();
+        Invoice invoice = Invoice.builder().id(20L).booking(booking).build();
+        Payment payment = Payment.builder()
+                .id(30L)
+                .invoice(invoice)
+                .paymentCode("HMS30")
+                .amount(BigDecimal.valueOf(250_000))
+                .status("PENDING")
+                .build();
+        BookingDetail detail = BookingDetail.builder().id(40L).booking(booking).status("PENDING").build();
+        String json = """
+                {
+                  "id": 92707,
+                  "gateway": "TPBank",
+                  "transactionDate": "2026-06-14 13:00:00",
+                  "accountNumber": "0123456789",
+                  "code": null,
+                  "content": "MBVCB.123456.HMS30 chuyen tien",
+                  "transferType": "in",
+                  "description": "Nguyen Van A HMS30",
+                  "transferAmount": 250000,
+                  "referenceCode": "FT2600002"
+                }
+                """;
+        byte[] body = json.getBytes(StandardCharsets.UTF_8);
+
+        when(paymentRepository.findBySepayTransactionId(92707L)).thenReturn(Optional.empty());
+        when(paymentRepository.findByPaymentCodeIgnoreCase("HMS30")).thenReturn(Optional.of(payment));
+        when(bookingRepository.findByIdForPaymentUpdate(10L)).thenReturn(Optional.of(booking));
+        when(bookingDetailRepository.findByBookingId(10L)).thenReturn(List.of(detail));
+
+        service.handleWebhook(body, "", "", "Apikey " + SECRET);
+
+        assertEquals("SUCCESS", payment.getStatus());
+        assertEquals(92707L, payment.getSepayTransactionId());
+        verify(paymentRepository).save(payment);
+    }
+
+    @Test
+    void handleWebhookMatchesAccountNumberWithoutLeadingZeros() {
+        Booking booking = Booking.builder().id(10L).status("PENDING").build();
+        Invoice invoice = Invoice.builder().id(20L).booking(booking).build();
+        Payment payment = Payment.builder()
+                .id(30L)
+                .invoice(invoice)
+                .paymentCode("HMS30")
+                .amount(BigDecimal.valueOf(250_000))
+                .status("PENDING")
+                .build();
+        BookingDetail detail = BookingDetail.builder().id(40L).booking(booking).status("PENDING").build();
+        // accountNumber configured in service is "0123456789", payload sends "123456789"
+        String json = """
+                {
+                  "id": 92708,
+                  "gateway": "TPBank",
+                  "transactionDate": "2026-06-14 13:00:00",
+                  "accountNumber": "123456789",
+                  "code": "HMS30",
+                  "content": "HMS30",
+                  "transferType": "in",
+                  "description": "HMS30",
+                  "transferAmount": 250000,
+                  "referenceCode": "FT2600003"
+                }
+                """;
+        byte[] body = json.getBytes(StandardCharsets.UTF_8);
+
+        when(paymentRepository.findBySepayTransactionId(92708L)).thenReturn(Optional.empty());
+        when(paymentRepository.findByPaymentCodeIgnoreCase("HMS30")).thenReturn(Optional.of(payment));
+        when(bookingRepository.findByIdForPaymentUpdate(10L)).thenReturn(Optional.of(booking));
+        when(bookingDetailRepository.findByBookingId(10L)).thenReturn(List.of(detail));
+
+        service.handleWebhook(body, "", "", "Bearer " + SECRET);
+
+        assertEquals("SUCCESS", payment.getStatus());
+        assertEquals(92708L, payment.getSepayTransactionId());
+        verify(paymentRepository).save(payment);
+    }
+
     private byte[] webhookBody(long id, long amount) {
         return webhookBody(id, amount, "HMS30");
     }

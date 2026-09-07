@@ -17,4 +17,8 @@ public interface SePayPaymentService {
     SePayPaymentResponse createCheckoutPayment(Long bookingId, Long bookingDetailId, BigDecimal amount);
 
     void handleWebhook(byte[] rawBody, String signature, String timestamp);
+
+    default void handleWebhook(byte[] rawBody, String signature, String timestamp, String authorization) {
+        handleWebhook(rawBody, signature, timestamp);
+    }
 }

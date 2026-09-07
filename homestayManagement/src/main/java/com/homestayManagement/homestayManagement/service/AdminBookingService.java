@@ -39,4 +39,5 @@ public interface AdminBookingService {
     AdminBookingDetailResponse generateInvoice(Long bookingDetailId);
     List<com.homestayManagement.homestayManagement.dto.response.AdminBookingCancellationResponse> getCancellations();
     AdminBookingDetailResponse confirmRefund(Long bookingId, String employeeEmail);
+    AdminBookingDetailResponse confirmDirectCashPayment(Long bookingId);
 }

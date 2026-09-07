@@ -136,65 +136,116 @@ public class AdminHousekeepingCalendarServiceImpl implements AdminHousekeepingCa
             LocalDateTime dayStart = date.atStartOfDay();
             LocalDateTime dayEnd = date.plusDays(1).atStartOfDay();
 
+            // 1. Kiểm tra Housekeeping task cho ngày này
+            HousekeepingTask cleaningTask = tasks.stream()
+                    .filter(task -> overlaps(task.getStartedAt(), taskEnd(task), dayStart, dayEnd))
+                    .max(Comparator.comparing(HousekeepingTask::getStartedAt)).orElse(null);
+            String hkStatus = null;
+            Long hkTaskId = null;
+            String hkAssignedName = null;
+            Integer checklistCompleted = null;
+            Integer checklistTotal = null;
+            String hkNote = null;
+
+            if (cleaningTask != null) {
+                hkStatus = "CLEANING";
+                hkTaskId = cleaningTask.getId();
+                Employee assigned = cleaningTask.getAssignedHousekeeping();
+                hkAssignedName = assigned == null ? null : assigned.getFullName();
+                List<HousekeepingTaskChecklistItem> checklist = checklistByTask.getOrDefault(cleaningTask.getId(), List.of());
+                checklistCompleted = (int) checklist.stream().filter(HousekeepingTaskChecklistItem::isCompleted).count();
+                checklistTotal = checklist.size();
+                hkNote = cleaningTask.getNote();
+            } else if (date.equals(LocalDate.now()) && "DIRTY".equalsIgnoreCase(room.getStatus())) {
+                hkStatus = "DIRTY";
+            }
+
+            // 2. Kiểm tra Booking theo dải ngày (night-based occupancy)
+            BookingDetail booking = bookings.stream()
+                    .filter(detail -> {
+                        if (detail.getCheckInTarget() == null || detail.getCheckOutTarget() == null) return false;
+                        LocalDate cin = detail.getCheckInTarget().toLocalDate();
+                        LocalDate cout = detail.getCheckOutTarget().toLocalDate();
+                        return (cin.equals(cout) && date.equals(cin)) || (!date.isBefore(cin) && date.isBefore(cout));
+                    })
+                    .max(Comparator.comparingInt(this::bookingPriority)).orElse(null);
+
+            // 3. Kiểm tra Maintenance schedule
             RoomSchedule maintenance = schedules.stream()
                     .filter(schedule -> "MAINTENANCE".equals(normalize(schedule.getStatus())))
                     .filter(schedule -> overlaps(schedule.getStartTime(), schedule.getEndTime(), dayStart, dayEnd))
                     .findFirst().orElse(null);
-            if (maintenance != null || (date.equals(LocalDate.now()) && "MAINTENANCE".equals(normalize(room.getStatus())))) {
-                result.add(emptyDay(date, "MAINTENANCE", maintenance == null ? "Phòng đang bảo trì" : maintenance.getNote()));
-                continue;
-            }
+            boolean isRoomMaintenance = maintenance != null || (date.equals(LocalDate.now()) && "MAINTENANCE".equalsIgnoreCase(room.getStatus()));
 
-            HousekeepingTask cleaningTask = tasks.stream()
-                    .filter(task -> overlaps(task.getStartedAt(), taskEnd(task), dayStart, dayEnd))
-                    .max(Comparator.comparing(HousekeepingTask::getStartedAt)).orElse(null);
-            if (cleaningTask != null) {
-                List<HousekeepingTaskChecklistItem> checklist = checklistByTask.getOrDefault(cleaningTask.getId(), List.of());
-                int completed = (int) checklist.stream().filter(HousekeepingTaskChecklistItem::isCompleted).count();
-                Employee assigned = cleaningTask.getAssignedHousekeeping();
-                result.add(new AdminHousekeepingCalendarDayResponse(
-                        date, "CLEANING", null, null, null, null, null, null,
-                        cleaningTask.getId(), assigned == null ? null : assigned.getFullName(),
-                        completed, checklist.size(), cleaningTask.getNote()
-                ));
-                continue;
-            }
-
-            BookingDetail booking = bookings.stream()
-                    .filter(detail -> detail.getCheckInTarget() != null
-                            && detail.getCheckInTarget().toLocalDate().equals(date))
-                    .max(Comparator.comparingInt(this::bookingPriority)).orElse(null);
+            // 4. Thứ tự ưu tiên xác định trạng thái phòng:
+            // Ưu tiên 1: OCCUPIED (Đang ở)
+            // Ưu tiên 2: BOOKED (Đã đặt)
+            // Ưu tiên 3: MAINTENANCE (Bảo trì)
+            // Ưu tiên 4: CLEANING (Nếu đang dọn) / AVAILABLE (Trống)
+            String mainStatus;
+            String bookingStatus = null;
             if (booking != null) {
-                String status = "CHECKED_IN".equals(normalize(booking.getStatus())) ? "OCCUPIED" : "BOOKED";
-                result.add(new AdminHousekeepingCalendarDayResponse(
-                        date, status, booking.getBooking().getId(), booking.getBooking().getBookingCode(), booking.getId(),
-                        booking.getBooking().getCustomer().getFullName(), booking.getCheckInTarget(), booking.getCheckOutTarget(),
-                        null, null, null, null, null
-                ));
-                continue;
+                bookingStatus = normalize(booking.getStatus());
+                if ("CHECKED_IN".equals(bookingStatus)) {
+                    mainStatus = "OCCUPIED";
+                } else {
+                    mainStatus = "BOOKED";
+                }
+            } else if (isRoomMaintenance) {
+                mainStatus = "MAINTENANCE";
+            } else if (cleaningTask != null) {
+                mainStatus = "CLEANING";
+            } else {
+                mainStatus = "AVAILABLE";
             }
 
-            result.add(emptyDay(date, "AVAILABLE", null));
+            String finalNote = booking != null ? null : (maintenance != null ? maintenance.getNote() : hkNote);
+
+            result.add(new AdminHousekeepingCalendarDayResponse(
+                    room.getId(),
+                    date,
+                    mainStatus,
+                    bookingStatus,
+                    hkStatus,
+                    booking != null ? booking.getBooking().getId() : null,
+                    booking != null ? booking.getBooking().getBookingCode() : null,
+                    booking != null ? booking.getId() : null,
+                    booking != null && booking.getBooking().getCustomer() != null ? booking.getBooking().getCustomer().getFullName() : null,
+                    booking != null ? booking.getCheckInTarget() : null,
+                    booking != null ? booking.getCheckOutTarget() : null,
+                    hkTaskId,
+                    hkAssignedName,
+                    checklistCompleted,
+                    checklistTotal,
+                    finalNote
+            ));
         }
         return result;
     }
 
-    private AdminHousekeepingCalendarDayResponse emptyDay(LocalDate date, String status, String note) {
-        return new AdminHousekeepingCalendarDayResponse(
-                date, status, null, null, null, null, null, null, null, null, null, null, note
-        );
-    }
-
     private AdminHousekeepingCalendarSummaryResponse summarize(List<AdminHousekeepingCalendarRoomResponse> rooms) {
-        Map<String, Long> counts = rooms.stream()
-                .filter(room -> !room.days().isEmpty())
-                .collect(Collectors.groupingBy(room -> room.days().get(0).status(), Collectors.counting()));
+        int available = 0;
+        int booked = 0;
+        int occupied = 0;
+        int cleaning = 0;
+        int maintenance = 0;
+
+        for (AdminHousekeepingCalendarRoomResponse room : rooms) {
+            if (room.days().isEmpty()) continue;
+            AdminHousekeepingCalendarDayResponse today = room.days().get(0);
+            if ("CLEANING".equals(today.housekeepingStatus()) || "CLEANING".equals(today.status())) {
+                cleaning++;
+            }
+            switch (today.status()) {
+                case "OCCUPIED" -> occupied++;
+                case "BOOKED" -> booked++;
+                case "MAINTENANCE" -> maintenance++;
+                case "CLEANING" -> available++;
+                default -> available++;
+            }
+        }
         return new AdminHousekeepingCalendarSummaryResponse(
-                counts.getOrDefault("AVAILABLE", 0L).intValue(),
-                counts.getOrDefault("BOOKED", 0L).intValue(),
-                counts.getOrDefault("OCCUPIED", 0L).intValue(),
-                counts.getOrDefault("CLEANING", 0L).intValue(),
-                counts.getOrDefault("MAINTENANCE", 0L).intValue()
+                available, booked, occupied, cleaning, maintenance
         );
     }
 

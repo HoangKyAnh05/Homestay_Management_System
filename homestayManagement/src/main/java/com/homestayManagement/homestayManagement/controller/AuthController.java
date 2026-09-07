@@ -8,6 +8,7 @@ import com.homestayManagement.homestayManagement.dto.request.RegisterRequest;
 import com.homestayManagement.homestayManagement.dto.request.ResetPasswordRequest;
 import com.homestayManagement.homestayManagement.dto.request.VerifyOtpRequest;
 import com.homestayManagement.homestayManagement.dto.response.AuthResponse;
+import com.homestayManagement.homestayManagement.security.OtpLockedException;
 import com.homestayManagement.homestayManagement.service.AuthService;
 import com.homestayManagement.homestayManagement.service.PasswordResetService;
 import com.homestayManagement.homestayManagement.service.StayAccessService;
@@ -99,6 +100,14 @@ public class AuthController {
     public ResponseEntity<Map<String, String>> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
         passwordResetService.resetPassword(request);
         return ResponseEntity.ok(Map.of("message", "Đặt lại mật khẩu thành công"));
+    }
+
+    @ExceptionHandler(OtpLockedException.class)
+    public ResponseEntity<Map<String, String>> handleOtpLockedException(OtpLockedException exception) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of(
+                "code", "OTP_LOCKED",
+                "message", exception.getMessage()
+        ));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

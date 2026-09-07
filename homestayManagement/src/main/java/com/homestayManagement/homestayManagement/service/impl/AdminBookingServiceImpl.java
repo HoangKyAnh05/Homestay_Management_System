@@ -30,6 +30,7 @@ import com.homestayManagement.homestayManagement.dto.request.AdminDirectBookingR
 import com.homestayManagement.homestayManagement.dto.response.AdminInvoicePenaltyItemResponse;
 import com.homestayManagement.homestayManagement.dto.response.AdminInvoiceServiceItemResponse;
 import com.homestayManagement.homestayManagement.dto.response.AdminPaymentResponse;
+import com.homestayManagement.homestayManagement.dto.response.RoomIncidentResponse;
 import com.homestayManagement.homestayManagement.dto.response.RoomMiniBarItemResponse;
 import com.homestayManagement.homestayManagement.dto.response.RulesPenaltyResponse;
 import com.homestayManagement.homestayManagement.dto.response.SePayPaymentResponse;
@@ -38,6 +39,9 @@ import com.homestayManagement.homestayManagement.entity.AppliedPenalty;
 import com.homestayManagement.homestayManagement.entity.Booking;
 import com.homestayManagement.homestayManagement.entity.BookingDetail;
 import com.homestayManagement.homestayManagement.entity.BookingServiceItem;
+import com.homestayManagement.homestayManagement.entity.RoomIncident;
+import com.homestayManagement.homestayManagement.repository.RoomIncidentRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import com.homestayManagement.homestayManagement.entity.BookingGuest;
 import com.homestayManagement.homestayManagement.entity.CheckInRecord;
 import com.homestayManagement.homestayManagement.entity.Customer;
@@ -104,6 +108,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -141,6 +146,68 @@ public class AdminBookingServiceImpl implements AdminBookingService {
     private final BookingCodeGenerator bookingCodeGenerator;
     private final StayAccessService stayAccessService;
     private final ApplicationEventPublisher eventPublisher;
+    private final RoomIncidentRepository roomIncidentRepository;
+
+    @Autowired
+    public AdminBookingServiceImpl(
+            BookingDetailRepository bookingDetailRepository,
+            BookingGuestRepository bookingGuestRepository,
+            BookingRepository bookingRepository,
+            RoomRepository roomRepository,
+            AccountRepository accountRepository,
+            CustomerRepository customerRepository,
+            RoleRepository roleRepository,
+            CheckInRecordRepository checkInRecordRepository,
+            BookingServiceItemRepository bookingServiceItemRepository,
+            ServiceUsageRepository serviceUsageRepository,
+            RoomAmenitiesUsageRepository roomAmenitiesUsageRepository,
+            AppliedPenaltyRepository appliedPenaltyRepository,
+            InvoiceRepository invoiceRepository,
+            PaymentRepository paymentRepository,
+            FacilityServiceRepository facilityServiceRepository,
+            InventoryServiceRepository inventoryServiceRepository,
+            RoomMiniBarItemRepository roomMiniBarItemRepository,
+            RulesPenaltyRepository rulesPenaltyRepository,
+            EmployeeRepository employeeRepository,
+            PasswordEncoder passwordEncoder,
+            PricePolicyRepository pricePolicyRepository,
+            RoomPriceConfigRepository roomPriceConfigRepository,
+            SePayPaymentService sePayPaymentService,
+            HousekeepingTaskRepository housekeepingTaskRepository,
+            BookingCodeGenerator bookingCodeGenerator,
+            StayAccessService stayAccessService,
+            ApplicationEventPublisher eventPublisher,
+            @Autowired(required = false) RoomIncidentRepository roomIncidentRepository
+    ) {
+        this.bookingDetailRepository = bookingDetailRepository;
+        this.bookingGuestRepository = bookingGuestRepository;
+        this.bookingRepository = bookingRepository;
+        this.roomRepository = roomRepository;
+        this.accountRepository = accountRepository;
+        this.customerRepository = customerRepository;
+        this.roleRepository = roleRepository;
+        this.checkInRecordRepository = checkInRecordRepository;
+        this.bookingServiceItemRepository = bookingServiceItemRepository;
+        this.serviceUsageRepository = serviceUsageRepository;
+        this.roomAmenitiesUsageRepository = roomAmenitiesUsageRepository;
+        this.appliedPenaltyRepository = appliedPenaltyRepository;
+        this.invoiceRepository = invoiceRepository;
+        this.paymentRepository = paymentRepository;
+        this.facilityServiceRepository = facilityServiceRepository;
+        this.inventoryServiceRepository = inventoryServiceRepository;
+        this.roomMiniBarItemRepository = roomMiniBarItemRepository;
+        this.rulesPenaltyRepository = rulesPenaltyRepository;
+        this.employeeRepository = employeeRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.pricePolicyRepository = pricePolicyRepository;
+        this.roomPriceConfigRepository = roomPriceConfigRepository;
+        this.sePayPaymentService = sePayPaymentService;
+        this.housekeepingTaskRepository = housekeepingTaskRepository;
+        this.bookingCodeGenerator = bookingCodeGenerator;
+        this.stayAccessService = stayAccessService;
+        this.eventPublisher = eventPublisher;
+        this.roomIncidentRepository = roomIncidentRepository;
+    }
 
     public AdminBookingServiceImpl(
             BookingDetailRepository bookingDetailRepository,
@@ -171,33 +238,16 @@ public class AdminBookingServiceImpl implements AdminBookingService {
             StayAccessService stayAccessService,
             ApplicationEventPublisher eventPublisher
     ) {
-        this.bookingDetailRepository = bookingDetailRepository;
-        this.bookingGuestRepository = bookingGuestRepository;
-        this.bookingRepository = bookingRepository;
-        this.roomRepository = roomRepository;
-        this.accountRepository = accountRepository;
-        this.customerRepository = customerRepository;
-        this.roleRepository = roleRepository;
-        this.checkInRecordRepository = checkInRecordRepository;
-        this.bookingServiceItemRepository = bookingServiceItemRepository;
-        this.serviceUsageRepository = serviceUsageRepository;
-        this.roomAmenitiesUsageRepository = roomAmenitiesUsageRepository;
-        this.appliedPenaltyRepository = appliedPenaltyRepository;
-        this.invoiceRepository = invoiceRepository;
-        this.paymentRepository = paymentRepository;
-        this.facilityServiceRepository = facilityServiceRepository;
-        this.inventoryServiceRepository = inventoryServiceRepository;
-        this.roomMiniBarItemRepository = roomMiniBarItemRepository;
-        this.rulesPenaltyRepository = rulesPenaltyRepository;
-        this.employeeRepository = employeeRepository;
-        this.passwordEncoder = passwordEncoder;
-        this.pricePolicyRepository = pricePolicyRepository;
-        this.roomPriceConfigRepository = roomPriceConfigRepository;
-        this.sePayPaymentService = sePayPaymentService;
-        this.housekeepingTaskRepository = housekeepingTaskRepository;
-        this.bookingCodeGenerator = bookingCodeGenerator;
-        this.stayAccessService = stayAccessService;
-        this.eventPublisher = eventPublisher;
+        this(
+                bookingDetailRepository, bookingGuestRepository, bookingRepository, roomRepository,
+                accountRepository, customerRepository, roleRepository, checkInRecordRepository,
+                bookingServiceItemRepository, serviceUsageRepository, roomAmenitiesUsageRepository,
+                appliedPenaltyRepository, invoiceRepository, paymentRepository,
+                facilityServiceRepository, inventoryServiceRepository, roomMiniBarItemRepository,
+                rulesPenaltyRepository, employeeRepository, passwordEncoder, pricePolicyRepository,
+                roomPriceConfigRepository, sePayPaymentService, housekeepingTaskRepository,
+                bookingCodeGenerator, stayAccessService, eventPublisher, null
+        );
     }
 
     @Override
@@ -293,6 +343,10 @@ public class AdminBookingServiceImpl implements AdminBookingService {
                 .stream()
                 .map(this::toPenaltyItemResponse)
                 .toList();
+        List<RoomIncidentResponse> incidents = roomIncidentRepository == null ? List.of()
+                : roomIncidentRepository.findByBookingDetailIdWithDetails(detail.getId()).stream()
+                .map(this::toIncidentResponse)
+                .toList();
         Invoice invoice = invoiceRepository.findByBookingIdForAdmin(booking.getId()).orElse(null);
         List<AdminPaymentResponse> payments = invoice == null
                 ? List.of()
@@ -341,6 +395,7 @@ public class AdminBookingServiceImpl implements AdminBookingService {
                 checkInRecords.stream().anyMatch(this::isInspectionComplete),
                 serviceItems,
                 penaltyItems,
+                incidents,
                 detailInvoice,
                 paidAmount,
                 payments,
@@ -439,9 +494,17 @@ public class AdminBookingServiceImpl implements AdminBookingService {
                 pricePolicyRepository.findById(request.pricePolicyId())
                         .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy gói thuê"));
         String normalizedRentType = normalizeStatus(pricePolicy.getRentType());
-        boolean requiresPayment = depositPolicy != null
+        boolean hasDepositOrHourly = depositPolicy != null
                 || "HOURLY".equals(normalizedRentType)
                 || "BY_HOUR".equals(normalizedRentType);
+
+        String rawMethod = request.paymentMethod();
+        String paymentMethod = rawMethod != null && !rawMethod.isBlank() ? rawMethod.trim().toUpperCase() : "CASH";
+        boolean isCash = "CASH".equals(paymentMethod);
+        boolean isPayAtCheckIn = "PAY_AT_CHECKIN".equals(paymentMethod) || "LATER".equals(paymentMethod);
+        boolean isSepay = "SEPAY".equals(paymentMethod) || "TRANSFER".equals(paymentMethod) || "QR".equals(paymentMethod);
+
+        boolean requiresPayment = isSepay && hasDepositOrHourly;
         String initialStatus = requiresPayment ? "PENDING" : "CONFIRMED";
 
         LocalDateTime bookingDate = LocalDateTime.now();
@@ -453,6 +516,7 @@ public class AdminBookingServiceImpl implements AdminBookingService {
                 .status(initialStatus)
                 .build());
 
+        List<BookingDetail> createdDetails = new ArrayList<>();
         BookingDetail firstDetail = null;
         for (AdminDirectBookingRoomRequest selectedRoom : selectedRooms) {
             Room room = roomsById.get(selectedRoom.roomId());
@@ -482,6 +546,7 @@ public class AdminBookingServiceImpl implements AdminBookingService {
                     .rentType(pricePolicy.getRentType())
                     .status(initialStatus)
                     .build());
+            createdDetails.add(detail);
             if (firstDetail == null) {
                 firstDetail = detail;
             }
@@ -489,11 +554,129 @@ public class AdminBookingServiceImpl implements AdminBookingService {
             saveDirectBookingServices(detail, selectedRoom.services());
         }
 
+        if (isCash && hasDepositOrHourly) {
+            Invoice invoice = invoiceRepository.findByBookingIdForAdmin(booking.getId())
+                    .orElseGet(() -> {
+                        BigDecimal roomCharge = createdDetails.stream()
+                                .map(this::finalRoomAmount)
+                                .reduce(BigDecimal.ZERO, BigDecimal::add);
+                        List<Long> detailIds = createdDetails.stream().map(BookingDetail::getId).filter(Objects::nonNull).toList();
+                        BigDecimal serviceCharge = detailIds.isEmpty() ? BigDecimal.ZERO :
+                                bookingServiceItemRepository.findByBookingDetailIds(detailIds).stream()
+                                        .map(item -> item.getPriceAtBooking().multiply(BigDecimal.valueOf(item.getQuantity())))
+                                        .reduce(BigDecimal.ZERO, BigDecimal::add);
+                        return invoiceRepository.save(Invoice.builder()
+                                .booking(booking)
+                                .roomCharge(roomCharge)
+                                .roomDiscountAmount(safeAmount(booking.getRoomDiscountAmount()))
+                                .serviceCharge(serviceCharge)
+                                .penaltyCharge(BigDecimal.ZERO)
+                                .totalAmount(roomCharge.add(serviceCharge))
+                                .createdAt(LocalDateTime.now())
+                                .build());
+                    });
+
+            BigDecimal cashAmount = calculateDirectDepositAmount(booking, createdDetails, invoice.getTotalAmount());
+            if (cashAmount.compareTo(BigDecimal.ZERO) > 0) {
+                paymentRepository.save(Payment.builder()
+                        .invoice(invoice)
+                        .paymentMethod("CASH")
+                        .paymentPurpose("BOOKING")
+                        .amount(cashAmount)
+                        .status("SUCCESS")
+                        .paymentTime(LocalDateTime.now())
+                        .transactionNo("CASH-" + booking.getId() + "-" + System.currentTimeMillis())
+                        .build());
+            }
+        }
+
         AdminBookingDetailResponse bookingResponse = getBookingDetail(firstDetail.getId());
         SePayPaymentResponse payment = requiresPayment
                 ? sePayPaymentService.createBookingPaymentForAdmin(booking.getId())
                 : null;
         return new AdminDirectBookingResponse(bookingResponse, requiresPayment, payment);
+    }
+
+    @Override
+    @Transactional
+    public AdminBookingDetailResponse confirmDirectCashPayment(Long bookingId) {
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đơn đặt phòng"));
+        List<BookingDetail> details = bookingDetailRepository.findByBookingId(bookingId);
+        if (details.isEmpty()) {
+            throw new IllegalArgumentException("Booking không có chi tiết phòng");
+        }
+        booking.setStatus("CONFIRMED");
+        bookingRepository.save(booking);
+        for (BookingDetail detail : details) {
+            if ("PENDING".equalsIgnoreCase(detail.getStatus())) {
+                detail.setStatus("CONFIRMED");
+            }
+        }
+        bookingDetailRepository.saveAll(details);
+
+        Invoice invoice = invoiceRepository.findByBookingIdForAdmin(bookingId)
+                .orElseGet(() -> {
+                    BigDecimal roomCharge = details.stream()
+                            .map(this::finalRoomAmount)
+                            .reduce(BigDecimal.ZERO, BigDecimal::add);
+                    List<Long> detailIds = details.stream().map(BookingDetail::getId).toList();
+                    BigDecimal serviceCharge = bookingServiceItemRepository.findByBookingDetailIds(detailIds).stream()
+                            .map(item -> item.getPriceAtBooking().multiply(BigDecimal.valueOf(item.getQuantity())))
+                            .reduce(BigDecimal.ZERO, BigDecimal::add);
+                    return invoiceRepository.save(Invoice.builder()
+                            .booking(booking)
+                            .roomCharge(roomCharge)
+                            .roomDiscountAmount(safeAmount(booking.getRoomDiscountAmount()))
+                            .serviceCharge(serviceCharge)
+                            .penaltyCharge(BigDecimal.ZERO)
+                            .totalAmount(roomCharge.add(serviceCharge))
+                            .createdAt(LocalDateTime.now())
+                            .build());
+                });
+
+        BigDecimal depositAmount = calculateDirectDepositAmount(booking, details, invoice.getTotalAmount());
+        if (depositAmount.compareTo(BigDecimal.ZERO) > 0) {
+            paymentRepository.findFirstByInvoiceIdAndPaymentMethodAndPaymentPurposeAndStatusOrderByIdDesc(
+                    invoice.getId(), "SEPAY", "BOOKING", "PENDING"
+            ).ifPresent(p -> {
+                p.setStatus("CANCELLED");
+                paymentRepository.save(p);
+            });
+
+            paymentRepository.save(Payment.builder()
+                    .invoice(invoice)
+                    .paymentMethod("CASH")
+                    .paymentPurpose("BOOKING")
+                    .amount(depositAmount)
+                    .status("SUCCESS")
+                    .paymentTime(LocalDateTime.now())
+                    .transactionNo("CASH-" + booking.getId() + "-" + System.currentTimeMillis())
+                    .build());
+        }
+
+        return getBookingDetail(details.get(0).getId());
+    }
+
+    private BigDecimal calculateDirectDepositAmount(Booking booking, List<BookingDetail> details, BigDecimal totalAmount) {
+        boolean hourly = details.stream()
+                .map(BookingDetail::getRentType)
+                .map(this::normalizeStatus)
+                .anyMatch(type -> "HOURLY".equals(type) || "BY_HOUR".equals(type));
+        if (hourly) {
+            return details.stream()
+                    .map(this::finalRoomAmount)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+        }
+        DepositPolicy policy = booking.getDepositPolicy();
+        if (policy == null || policy.getPolicyValue() == null) {
+            return BigDecimal.ZERO;
+        }
+        if ("PERCENTAGE".equalsIgnoreCase(policy.getCalculationType())) {
+            return totalAmount.multiply(policy.getPolicyValue())
+                    .divide(BigDecimal.valueOf(100), 0, RoundingMode.HALF_UP);
+        }
+        return policy.getPolicyValue();
     }
 
     @Override
@@ -1205,6 +1388,42 @@ public class AdminBookingServiceImpl implements AdminBookingService {
                 penalty.getRulesPenalty().getTitle(),
                 penalty.getActualFine(),
                 penalty.getDescription()
+        );
+    }
+
+    private RoomIncidentResponse toIncidentResponse(RoomIncident i) {
+        if (i == null) return null;
+        Room r = i.getRoom();
+        BookingDetail bd = i.getBookingDetail();
+        Booking b = bd != null ? bd.getBooking() : null;
+        Customer c = b != null ? b.getCustomer() : null;
+        return new RoomIncidentResponse(
+                i.getId(),
+                r != null ? r.getId() : null,
+                r != null ? r.getRoomNumber() : null,
+                r != null && r.getRoomType() != null ? r.getRoomType().getName() : null,
+                bd != null ? bd.getId() : null,
+                b != null ? b.getBookingCode() : null,
+                c != null ? c.getFullName() : null,
+                c != null ? c.getPhone() : null,
+                i.getHousekeepingTask() != null ? i.getHousekeepingTask().getId() : null,
+                i.getReportedBy() != null ? i.getReportedBy().getId() : null,
+                i.getReportedBy() != null ? i.getReportedBy().getFullName() : null,
+                i.getHandledBy() != null ? i.getHandledBy().getId() : null,
+                i.getHandledBy() != null ? i.getHandledBy().getFullName() : null,
+                i.getItemName(),
+                i.getQuantity(),
+                i.getIncidentType(),
+                i.getSeverity(),
+                i.getDescription(),
+                i.getEvidenceImageUrl(),
+                i.getStatus(),
+                i.getLiability(),
+                i.getEstimatedCost(),
+                i.getCompensationAmount(),
+                i.getAdminNotes(),
+                i.getReportedAt(),
+                i.getResolvedAt()
         );
     }
 

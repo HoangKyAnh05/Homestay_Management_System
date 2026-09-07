@@ -165,3 +165,31 @@
     grid-template-columns: 1fr;
   }
 }
+
+.sepay-recheck-btn {
+  margin-top: 12px;
+  width: 100%;
+  padding: 10px 14px;
+  background: #15803d;
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.sepay-recheck-btn:hover:not(:disabled) {
+  background: #166534;
+  transform: translateY(-1px);
+}
+
+.sepay-recheck-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}

@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { getStoredToken } from '../../services/authService'
 import { useShiftGuard } from '../../context/ShiftGuardContext'
 import { formatClockTime, formatDateTime as formatAppDateTime } from '../../utils/dateTimeFormat'
@@ -219,12 +219,43 @@ function SummaryCard({ label, value, tone }) {
   )
 }
 
+function resolveEvidenceUrl(url) {
+  if (!url) return null
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) return url
+  const apiBase = import.meta.env.VITE_API_URL || ''
+  if (url.startsWith('/')) return `${apiBase}${url}`
+  return `${apiBase}/${url}`
+}
+
 function DetailCard({ detail, actionLoading, housekeepingRequested, onAction }) {
   const stage = detailStage(detail)
+  const isCompleted = stage === 'completed'
   const canCheckIn = stage === 'waiting'
   const canCheckOut = stage === 'staying'
   const loading = actionLoading === detail.bookingDetailId
   const extHours = Number(detail.extensionHours || 0)
+
+  const [expanded, setExpanded] = useState(isCompleted)
+  const [detailData, setDetailData] = useState(null)
+  const [detailLoading, setDetailLoading] = useState(false)
+  const [previewImage, setPreviewImage] = useState(null)
+
+  useEffect(() => {
+    if (isCompleted && expanded && !detailData && !detailLoading) {
+      setDetailLoading(true)
+      fetch(`${API_BASE}/details/${detail.bookingDetailId}`, {
+        headers: authHeaders(),
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data && data.bookingDetailId) {
+            setDetailData(data)
+          }
+        })
+        .catch(() => {})
+        .finally(() => setDetailLoading(false))
+    }
+  }, [isCompleted, expanded, detail.bookingDetailId, detailData, detailLoading])
 
   return (
     <article className={`acl-detail acl-detail--${stage}`}>
@@ -270,23 +301,147 @@ function DetailCard({ detail, actionLoading, housekeepingRequested, onAction }) 
           )}
           <span>{formatMoney(detail.priceAtBooking)}</span>
         </div>
-        <div className="acl-detail-actions">
-          <button type="button" disabled={!canCheckIn || loading} onClick={() => onAction(detail.bookingDetailId, 'check-in')}>
-            {loading && canCheckIn ? 'Đang xử lý...' : 'Check-in'}
-          </button>
-          <button type="button" disabled={!canCheckOut || loading || housekeepingRequested} onClick={() => onAction(detail.bookingDetailId, 'housekeeping-request')}>
-            {loading && canCheckOut ? 'Đang gửi...' : housekeepingRequested ? 'Đã yêu cầu kiểm tra' : 'Yêu cầu kiểm tra'}
-          </button>
-          <button
-            type="button"
-            disabled={!canCheckOut || loading || !detail.housekeepingInspectionCompleted}
-            title={canCheckOut && !detail.housekeepingInspectionCompleted ? 'Chờ housekeeping gửi chi phí kiểm tra phòng' : undefined}
-            onClick={() => onAction(detail.bookingDetailId, 'check-out')}
-          >
-            {loading && canCheckOut ? 'Đang xử lý...' : 'Check-out'}
-          </button>
-        </div>
+
+        {isCompleted ? (
+          <div className="acl-detail-actions acl-detail-actions--completed">
+            <div className="acl-completed-time-tag">
+              ✓ Đã trả phòng lúc {formatAppDateTime(detail.checkInRecord?.actualCheckOut || detail.checkOutTarget)}
+            </div>
+            <button
+              type="button"
+              className="acl-btn-toggle-detail"
+              onClick={() => setExpanded(prev => !prev)}
+            >
+              {expanded ? '▲ Thu gọn' : '▼ Xem chi tiết hoá đơn & sự cố'}
+            </button>
+          </div>
+        ) : (
+          <div className="acl-detail-actions">
+            <button type="button" disabled={!canCheckIn || loading} onClick={() => onAction(detail.bookingDetailId, 'check-in')}>
+              {loading && canCheckIn ? 'Đang xử lý...' : 'Check-in'}
+            </button>
+            <button type="button" disabled={!canCheckOut || loading || housekeepingRequested} onClick={() => onAction(detail.bookingDetailId, 'housekeeping-request')}>
+              {loading && canCheckOut ? 'Đang gửi...' : housekeepingRequested ? 'Đã yêu cầu kiểm tra' : 'Yêu cầu kiểm tra'}
+            </button>
+            <button
+              type="button"
+              disabled={!canCheckOut || loading || !detail.housekeepingInspectionCompleted}
+              title={canCheckOut && !detail.housekeepingInspectionCompleted ? 'Chờ housekeeping gửi chi phí kiểm tra phòng' : undefined}
+              onClick={() => onAction(detail.bookingDetailId, 'check-out')}
+            >
+              {loading && canCheckOut ? 'Đang xử lý...' : 'Check-out'}
+            </button>
+          </div>
+        )}
       </div>
+
+      {isCompleted && expanded && (
+        <div className="acl-completed-expanded-section">
+          {detailLoading && (
+            <div className="acl-detail-expand-loading">Đang tải thông tin lưu trú, sự cố & quyết toán hoá đơn...</div>
+          )}
+          {detailData && (
+            <>
+              {/* Báo cáo sự cố & Hỏng hóc (nếu có) */}
+              {((detailData.incidents && detailData.incidents.length > 0) || (detailData.penaltyItems && detailData.penaltyItems.some(p => p.description?.includes('Bồi thường sự cố') || p.title?.includes('Bồi thường')))) && (
+                <div className="acl-completed-block acl-incidents-block">
+                  <div className="acl-block-header">
+                    <span>🛡️ Báo Cáo Sự Cố & Đồ Hỏng / Mất Trong Kỳ Lưu Trú</span>
+                  </div>
+                  <div className="acl-incident-cards-grid">
+                    {(detailData.incidents && detailData.incidents.length > 0 ? detailData.incidents : detailData.penaltyItems.filter(p => p.description?.includes('Bồi thường sự cố') || p.title?.includes('Bồi thường')).map(p => ({
+                      id: p.id,
+                      itemName: p.description?.replace(/^Bồi thường sự cố\s*#\d+:\s*/, '') || p.title,
+                      compensationAmount: p.amount,
+                      status: 'RESOLVED',
+                    }))).map((inc, idx) => (
+                      <div key={idx} className="acl-incident-item-card">
+                        <div className="acl-incident-item-info">
+                          <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>
+                            {inc.itemName || 'Đồ vật sự cố'}
+                            {inc.quantity && <span style={{ color: '#64748b', fontWeight: 400 }}> × {inc.quantity}</span>}
+                          </div>
+                          {inc.description && <p style={{ fontSize: 12, color: '#475569', margin: '4px 0' }}>{inc.description}</p>}
+                          <div className="acl-incident-item-sub">
+                            <span className="acl-liability-tag">Bồi thường: <strong>{formatMoney(inc.compensationAmount)}</strong></span>
+                            <span className="acl-status-tag">{inc.status === 'RESOLVED' ? 'Đã giải quyết' : 'Đang xử lý'}</span>
+                          </div>
+                        </div>
+                        {inc.evidenceImageUrl && (
+                          <div className="acl-incident-thumb" onClick={() => setPreviewImage(resolveEvidenceUrl(inc.evidenceImageUrl))} title="Bấm để xem ảnh phóng to">
+                            <img src={resolveEvidenceUrl(inc.evidenceImageUrl)} alt={inc.itemName} />
+                            <span>🔍 Phóng to</span>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Tóm tắt thanh quyết toán (Billing summary) */}
+              <div className="acl-completed-block acl-billing-block">
+                <div className="acl-block-header">
+                  <span>📑 Quyết Toán Hoá Đơn Trả Phòng</span>
+                  <span className="acl-paid-badge">ĐÃ THANH TOÁN 100%</span>
+                </div>
+                <div className="acl-billing-rows">
+                  <div className="acl-billing-row">
+                    <span>Tiền phòng lưu trú:</span>
+                    <strong>{formatMoney(detailData.invoice?.roomCharge || detail.priceAtBooking)}</strong>
+                  </div>
+                  {detailData.serviceItems && detailData.serviceItems.length > 0 && (
+                    <div className="acl-billing-row">
+                      <span>Phí dịch vụ & tiện ích ({detailData.serviceItems.length} mục):</span>
+                      <strong>+{formatMoney(detailData.invoice?.serviceCharge || 0)}</strong>
+                    </div>
+                  )}
+                  {Number(detailData.extensionAmount || 0) > 0 && (
+                    <div className="acl-billing-row">
+                      <span>Thuê thêm (+{detailData.extensionHours}h):</span>
+                      <strong>+{formatMoney(detailData.extensionAmount)}</strong>
+                    </div>
+                  )}
+                  {Number(detailData.invoice?.penaltyCharge || 0) > 0 && (
+                    <div className="acl-billing-row" style={{ color: '#dc2626' }}>
+                      <span>Bồi thường đồ hỏng/mất & phụ thu:</span>
+                      <strong>+{formatMoney(detailData.invoice?.penaltyCharge)}</strong>
+                    </div>
+                  )}
+                  <div className="acl-billing-row acl-billing-row--total">
+                    <span>Tổng quyết toán hoá đơn:</span>
+                    <strong>{formatMoney(detailData.invoice?.totalAmount || detail.priceAtBooking)}</strong>
+                  </div>
+                  <div className="acl-billing-row acl-billing-row--paid">
+                    <span>Đã thanh toán:</span>
+                    <strong>{formatMoney(detailData.paidAmount || detailData.invoice?.totalAmount || detail.priceAtBooking)}</strong>
+                  </div>
+                  {detailData.payments && detailData.payments.length > 0 && (
+                    <div className="acl-billing-payments">
+                      <small>Phương thức thanh toán:</small>
+                      {detailData.payments.map((p, pi) => (
+                        <span key={pi} className="acl-payment-pill">
+                          {p.paymentMethod === 'BANK_TRANSFER' ? '🏦 Chuyển khoản' : p.paymentMethod === 'CASH' ? '💵 Tiền mặt' : p.paymentMethod || 'Thanh toán'} ({formatMoney(p.amount)})
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Modal phóng to ảnh bằng chứng hiện trường */}
+      {previewImage && (
+        <div className="acl-image-preview-overlay" onClick={() => setPreviewImage(null)}>
+          <div className="acl-image-preview-box" onClick={e => e.stopPropagation()}>
+            <img src={previewImage} alt="Ảnh bằng chứng sự cố" />
+            <button type="button" className="acl-btn-close-preview" onClick={() => setPreviewImage(null)}>✕ Đóng</button>
+          </div>
+        </div>
+      )}
     </article>
   )
 }
@@ -696,16 +851,58 @@ function CheckOutModal({ bookingDetailId, onClose, onCompleted }) {
                             <strong>{formatMoney(item.totalPrice)}</strong>
                           </div>
                         ))}
-                        {detail.penaltyItems?.map((item, i) => (
-                          <div key={i} className="aco-item aco-item--penalty">
-                            <span className="aco-item-name">
-                              {item.title}
-                              {item.description && <small>{item.description}</small>}
-                            </span>
-                            <span className="aco-item-qty">×1</span>
-                            <strong>{formatMoney(item.amount)}</strong>
-                          </div>
-                        ))}
+                        {/* Tách bạch Bồi thường đồ hỏng/mất và Phí phạt quy định */}
+                        {(() => {
+                          const items = detail.penaltyItems || []
+                          const isDamage = (it) => it.description?.includes('Bồi thường sự cố') || it.title?.includes('Bồi thường') || it.title?.includes('hỏng')
+                          const damageItems = items.filter(isDamage)
+                          const fineItems = items.filter((it) => !isDamage(it))
+
+                          return (
+                            <>
+                              {damageItems.length > 0 && (
+                                <div style={{ marginTop: 8 }}>
+                                  <div style={{ fontSize: 12, fontWeight: 700, color: '#dc2626', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                    🛡️ Bồi thường đồ hỏng / mất tài sản ({damageItems.length})
+                                  </div>
+                                  {damageItems.map((item, i) => {
+                                    const cleanName = item.description?.startsWith('Bồi thường sự cố')
+                                      ? item.description.replace(/^Bồi thường sự cố\s*#\d+:\s*/, '')
+                                      : (item.description || item.title)
+                                    const incidentTag = item.description?.match(/sự cố\s*#\d+/i)?.[0] || 'Sự cố'
+                                    return (
+                                      <div key={`dmg-${i}`} className="aco-item aco-item--penalty">
+                                        <span className="aco-item-name">
+                                          <strong style={{ color: '#b91c1c' }}>{cleanName}</strong>
+                                          <small style={{ color: '#64748b' }}>Chi phí đền bù ({incidentTag})</small>
+                                        </span>
+                                        <span className="aco-item-qty">×1</span>
+                                        <strong>{formatMoney(item.amount)}</strong>
+                                      </div>
+                                    )
+                                  })}
+                                </div>
+                              )}
+                              {fineItems.length > 0 && (
+                                <div style={{ marginTop: 8 }}>
+                                  <div style={{ fontSize: 12, fontWeight: 700, color: '#b45309', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                    ⚠️ Phạt vi phạm nội quy ({fineItems.length})
+                                  </div>
+                                  {fineItems.map((item, i) => (
+                                    <div key={`fine-${i}`} className="aco-item aco-item--penalty">
+                                      <span className="aco-item-name">
+                                        {item.title}
+                                        {item.description && <small>{item.description}</small>}
+                                      </span>
+                                      <span className="aco-item-qty">×1</span>
+                                      <strong>{formatMoney(item.amount)}</strong>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </>
+                          )
+                        })()}
                       </div>
                     )}
 
@@ -732,12 +929,40 @@ function CheckOutModal({ bookingDetailId, onClose, onCompleted }) {
                         <span>Dịch vụ</span>
                         <strong>{formatMoney(inv?.serviceCharge)}</strong>
                       </div>
-                      {Number(inv?.penaltyCharge || 0) > 0 && (
-                        <div className="aco-total-row aco-total-row--penalty">
-                          <span>Phạt vi phạm</span>
-                          <strong>{formatMoney(inv?.penaltyCharge)}</strong>
-                        </div>
-                      )}
+                      {(() => {
+                        const items = detail.penaltyItems || []
+                        const isDamage = (it) => it.description?.includes('Bồi thường sự cố') || it.title?.includes('Bồi thường') || it.title?.includes('hỏng')
+                        const damageTotal = items.filter(isDamage).reduce((s, it) => s + Number(it.amount || 0), 0)
+                        const fineTotal = items.filter((it) => !isDamage(it)).reduce((s, it) => s + Number(it.amount || 0), 0)
+
+                        if (damageTotal > 0 || fineTotal > 0) {
+                          return (
+                            <>
+                              {damageTotal > 0 && (
+                                <div className="aco-total-row aco-total-row--penalty" style={{ color: '#dc2626' }}>
+                                  <span>Bồi thường đồ hỏng/mất</span>
+                                  <strong>{formatMoney(damageTotal)}</strong>
+                                </div>
+                              )}
+                              {fineTotal > 0 && (
+                                <div className="aco-total-row aco-total-row--penalty">
+                                  <span>Phạt vi phạm nội quy</span>
+                                  <strong>{formatMoney(fineTotal)}</strong>
+                                </div>
+                              )}
+                            </>
+                          )
+                        }
+                        if (Number(inv?.penaltyCharge || 0) > 0) {
+                          return (
+                            <div className="aco-total-row aco-total-row--penalty">
+                              <span>Phụ thu / Phạt</span>
+                              <strong>{formatMoney(inv?.penaltyCharge)}</strong>
+                            </div>
+                          )
+                        }
+                        return null
+                      })()}
                       <div className="aco-total-row aco-total-row--sum">
                         <span>Tổng cộng</span>
                         <strong>{formatMoney(inv?.totalAmount)}</strong>

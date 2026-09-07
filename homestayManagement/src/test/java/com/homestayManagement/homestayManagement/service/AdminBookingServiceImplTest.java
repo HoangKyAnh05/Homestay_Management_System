@@ -68,6 +68,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -668,5 +669,57 @@ class AdminBookingServiceImplTest {
         assertEquals(0, BigDecimal.valueOf(5_000).compareTo(room201Settlement.invoice().serviceCharge()));
         assertEquals(0, BigDecimal.valueOf(25_000).compareTo(room201Settlement.invoice().totalAmount()));
         assertEquals(0, BigDecimal.valueOf(20_000).compareTo(room201Settlement.paidAmount()));
+    }
+
+    @Test
+    void confirmDirectCashPayment_updatesBookingToConfirmedAndRecordsCashPayment() {
+        Customer customer = Customer.builder()
+                .id(1L)
+                .fullName("Test Customer")
+                .phone("0987654321")
+                .email("test@example.com")
+                .build();
+        Booking booking = Booking.builder()
+                .id(99L)
+                .bookingCode("BK_TEST_CASH")
+                .customer(customer)
+                .status("PENDING")
+                .build();
+        BookingDetail detail = BookingDetail.builder()
+                .id(101L)
+                .booking(booking)
+                .status("PENDING")
+                .priceAtBooking(BigDecimal.valueOf(500_000))
+                .build();
+        Invoice invoice = Invoice.builder()
+                .id(200L)
+                .booking(booking)
+                .totalAmount(BigDecimal.valueOf(500_000))
+                .roomCharge(BigDecimal.valueOf(500_000))
+                .build();
+
+        when(bookingRepository.findById(99L)).thenReturn(Optional.of(booking));
+        when(bookingDetailRepository.findByBookingId(99L)).thenReturn(List.of(detail));
+        when(invoiceRepository.findByBookingIdForAdmin(99L)).thenReturn(Optional.of(invoice));
+        when(bookingDetailRepository.findByIdForAdminDetail(101L)).thenReturn(Optional.of(detail));
+        when(checkInRecordRepository.findByBookingDetailIdForAdmin(101L)).thenReturn(List.of());
+        when(serviceUsageRepository.findByBookingDetailIdForAdmin(101L)).thenReturn(List.of());
+        when(bookingServiceItemRepository.findByBookingDetailIds(List.of(101L))).thenReturn(List.of());
+        when(roomAmenitiesUsageRepository.findByBookingDetailIdForAdmin(101L)).thenReturn(List.of());
+        when(appliedPenaltyRepository.findByBookingDetailIdForAdmin(101L)).thenReturn(List.of());
+        when(paymentRepository.findByInvoiceIdOrderByPaymentTimeDescIdDesc(200L)).thenReturn(List.of());
+        when(bookingGuestRepository.findByBookingDetailIds(List.of(101L))).thenReturn(List.of());
+        when(facilityServiceRepository.findAll()).thenReturn(List.of());
+        when(inventoryServiceRepository.findAll()).thenReturn(List.of());
+        when(roomMiniBarItemRepository.findAll()).thenReturn(List.of());
+        when(rulesPenaltyRepository.findAll()).thenReturn(List.of());
+
+        var result = service.confirmDirectCashPayment(99L);
+
+        assertEquals("CONFIRMED", booking.getStatus());
+        assertEquals("CONFIRMED", detail.getStatus());
+        assertNotNull(result);
+        verify(bookingRepository).save(booking);
+        verify(bookingDetailRepository).saveAll(List.of(detail));
     }
 }

@@ -1,20 +1,19 @@
 ======================================================================
-     HE THONG HOMESTAY DA DEPLOY LEN CLOUDFLARE THANH CONG
+     HE THONG HOMESTAY DA TRIEN KHAI THANH CONG TREN VPS VIETNIX (24/7)
 ======================================================================
 
- [1] LINK WEB HOMESTAY (Frontend + Backend API):
-     https://prospective-utilization-evaluation-christopher.trycloudflare.com
+ [1] LINK WEB HOMESTAY CHINH THUC (Frontend + Backend API):
+     http://14.225.253.234
 
- [2] LINK REMOTION VIDEO STUDIO (Truc tiep Studio):
-     https://discrimination-modern-syndication-submissions.trycloudflare.com
+ [2] CAU HINH SEPAY WEBHOOK CO DINH (Tren https://my.sepay.vn):
+     URL Webhook: http://14.225.253.234/api/payments/sepay/webhook
+     Kieu du lieu: JSON
+     Phuong thuc xac thuc: Chu ky HMAC-SHA256 (hoac API Key)
 
- [3] LINK REMOTION TREN WEB HOMESTAY:
-     https://prospective-utilization-evaluation-christopher.trycloudflare.com/remotion-app/
+ [3] MOI TRUONG MAY CHU VPS:
+     IP: 14.225.253.234 (Datacenter Vietnix, Viet Nam)
+     OS: Ubuntu 24.04 LTS (64-bit)
+     Ha tang: Docker MySQL 8.0, Spring Boot Java 21 (Systemd), Nginx Reverse Proxy
+     Hoat dong doc lap 24/7 khong can bat may tinh ca nhan.
 
-======================================================================
- * Uu diem vuot troi cua Cloudflare:
-   - BANG THONG VO HAN (khong bi gioi han 1GB nhu Ngrok)
-   - Khong bao gio bi loi ERR_NGROK_725
-   - Moi thiet bi (dien thoai, may tinh khac, 4G/Wifi) deu vao duoc
-   - Toc do cuc nhanh qua may chu Cloudflare Hong Kong
 ======================================================================

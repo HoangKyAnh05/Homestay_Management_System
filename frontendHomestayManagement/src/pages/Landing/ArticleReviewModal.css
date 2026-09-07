@@ -1,5 +1,5 @@
 /* ArticleReviewModal.css - Magazine Review Modal */
-.arm-overlay {
+.arm-article-overlay {
   position: fixed;
   inset: 0;
   z-index: 999999;
@@ -18,7 +18,7 @@
   to { opacity: 1; }
 }
 
-.arm-modal {
+.arm-article-modal {
   position: relative;
   width: min(100%, 880px);
   max-height: 90vh;

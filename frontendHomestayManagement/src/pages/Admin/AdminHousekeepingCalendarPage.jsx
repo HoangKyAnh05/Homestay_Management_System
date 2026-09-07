@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { getStoredToken } from '../../services/authService'
 import { houseTypeName } from '../../utils/houseType'
 import AdminLayout from './AdminLayout'
@@ -163,14 +163,27 @@ function AdminHousekeepingCalendarPage() {
                 <div className="hkr-room"><span>{room.roomNumber}</span><div><strong>Phòng {room.roomNumber}</strong><small>{houseTypeName(room)}</small></div></div>
                 {room.days.map(day => {
                   const meta = STATUS[day.status] || STATUS.AVAILABLE
+                  const isCleaningNow = day.housekeepingStatus === 'CLEANING' || day.status === 'CLEANING'
+                  const isDirtyNow = day.housekeepingStatus === 'DIRTY'
                   return (
                     <button type="button" className={`hkr-cell is-${meta.className}`} key={day.date} onClick={() => chooseCell(room, day)}>
-                      <span className="hkr-status"><i />{meta.label}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4 }}>
+                        <span className="hkr-status"><i />{meta.label}</span>
+                        {isCleaningNow && day.status !== 'CLEANING' && (
+                          <span className="hkr-hk-badge is-cleaning" title="Đang dọn phòng">Đang dọn</span>
+                        )}
+                        {isDirtyNow && day.status !== 'CLEANING' && (
+                          <span className="hkr-hk-badge is-dirty" title="Phòng cần dọn dẹp">Cần dọn</span>
+                        )}
+                      </div>
                       {day.customerName && <strong>{day.customerName}</strong>}
                       {day.status === 'CLEANING' && <strong>{day.assignedHousekeepingName || 'Chưa phân công'}</strong>}
-                      {day.status === 'CLEANING' && day.checklistTotal > 0 && <small>Checklist {day.checklistCompleted}/{day.checklistTotal}</small>}
+                      {(day.status === 'CLEANING' || isCleaningNow) && day.checklistTotal > 0 && (
+                        <small>Checklist {day.checklistCompleted || 0}/{day.checklistTotal}</small>
+                      )}
                       {day.bookingId && <small>Booking {bookingDisplay(day)}</small>}
-                      {day.status === 'AVAILABLE' && <small>Sẵn sàng nhận khách</small>}
+                      {day.status === 'AVAILABLE' && !isCleaningNow && <small>Sẵn sàng nhận khách</small>}
+                      {day.status === 'MAINTENANCE' && day.note && <small title={day.note}>{day.note}</small>}
                     </button>
                   )
                 })}

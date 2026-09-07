@@ -237,12 +237,13 @@
   font-size: 14px;
 }
 
-/* ── Modal ── */
+/* ── Modal (Standard Light Mode) ── */
 .arm-overlay {
   position: fixed;
   inset: 0;
-  z-index: 100;
-  background: rgba(0,0,0,0.45);
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.5) !important;
+  backdrop-filter: blur(4px);
   display: grid;
   place-items: center;
   padding: 16px;
@@ -250,10 +251,12 @@
 
 .arm-modal {
   width: min(480px, 100%);
-  background: #fff;
-  border-radius: 14px;
+  background: #ffffff !important;
+  color: #111827 !important;
+  border-radius: 16px !important;
+  border: 1px solid #e5e7eb !important;
   overflow: hidden;
-  box-shadow: 0 20px 50px rgba(0,0,0,0.22);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
 }
 
 .arm-modal--wide { width: min(720px, 100%); }
@@ -263,15 +266,16 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 20px 24px 16px;
+  padding: 18px 24px 16px;
   border-bottom: 1px solid #f3f4f6;
+  background: #ffffff !important;
 }
 
 .arm-modal-head h3 {
   margin: 0;
-  color: #111827;
-  font-size: 17px;
-  font-weight: 800;
+  color: #111827 !important;
+  font-size: 18px;
+  font-weight: 700;
 }
 
 .arm-modal-close {
@@ -280,17 +284,22 @@
   color: #9ca3af;
   font-size: 18px;
   cursor: pointer;
-  padding: 4px 6px;
-  border-radius: 6px;
+  padding: 6px 8px;
+  border-radius: 8px;
   line-height: 1;
+  transition: all 0.15s ease;
 }
 
-.arm-modal-close:hover { background: #f3f4f6; color: #374151; }
+.arm-modal-close:hover {
+  background: #f3f4f6;
+  color: #374151;
+}
 
 .arm-modal-body {
   padding: 20px 24px 24px;
   display: grid;
   gap: 14px;
+  background: #ffffff !important;
 }
 
 .arm-field {
@@ -298,24 +307,34 @@
   gap: 6px;
   font-size: 13px;
   font-weight: 600;
-  color: #374151;
+  color: #374151 !important;
+}
+
+.arm-field span {
+  color: #374151 !important;
 }
 
 .arm-field input,
 .arm-field select,
 .arm-field textarea {
   padding: 0 12px;
-  border: 1px solid #d1d5db;
+  border: 1px solid #d1d5db !important;
   border-radius: 8px;
   font: inherit;
   font-size: 14px;
-  color: #111827;
-  background: #fff;
+  color: #111827 !important;
+  background: #ffffff !important;
   outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.arm-field input::placeholder,
+.arm-field textarea::placeholder {
+  color: #9ca3af !important;
 }
 
 .arm-field input,
-.arm-field select { height: 40px; }
+.arm-field select { height: 42px; }
 
 .arm-field textarea {
   padding: 10px 12px;
@@ -325,7 +344,10 @@
 
 .arm-field input:focus,
 .arm-field select:focus,
-.arm-field textarea:focus { border-color: #2d5a3d; box-shadow: 0 0 0 3px rgba(45,90,61,0.1); }
+.arm-field textarea:focus {
+  border-color: #1b4332 !important;
+  box-shadow: 0 0 0 3px rgba(27, 67, 50, 0.15) !important;
+}
 
 .arm-field-row {
   display: grid;
@@ -347,7 +369,43 @@
   display: flex;
   justify-content: flex-end;
   gap: 10px;
-  margin-top: 4px;
+  margin-top: 6px;
+  padding-top: 14px;
+  border-top: 1px solid #f3f4f6;
+}
+
+.arm-btn--ghost {
+  background: #ffffff !important;
+  border: 1px solid #d1d5db !important;
+  color: #374151 !important;
+  padding: 8px 18px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.arm-btn--ghost:hover {
+  background: #f9fafb !important;
+  color: #111827 !important;
+}
+
+.arm-btn--primary {
+  background: #1b4332 !important;
+  border: 1px solid #1b4332 !important;
+  color: #ffffff !important;
+  padding: 8px 20px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.arm-btn--primary:hover:not(:disabled) {
+  background: #2d5a3d !important;
+  border-color: #2d5a3d !important;
 }
 
 /* ── Image upload & grid ── */

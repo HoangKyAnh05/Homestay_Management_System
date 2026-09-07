@@ -21,6 +21,7 @@ import com.homestayManagement.homestayManagement.repository.OtpTokenRepository;
 import com.homestayManagement.homestayManagement.repository.OtpTokenRepository.OtpToken;
 import com.homestayManagement.homestayManagement.repository.RoleRepository;
 import com.homestayManagement.homestayManagement.security.JwtService;
+import com.homestayManagement.homestayManagement.security.OtpLockedException;
 import com.homestayManagement.homestayManagement.service.AuthService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
@@ -168,14 +169,23 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public AuthResponse verifyEmail(VerifyOtpRequest request) {
-        tokenRepository.findTopByEmailOrderByExpiresAtDesc(request.email())
+        OtpToken token = tokenRepository.findTopByEmailOrderByExpiresAtDesc(request.email())
                 .filter(t -> !t.isUsed())
                 .filter(t -> t.getExpiresAt().isAfter(LocalDateTime.now()))
-                .filter(t -> t.getOtp().equals(request.otp()))
-                .orElseThrow(() -> new IllegalArgumentException("Ma OTP khong dung hoac da het han"));
+                .orElseThrow(() -> new IllegalArgumentException("Mã OTP không đúng hoặc đã hết hạn"));
+
+        if (!token.getOtp().equals(request.otp())) {
+            int attempts = token.incrementFailedAttempts();
+            if (attempts >= 5) {
+                tokenRepository.deleteAllByEmail(request.email());
+                throw new OtpLockedException("Mã OTP đã bị khóa do nhập sai quá 5 lần. Vui lòng nhấn gửi lại mã mới.");
+            }
+            int remaining = 5 - attempts;
+            throw new IllegalArgumentException("Mã OTP không đúng. Bạn còn " + remaining + " lần thử.");
+        }
 
         Account account = accountRepository.findByEmail(request.email())
-                .orElseThrow(() -> new IllegalArgumentException("Khong tim thay tai khoan"));
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy tài khoản"));
         account.setActive(true);
         accountRepository.save(account);
 

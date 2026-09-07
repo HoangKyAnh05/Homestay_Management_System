@@ -49,6 +49,24 @@ public record AdminDirectBookingRequest(
 
         /** ID của gói giá (price_policies) admin chọn — dùng để tra giá từ room_price_configs */
         @NotNull(message = "Vui lòng chọn gói thuê")
-        Long pricePolicyId
+        Long pricePolicyId,
+
+        /** Phương thức thanh toán: "CASH", "SEPAY", "PAY_AT_CHECKIN". */
+        String paymentMethod
 ) {
+    public AdminDirectBookingRequest(
+            String fullName,
+            String phone,
+            String email,
+            String address,
+            LocalDate dateOfBirth,
+            String identityDocumentNumber,
+            List<AdminDirectBookingRoomRequest> rooms,
+            LocalDateTime checkInTarget,
+            LocalDateTime checkOutTarget,
+            String rentType,
+            Long pricePolicyId
+    ) {
+        this(fullName, phone, email, address, dateOfBirth, identityDocumentNumber, rooms, checkInTarget, checkOutTarget, rentType, pricePolicyId, "SEPAY");
+    }
 }

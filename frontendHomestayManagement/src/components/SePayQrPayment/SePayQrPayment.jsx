@@ -17,8 +17,35 @@ function SePayQrPayment({
 }) {
   const [state, setState] = useState('waiting')
   const [error, setError] = useState('')
+  const [checking, setChecking] = useState(false)
   const authorization = headers?.Authorization
   const contentType = headers?.['Content-Type']
+
+  const checkPaymentNow = async () => {
+    if (!statusUrl) return
+    setChecking(true)
+    setError('')
+    try {
+      const response = await fetch(statusUrl, {
+        headers: {
+          ...(authorization ? { Authorization: authorization } : {}),
+          ...(contentType ? { 'Content-Type': contentType } : {}),
+        },
+      })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(data.message || 'Không thể kiểm tra trạng thái thanh toán')
+      if (String(data[statusField] || '').toUpperCase() === successStatus) {
+        setState('success')
+        onSuccess(data)
+      } else {
+        setError('Hệ thống chưa nhận được thanh toán. Nếu đã chuyển khoản thành công, vui lòng chờ 5-10 giây để ngân hàng đồng bộ rồi bấm "Kiểm tra lại giao dịch".')
+      }
+    } catch (err) {
+      setError(err.message || 'Lỗi khi kiểm tra thanh toán')
+    } finally {
+      setChecking(false)
+    }
+  }
 
   useEffect(() => {
     if (!payment || state !== 'waiting') return undefined
@@ -72,7 +99,15 @@ function SePayQrPayment({
             <div className="sepay-shared-layout">
               <div className="sepay-shared-qr">
                 <img src={payment.qrCodeUrl} alt="Mã QR thanh toán SePay" />
-                <small>Đang chờ SePay xác nhận...</small>
+                <small>{checking ? 'Đang kiểm tra giao dịch...' : 'Đang chờ SePay xác nhận...'}</small>
+                <button
+                  type="button"
+                  className="sepay-recheck-btn"
+                  onClick={checkPaymentNow}
+                  disabled={checking}
+                >
+                  {checking ? 'Đang kiểm tra...' : '🔄 Kiểm tra lại giao dịch'}
+                </button>
               </div>
               <dl className="sepay-shared-info">
                 <div><dt>Số tiền</dt><dd>{formatMoney(payment.amount)}</dd></div>

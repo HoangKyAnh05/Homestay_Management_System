@@ -9,11 +9,16 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 @RestController
 @RequestMapping("/api/payments/sepay")
 public class SePayPaymentController {
+
+    private static final Logger log = LoggerFactory.getLogger(SePayPaymentController.class);
 
     private final SePayPaymentService sePayPaymentService;
 
@@ -47,16 +52,24 @@ public class SePayPaymentController {
 
     @PostMapping("/webhook")
     public Map<String, Boolean> webhook(
-            @RequestBody byte[] rawBody,
+            @RequestBody(required = false) byte[] rawBody,
             @RequestHeader(name = "X-SePay-Signature", defaultValue = "") String signature,
-            @RequestHeader(name = "X-SePay-Timestamp", defaultValue = "") String timestamp
+            @RequestHeader(name = "X-SePay-Timestamp", defaultValue = "") String timestamp,
+            @RequestHeader(name = "Authorization", defaultValue = "") String authorization
     ) {
-        sePayPaymentService.handleWebhook(rawBody, signature, timestamp);
+        log.info("Received SePay webhook: signature={}, timestamp={}, authPresent={}, bodyLength={}",
+                signature, timestamp, !authorization.isBlank(), rawBody != null ? rawBody.length : 0);
+        if (rawBody != null && rawBody.length > 0) {
+            log.info("SePay webhook payload: {}", new String(rawBody, StandardCharsets.UTF_8));
+        }
+        sePayPaymentService.handleWebhook(rawBody, signature, timestamp, authorization);
+        log.info("SePay webhook processed successfully");
         return Map.of("success", true);
     }
 
     @ExceptionHandler({IllegalArgumentException.class, IllegalStateException.class})
     public ResponseEntity<Map<String, String>> handleBadRequest(RuntimeException exception) {
+        log.warn("SePay webhook error: {}", exception.getMessage(), exception);
         return ResponseEntity.badRequest().body(Map.of("message", exception.getMessage()));
     }
 }

@@ -28,8 +28,8 @@ function ArticleReviewModal({ article, onClose, onBookRoom }) {
   };
 
   return (
-    <div className="arm-overlay" onClick={onClose} role="dialog" aria-modal="true">
-      <div className="arm-modal" onClick={(e) => e.stopPropagation()}>
+    <div className="arm-article-overlay" onClick={onClose} role="dialog" aria-modal="true">
+      <div className="arm-article-modal" onClick={(e) => e.stopPropagation()}>
         {/* Close button */}
         <button className="arm-close-btn" onClick={onClose} aria-label="Đóng bài viết">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">

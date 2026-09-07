@@ -37,5 +37,16 @@ public class OtpTokenRepository {
 
         @Builder.Default
         private boolean used = false;
+
+        @Builder.Default
+        private int failedAttempts = 0;
+
+        public int incrementFailedAttempts() {
+            return ++this.failedAttempts;
+        }
+
+        public void resetFailedAttempts() {
+            this.failedAttempts = 0;
+        }
     }
 }

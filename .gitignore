@@ -158,3 +158,6 @@ dist-electron/
 out/
 **/out/
 tool_remotion/.git_backup/
+homestayManagement/exports/
+homestayManagement/invoive/
+homestayManagement/uploads/

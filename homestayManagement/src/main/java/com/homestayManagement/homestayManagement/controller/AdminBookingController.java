@@ -161,6 +161,19 @@ public class AdminBookingController {
         return identityOcrService.extractIdentity(imageFront, imageBack);
     }
 
+    @PostMapping(value = "/identity-ocr", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public IdentityOcrResponse scanIdentityDocumentStandalone(
+            @RequestPart("image_front") MultipartFile imageFront,
+            @RequestPart("image_back") MultipartFile imageBack
+    ) {
+        return identityOcrService.extractIdentity(imageFront, imageBack);
+    }
+
+    @PostMapping("/{bookingId}/confirm-cash-payment")
+    public AdminBookingDetailResponse confirmCashPayment(@PathVariable Long bookingId) {
+        return adminBookingService.confirmDirectCashPayment(bookingId);
+    }
+
     @PostMapping("/details/{bookingDetailId}/check-out")
     public AdminBookingDetailResponse checkOut(@PathVariable Long bookingDetailId) {
         return adminBookingService.checkOut(bookingDetailId);
