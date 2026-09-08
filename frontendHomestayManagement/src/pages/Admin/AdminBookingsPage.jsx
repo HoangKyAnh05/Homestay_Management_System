@@ -1394,6 +1394,9 @@ function DirectBookingModal({ onClose, onCreated }) {
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.message || 'Không thể trích xuất thông tin căn cước')
+      if (!data.identityDocumentNumber && !data.fullName) {
+        throw new Error('Ảnh tải lên không đúng nhận dạng (form CCCD) hoặc hình ảnh không rõ nét. Vui lòng kiểm tra lại ảnh chụp rõ mặt trước và mặt sau thẻ Căn cước công dân!')
+      }
 
       setForm(prev => ({
         ...prev,
@@ -1404,7 +1407,7 @@ function DirectBookingModal({ onClose, onCreated }) {
       }))
       setOcrNotice('✓ Đã trích xuất thông tin CCCD thành công! Vui lòng kiểm tra lại họ tên, số CCCD, ngày sinh và địa chỉ.')
     } catch (err) {
-      setError(`Lỗi quét CCCD: ${err.message}. Bạn vẫn có thể tự nhập thông tin vào các ô bên dưới.`)
+      setError(`⚠️ Lỗi quét CCCD: ${err.message}. Bạn vẫn có thể tự nhập thông tin vào các ô bên dưới.`)
     } finally {
       setOcrLoading(false)
     }

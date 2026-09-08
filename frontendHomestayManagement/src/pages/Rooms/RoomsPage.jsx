@@ -479,15 +479,15 @@ function validateBookingTime(form) {
 
 function rentTypeLabel(rentType) {
   const labels = {
-    OVERNIGHT: 'đêm',
-    NIGHTLY: 'đêm',
-    BY_NIGHT: 'đêm',
+    OVERNIGHT: '2 ngày 1 đêm',
+    NIGHTLY: '2 ngày 1 đêm',
+    BY_NIGHT: '2 ngày 1 đêm',
     DAILY: 'ngày',
     BY_DAY: 'ngày',
     HOURLY: 'giờ',
     COMBO: 'combo',
   }
-  return labels[String(rentType || '').toUpperCase()] || 'đêm'
+  return labels[String(rentType || '').toUpperCase()] || '2 ngày 1 đêm'
 }
 
 function depositLabel(room) {
@@ -592,6 +592,7 @@ function PublicHeader() {
           {isOpen && (
             <div className="home-user-dropdown">
               <a href="/wishlist" onClick={(e) => { e.preventDefault(); setIsOpen(false); window.location.assign('/wishlist'); }}>Danh sách yêu thích</a>
+              <a href="/vouchers" onClick={(e) => { e.preventDefault(); setIsOpen(false); window.location.assign('/vouchers'); }}>Kho mã giảm giá</a>
               <a href="/booking-history" onClick={(e) => { e.preventDefault(); setIsOpen(false); window.location.assign('/booking-history'); }}>Lịch sử đặt phòng</a>
               <a href="/profile" onClick={(e) => { e.preventDefault(); setIsOpen(false); window.location.assign('/profile'); }}>Thông tin cá nhân</a>
               <button type="button" onClick={handleLogout}>Đăng xuất</button>
@@ -1014,6 +1015,8 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
   const [checkingSchedule, setCheckingSchedule] = useState(false)
   const [scheduleError, setScheduleError] = useState('')
   const [scheduleNotice, setScheduleNotice] = useState('')
+  const [roomSchedules, setRoomSchedules] = useState([])
+  const [viewingScheduleRoom, setViewingScheduleRoom] = useState(null)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [paymentSummary, setPaymentSummary] = useState(null)
@@ -1204,6 +1207,7 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
           .catch(() => ({ room, busySlots: [] }))
       }))
         .then((items) => {
+          setRoomSchedules(items)
           const conflict = items.find((item) => findOverlappingSlot(item.busySlots, form.checkInTarget, form.checkOutTarget))
           if (conflict) {
             setScheduleError(`${houseTypeName(conflict.room, 'Loại phòng này')} đã có lịch đặt trong khung giờ này. Vui lòng chọn giờ khác.`)
@@ -1409,6 +1413,39 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
       setError(`Loại phòng ${houseTypeName(unavailableRoom)} hiện đang bảo trì hoặc tạm thời hết phòng, vui lòng chọn phòng khác.`)
       return
     }
+
+    // Kiểm tra chi tiết các trường thông tin khách hàng
+    if (!form.fullName?.trim()) {
+      setError('Vui lòng nhập họ và tên khách hàng.')
+      return
+    }
+    if (!form.phone?.trim()) {
+      setError('Vui lòng nhập số điện thoại liên hệ.')
+      return
+    }
+    const phoneDigits = form.phone.trim().replace(/\D/g, '')
+    if (phoneDigits.length < 10 || phoneDigits.length > 11) {
+      setError('Số điện thoại không hợp lệ (phải bao gồm 10 chữ số, ví dụ: 0912345678).')
+      return
+    }
+    if (!form.email?.trim()) {
+      setError('Vui lòng nhập địa chỉ email.')
+      return
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
+      setError('Địa chỉ email không đúng định dạng (ví dụ: khachhang@gmail.com).')
+      return
+    }
+    if (!form.identityDocumentNumber?.trim()) {
+      setError('Vui lòng nhập số Căn cước công dân (CCCD).')
+      return
+    }
+    const idDigits = form.identityDocumentNumber.trim().replace(/\D/g, '')
+    if (idDigits.length !== 12) {
+      setError('Số Căn cước công dân (CCCD) phải bao gồm đúng 12 chữ số.')
+      return
+    }
+
     if (timeError) {
       setError(timeError)
       return
@@ -1564,12 +1601,12 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
           <section>
             <h3>Thông tin khách hàng</h3>
             <div className="public-booking-grid">
-              <label><span>Họ tên</span><input required value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} /></label>
-              <label><span>Số điện thoại</span><input required value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></label>
-              <label><span>Email</span><input type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></label>
+              <label><span>Họ tên *</span><input required placeholder="VD: Nguyễn Văn An" value={form.fullName} onChange={(e) => { setError(''); setForm({ ...form, fullName: e.target.value }) }} /></label>
+              <label><span>Số điện thoại *</span><input required placeholder="VD: 0912345678" value={form.phone} onChange={(e) => { setError(''); setForm({ ...form, phone: e.target.value.replace(/[^\d+]/g, '').slice(0, 11) }) }} /></label>
+              <label><span>Email *</span><input type="email" required placeholder="VD: email@example.com" value={form.email} onChange={(e) => { setError(''); setForm({ ...form, email: e.target.value }) }} /></label>
               <label><span>Ngày sinh</span><input type="date" value={form.dateOfBirth} onChange={(e) => setForm({ ...form, dateOfBirth: e.target.value })} /></label>
-              <label><span>Căn cước công dân</span><input required value={form.identityDocumentNumber} onChange={(e) => setForm({ ...form, identityDocumentNumber: e.target.value })} /></label>
-              <label className="public-booking-wide"><span>Địa chỉ</span><input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} /></label>
+              <label><span>Căn cước công dân *</span><input required maxLength={12} placeholder="Đủ 12 chữ số CCCD" value={form.identityDocumentNumber} onChange={(e) => { setError(''); setForm({ ...form, identityDocumentNumber: e.target.value.replace(/\D/g, '').slice(0, 12) }) }} /></label>
+              <label className="public-booking-wide"><span>Địa chỉ</span><input placeholder="Địa chỉ thường trú" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} /></label>
             </div>
           </section>
 
@@ -1601,9 +1638,9 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
               </label>
             </div>
             {timeError && <p className="public-booking-field-error">{timeError}</p>}
-            <div style={{ marginTop: 10, padding: '10px 14px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0', color: '#1e293b', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ marginTop: 10, padding: '10px 14px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0', color: '#1e293b', fontSize: 13, display: 'flex', alignItems: 'center' }}>
               <span>
-                Thời gian lưu trú: <strong style={{ color: '#0f172a' }}>{stayBreakdown.totalNights} đêm</strong>
+                Thời gian lưu trú: <strong style={{ color: '#0f172a' }}>{stayBreakdown.totalNights === 1 ? '2 ngày 1 đêm' : `${stayBreakdown.totalNights + 1} ngày ${stayBreakdown.totalNights} đêm`}</strong>
                 {stayBreakdown.weekendNights > 0 ? (
                   <span style={{ marginLeft: 6, color: '#64748b' }}>
                     ({stayBreakdown.weekdayNights} đêm thường + <strong style={{ color: '#ea580c' }}>{stayBreakdown.weekendNights} đêm Thứ 7/CN</strong>)
@@ -1612,7 +1649,6 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
                   <span style={{ marginLeft: 6, color: '#64748b' }}>(Giá ngày thường)</span>
                 )}
               </span>
-              <span style={{ fontSize: 12, color: '#94a3b8' }}>* Nhận phòng: 14:00 · Trả phòng: 12:00</span>
             </div>
           </section>
 
@@ -1624,6 +1660,32 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
                   <div>
                     <strong>{houseTypeName(room)}</strong>
                     <span>{houseTypeName(room)} · tối đa {room.maxAdults || 0} NL · {room.maxChildren || 0} TE</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
+                      {(() => {
+                        const sched = roomSchedules.find((item) => roomKey(item.room) === roomKey(room))
+                        const hasConflict = sched && findOverlappingSlot(sched.busySlots, form.checkInTarget, form.checkOutTarget)
+                        return (
+                          <>
+                            {hasConflict ? (
+                              <span style={{ fontSize: 11, background: '#fee2e2', color: '#dc2626', padding: '2px 8px', borderRadius: 4, fontWeight: 600 }}>
+                                ⚠️ Đã kín lịch khung giờ này
+                              </span>
+                            ) : (
+                              <span style={{ fontSize: 11, background: '#dcfce7', color: '#16a34a', padding: '2px 8px', borderRadius: 4, fontWeight: 600 }}>
+                                ✓ Khung giờ này còn trống
+                              </span>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => setViewingScheduleRoom(sched || { room, busySlots: [] })}
+                              style={{ fontSize: 11, background: 'none', border: 'none', color: '#0284c7', cursor: 'pointer', textDecoration: 'underline', padding: 0 }}
+                            >
+                              📅 Xem lịch đặt
+                            </button>
+                          </>
+                        )
+                      })()}
+                    </div>
                   </div>
                   <b>{formatPrice(roomPriceItems.find((item) => roomKey(item.room) === roomKey(room))?.price || roomPrice(room))}{isHourlyPolicy(selectedPolicy) && <small>/giờ</small>}</b>
                   <label className="room-quantity-field">
@@ -1811,7 +1873,12 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
           )}
         </div>
 
-        {error && <div className="public-booking-error">{error}</div>}
+        {error && (
+          <div className="public-booking-error" style={{ padding: '12px 16px', borderRadius: 8, background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', fontWeight: 600, fontSize: 13, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span>⚠️</span>
+            <span>{error}</span>
+          </div>
+        )}
         {checkingSchedule && <div className="public-booking-warning">Đang kiểm tra lịch phòng...</div>}
         {scheduleError && <div className="public-booking-warning">{scheduleError}</div>}
         {scheduleNotice && <div className="public-booking-search-note">{scheduleNotice}</div>}
@@ -1826,8 +1893,47 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
 
         <div className="public-booking-actions">
           <button type="button" onClick={onClose}>Hủy</button>
-          <button type="submit" disabled={submitting || loadingMeta || checkingSchedule || Boolean(timeError) || Boolean(scheduleError) || !availablePolicies.length}>{submitting ? 'Đang tạo...' : 'Tạo đơn đặt phòng'}</button>
+          <button type="submit" disabled={submitting || loadingMeta}>{submitting ? 'Đang tạo...' : 'Tạo đơn đặt phòng'}</button>
         </div>
+
+        {viewingScheduleRoom && (
+          <div className="public-booking-overlay" style={{ zIndex: 1200 }} onClick={() => setViewingScheduleRoom(null)}>
+            <div className="public-booking-modal" style={{ maxWidth: '480px' }} onClick={(e) => e.stopPropagation()}>
+              <div className="public-booking-head">
+                <div>
+                  <h3>Lịch đặt phòng - {houseTypeName(viewingScheduleRoom.room)}</h3>
+                  <p>Các khung giờ đã có khách đặt trước trong khoảng thời gian này</p>
+                </div>
+                <button type="button" onClick={() => setViewingScheduleRoom(null)}>×</button>
+              </div>
+              <div style={{ padding: '20px', maxHeight: '350px', overflowY: 'auto' }}>
+                {viewingScheduleRoom.busySlots?.length > 0 ? (
+                  <div>
+                    <p style={{ margin: '0 0 12px 0', fontSize: 13, color: '#64748b' }}>
+                      Các khung giờ sau đã được đặt, bạn vui lòng chọn giờ nhận/trả phòng khác để không bị trùng:
+                    </p>
+                    <ul style={{ paddingLeft: 18, margin: 0, lineHeight: 1.8 }}>
+                      {viewingScheduleRoom.busySlots.map((slot, idx) => (
+                        <li key={idx} style={{ color: '#b91c1c', fontSize: 13, marginBottom: 8 }}>
+                          <strong>Từ:</strong> {formatNoticeTime(slot.checkInTarget)}<br />
+                          <strong>Đến:</strong> {formatNoticeTime(slot.checkOutTarget)}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : (
+                  <div style={{ textAlign: 'center', color: '#16a34a', padding: '20px 0' }}>
+                    <p style={{ fontSize: 20, margin: '0 0 6px 0' }}>✓ Phòng hoàn toàn trống</p>
+                    <p style={{ fontSize: 13, color: '#64748b', margin: 0 }}>Chưa có lượt đặt nào trong thời gian này, bạn có thể yên tâm chọn giờ!</p>
+                  </div>
+                )}
+              </div>
+              <div className="public-booking-actions" style={{ padding: '12px 20px', borderTop: '1px solid #e2e8f0' }}>
+                <button type="button" onClick={() => setViewingScheduleRoom(null)}>Đóng</button>
+              </div>
+            </div>
+          </div>
+        )}
       </form>
     </div>
   )

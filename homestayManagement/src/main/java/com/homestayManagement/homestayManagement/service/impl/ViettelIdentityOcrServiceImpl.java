@@ -195,12 +195,17 @@ public class ViettelIdentityOcrServiceImpl implements IdentityOcrService {
             information = objectMapper.readTree(information.asText());
         }
         if (information.isMissingNode() || information.isNull()) {
-            throw new IllegalArgumentException("Viettel AI OCR không trả về thông tin căn cước");
+            throw new IllegalArgumentException("Ảnh tải lên không đúng nhận dạng (form CCCD). Viettel AI OCR không tìm thấy thông tin căn cước");
+        }
+        String name = text(information, "name");
+        String idNumber = onlyDigits(text(information, "id"));
+        if ((name == null || name.isBlank()) && (idNumber == null || idNumber.isBlank())) {
+            throw new IllegalArgumentException("Ảnh tải lên không đúng nhận dạng (form CCCD) hoặc hình ảnh không rõ nét. Vui lòng tải lại ảnh chụp rõ ràng mặt trước và mặt sau thẻ Căn cước công dân!");
         }
         JsonNode confidence = information.path("confidence");
         return new IdentityOcrResponse(
-                text(information, "name"),
-                onlyDigits(text(information, "id")),
+                name,
+                idNumber,
                 parseDate(text(information, "birthday")),
                 normalizeGender(text(information, "sex")),
                 firstNonBlank(text(information, "nationality"), "VIETNAM"),

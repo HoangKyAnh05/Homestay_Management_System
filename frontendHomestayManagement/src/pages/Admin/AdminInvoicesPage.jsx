@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { getStoredToken } from '../../services/authService'
 import { formatDateTime as formatAppDateTime } from '../../utils/dateTimeFormat'
 import AdminLayout from './AdminLayout'
@@ -58,7 +58,7 @@ function hasInvoiceVoucher(invoice) {
   return Boolean(invoice?.voucherCode) || Number(invoice?.roomDiscountAmount || 0) > 0
 }
 
-function InvoiceDetailModal({ invoice, onClose }) {
+function InvoiceDetailModal({ invoice, onClose, onExportExcel, exporting }) {
   return (
     <div className="ain-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="ain-modal">
@@ -67,7 +67,17 @@ function InvoiceDetailModal({ invoice, onClose }) {
             <h3>Hóa đơn #{invoice.id}</h3>
             <p>Booking {bookingDisplay(invoice)} · {invoice.customerName}</p>
           </div>
-          <button type="button" className="ain-modal-close" onClick={onClose}>×</button>
+          <div className="ain-modal-actions">
+            <button
+              type="button"
+              className="ain-modal-excel-btn"
+              onClick={() => onExportExcel({ invoiceId: invoice.id })}
+              disabled={exporting}
+            >
+              {exporting ? 'Đang tải...' : '📊 Tải hóa đơn Excel'}
+            </button>
+            <button type="button" className="ain-modal-close" onClick={onClose}>×</button>
+          </div>
         </div>
 
         <div className="ain-modal-body">
@@ -154,6 +164,8 @@ function InvoiceDetailModal({ invoice, onClose }) {
 function AdminInvoicesPage() {
   const [invoices, setInvoices] = useState([])
   const [loading, setLoading] = useState(true)
+  const [exporting, setExporting] = useState(false)
+  const [showExportMenu, setShowExportMenu] = useState(false)
   const [search, setSearch] = useState('')
   const [methodFilter, setMethodFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
@@ -163,6 +175,18 @@ function AdminInvoicesPage() {
 
   const [fromDate, setFromDate] = useState('')
   const [toDate, setToDate] = useState('')
+  const [datePreset, setDatePreset] = useState('')
+  const exportMenuRef = useRef(null)
+
+  useEffect(() => {
+    const handleClickOutside = event => {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(event.target)) {
+        setShowExportMenu(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   const fetchInvoices = () => {
     setLoading(true)
@@ -181,6 +205,53 @@ function AdminInvoicesPage() {
   useEffect(() => {
     fetchInvoices()
   }, [])
+
+  const handleExportExcel = async (params = {}) => {
+    try {
+      setExporting(true)
+      setError('')
+      const query = new URLSearchParams()
+      if (params.invoiceId) query.append('invoiceId', params.invoiceId)
+      if (params.bookingId) query.append('bookingId', params.bookingId)
+      if (params.fromDate) query.append('fromDate', params.fromDate)
+      if (params.toDate) query.append('toDate', params.toDate)
+
+      const url = `${API}/export-excel${query.toString() ? `?${query.toString()}` : ''}`
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${getStoredToken()}` }
+      })
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}))
+        throw new Error(errData.message || 'Không thể xuất file Excel')
+      }
+
+      const disposition = res.headers.get('content-disposition')
+      let filename = 'Hoa_Don_Homestay.xlsx'
+      if (disposition) {
+        const utfMatch = disposition.match(/filename\*=UTF-8''([^;]+)/i)
+        if (utfMatch && utfMatch[1]) {
+          filename = decodeURIComponent(utfMatch[1])
+        } else {
+          const match = disposition.match(/filename="?([^";]+)"?/i)
+          if (match && match[1]) filename = match[1]
+        }
+      }
+
+      const blob = await res.blob()
+      const downloadUrl = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = downloadUrl
+      a.download = filename
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      window.URL.revokeObjectURL(downloadUrl)
+    } catch (err) {
+      setError(err.message || 'Lỗi khi xuất file Excel')
+    } finally {
+      setExporting(false)
+    }
+  }
 
   const filteredInvoices = useMemo(() => {
     const keyword = search.trim().toLowerCase()
@@ -223,13 +294,58 @@ function AdminInvoicesPage() {
     setPage(1)
   }
 
+  const applyDatePreset = (preset) => {
+    setDatePreset(preset)
+    setPage(1)
+    if (!preset) {
+      setFromDate('')
+      setToDate('')
+      return
+    }
+    const now = new Date()
+    const year = now.getFullYear()
+    const month = now.getMonth()
+    const pad = (n) => String(n).padStart(2, '0')
+    const toYMD = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+
+    if (preset === 'TODAY') {
+      const todayStr = toYMD(now)
+      setFromDate(todayStr)
+      setToDate(todayStr)
+    } else if (preset === 'THIS_MONTH') {
+      const start = new Date(year, month, 1)
+      const end = new Date(year, month + 1, 0)
+      setFromDate(toYMD(start))
+      setToDate(toYMD(end))
+    } else if (preset === 'LAST_MONTH') {
+      const start = new Date(year, month - 1, 1)
+      const end = new Date(year, month, 0)
+      setFromDate(toYMD(start))
+      setToDate(toYMD(end))
+    } else if (preset === 'THIS_QUARTER') {
+      const q = Math.floor(month / 3)
+      const start = new Date(year, q * 3, 1)
+      const end = new Date(year, q * 3 + 3, 0)
+      setFromDate(toYMD(start))
+      setToDate(toYMD(end))
+    } else if (preset === 'THIS_YEAR') {
+      setFromDate(`${year}-01-01`)
+      setToDate(`${year}-12-31`)
+    } else if (preset === 'LAST_YEAR') {
+      setFromDate(`${year - 1}-01-01`)
+      setToDate(`${year - 1}-12-31`)
+    }
+  }
+
   const changeFromDate = event => {
     setFromDate(event.target.value)
+    setDatePreset('')
     setPage(1)
   }
 
   const changeToDate = event => {
     setToDate(event.target.value)
+    setDatePreset('')
     setPage(1)
   }
 
@@ -239,6 +355,7 @@ function AdminInvoicesPage() {
     setStatusFilter('')
     setFromDate('')
     setToDate('')
+    setDatePreset('')
     setPage(1)
   }
 
@@ -249,7 +366,52 @@ function AdminInvoicesPage() {
           <h1>Quản lý Hóa đơn</h1>
           <p>Tra cứu lịch sử hóa đơn tổng của các đoàn và trạng thái thanh toán.</p>
         </div>
-        <div style={{ display: 'flex', gap: '8px' }}>
+        <div style={{ display: 'flex', gap: '8px', position: 'relative' }}>
+          <div className="ain-export-dropdown" ref={exportMenuRef}>
+            <button
+              type="button"
+              className="ain-btn-excel"
+              onClick={() => setShowExportMenu(prev => !prev)}
+              disabled={exporting}
+              title="Xuất dữ liệu hóa đơn ra file Excel"
+            >
+              {exporting ? 'Đang xuất...' : '📊 Xuất Excel ▾'}
+            </button>
+            {showExportMenu && (
+              <div className="ain-export-menu">
+                <button
+                  type="button"
+                  className="ain-export-item"
+                  onClick={() => {
+                    setShowExportMenu(false)
+                    handleExportExcel({ fromDate, toDate })
+                  }}
+                >
+                  <strong>📅 Xuất theo bộ lọc ngày</strong>
+                  <span>
+                    {fromDate && toDate
+                      ? `Từ ${fromDate} đến ${toDate}`
+                      : fromDate
+                      ? `Từ ${fromDate}`
+                      : toDate
+                      ? `Đến ${toDate}`
+                      : 'Chưa chọn ngày (xuất toàn bộ)'}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  className="ain-export-item"
+                  onClick={() => {
+                    setShowExportMenu(false)
+                    handleExportExcel()
+                  }}
+                >
+                  <strong>📂 Xuất toàn bộ tất cả hóa đơn</strong>
+                  <span>Tải xuống danh sách toàn bộ lịch sử hóa đơn</span>
+                </button>
+              </div>
+            )}
+          </div>
           <button
             type="button"
             onClick={fetchInvoices}
@@ -282,6 +444,48 @@ function AdminInvoicesPage() {
         <div><span>Voucher đã giảm</span><strong style={{ color: '#2563eb' }}>{formatMoney(voucherDiscountAmount)}</strong></div>
       </div>
 
+      {/* Nút lọc nhanh thời gian gần nhất */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '14px', padding: '4px 0' }}>
+        <span style={{ fontSize: '13px', fontWeight: 700, color: '#374151', display: 'flex', alignItems: 'center', gap: '5px' }}>
+          ⏱️ Lọc thời gian:
+        </span>
+        {[
+          { key: '', label: 'Tất cả' },
+          { key: 'TODAY', label: '⚡ Hôm nay' },
+          { key: 'THIS_MONTH', label: '📅 Tháng này' },
+          { key: 'LAST_MONTH', label: '⏪ Tháng trước' },
+          { key: 'THIS_YEAR', label: '🗓️ Năm nay' },
+          { key: 'LAST_YEAR', label: '⏮️ Năm trước' },
+        ].map(item => {
+          const isActive = datePreset === item.key || (!item.key && !datePreset && !fromDate && !toDate)
+          return (
+            <button
+              key={item.key}
+              type="button"
+              onClick={() => applyDatePreset(item.key)}
+              style={{
+                height: '32px',
+                padding: '0 12px',
+                borderRadius: '20px',
+                border: isActive ? '1px solid #166534' : '1px solid #d1d5db',
+                background: isActive ? '#166534' : '#ffffff',
+                color: isActive ? '#ffffff' : '#374151',
+                fontSize: '12.5px',
+                fontWeight: isActive ? 700 : 500,
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+                boxShadow: isActive ? '0 2px 4px rgba(22, 101, 52, 0.2)' : 'none'
+              }}
+            >
+              {item.label}
+            </button>
+          )
+        })}
+      </div>
+
       <div className="ain-toolbar" style={{ alignItems: 'center' }}>
         <input className="ain-search" value={search} onChange={changeSearch} placeholder="Tìm mã hóa đơn, booking, khách hàng..." />
         <select className="ain-select" value={methodFilter} onChange={changeMethodFilter}>
@@ -297,6 +501,20 @@ function AdminInvoicesPage() {
           <option value="SUCCESS">Thành công</option>
           <option value="FAILED">Thất bại</option>
           <option value="PENDING">Đang chờ</option>
+        </select>
+        <select
+          className="ain-select"
+          value={datePreset}
+          onChange={(e) => applyDatePreset(e.target.value)}
+          style={{ minWidth: '135px', fontWeight: datePreset ? 600 : 400, color: datePreset ? '#0284c7' : 'inherit' }}
+          title="Lọc nhanh thời gian: Năm nay, năm trước, tháng này, tháng trước"
+        >
+          <option value="">Tùy chọn ngày</option>
+          <option value="THIS_MONTH">📅 Tháng này</option>
+          <option value="LAST_MONTH">⏪ Tháng trước</option>
+          <option value="THIS_YEAR">🗓️ Năm nay</option>
+          <option value="LAST_YEAR">⏮️ Năm trước</option>
+          <option value="TODAY">⚡ Hôm nay</option>
         </select>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <input
@@ -389,9 +607,20 @@ function AdminInvoicesPage() {
                   <td><span className={statusClass(invoice.latestPaymentStatus)}>{statusLabel(invoice.latestPaymentStatus)}</span></td>
                   <td>{formatAppDateTime(invoice.createdAt)}</td>
                   <td>
-                    <button type="button" className="ain-detail-btn" onClick={() => setDetailInvoice(invoice)}>
-                      Chi tiết
-                    </button>
+                    <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
+                      <button type="button" className="ain-detail-btn" onClick={() => setDetailInvoice(invoice)}>
+                        Chi tiết
+                      </button>
+                      <button
+                        type="button"
+                        className="ain-excel-btn"
+                        title="Xuất Excel hóa đơn này"
+                        onClick={() => handleExportExcel({ invoiceId: invoice.id })}
+                        disabled={exporting}
+                      >
+                        📊 Excel
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -422,7 +651,14 @@ function AdminInvoicesPage() {
         </nav>
       )}
 
-      {detailInvoice && <InvoiceDetailModal invoice={detailInvoice} onClose={() => setDetailInvoice(null)} />}
+      {detailInvoice && (
+        <InvoiceDetailModal
+          invoice={detailInvoice}
+          onClose={() => setDetailInvoice(null)}
+          onExportExcel={handleExportExcel}
+          exporting={exporting}
+        />
+      )}
     </AdminLayout>
   )
 }

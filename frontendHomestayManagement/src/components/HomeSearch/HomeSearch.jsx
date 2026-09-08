@@ -72,7 +72,8 @@ function isBetweenDates(date, startDate, endDate) {
   return date > startDate && date < endDate
 }
 
-function CounterRow({ label, hint, value, min, onDecrease, onIncrease }) {
+function CounterRow({ label, hint, value, min, max, onDecrease, onIncrease, disabledIncreaseReason }) {
+  const isMax = max !== undefined && value >= max
   return (
     <div className="guest-counter-row">
       <div>
@@ -84,7 +85,13 @@ function CounterRow({ label, hint, value, min, onDecrease, onIncrease }) {
           -
         </button>
         <b>{value}</b>
-        <button type="button" onClick={onIncrease} aria-label={`Tăng ${label}`}>
+        <button
+          type="button"
+          disabled={isMax}
+          onClick={onIncrease}
+          aria-label={`Tăng ${label}`}
+          title={isMax && disabledIncreaseReason ? disabledIncreaseReason : undefined}
+        >
           +
         </button>
       </div>
@@ -195,6 +202,42 @@ function HomeSearch({ onSearch, isSearching = false }) {
   const [adults, setAdults] = useState(2)
   const [children, setChildren] = useState(0)
   const [dateError, setDateError] = useState('')
+
+  const MAX_ROOMS = 10
+  const MAX_ADULTS_PER_ROOM = 4
+  const MAX_CHILDREN_PER_ROOM = 2
+
+  const maxAdults = rooms * MAX_ADULTS_PER_ROOM
+  const maxChildren = rooms * MAX_CHILDREN_PER_ROOM
+
+  const handleDecreaseRooms = () => {
+    setRooms((current) => {
+      const nextRooms = Math.max(1, current - 1)
+      setAdults((prev) => Math.max(nextRooms, Math.min(prev, nextRooms * MAX_ADULTS_PER_ROOM)))
+      setChildren((prev) => Math.min(prev, nextRooms * MAX_CHILDREN_PER_ROOM))
+      return nextRooms
+    })
+  }
+
+  const handleIncreaseRooms = () => {
+    setRooms((current) => Math.min(MAX_ROOMS, current + 1))
+  }
+
+  const handleDecreaseAdults = () => {
+    setAdults((current) => Math.max(rooms, current - 1))
+  }
+
+  const handleIncreaseAdults = () => {
+    setAdults((current) => Math.min(maxAdults, current + 1))
+  }
+
+  const handleDecreaseChildren = () => {
+    setChildren((current) => Math.max(0, current - 1))
+  }
+
+  const handleIncreaseChildren = () => {
+    setChildren((current) => Math.min(maxChildren, current + 1))
+  }
 
   const visibleMonths = useMemo(() => {
     const baseDate = checkInDate || new Date()
@@ -340,27 +383,37 @@ function HomeSearch({ onSearch, isSearching = false }) {
             <div className="guest-dropdown">
               <CounterRow
                 label="Phòng"
+                hint={rooms >= MAX_ROOMS ? `Tối đa ${MAX_ROOMS} phòng / đơn` : undefined}
                 value={rooms}
                 min={1}
-                onDecrease={() => setRooms((current) => Math.max(1, current - 1))}
-                onIncrease={() => setRooms((current) => current + 1)}
+                max={MAX_ROOMS}
+                onDecrease={handleDecreaseRooms}
+                onIncrease={handleIncreaseRooms}
+                disabledIncreaseReason={`Tối đa ${MAX_ROOMS} phòng`}
               />
               <CounterRow
                 label="Người lớn"
-                hint="Từ 18 tuổi trở lên"
+                hint={adults >= maxAdults ? `Tối đa ${maxAdults} người (${MAX_ADULTS_PER_ROOM} người/phòng)` : "Từ 18 tuổi trở lên"}
                 value={adults}
-                min={1}
-                onDecrease={() => setAdults((current) => Math.max(1, current - 1))}
-                onIncrease={() => setAdults((current) => current + 1)}
+                min={rooms}
+                max={maxAdults}
+                onDecrease={handleDecreaseAdults}
+                onIncrease={handleIncreaseAdults}
+                disabledIncreaseReason={`Tối đa ${MAX_ADULTS_PER_ROOM} người lớn / 1 phòng. Vui lòng thêm phòng nếu có thêm khách!`}
               />
               <CounterRow
                 label="Trẻ em"
-                hint="Từ 0-17 tuổi"
+                hint={children >= maxChildren ? `Tối đa ${maxChildren} bé (${MAX_CHILDREN_PER_ROOM} bé/phòng)` : "Từ 0-17 tuổi"}
                 value={children}
                 min={0}
-                onDecrease={() => setChildren((current) => Math.max(0, current - 1))}
-                onIncrease={() => setChildren((current) => current + 1)}
+                max={maxChildren}
+                onDecrease={handleDecreaseChildren}
+                onIncrease={handleIncreaseChildren}
+                disabledIncreaseReason={`Tối đa ${MAX_CHILDREN_PER_ROOM} trẻ em / 1 phòng`}
               />
+              <div style={{ fontSize: '11px', color: '#64748b', marginTop: '6px', textAlign: 'center', borderTop: '1px dashed #e2e8f0', paddingTop: '6px' }}>
+                💡 Quy định: Tối đa {MAX_ADULTS_PER_ROOM} người lớn &amp; {MAX_CHILDREN_PER_ROOM} trẻ em mỗi phòng
+              </div>
             </div>
           )}
         </div>

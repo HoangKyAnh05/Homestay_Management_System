@@ -192,14 +192,28 @@ public class HousekeepingServiceImpl implements HousekeepingService {
         }
 
         Long checkInRecordId = task.getCheckInRecord().getId();
+        // Bảo toàn các mặt hàng nước uống/dịch vụ khách đã mua từ lễ tân (tránh bị housekeeping xóa mất)
+        List<RoomAmenitiesUsage> existingUsages = roomAmenitiesUsageRepository.findByCheckInRecordId(checkInRecordId);
+        Map<Long, Integer> mergedQuantities = new LinkedHashMap<>();
+        for (RoomAmenitiesUsage existing : existingUsages) {
+            if (existing.getItem() != null) {
+                mergedQuantities.put(existing.getItem().getId(), existing.getQuantityUsed() == null ? 0 : existing.getQuantityUsed());
+            }
+        }
+        for (HousekeepingInspectionItemRequest reqItem : requestedItems.values()) {
+            int currentRecorded = mergedQuantities.getOrDefault(reqItem.itemId(), 0);
+            // Housekeeping ghi nhận thêm; không bao giờ giảm bớt hoặc xóa số lượng khách thực tế đã mua
+            mergedQuantities.put(reqItem.itemId(), Math.max(currentRecorded, reqItem.quantityUsed()));
+        }
+
         roomAmenitiesUsageRepository.deleteByCheckInRecordId(checkInRecordId);
         roomAmenitiesUsageRepository.flush();
-        List<RoomAmenitiesUsage> usages = requestedItems.values().stream()
-                .filter(item -> item.quantityUsed() > 0)
-                .map(item -> RoomAmenitiesUsage.builder()
+        List<RoomAmenitiesUsage> usages = mergedQuantities.entrySet().stream()
+                .filter(entry -> entry.getValue() > 0 && catalog.containsKey(entry.getKey()))
+                .map(entry -> RoomAmenitiesUsage.builder()
                         .checkInRecord(task.getCheckInRecord())
-                        .item(catalog.get(item.itemId()))
-                        .quantityUsed(item.quantityUsed())
+                        .item(catalog.get(entry.getKey()))
+                        .quantityUsed(entry.getValue())
                         .build())
                 .toList();
         roomAmenitiesUsageRepository.saveAll(usages);
@@ -393,7 +407,29 @@ public class HousekeepingServiceImpl implements HousekeepingService {
         Set<Long> selectedPenaltyIds = appliedPenaltyRepository.findByBookingDetailIdForAdmin(detail.getId()).stream()
                 .map(penalty -> penalty.getRulesPenalty().getId())
                 .collect(Collectors.toSet());
-        List<HousekeepingPenaltyItemResponse> penaltyItems = rulesPenaltyRepository.findAll().stream()
+        List<RulesPenalty> allRules = rulesPenaltyRepository.findAll();
+        boolean hasOther = allRules.stream()
+                .anyMatch(r -> r.getTitle() != null && (r.getTitle().equalsIgnoreCase("Khoản phạt khác") || r.getTitle().toLowerCase().contains("phạt khác")));
+        if (!hasOther) {
+            try {
+                RulesPenalty otherRule = rulesPenaltyRepository.save(RulesPenalty.builder()
+                        .title("Khoản phạt khác")
+                        .penaltyAmount(BigDecimal.valueOf(50000))
+                        .build());
+                allRules = new ArrayList<>(allRules);
+                allRules.add(otherRule);
+            } catch (Exception ignored) {}
+        } else {
+            for (RulesPenalty r : allRules) {
+                if (r.getTitle() != null && (r.getTitle().equalsIgnoreCase("Khoản phạt khác") || r.getTitle().toLowerCase().contains("phạt khác"))) {
+                    if (r.getPenaltyAmount() == null || r.getPenaltyAmount().compareTo(BigDecimal.valueOf(50000)) != 0) {
+                        r.setPenaltyAmount(BigDecimal.valueOf(50000));
+                        rulesPenaltyRepository.save(r);
+                    }
+                }
+            }
+        }
+        List<HousekeepingPenaltyItemResponse> penaltyItems = allRules.stream()
                 .sorted(Comparator.comparing(RulesPenalty::getTitle, String.CASE_INSENSITIVE_ORDER))
                 .map(rule -> new HousekeepingPenaltyItemResponse(
                         rule.getId(), rule.getTitle(), rule.getPenaltyAmount(), selectedPenaltyIds.contains(rule.getId())

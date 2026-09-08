@@ -77,9 +77,9 @@ function findOverlappingBusySlot(slots, checkInTarget, checkOutTarget) {
 
 function rentTypeLabel(rentType) {
   const labels = {
-    OVERNIGHT: 'Qua đêm',
-    NIGHTLY: 'Qua đêm',
-    BY_NIGHT: 'Qua đêm',
+    OVERNIGHT: '2 ngày 1 đêm',
+    NIGHTLY: '2 ngày 1 đêm',
+    BY_NIGHT: '2 ngày 1 đêm',
     DAILY: 'Theo ngày',
     BY_DAY: 'Theo ngày',
     HOURLY: 'Theo giờ',
@@ -196,6 +196,7 @@ function PublicHeader() {
           {isOpen && (
             <div className="home-user-dropdown">
               <a href="/wishlist" onClick={(e) => { e.preventDefault(); setIsOpen(false); window.location.assign('/wishlist'); }}>Danh sách yêu thích</a>
+              <a href="/vouchers" onClick={(e) => { e.preventDefault(); setIsOpen(false); window.location.assign('/vouchers'); }}>Kho mã giảm giá</a>
               <a href="/booking-history" onClick={(e) => { e.preventDefault(); setIsOpen(false); window.location.assign('/booking-history'); }}>Lịch sử đặt phòng</a>
               <a href="/profile" onClick={(e) => { e.preventDefault(); setIsOpen(false); window.location.assign('/profile'); }}>Thông tin cá nhân</a>
               <button type="button" onClick={handleLogout}>Đăng xuất</button>
@@ -414,6 +415,37 @@ function BookingModal({ room, initialBookingData, onClose, onCreated }) {
     event.preventDefault()
     const token = getStoredToken()
 
+    if (!form.fullName?.trim()) {
+      setError('Vui lòng nhập họ và tên khách hàng.')
+      return
+    }
+    if (!form.phone?.trim()) {
+      setError('Vui lòng nhập số điện thoại liên hệ.')
+      return
+    }
+    const phoneDigits = form.phone.trim().replace(/\D/g, '')
+    if (phoneDigits.length < 10 || phoneDigits.length > 11) {
+      setError('Số điện thoại không hợp lệ (phải bao gồm 10 chữ số, ví dụ: 0912345678).')
+      return
+    }
+    if (!form.email?.trim()) {
+      setError('Vui lòng nhập địa chỉ email.')
+      return
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
+      setError('Địa chỉ email không đúng định dạng (ví dụ: khachhang@gmail.com).')
+      return
+    }
+    if (!form.identityDocumentNumber?.trim()) {
+      setError('Vui lòng nhập số Căn cước công dân (CCCD).')
+      return
+    }
+    const idDigits = form.identityDocumentNumber.trim().replace(/\D/g, '')
+    if (idDigits.length !== 12) {
+      setError('Số Căn cước công dân (CCCD) phải bao gồm đúng 12 chữ số.')
+      return
+    }
+
     setSubmitting(true)
     setError('')
     if (overlappingSlot) {
@@ -541,11 +573,12 @@ function BookingModal({ room, initialBookingData, onClose, onCreated }) {
           <section>
             <h3>Thông tin khách hàng</h3>
             <div className="public-booking-grid">
-              <label><span>Họ tên</span><input required value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} /></label>
-              <label><span>Số điện thoại</span><input required value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></label>
-              <label><span>Email</span><input type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></label>
+              <label><span>Họ tên *</span><input required placeholder="VD: Nguyễn Văn An" value={form.fullName} onChange={(e) => { setError(''); setForm({ ...form, fullName: e.target.value }) }} /></label>
+              <label><span>Số điện thoại *</span><input required placeholder="VD: 0912345678" value={form.phone} onChange={(e) => { setError(''); setForm({ ...form, phone: e.target.value.replace(/[^\d+]/g, '').slice(0, 11) }) }} /></label>
+              <label><span>Email *</span><input type="email" required placeholder="VD: email@example.com" value={form.email} onChange={(e) => { setError(''); setForm({ ...form, email: e.target.value }) }} /></label>
               <label><span>Ngày sinh</span><input type="date" value={form.dateOfBirth} onChange={(e) => setForm({ ...form, dateOfBirth: e.target.value })} /></label>
-              <label className="public-booking-wide"><span>Địa chỉ</span><input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} /></label>
+              <label><span>Căn cước công dân *</span><input required maxLength={12} placeholder="Đủ 12 chữ số CCCD" value={form.identityDocumentNumber || ''} onChange={(e) => { setError(''); setForm({ ...form, identityDocumentNumber: e.target.value.replace(/\D/g, '').slice(0, 12) }) }} /></label>
+              <label className="public-booking-wide"><span>Địa chỉ</span><input placeholder="Địa chỉ thường trú" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} /></label>
             </div>
           </section>
 
@@ -574,7 +607,7 @@ function BookingModal({ room, initialBookingData, onClose, onCreated }) {
             <div style={{ marginTop: 10, padding: '8px 12px', background: '#f8fafc', borderRadius: 6, color: '#334155', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
               <span>📅</span>
               <span>
-                Thời gian lưu trú: <strong>{stayBreakdown.totalNights} đêm</strong>
+                Thời gian lưu trú: <strong>{stayBreakdown.totalNights === 1 ? '2 ngày 1 đêm' : `${stayBreakdown.totalNights + 1} ngày ${stayBreakdown.totalNights} đêm`}</strong>
                 {stayBreakdown.weekendNights > 0 ? (
                   <span style={{ marginLeft: 6, color: '#64748b' }}>
                     ({stayBreakdown.weekdayNights} đêm thường + <strong style={{ color: '#ea580c' }}>{stayBreakdown.weekendNights} đêm Thứ 7/CN</strong>)
@@ -626,9 +659,16 @@ function BookingModal({ room, initialBookingData, onClose, onCreated }) {
           <span>Tổng tạm tính: <strong>{formatMoney(roomPrice + serviceTotal)}</strong></span>
         </div>
 
+        {error && (
+          <div className="public-booking-error" style={{ padding: '12px 16px', borderRadius: 8, background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', fontWeight: 600, fontSize: 13, margin: '12px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span>⚠️</span>
+            <span>{error}</span>
+          </div>
+        )}
+
         <div className="public-booking-actions">
           <button type="button" onClick={onClose}>Hủy</button>
-          <button type="submit" disabled={submitting || loadingMeta || Boolean(overlappingSlot)}>{submitting ? 'Đang tạo...' : 'Tạo đơn đặt phòng'}</button>
+          <button type="submit" disabled={submitting || loadingMeta}>{submitting ? 'Đang tạo...' : 'Tạo đơn đặt phòng'}</button>
         </div>
       </form>
     </div>
@@ -692,40 +732,45 @@ function RoomDetailPage({ roomId }) {
   const [isWishlisted, setIsWishlisted] = useState(false)
   const token = getStoredToken()
 
+  const roomTargetId = room?.roomTypeId || room?.roomId || room?.id || roomId
+
   useEffect(() => {
-    if (!room?.roomTypeId) return
+    if (!roomTargetId) return
     // Fetch public reviews
-    fetch(`${API_BASE_URL}/public/reviews/room-type/${room.roomTypeId}`)
+    fetch(`${API_BASE_URL}/public/reviews/room-type/${roomTargetId}`)
       .then((res) => (res.ok ? res.json() : []))
       .then((data) => setReviews(Array.isArray(data) ? data.filter((r) => (r.status || 'APPROVED').toUpperCase() !== 'HIDDEN') : []))
       .catch(() => setReviews([]))
 
     // Check wishlist status
     if (token) {
-      fetch(`${API_BASE_URL}/customer/wishlist/check/${room.roomTypeId}`, {
+      fetch(`${API_BASE_URL}/customer/wishlist/check/${roomTargetId}`, {
         headers: { Authorization: `Bearer ${token}` },
       })
         .then((res) => (res.ok ? res.json() : false))
         .then(setIsWishlisted)
         .catch(() => {})
     }
-  }, [room?.roomTypeId, token])
+  }, [roomTargetId, token])
 
-  const toggleWishlist = async () => {
+  const toggleWishlist = async (e) => {
+    e?.preventDefault?.()
+    e?.stopPropagation?.()
     if (!token) {
       window.location.assign('/login')
       return
     }
+    if (!roomTargetId) return
     const nextState = !isWishlisted
     setIsWishlisted(nextState)
     try {
-      const res = await fetch(`${API_BASE_URL}/customer/wishlist/toggle/${room.roomTypeId}`, {
+      const res = await fetch(`${API_BASE_URL}/customer/wishlist/toggle/${roomTargetId}`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       })
       const data = await res.json().catch(() => ({}))
-      if (res.ok) {
-        setIsWishlisted(Boolean(data.isWishlisted))
+      if (res.ok && typeof data.isWishlisted === 'boolean') {
+        setIsWishlisted(data.isWishlisted)
       } else {
         setIsWishlisted(!nextState)
       }

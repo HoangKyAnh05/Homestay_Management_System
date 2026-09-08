@@ -1,22 +1,28 @@
 ======================================================================
-     HE THONG HOMESTAY DA TRIEN KHAI THANH CONG TREN VPS (HTTPS 24/7)
+     HỆ THỐNG HOMESTAY ĐÃ TRIỂN KHAI CỐ ĐỊNH TRÊN VPS (HTTPS 24/7)
 ======================================================================
 
- [1] LINK WEB HOMESTAY CHINH THUC (Co SSL HTTPS - O Khoa Xanh):
-     https://homestay-sapa.myvnc.com
-     (Hoac truy cap qua IP: http://14.225.253.234)
+ [1] LINK WEB CỐ ĐỊNH CHÍNH THỨC DỰ ÁN (Có SSL HTTPS - Ổ Khóa Xanh):
+     👉 https://homestay-sapa.myvnc.com
+     (Hoặc: http://homestay-sapa.myvnc.com)
 
- [2] CAU HINH SEPAY WEBHOOK CO DINH (Tren https://my.sepay.vn):
+ [2] CÁC LIÊN KẾT TRUY CẬP TRỰC TIẾP:
+     * Trang chủ Khách hàng:    https://homestay-sapa.myvnc.com/
+     * Đặt phòng & Khám phá:    https://homestay-sapa.myvnc.com/rooms
+     * Quản trị Admin:          https://homestay-sapa.myvnc.com/admin
+     * Quản lý Dịch vụ:         https://homestay-sapa.myvnc.com/admin/services
+     * Remotion Video Studio:   https://homestay-sapa.myvnc.com/admin/marketing/video-editor
+
+ [3] CẤU HÌNH SEPAY WEBHOOK CỐ ĐỊNH (Trên https://my.sepay.vn):
      URL Webhook: https://homestay-sapa.myvnc.com/api/payments/sepay/webhook
-     (Hoac: http://14.225.253.234/api/payments/sepay/webhook)
-     Kieu du lieu: JSON
-     Phuong thuc xac thuc: Chu ky HMAC-SHA256 (hoac API Key)
+     Kiểu dữ liệu: JSON
+     Phương thức xác thực: Chữ ký HMAC-SHA256 (hoặc API Key)
 
- [3] MOI TRUONG MAY CHU VPS:
-     Domain: homestay-sapa.myvnc.com
-     IP: 14.225.253.234 (Datacenter Vietnix, Viet Nam)
-     Chung chi bao mat: Let's Encrypt SSL (HTTPS tu dong gia han)
-     Ha tang: Docker MySQL 8.0, Spring Boot Java 21 (Systemd), Nginx Reverse Proxy
-     Hoat dong doc lap 24/7 khong can bat may tinh ca nhan.
+ [4] MÔI TRƯỜNG MÁY CHỦ VPS:
+     Domain cố định: homestay-sapa.myvnc.com
+     IP: 14.225.253.234 (Datacenter Vietnix, Việt Nam)
+     Chứng chỉ bảo mật: Let's Encrypt SSL (HTTPS tự động gia hạn)
+     Hạ tầng: Docker MySQL 8.0, Spring Boot Java 21, Nginx Reverse Proxy
+     Hoạt động độc lập 24/7 không cần bật máy tính cá nhân.
 
 ======================================================================

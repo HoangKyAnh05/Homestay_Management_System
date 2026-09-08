@@ -2,19 +2,48 @@
 @import '../ForgotPassword/ForgotPasswordPage.css';
 
 .register-shell {
-  height: min(680px, calc(100svh - 56px));
+  height: min(740px, calc(100svh - 40px));
 }
 
 .register-page .form-panel {
-  padding: 34px 56px;
+  padding: 24px 48px 30px;
+  overflow-y: auto;
 }
 
 .register-card {
   width: min(100%, 400px);
 }
 
+.register-top-bar {
+  margin-bottom: 10px;
+}
+
+.register-back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #556254;
+  font-size: 13.5px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.15s ease;
+  padding: 4px 0;
+}
+
+.register-back-link svg {
+  transition: transform 0.15s ease;
+}
+
+.register-back-link:hover {
+  color: #1f4328;
+}
+
+.register-back-link:hover svg {
+  transform: translateX(-3px);
+}
+
 .register-heading {
-  margin-bottom: 24px;
+  margin-bottom: 18px;
 }
 
 .register-form {
@@ -34,8 +63,43 @@
   min-height: 46px;
 }
 
+.cancel-register-button {
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  border-radius: 8px;
+  font: inherit;
+  font-weight: 700;
+  font-size: 14.5px;
+  color: #3b4d3f;
+  background: #f4f6f2;
+  border: 1.5px solid #d5ded3;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.cancel-register-button svg {
+  transition: transform 0.2s ease;
+}
+
+.cancel-register-button:hover {
+  background: #e9efe6;
+  color: #1a3821;
+  border-color: #b3c2b0;
+  box-shadow: 0 2px 6px rgba(31, 67, 40, 0.08);
+}
+
+.cancel-register-button:hover svg {
+  transform: translateX(-3px);
+}
+
 .register-login-text {
-  margin-top: 28px;
+  margin-top: 18px;
 }
 
 @media (max-width: 820px) {

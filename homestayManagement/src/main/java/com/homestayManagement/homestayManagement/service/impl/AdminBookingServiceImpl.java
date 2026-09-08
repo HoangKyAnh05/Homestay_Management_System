@@ -880,6 +880,7 @@ public class AdminBookingServiceImpl implements AdminBookingService {
             throw new IllegalArgumentException("Loại dịch vụ không hợp lệ");
         }
         serviceUsageRepository.save(builder.build());
+        generateInvoice(bookingDetailId);
         return getBookingDetail(bookingDetailId);
     }
 
@@ -889,11 +890,22 @@ public class AdminBookingServiceImpl implements AdminBookingService {
         CheckInRecord record = requireCheckInRecord(bookingDetailId);
         RoomMiniBarItem item = roomMiniBarItemRepository.findById(request.itemId())
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy mini-bar"));
-        roomAmenitiesUsageRepository.save(RoomAmenitiesUsage.builder()
-                .checkInRecord(record)
-                .item(item)
-                .quantityUsed(request.quantity())
-                .build());
+        
+        List<RoomAmenitiesUsage> existing = roomAmenitiesUsageRepository.findByCheckInRecordId(record.getId());
+        RoomAmenitiesUsage matched = existing.stream()
+                .filter(u -> u.getItem() != null && u.getItem().getId().equals(item.getId()))
+                .findFirst().orElse(null);
+        if (matched != null) {
+            matched.setQuantityUsed((matched.getQuantityUsed() == null ? 0 : matched.getQuantityUsed()) + request.quantity());
+            roomAmenitiesUsageRepository.save(matched);
+        } else {
+            roomAmenitiesUsageRepository.save(RoomAmenitiesUsage.builder()
+                    .checkInRecord(record)
+                    .item(item)
+                    .quantityUsed(request.quantity())
+                    .build());
+        }
+        generateInvoice(bookingDetailId);
         return getBookingDetail(bookingDetailId);
     }
 
@@ -909,6 +921,7 @@ public class AdminBookingServiceImpl implements AdminBookingService {
                 .actualFine(request.amount())
                 .description(request.description())
                 .build());
+        generateInvoice(bookingDetailId);
         return getBookingDetail(bookingDetailId);
     }
 
@@ -920,6 +933,7 @@ public class AdminBookingServiceImpl implements AdminBookingService {
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy dịch vụ đã chọn"));
         requireSameCheckInRecord(record, usage.getCheckInRecord().getId());
         serviceUsageRepository.delete(usage);
+        generateInvoice(bookingDetailId);
         return getBookingDetail(bookingDetailId);
     }
 
@@ -931,6 +945,7 @@ public class AdminBookingServiceImpl implements AdminBookingService {
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy mini-bar đã chọn"));
         requireSameCheckInRecord(record, usage.getCheckInRecord().getId());
         roomAmenitiesUsageRepository.delete(usage);
+        generateInvoice(bookingDetailId);
         return getBookingDetail(bookingDetailId);
     }
 
@@ -942,6 +957,7 @@ public class AdminBookingServiceImpl implements AdminBookingService {
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy khoản phạt đã chọn"));
         requireSameCheckInRecord(record, penalty.getCheckRecord().getId());
         appliedPenaltyRepository.delete(penalty);
+        generateInvoice(bookingDetailId);
         return getBookingDetail(bookingDetailId);
     }
 

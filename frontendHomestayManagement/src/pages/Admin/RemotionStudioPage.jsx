@@ -12,13 +12,13 @@ export default function RemotionStudioPage() {
 
   const getDeployUrl = () => {
     if (typeof window !== 'undefined') {
-      return `${window.location.origin}/remotion-app/`
+      return `${window.location.origin}/remotion-app/index.html`
     }
-    return '/remotion-app/'
+    return '/remotion-app/index.html'
   }
 
-  const [activeMode, setActiveMode] = useState(isHttps ? 'deploy' : 'local')
-  const [studioUrl, setStudioUrl] = useState(isHttps ? getDeployUrl() : REMOTION_LOCAL_URL)
+  const [activeMode, setActiveMode] = useState('deploy')
+  const [studioUrl, setStudioUrl] = useState(getDeployUrl())
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [isServerRunning, setIsServerRunning] = useState(false)
   const [isChecking, setIsChecking] = useState(true)
@@ -27,20 +27,37 @@ export default function RemotionStudioPage() {
 
   const verifyServer = useCallback(async (targetUrl = studioUrl) => {
     try {
-      const checkUrl = targetUrl.includes('/remotion-app') ? '/remotion-health' : `${targetUrl}/health`
-      const res = await fetch(checkUrl, {
-        method: 'GET',
-        cache: 'no-cache',
-        mode: 'cors',
-      })
-      if (res.ok) {
-        setIsServerRunning(true)
-        setIsChecking(false)
-        if (iframeRef.current && (!iframeLoaded.current || iframeRef.current.src !== targetUrl)) {
-          iframeRef.current.src = targetUrl
-          iframeLoaded.current = true
+      if (targetUrl.includes('/remotion-app')) {
+        const res = await fetch('/remotion-app/index.html', {
+          method: 'GET',
+          cache: 'no-cache',
+        })
+        const text = await res.text()
+        if (res.ok && text.includes('Remotion AI Video Auto-Editor')) {
+          setIsServerRunning(true)
+          setIsChecking(false)
+          if (iframeRef.current && (!iframeLoaded.current || iframeRef.current.src !== targetUrl)) {
+            iframeRef.current.src = targetUrl
+            iframeLoaded.current = true
+          }
+          return true
         }
-        return true
+      } else {
+        const res = await fetch(`${targetUrl}/health`, {
+          method: 'GET',
+          cache: 'no-cache',
+          mode: 'cors',
+        })
+        const text = await res.text()
+        if (res.ok && text.trim() === 'OK') {
+          setIsServerRunning(true)
+          setIsChecking(false)
+          if (iframeRef.current && (!iframeLoaded.current || iframeRef.current.src !== targetUrl)) {
+            iframeRef.current.src = targetUrl
+            iframeLoaded.current = true
+          }
+          return true
+        }
       }
     } catch {
       // Server not reachable yet
@@ -48,6 +65,10 @@ export default function RemotionStudioPage() {
 
     setIsServerRunning(false)
     setIsChecking(false)
+    if (iframeRef.current && iframeRef.current.src !== 'about:blank') {
+      iframeRef.current.src = 'about:blank'
+      iframeLoaded.current = false
+    }
     return false
   }, [studioUrl])
 
@@ -72,7 +93,15 @@ export default function RemotionStudioPage() {
   const handleRefresh = () => {
     setIsChecking(true)
     iframeLoaded.current = false
-    verifyServer(studioUrl)
+    const cacheBuster = `?t=${Date.now()}`
+    const freshUrl = (studioUrl || getDeployUrl()).split('?')[0] + cacheBuster
+    if (iframeRef.current) {
+      iframeRef.current.src = freshUrl
+      try {
+        iframeRef.current.contentWindow?.location?.reload()
+      } catch (e) {}
+    }
+    verifyServer(freshUrl)
   }
 
   const handleOpenStandalone = (url = studioUrl) => {
@@ -131,7 +160,7 @@ export default function RemotionStudioPage() {
                     }}
                   />
                   {isServerRunning
-                    ? `Studio Online (${activeMode === 'deploy' ? 'Ngrok Deploy' : ':3000'})`
+                    ? `Studio Online (${activeMode === 'deploy' ? 'Bản Tích Hợp' : ':3000'})`
                     : 'Đang kết nối...'}
                 </span>
 
@@ -160,9 +189,9 @@ export default function RemotionStudioPage() {
                       cursor: 'pointer',
                       transition: 'all 0.15s ease',
                     }}
-                    title="Dùng link Ngrok HTTPS đã deploy cố định vĩnh viễn"
+                    title="Dùng trình biên tập Remotion độc lập tích hợp sẵn (/remotion-app/index.html)"
                   >
-                    🌐 Ngrok Deploy
+                    🎬 Studio Tích Hợp
                   </button>
                   <button
                     type="button"
@@ -252,7 +281,7 @@ export default function RemotionStudioPage() {
         <div className="remotion-studio-workspace">
           <iframe
             ref={iframeRef}
-            src={studioUrl}
+            src={isServerRunning ? studioUrl : 'about:blank'}
             title="Remotion Video Auto Editor Studio"
             className="remotion-studio-iframe"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; microphone; camera"
@@ -264,7 +293,7 @@ export default function RemotionStudioPage() {
               <div className="remotion-studio-loading-card">
                 <div className="remotion-spinner" />
                 <p style={{ marginTop: '12px', color: '#475569', fontSize: '14px', fontWeight: 500 }}>
-                  Đang kết nối Remotion Video Studio ({activeMode === 'deploy' ? 'Ngrok Deploy' : ':3000'})...
+                  Đang kiểm tra kết nối Remotion Video Studio ({activeMode === 'deploy' ? 'Ngrok Deploy' : ':3000'})...
                 </p>
               </div>
             </div>
@@ -274,35 +303,33 @@ export default function RemotionStudioPage() {
             <div className="remotion-studio-error-overlay">
               <div
                 className="remotion-studio-error-card"
-                style={{ maxWidth: '520px', padding: '28px', textAlign: 'center' }}
+                style={{ maxWidth: '560px', padding: '32px', textAlign: 'center' }}
               >
-                <span style={{ fontSize: '36px', display: 'block', marginBottom: '8px' }}>🎬</span>
-                <h3 style={{ fontSize: '18px', fontWeight: 700, color: '#0f172a', marginBottom: '8px' }}>
-                  {activeMode === 'deploy'
-                    ? 'Remotion Studio Deploy (Ngrok)'
-                    : 'Chưa kết nối được với Remotion Server (:3000)'}
+                <span style={{ fontSize: '42px', display: 'block', marginBottom: '12px' }}>🎬</span>
+                <h3 style={{ fontSize: '18px', fontWeight: 700, color: '#0f172a', marginBottom: '10px' }}>
+                  Chưa kết nối được với Remotion Video Studio
                 </h3>
-                <p style={{ fontSize: '13.5px', color: '#64748b', lineHeight: 1.5, marginBottom: '18px' }}>
-                  Trình biên tập Video Studio AI hoạt động trực tiếp qua đường link Ngrok cố định vĩnh viễn. Bạn có thể mở trực tiếp hoặc mở tab riêng:
+                <p style={{ fontSize: '13.5px', color: '#64748b', lineHeight: 1.6, marginBottom: '20px' }}>
+                  Trình biên tập Video Remotion sử dụng engine đồ họa và dựng phim Node.js riêng (cổng <strong>:3000</strong>). Để sử dụng, bạn hãy chạy file <code>start_remotion_studio.bat</code> hoặc <code>CHAY_HE_THONG_1_CLICK.bat</code> trên máy tính cá nhân.
                 </p>
                 <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
                   <button
                     type="button"
-                    onClick={() => handleOpenStandalone(getDeployUrl())}
+                    onClick={() => handleOpenStandalone(REMOTION_LOCAL_URL)}
                     className="remotion-action-btn remotion-action-btn--primary"
-                    style={{ padding: '9px 18px', fontSize: '13.5px' }}
-                    title="Mở link deploy Ngrok trực tiếp trên tab mới"
+                    style={{ padding: '9px 16px', fontSize: '13.5px' }}
+                    title="Mở localhost:3000 trên máy tính của bạn"
                   >
-                    🚀 Mở Remotion Studio (Deploy Ngrok)
+                    💻 Mở Localhost:3000
                   </button>
                   <button
                     type="button"
-                    onClick={() => handleOpenStandalone(REMOTION_LOCAL_URL)}
+                    onClick={() => handleOpenStandalone(getDeployUrl())}
                     className="remotion-action-btn remotion-action-btn--secondary"
                     style={{ padding: '9px 14px', fontSize: '13.5px' }}
-                    title="Mở localhost:3000 trên máy của bạn"
+                    title="Mở link deploy Ngrok trực tiếp trên tab mới"
                   >
-                    💻 Mở Localhost:3000
+                    🌐 Mở Link Ngrok Deploy
                   </button>
                   <button
                     type="button"

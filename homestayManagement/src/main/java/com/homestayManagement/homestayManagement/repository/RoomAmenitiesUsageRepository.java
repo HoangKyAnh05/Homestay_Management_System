@@ -10,6 +10,8 @@ import java.util.List;
 public interface RoomAmenitiesUsageRepository extends JpaRepository<RoomAmenitiesUsage, Long> {
     boolean existsByItemId(Long itemId);
 
+    List<RoomAmenitiesUsage> findByCheckInRecordId(Long checkInRecordId);
+
     void deleteByCheckInRecordId(Long checkInRecordId);
 
     @Query("""

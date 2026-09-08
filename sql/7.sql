@@ -328,10 +328,11 @@ ON DUPLICATE KEY UPDATE
 -- 13. facility_services
 -- ============================================================
 INSERT INTO facility_services (id, name, price, is_active) VALUES
-(1, 'Ve be boi', 80000.00, TRUE),
-(2, 'Ve phong gym', 60000.00, TRUE),
-(3, 'Su dung san BBQ', 200000.00, TRUE),
-(4, 'Bua sang buffet', 120000.00, TRUE)
+(1, 'Vé bể bơi', 80000.00, TRUE),
+(2, 'Vé phòng gym', 60000.00, TRUE),
+(3, 'Sử dụng sân BBQ', 200000.00, TRUE),
+(4, 'Bữa sáng buffet', 120000.00, TRUE),
+(5, 'Dọn phòng thêm trong ngày', 70000.00, TRUE)
 ON DUPLICATE KEY UPDATE
     name = VALUES(name),
     price = VALUES(price),
@@ -341,10 +342,11 @@ ON DUPLICATE KEY UPDATE
 -- 14. inventory_services
 -- ============================================================
 INSERT INTO inventory_services (id, name, price, quantity_in_stock) VALUES
-(1, 'Thue xe dap', 50000.00, 12),
-(2, 'Thue xe may', 150000.00, 6),
-(3, 'Giat ui theo kg', 30000.00, 100),
-(4, 'Thue bep nuong mini', 100000.00, 4)
+(1, 'Thuê xe đạp', 50000.00, 12),
+(2, 'Thuê xe máy', 150000.00, 6),
+(3, 'Giặt ủi theo kg', 30000.00, 100),
+(4, 'Thuê bếp nướng mini', 100000.00, 4),
+(5, 'Thuê áo phao trẻ em', 40000.00, 20)
 ON DUPLICATE KEY UPDATE
     name = VALUES(name),
     price = VALUES(price),
@@ -354,10 +356,12 @@ ON DUPLICATE KEY UPDATE
 -- 15. room_mini_bar_items
 -- ============================================================
 INSERT INTO room_mini_bar_items (id, name, price, quantity_in_stock) VALUES
-(1, 'Nuoc suoi', 10000.00, 200),
-(2, 'Coca Cola', 15000.00, 120),
-(3, 'Mi ly', 25000.00, 80),
-(4, 'Snack khoai tay', 20000.00, 90)
+(1, 'Nước suối', 10000.00, 200),
+(2, 'Coca-Cola', 15000.00, 120),
+(3, 'Mì ly', 25000.00, 80),
+(4, 'Snack khoai tây', 20000.00, 90),
+(5, 'Cà phê lon', 18000.00, 60),
+(6, 'Ba lon bia', 10000.00, 50)
 ON DUPLICATE KEY UPDATE
     name = VALUES(name),
     price = VALUES(price),

@@ -112,15 +112,15 @@ function roomTypeIdOf(room) {
 
 function rentTypeLabel(rentType) {
   const labels = {
-    OVERNIGHT: 'đêm',
-    NIGHTLY: 'đêm',
-    BY_NIGHT: 'đêm',
+    OVERNIGHT: '2 ngày 1 đêm',
+    NIGHTLY: '2 ngày 1 đêm',
+    BY_NIGHT: '2 ngày 1 đêm',
     DAILY: 'ngày',
     BY_DAY: 'ngày',
     HOURLY: 'giờ',
     COMBO: 'lượt',
   }
-  return labels[String(rentType || '').toUpperCase()] || 'đêm'
+  return labels[String(rentType || '').toUpperCase()] || '2 ngày 1 đêm'
 }
 
 function UserAvatar({ user }) {
@@ -561,19 +561,38 @@ function ReviewsSection() {
   )
 }
 
+const FALLBACK_GALLERY = [
+  '/home_1/image.png',
+  '/home_1/image_2.jpg',
+  '/home_2/image_1.jpg',
+  '/home_2/image_2.jpg',
+  '/home_3/image_3.jpg',
+  '/home_4/image_1.jpg',
+  '/home_4/image_2.jpg',
+  '/home_5/image_1.jpg',
+  '/home_5/image_2.jpg',
+]
+
 // Section: Gallery ảnh
 function GallerySection({ rooms }) {
-  const images = rooms.flatMap((r) => r.imageUrls || []).slice(0, 9)
-
-  if (images.length === 0) return null
+  const roomImages = (rooms || []).flatMap((r) => r.imageUrls || [r.primaryImageUrl]).filter(Boolean)
+  const rawList = [...new Set([...roomImages, ...FALLBACK_GALLERY])].slice(0, 9)
 
   return (
     <section className="home-gallery" aria-label="Thư viện ảnh">
       <div className="home-section-inner">
         <div className="gallery-grid">
-          {images.map((url, i) => (
+          {rawList.map((url, i) => (
             <div key={i} className="gallery-item">
-              <img src={resolveImageUrl(url)} alt={`Ảnh homestay ${i + 1}`} loading="lazy" />
+              <img
+                src={resolveImageUrl(url) || FALLBACK_GALLERY[i % FALLBACK_GALLERY.length]}
+                alt={`Ảnh homestay ${i + 1}`}
+                loading="lazy"
+                onError={(e) => {
+                  e.currentTarget.onerror = null
+                  e.currentTarget.src = FALLBACK_GALLERY[i % FALLBACK_GALLERY.length]
+                }}
+              />
             </div>
           ))}
         </div>
@@ -871,6 +890,7 @@ function HomePage() {
                   <a href="/admin">Quản lý Lá Đỏ Homestay</a>
                 )}
                 <a href="/wishlist" onClick={(e) => { e.preventDefault(); setIsUserMenuOpen(false); window.location.assign('/wishlist'); }}>Danh sách yêu thích</a>
+                <a href="/vouchers" onClick={(e) => { e.preventDefault(); setIsUserMenuOpen(false); window.location.assign('/vouchers'); }}>Kho mã giảm giá</a>
                 <a href="/booking-history" onClick={(e) => { e.preventDefault(); setIsUserMenuOpen(false); window.location.assign('/booking-history'); }}>Lịch sử đặt phòng</a>
                 <a href="/profile" onClick={(e) => { e.preventDefault(); setIsUserMenuOpen(false); window.location.assign('/profile'); }}>Thông tin cá nhân</a>
                 <button type="button" onClick={handleLogout}>Đăng xuất</button>

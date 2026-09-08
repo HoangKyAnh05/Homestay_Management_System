@@ -101,8 +101,9 @@ function TaskDetail({ task, busy, onStart, onSubmitInspection, onCompleteCleanin
 
   const changeQuantity = (item, delta) => {
     if (inspectionDone) return
+    const minAllowed = Number(item.quantityUsed || 0)
     setQuantities(current => {
-      const next = Math.max(0, Math.min(item.quantityInStock, Number(current[item.itemId] || 0) + delta))
+      const next = Math.max(minAllowed, Math.min(item.quantityInStock, Number(current[item.itemId] || 0) + delta))
       return { ...current, [item.itemId]: next }
     })
   }
@@ -128,7 +129,9 @@ function TaskDetail({ task, busy, onStart, onSubmitInspection, onCompleteCleanin
           <h2>Phòng {task.roomNumber}</h2>
           <p>{task.customerName} {task.customerPhone ? `· ${task.customerPhone}` : ''}</p>
         </div>
-        <button type="button" className="hk-close" onClick={onClose} aria-label="Đóng">×</button>
+        <div className="hk-detail__actions">
+          <button type="button" className="hk-close" onClick={onClose} aria-label="Đóng chi tiết">×</button>
+        </div>
       </div>
 
       <div className="hk-progress">
@@ -145,28 +148,46 @@ function TaskDetail({ task, busy, onStart, onSubmitInspection, onCompleteCleanin
           </button>
         </div>
       ) : (
-        <>
-          <div className="hk-section-title">
-            <div><span>Mini-bar</span><h3>Đồ ăn, thức uống đã sử dụng</h3></div>
-            {inspectionDone && <span className="hk-lock">Đã khóa kết quả</span>}
-          </div>
+        <div className="hk-detail__body">
+          <section className="hk-section">
+            <div className="hk-section-title">
+              <div><span>Kiểm tra đồ uống phòng</span><h3>Minibar tiêu thụ</h3></div>
+              {inspectionDone && <span className="hk-lock">Đã khóa kết quả</span>}
+              <strong>{money(total)}</strong>
+            </div>
 
-          <div className="hk-items">
-            {task.miniBarItems.length === 0 ? (
-              <div className="hk-no-items">Chưa có mặt hàng mini-bar trong danh mục.</div>
-            ) : task.miniBarItems.map(item => (
-              <div className="hk-item" key={item.itemId}>
-                <div className="hk-item__icon">{item.name?.charAt(0)?.toUpperCase()}</div>
-                <div className="hk-item__name"><strong>{item.name}</strong><span>{money(item.unitPrice)} / sản phẩm</span></div>
-                <div className="hk-stepper">
-                  <button type="button" disabled={inspectionDone || busy || !quantities[item.itemId]} onClick={() => changeQuantity(item, -1)}>−</button>
-                  <b>{quantities[item.itemId] || 0}</b>
-                  <button type="button" disabled={inspectionDone || busy || quantities[item.itemId] >= item.quantityInStock} onClick={() => changeQuantity(item, 1)}>+</button>
+            <div className="hk-items">
+              {task.miniBarItems.length === 0 ? (
+                <div className="hk-no-items">Chưa có mặt hàng mini-bar trong danh mục.</div>
+              ) : task.miniBarItems.map(item => (
+                <div className="hk-item" key={item.itemId}>
+                  <div className="hk-item__icon">{item.name?.charAt(0)?.toUpperCase()}</div>
+                  <div className="hk-item__name">
+                    <strong>{item.name}</strong>
+                    <span>{money(item.unitPrice)} / sản phẩm</span>
+                    {Number(item.quantityUsed || 0) > 0 && (
+                      <small style={{ color: '#059669', display: 'block', fontWeight: 600 }}>
+                        ✓ Đã ghi nhận khách mua: {item.quantityUsed}
+                      </small>
+                    )}
+                  </div>
+                  <div className="hk-stepper">
+                    <button
+                      type="button"
+                      disabled={inspectionDone || busy || (quantities[item.itemId] || 0) <= Number(item.quantityUsed || 0)}
+                      title={Number(item.quantityUsed || 0) > 0 && (quantities[item.itemId] || 0) <= Number(item.quantityUsed || 0) ? 'Không thể giảm dưới số lượng khách đã mua' : undefined}
+                      onClick={() => changeQuantity(item, -1)}
+                    >
+                      −
+                    </button>
+                    <b>{quantities[item.itemId] || 0}</b>
+                    <button type="button" disabled={inspectionDone || busy || quantities[item.itemId] >= item.quantityInStock} onClick={() => changeQuantity(item, 1)}>+</button>
+                  </div>
+                  <strong className="hk-item__total">{money(Number(item.unitPrice) * Number(quantities[item.itemId] || 0))}</strong>
                 </div>
-                <strong className="hk-item__total">{money(Number(item.unitPrice) * Number(quantities[item.itemId] || 0))}</strong>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          </section>
 
           <div className="hk-section-title hk-section-title--penalty">
             <div><span>Vi phạm nội quy</span><h3>Khoản phạt áp dụng</h3></div>
@@ -195,7 +216,7 @@ function TaskDetail({ task, busy, onStart, onSubmitInspection, onCompleteCleanin
 
           <div style={{ background: '#fff1f2', border: '1px dashed #f43f5e', borderRadius: 12, padding: '14px 16px', marginTop: 18, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
             <div>
-              <strong style={{ color: '#be123c', display: 'block', fontSize: 14 }}>⚠️ Phát hiện đồ đạc bị hỏng hóc hoặc bị mất?</strong>
+              <strong style={{ color: '#be123c', display: 'block', fontSize: 14 }}>⚠️ Phát hiện đồ đạc bị hỏng hóc hoặc bị mất (đồ quan trọng, cần thay, bảo trì ngay)?</strong>
               <span style={{ color: '#881337', fontSize: 12 }}>Báo cáo ngay để Quản trị viên xử lý bồi thường hoặc bố trí bảo trì thay mới</span>
             </div>
             <button
@@ -203,7 +224,7 @@ function TaskDetail({ task, busy, onStart, onSubmitInspection, onCompleteCleanin
               onClick={() => onReportIncident(task)}
               style={{ background: '#e11d48', color: '#fff', border: 0, padding: '8px 14px', borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: 'pointer', whiteSpace: 'nowrap' }}
             >
-              + Báo đồ hỏng / mất
+              + Báo đồ hỏng / mất (đồ quan trọng, cần thay, bảo trì ngay)
             </button>
           </div>
 
@@ -272,7 +293,7 @@ function TaskDetail({ task, busy, onStart, onSubmitInspection, onCompleteCleanin
               <div className="hk-complete-message">✓ Phòng đã sẵn sàng đón khách mới</div>
             )}
           </div>
-        </>
+        </div>
       )}
     </section>
   )
@@ -470,7 +491,7 @@ function HousekeepingPage() {
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }} onClick={() => setReportingTask(null)}>
             <div style={{ background: '#fff', borderRadius: 16, maxWidth: 520, width: '100%', padding: 24, boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }} onClick={e => e.stopPropagation()}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
-                <h2 style={{ margin: 0, fontSize: 18, color: '#0f172a' }}>⚠️ Báo Đồ Hỏng / Mất - Phòng {reportingTask.roomNumber}</h2>
+                <h2 style={{ margin: 0, fontSize: 17, color: '#0f172a' }}>⚠️ Báo Đồ Hỏng / Mất (Đồ quan trọng, cần thay, bảo trì ngay) - Phòng {reportingTask.roomNumber}</h2>
                 <button type="button" onClick={() => setReportingTask(null)} style={{ background: 'none', border: 0, fontSize: 24, cursor: 'pointer', color: '#94a3b8' }}>×</button>
               </div>
               <form onSubmit={handleIncidentSubmit}>

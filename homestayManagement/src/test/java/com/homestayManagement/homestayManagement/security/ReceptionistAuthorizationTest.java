@@ -9,6 +9,7 @@ import com.homestayManagement.homestayManagement.service.AdminCheckInRegistratio
 import com.homestayManagement.homestayManagement.service.AdminInvoiceService;
 import com.homestayManagement.homestayManagement.service.HousekeepingService;
 import com.homestayManagement.homestayManagement.service.IdentityOcrService;
+import com.homestayManagement.homestayManagement.service.InvoiceExcelService;
 import com.homestayManagement.homestayManagement.service.TemporaryResidenceExcelService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -45,6 +46,7 @@ class ReceptionistAuthorizationTest {
     @MockitoBean private IdentityOcrService identityOcrService;
     @MockitoBean private TemporaryResidenceExcelService temporaryResidenceExcelService;
     @MockitoBean private AdminInvoiceService adminInvoiceService;
+    @MockitoBean private InvoiceExcelService invoiceExcelService;
     @MockitoBean private HousekeepingService housekeepingService;
 
     @Test
@@ -61,6 +63,15 @@ class ReceptionistAuthorizationTest {
         when(adminInvoiceService.getAllInvoices()).thenReturn(List.of());
 
         mockMvc.perform(get("/api/admin/invoices")
+                        .with(user("receptionist").authorities(() -> "ROLE_RECEPTIONIST")))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void receptionistCanExportInvoiceExcel() throws Exception {
+        when(invoiceExcelService.exportInvoicesExcel(any(), any())).thenReturn(new byte[]{1, 2, 3});
+
+        mockMvc.perform(get("/api/admin/invoices/export-excel")
                         .with(user("receptionist").authorities(() -> "ROLE_RECEPTIONIST")))
                 .andExpect(status().isOk());
     }

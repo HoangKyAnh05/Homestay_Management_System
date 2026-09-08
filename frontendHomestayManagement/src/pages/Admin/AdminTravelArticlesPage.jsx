@@ -523,7 +523,7 @@ function AdminTravelArticlesPage() {
   }
 
   return (
-    <AdminLayout activeNav="travel-articles">
+    <AdminLayout activePage="travel-articles">
       <div className="ata-page">
         {/* Header bar */}
         <div className="ata-header-bar">

@@ -14,12 +14,12 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/customer/wishlist")
 @RequiredArgsConstructor
-@PreAuthorize("hasAuthority('ROLE_CUSTOMER')")
 public class CustomerWishlistController {
 
     private final WishlistService wishlistService;
 
     @PostMapping("/toggle/{roomTypeId}")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<WishlistToggleResponseDto> toggleWishlist(
             @PathVariable Long roomTypeId,
             Authentication authentication
@@ -29,6 +29,7 @@ public class CustomerWishlistController {
     }
 
     @GetMapping
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<WishlistItemDto>> getMyWishlist(Authentication authentication) {
         String email = authentication.getName();
         return ResponseEntity.ok(wishlistService.getMyWishlist(email));

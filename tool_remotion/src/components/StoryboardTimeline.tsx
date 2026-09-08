@@ -46,6 +46,7 @@ interface StoryboardTimelineProps {
   apiKeyGemini?: string;
   apiKeyPexels?: string;
   onOpenBatchVocab?: () => void;
+  onOpenVideoSplitter?: () => void;
 }
 
 const FALLBACK_THUMBNAIL = 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=600&q=80';
@@ -111,7 +112,8 @@ export const StoryboardTimeline: React.FC<StoryboardTimelineProps> = ({
   setProject,
   apiKeyGemini,
   apiKeyPexels,
-  onOpenBatchVocab
+  onOpenBatchVocab,
+  onOpenVideoSplitter
 }) => {
   const [activeMediaModalSceneId, setActiveMediaModalSceneId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -135,6 +137,7 @@ export const StoryboardTimeline: React.FC<StoryboardTimelineProps> = ({
   const [isCreateVisualModalOpen, setIsCreateVisualModalOpen] = useState(false);
   const [activeMotionTypographyScene, setActiveMotionTypographyScene] = useState<Scene | null>(null);
   const [activeTikTokStudioScene, setActiveTikTokStudioScene] = useState<Scene | null>(null);
+  const [expandedFxSceneId, setExpandedFxSceneId] = useState<string | null>(null);
 
   // States for Live Microphone Recording (Ghi âm trực tiếp từ Mic)
   const [recordingSceneId, setRecordingSceneId] = useState<string | null>(null);
@@ -1447,29 +1450,29 @@ export const StoryboardTimeline: React.FC<StoryboardTimelineProps> = ({
         className="hidden"
       />
 
-      {/* Header bar with Global AI Voice Action */}
-      <div className="bg-gray-900/80 rounded-2xl p-4 border border-gray-800 flex flex-wrap items-center justify-between gap-3 glass-panel">
-        <div className="flex items-center gap-2.5">
-          <div className="p-2 rounded-xl bg-indigo-500/20 text-indigo-400">
-            <Film className="w-5 h-5" />
+      {/* Header bar: Tối giản, thanh lịch chuẩn Dark Studio */}
+      <div className="bg-zinc-900/90 rounded-xl p-3 border border-zinc-800 flex flex-col gap-2.5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 rounded-lg bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+              <Film className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="text-xs font-bold text-white uppercase tracking-wider">
+                Danh Sách Phân Cảnh ({project.scenes.length} Scenes)
+              </h3>
+              <p className="text-[11px] text-zinc-400">
+                Giọng đọc: <span className="text-indigo-400 font-semibold">{project.voice.name || 'Hoài My'}</span>
+              </p>
+            </div>
           </div>
-          <div>
-            <h3 className="text-base font-bold text-white">
-              Biên Tập Lộ Trình Phân Cảnh ({project.scenes.length} Scenes)
-            </h3>
-            <p className="text-xs text-gray-400">
-              Giọng đọc hiện tại: <span className="text-indigo-400 font-semibold">{project.voice.name || 'Hoài My'}</span>
-            </p>
-          </div>
-        </div>
 
-        <div className="flex items-center gap-2">
-          {/* 1-Click Batch Voice Generation Button */}
+          {/* 1-Click Batch Voiceover Action */}
           <button
             onClick={handleBatchSynthesizeAll}
             disabled={isBatchSynthesizing}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-pink-600 to-indigo-600 hover:from-pink-500 hover:to-indigo-500 text-white text-xs font-bold shadow-lg shadow-pink-500/20 disabled:opacity-50 transition-all active:scale-95"
-            title="Tự động tổng hợp giọng đọc AI cho toàn bộ phân cảnh trong 1 click"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-sm disabled:opacity-50 transition-all active:scale-95"
+            title="Tự động lồng tiếng AI cho toàn bộ phân cảnh trong 1 click"
           >
             {isBatchSynthesizing ? (
               <>
@@ -1479,88 +1482,81 @@ export const StoryboardTimeline: React.FC<StoryboardTimelineProps> = ({
             ) : (
               <>
                 <Mic2 className="w-3.5 h-3.5" />
-                <span>Ghép giọng AI toàn bộ cảnh</span>
+                <span>Ghép giọng AI toàn bộ</span>
               </>
             )}
           </button>
+        </div>
 
-          {/* Full Audio Voiceover STT Upload Button */}
+        {/* Toolbar công cụ phụ: Đồng bộ style tối giản tinh gọn */}
+        <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-zinc-800/80">
+          {/* Tự động chèn âm thanh hiệu ứng */}
           <button
             onClick={handleFullAudioVoiceoverUpload}
             disabled={isBatchSynthesizing || isTranscribingFullAudio}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold shadow-lg shadow-emerald-500/20 disabled:opacity-50 transition-all active:scale-95 border border-emerald-400/30"
-            title="Tải lên 1 file sound lời thoại toàn bộ bài (MP3/WAV/M4A) - Tự động nhận diện lời nói tiếng Anh / tiếng Việt & chạy chữ từ đầu đến cuối"
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white border border-zinc-700 text-xs font-medium transition-all active:scale-95"
+            title="Tự động nhận diện lời nói & khớp chữ từ sound thoại"
           >
-            {isTranscribingFullAudio ? (
-              <>
-                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                <span>{fullAudioStatusText || 'Đang nhận diện...'}</span>
-              </>
-            ) : (
-              <>
-                <Mic className="w-3.5 h-3.5" />
-                <span>🎙️ Đẩy sound toàn bài (Tự nhận diện chữ)</span>
-              </>
-            )}
+            <Mic className="w-3.5 h-3.5 text-zinc-400" />
+            <span>{isTranscribingFullAudio ? (fullAudioStatusText || 'Đang nhận diện...') : 'Tự động chèn âm thanh hiệu ứng (SFX)'}</span>
           </button>
 
-          {/* Batch Script & Vocabulary Import Button */}
+          {/* Nạp kịch bản */}
           <button
             onClick={onOpenBatchVocab}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 text-indigo-300 hover:text-white border border-indigo-500/30 text-xs font-semibold transition-all active:scale-95"
-            title="Nạp nhiều câu thoại kịch bản hoặc từ vựng cùng lúc cách nhau bằng dấu chấm hoặc dán JSON"
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white border border-zinc-700 text-xs font-medium transition-all active:scale-95"
+            title="Nạp nhiều câu thoại kịch bản cùng lúc"
           >
-            <ListPlus className="w-3.5 h-3.5 text-indigo-400" />
+            <ListPlus className="w-3.5 h-3.5 text-zinc-400" />
             <span>Nạp kịch bản ( . )</span>
           </button>
 
-          {/* Special Visual Motion Graphic Scene Buttons */}
-          <button
-            onClick={handleAddChatScene}
-            className="flex items-center gap-1 px-2.5 py-2 rounded-xl bg-purple-950/60 hover:bg-purple-900/60 text-purple-300 hover:text-white border border-purple-500/40 text-xs font-semibold transition-all active:scale-95 shadow-sm"
-            title="Thêm phân cảnh hiệu ứng Chat Bong Bóng TikTok"
-          >
-            <span>💬 + Cảnh Chat</span>
-          </button>
+          {/* Chia Video Dài */}
+          {onOpenVideoSplitter && (
+            <button
+              onClick={onOpenVideoSplitter}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 hover:text-white border border-zinc-700 text-xs font-medium transition-all active:scale-95"
+              title="Tải video dài lên & tự động chia theo 5s, 10s, 15s"
+            >
+              <Scissors className="w-3.5 h-3.5 text-rose-400" />
+              <span>✂️ Chia Video Dài</span>
+            </button>
+          )}
 
-          <button
-            onClick={handleAddOrbitScene}
-            className="flex items-center gap-1 px-2.5 py-2 rounded-xl bg-amber-950/60 hover:bg-amber-900/60 text-amber-300 hover:text-white border border-amber-500/40 text-xs font-semibold transition-all active:scale-95 shadow-sm"
-            title="Thêm phân cảnh hiệu ứng Quỹ Đạo AI phát sáng"
-          >
-            <span>🪐 + Cảnh AI</span>
-          </button>
+          {/* GOM 6 HOẠT CẢNH VÀO 1 DROPDOWN DUY NHẤT */}
+          <div className="relative inline-block">
+            <select
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === 'chat') handleAddChatScene();
+                else if (val === 'orbit') handleAddOrbitScene();
+                else if (val === 'math') handleAddMathScene();
+                else if (val === 'radar') handleAddRadarScene();
+                else if (val === 'car') handleAddCarScene();
+                else if (val === 'plane') handleAddPlaneScene();
+                e.target.value = '';
+              }}
+              className="bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs font-medium focus:outline-none cursor-pointer"
+              defaultValue=""
+            >
+              <option value="" disabled>🎬 Thêm kiểu diễn hoạt cảnh ▾</option>
+              <option value="chat">💬 Bong bóng Chat TikTok</option>
+              <option value="orbit">🪐 Quỹ đạo AI xoay phát sáng</option>
+              <option value="math">📈 Lưới tọa độ Math Grid</option>
+              <option value="radar">📡 Sóng Radar phân tích</option>
+              <option value="car">🏎️ Cao tốc ánh đèn Neon</option>
+              <option value="plane">✈️ Máy bay cất cánh</option>
+            </select>
+          </div>
 
+          {/* Thêm phân cảnh thông thường */}
           <button
-            onClick={handleAddMathScene}
-            className="flex items-center gap-1 px-2.5 py-2 rounded-xl bg-cyan-950/60 hover:bg-cyan-900/60 text-cyan-300 hover:text-white border border-cyan-500/40 text-xs font-semibold transition-all active:scale-95 shadow-sm"
-            title="Thêm phân cảnh lưới đồ họa Math/Tech Vector"
+            onClick={handleAddScene}
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white border border-zinc-700 text-xs font-medium transition-all active:scale-95"
+            title="Thêm phân cảnh mới vào cuối kịch bản"
           >
-            <span>📈 + Math Grid</span>
-          </button>
-
-          <button
-            onClick={handleAddRadarScene}
-            className="flex items-center gap-1 px-2.5 py-2 rounded-xl bg-emerald-950/60 hover:bg-emerald-900/60 text-emerald-300 hover:text-white border border-emerald-500/40 text-xs font-semibold transition-all active:scale-95 shadow-sm"
-            title="Thêm phân cảnh hiệu ứng Radar & Biểu đồ sóng"
-          >
-            <span>📊 + Radar/Sóng</span>
-          </button>
-
-          <button
-            onClick={handleAddCarScene}
-            className="flex items-center gap-1 px-2.5 py-2 rounded-xl bg-rose-950/60 hover:bg-rose-900/60 text-rose-300 hover:text-white border border-rose-500/40 text-xs font-semibold transition-all active:scale-95 shadow-sm"
-            title="Thêm phân cảnh hiệu ứng Xe đua thể thao cao tốc đêm"
-          >
-            <span>🏎️ + Xe Đua</span>
-          </button>
-
-          <button
-            onClick={handleAddPlaneScene}
-            className="flex items-center gap-1 px-2.5 py-2 rounded-xl bg-sky-950/60 hover:bg-sky-900/60 text-sky-300 hover:text-white border border-sky-500/40 text-xs font-semibold transition-all active:scale-95 shadow-sm"
-            title="Thêm phân cảnh hiệu ứng Máy bay cất cánh"
-          >
-            <span>✈️ + Máy Bay</span>
+            <Plus className="w-3.5 h-3.5 text-zinc-400" />
+            <span>Thêm cảnh</span>
           </button>
 
           {/* Nút tự động đổi ảnh cho các cảnh đang dùng ảnh mặc định */}
@@ -1568,40 +1564,17 @@ export const StoryboardTimeline: React.FC<StoryboardTimelineProps> = ({
             <button
               onClick={handleAutoFixDefaultMedia}
               disabled={isAutoFixingDefaultMedia}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-pink-600 hover:from-amber-400 hover:to-pink-500 text-white text-xs font-black transition-all shadow-md shadow-amber-500/20 active:scale-95 animate-pulse"
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-amber-300 hover:text-amber-200 border border-amber-500/30 text-xs font-medium transition-all active:scale-95"
               title="Tự động vẽ/tìm ảnh mới phù hợp với câu thoại cho các cảnh đang dùng ảnh mặc định"
             >
-              <Sparkles className="w-3.5 h-3.5 text-yellow-200" />
+              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
               <span>
                 {isAutoFixingDefaultMedia
                   ? 'Đang đổi ảnh AI...'
-                  : `✨ Đổi Ảnh Cho ${project.scenes.filter((sc) => !sc.mediaUrl || sc.mediaUrl.includes('photo-1451187580459-43490279c0fa')).length} Cảnh Mặc Định`}
+                  : `Đổi ảnh AI (${project.scenes.filter((sc) => !sc.mediaUrl || sc.mediaUrl.includes('photo-1451187580459-43490279c0fa')).length})`}
               </span>
             </button>
           )}
-
-          {/* NÚT ĐỒNG BỘ & CẬP NHẬT PHÂN CẢNH LÊN VIDEO PLAYER */}
-          <button
-            onClick={() => {
-              setProject((prev) => ({
-                ...prev,
-                scenes: [...prev.scenes]
-              }));
-            }}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-xs font-black shadow-lg shadow-cyan-500/25 transition-all active:scale-95 cursor-pointer"
-            title="Bấm để làm mới và cập nhật ngay lập tức toàn bộ video, ảnh và hiệu ứng vừa chỉnh sửa lên màn hình xem video bên phải"
-          >
-            <span className="animate-spin text-sm">🔄</span>
-            <span>Cập Nhật Phân Cảnh Lên Video</span>
-          </button>
-
-          <button
-            onClick={handleAddScene}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-200 hover:text-white border border-gray-700 text-xs font-semibold transition-all"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Thêm Cảnh Thường</span>
-          </button>
         </div>
       </div>
 
@@ -1737,106 +1710,128 @@ export const StoryboardTimeline: React.FC<StoryboardTimelineProps> = ({
                     </button>
                   </div>
 
-                  {/* Nút Bật / Tắt Video Phông Xanh & Chữ Motion 3D (Trước & Sau Vật Thể) */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      updateScene(scene.id, {
-                        isGreenScreenMotion: !scene.isGreenScreenMotion
-                      });
-                    }}
-                    className={`w-full py-1.5 px-2 rounded-xl flex items-center justify-center gap-1.5 text-[11px] font-black transition-all border shadow-sm cursor-pointer active:scale-95 ${
-                      scene.isGreenScreenMotion
-                        ? 'bg-gradient-to-r from-emerald-600 to-green-500 border-green-300 text-white shadow-lg shadow-green-500/30'
-                        : 'bg-emerald-950/40 hover:bg-emerald-900/50 border-emerald-500/50 text-emerald-300 hover:text-white'
-                    }`}
-                    title="Khử sạch nền xanh lá của video và tự động ghép chữ Motion 3D xếp loạn xạ ở trước và sau người"
-                  >
-                    <span className="text-sm">{scene.isGreenScreenMotion ? '✓' : '🟩'}</span>
-                    <span>
-                      {scene.isGreenScreenMotion
-                        ? 'Đang Chạy Chữ 3D (Trước/Sau)'
-                        : '🟩 Bật Chữ Motion 3D (Phông Xanh)'}
-                    </span>
-                  </button>
+                  {/* Thanh Công Cụ Nâng Cao: Chữ 3D & CapCut FX (Thu gọn/Mở rộng để UI cực kỳ gọn gàng) */}
+                  <div className="pt-0.5">
+                    <button
+                      type="button"
+                      onClick={() => setExpandedFxSceneId(expandedFxSceneId === scene.id ? null : scene.id)}
+                      className={`w-full py-1.5 px-2.5 rounded-xl flex items-center justify-between text-[11px] font-bold transition-all border shadow-sm cursor-pointer ${
+                        expandedFxSceneId === scene.id
+                          ? 'bg-purple-900/40 border-purple-500/60 text-purple-200'
+                          : 'bg-gray-800/60 hover:bg-gray-800 border-gray-700/60 text-gray-300 hover:text-white'
+                      }`}
+                      title="Mở bảng công cụ kỹ xảo: Chữ Motion 3D, Phông xanh, Kho 100 kiểu chữ, CapCut FX"
+                    >
+                      <span className="flex items-center gap-1.5">
+                        <span>⚡</span>
+                        <span>Chữ 3D & CapCut FX</span>
+                        {(scene.isGreenScreenMotion || scene.tiktokTextTemplate || (scene.tiktokStickers && scene.tiktokStickers.length > 0)) && (
+                          <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+                        )}
+                      </span>
+                      <span className="text-[10px] text-gray-400 font-normal">
+                        {expandedFxSceneId === scene.id ? 'Thu gọn ▲' : 'Tùy chỉnh ▼'}
+                      </span>
+                    </button>
 
-                  {/* Nút Thứ Tự Lớp Chữ: Luôn Ở Trước / Ở Dưới Video / Đan Xen 3D */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const current = scene.textLayerMode || (scene.isGreenScreenMotion ? 'both_3d' : 'front');
-                      const next =
-                        current === 'front'
-                          ? 'behind'
-                          : current === 'behind'
-                          ? 'both_3d'
-                          : 'front';
-                      updateScene(scene.id, { textLayerMode: next });
-                    }}
-                    className={`w-full py-1.5 px-2 rounded-xl flex items-center justify-center gap-1.5 text-[11px] font-black transition-all border shadow-sm cursor-pointer active:scale-95 ${
-                      scene.textLayerMode === 'front'
-                        ? 'bg-gradient-to-r from-blue-600 to-cyan-500 border-cyan-300 text-white shadow-lg shadow-cyan-500/25'
-                        : scene.textLayerMode === 'behind'
-                        ? 'bg-gradient-to-r from-purple-700 to-indigo-600 border-indigo-300 text-white shadow-lg shadow-indigo-500/25'
-                        : 'bg-gradient-to-r from-amber-600 to-orange-500 border-amber-300 text-white shadow-lg shadow-amber-500/25'
-                    }`}
-                    title="Click để đổi thứ tự lớp: Chữ luôn chạy ở trước video (đè lên trên) HOẶC chạy ở dưới video (sau lưng) HOẶC đan xen 3D"
-                  >
-                    <span>
-                      {scene.textLayerMode === 'front'
-                        ? '🔝 Chữ: Luôn Ở TRƯỚC Video'
-                        : scene.textLayerMode === 'behind'
-                        ? '🔙 Chữ: Chạy Ở DƯỚI Video'
-                        : '⚡ Chữ: Đan Xen 3D (Trước & Sau)'}
-                    </span>
-                  </button>
+                    {expandedFxSceneId === scene.id && (
+                      <div className="mt-2 space-y-1.5 p-2 rounded-xl bg-gray-950/90 border border-purple-500/30">
+                        {/* 1. Nút Bật / Tắt Video Phông Xanh & Chữ Motion 3D */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            updateScene(scene.id, {
+                              isGreenScreenMotion: !scene.isGreenScreenMotion
+                            });
+                          }}
+                          className={`w-full py-1.5 px-2 rounded-lg flex items-center justify-center gap-1.5 text-[10.5px] font-black transition-all border shadow-sm cursor-pointer active:scale-95 ${
+                            scene.isGreenScreenMotion
+                              ? 'bg-gradient-to-r from-emerald-600 to-green-500 border-green-300 text-white shadow-md'
+                              : 'bg-emerald-950/40 hover:bg-emerald-900/50 border-emerald-500/50 text-emerald-300 hover:text-white'
+                          }`}
+                          title="Khử sạch nền xanh lá của video và tự động ghép chữ Motion 3D xếp loạn xạ ở trước và sau người"
+                        >
+                          <span>{scene.isGreenScreenMotion ? '✓' : '🟩'}</span>
+                          <span>
+                            {scene.isGreenScreenMotion
+                              ? 'Đang Chạy Chữ 3D (Trước/Sau)'
+                              : '🟩 Bật Chữ Motion 3D (Phông Xanh)'}
+                          </span>
+                        </button>
 
-                  {/* Nút Mở Modal 100 Kiểu Sắp Xếp & 100 Hiệu Ứng Chữ Motion */}
-                  <button
-                    type="button"
-                    onClick={() => setActiveMotionTypographyScene(scene)}
-                    className="w-full py-1.5 px-2 rounded-xl flex items-center justify-center gap-1.5 text-[10px] font-extrabold transition-all border shadow-sm cursor-pointer active:scale-95 bg-gradient-to-r from-emerald-600/30 to-cyan-600/30 hover:from-emerald-600/50 hover:to-cyan-600/50 border-emerald-500/40 text-emerald-200 hover:text-white"
-                    title="Chọn trong 100 kiểu sắp xếp vị trí và 100 hiệu ứng xuất hiện chữ bùng nổ"
-                  >
-                    <span>🔤</span>
-                    <span>100 Kiểu Xếp Chữ & Hiệu Ứng FX</span>
-                  </button>
+                        {/* 2. Nút Thứ Tự Lớp Chữ: Luôn Ở Trước / Ở Dưới Video / Đan Xen 3D */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const current = scene.textLayerMode || (scene.isGreenScreenMotion ? 'both_3d' : 'front');
+                            const next =
+                              current === 'front'
+                                ? 'behind'
+                                : current === 'behind'
+                                ? 'both_3d'
+                                : 'front';
+                            updateScene(scene.id, { textLayerMode: next });
+                          }}
+                          className={`w-full py-1.5 px-2 rounded-lg flex items-center justify-center gap-1.5 text-[10.5px] font-black transition-all border shadow-sm cursor-pointer active:scale-95 ${
+                            scene.textLayerMode === 'front'
+                              ? 'bg-gradient-to-r from-blue-600 to-cyan-500 border-cyan-300 text-white shadow-md'
+                              : scene.textLayerMode === 'behind'
+                              ? 'bg-gradient-to-r from-purple-700 to-indigo-600 border-indigo-300 text-white shadow-md'
+                              : 'bg-gradient-to-r from-amber-600 to-orange-500 border-amber-300 text-white shadow-md'
+                          }`}
+                        >
+                          <span>
+                            {scene.textLayerMode === 'front'
+                              ? '🔝 Chữ: Luôn Ở TRƯỚC Video'
+                              : scene.textLayerMode === 'behind'
+                              ? '🔙 Chữ: Chạy Ở DƯỚI Video'
+                              : '⚡ Chữ: Đan Xen 3D (Trước & Sau)'}
+                          </span>
+                        </button>
 
-                  {/* Nút Áp Dụng Kiểu Chữ Cảnh Này Cho Tất Cả Cảnh (Quick Sync) */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      project.scenes.forEach((sc) => {
-                        updateScene(sc.id, {
-                          motionTypographyLayout: scene.motionTypographyLayout,
-                          motionTypographyEffect: scene.motionTypographyEffect,
-                          textLayerMode: scene.textLayerMode || 'front',
-                          tiktokTextEffect: scene.tiktokTextEffect,
-                          tiktokTextTemplate: scene.tiktokTextTemplate,
-                          textEffectsMix: scene.textEffectsMix
-                        });
-                      });
-                    }}
-                    className="w-full py-1 px-2 rounded-xl flex items-center justify-center gap-1 text-[10px] font-black transition-all border border-purple-500/40 bg-purple-950/40 hover:bg-purple-900/60 text-purple-300 hover:text-white cursor-pointer active:scale-95 shadow-sm"
-                    title="Sao chép toàn bộ kiểu chạy chữ, hiệu ứng và mẫu chữ của cảnh này cho tất cả các phân cảnh còn lại trong video"
-                  >
-                    <span>✨</span>
-                    <span>Áp Dụng Kiểu Chữ Cho Tất Cả Cảnh</span>
-                  </button>
+                        {/* 3. Nút Mở Modal 100 Kiểu Sắp Xếp & 100 Hiệu Ứng Chữ Motion */}
+                        <button
+                          type="button"
+                          onClick={() => setActiveMotionTypographyScene(scene)}
+                          className="w-full py-1.5 px-2 rounded-lg flex items-center justify-center gap-1.5 text-[10px] font-extrabold transition-all border border-emerald-500/40 bg-gradient-to-r from-emerald-600/30 to-cyan-600/30 hover:from-emerald-600/50 hover:to-cyan-600/50 text-emerald-200 hover:text-white cursor-pointer active:scale-95 shadow-sm"
+                        >
+                          <span>🔤</span>
+                          <span>100 Kiểu Xếp Chữ & Hiệu Ứng FX</span>
+                        </button>
 
-                  {/* Nút Mở Kho TikTok & CapCut Studio (Text, Sticker, FX) */}
-                  <button
-                    type="button"
-                    onClick={() => setActiveTikTokStudioScene(scene)}
-                    className="w-full py-1.5 px-2 rounded-xl flex items-center justify-center gap-1.5 text-[10px] font-black transition-all border shadow-sm cursor-pointer active:scale-95 bg-gradient-to-r from-rose-600/30 to-cyan-600/30 hover:from-rose-600/50 hover:to-cyan-600/50 border-rose-500/40 text-rose-200 hover:text-white"
-                    title="Kho Text Template CapCut (Đi nào, Năng động...), Sticker Meme, Hiệu ứng & Chuyển cảnh"
-                  >
-                    <span>🎬</span>
-                    <span>TikTok / CapCut Studio</span>
-                    {(scene.tiktokTextTemplate || (scene.tiktokStickers && scene.tiktokStickers.length > 0) || scene.tiktokVideoEffect) && (
-                      <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+                        {/* 4. Nút Áp Dụng Kiểu Chữ Cảnh Này Cho Tất Cả Cảnh */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            project.scenes.forEach((sc) => {
+                              updateScene(sc.id, {
+                                motionTypographyLayout: scene.motionTypographyLayout,
+                                motionTypographyEffect: scene.motionTypographyEffect,
+                                textLayerMode: scene.textLayerMode || 'front',
+                                tiktokTextEffect: scene.tiktokTextEffect,
+                                tiktokTextTemplate: scene.tiktokTextTemplate,
+                                textEffectsMix: scene.textEffectsMix
+                              });
+                            });
+                          }}
+                          className="w-full py-1 px-2 rounded-lg flex items-center justify-center gap-1 text-[10px] font-black transition-all border border-purple-500/40 bg-purple-950/40 hover:bg-purple-900/60 text-purple-300 hover:text-white cursor-pointer active:scale-95 shadow-sm"
+                        >
+                          <span>✨</span>
+                          <span>Áp Dụng Kiểu Chữ Cho Tất Cả Cảnh</span>
+                        </button>
+
+                        {/* 5. Nút Mở Kho TikTok & CapCut Studio */}
+                        <button
+                          type="button"
+                          onClick={() => setActiveTikTokStudioScene(scene)}
+                          className="w-full py-1.5 px-2 rounded-lg flex items-center justify-center gap-1.5 text-[10px] font-black transition-all border border-rose-500/40 bg-gradient-to-r from-rose-600/30 to-cyan-600/30 hover:from-rose-600/50 hover:to-cyan-600/50 text-rose-200 hover:text-white cursor-pointer active:scale-95 shadow-sm"
+                        >
+                          <span>🎬</span>
+                          <span>TikTok / CapCut Studio</span>
+                        </button>
+                      </div>
                     )}
-                  </button>
+                  </div>
                 </div>
 
                 {/* Narration & Subtitles Editor (Col 5-8) */}

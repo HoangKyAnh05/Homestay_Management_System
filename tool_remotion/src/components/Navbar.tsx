@@ -9,15 +9,20 @@ import {
   Film,
   Download,
   FolderOpen,
-  RotateCcw
+  RotateCcw,
+  Compass,
+  Layers,
+  Scissors
 } from 'lucide-react';
 import { maxShowcaseProject } from '../remotion/sampleShowcaseProject';
+import { sampleHomestayProject } from '../remotion/sampleHomestayProject';
 
 interface NavbarProps {
   project: VideoProject;
   setProject: React.Dispatch<React.SetStateAction<VideoProject>>;
   onOpenSettings: () => void;
   onOpenRender: () => void;
+  onOpenVideoSplitter?: () => void;
   isGenerating: boolean;
   activeView: 'editor' | 'roadmap100';
   setActiveView: (view: 'editor' | 'roadmap100') => void;
@@ -28,6 +33,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   setProject,
   onOpenSettings,
   onOpenRender,
+  onOpenVideoSplitter,
   isGenerating,
   activeView,
   setActiveView
@@ -47,7 +53,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   };
 
   const handleRestartApp = () => {
-    if (window.confirm('Bạn có chắc muốn khởi động lại ứng dụng không?')) {
+    if (window.confirm('Bạn có chắc muốn làm mới/khởi động lại ứng dụng không?')) {
       if (window.electronAPI?.restartApp) {
         window.electronAPI.restartApp();
       } else {
@@ -56,159 +62,173 @@ export const Navbar: React.FC<NavbarProps> = ({
     }
   };
 
+  const handleLoadHomestaySample = () => {
+    if (window.confirm('Tải mẫu video marketing chuẩn Lá Đỏ Homestay Sa Pa (Săn Mây & Nghỉ Dưỡng)?')) {
+      setProject(sampleHomestayProject);
+      localStorage.setItem('CURRENT_PROJECT', JSON.stringify(sampleHomestayProject));
+      setActiveView('editor');
+    }
+  };
+
+  const handleLoadShowcaseSample = () => {
+    if (window.confirm('Tải mẫu kỹ xảo CapCut Motion 3D nâng cao?')) {
+      setProject(maxShowcaseProject);
+      localStorage.setItem('CURRENT_PROJECT', JSON.stringify(maxShowcaseProject));
+      setActiveView('editor');
+    }
+  };
+
   return (
-    <header className="h-16 px-5 border-b border-gray-800/80 glass-panel flex items-center justify-between z-30 sticky top-0">
+    <header className="h-16 px-4 sm:px-6 border-b border-gray-800/80 bg-[#0B0F19]/90 backdrop-blur-md flex items-center justify-between z-30 sticky top-0 gap-3">
       {/* Brand logo & Project Title */}
-      <div className="flex items-center gap-4">
-        <div className="flex items-center gap-2.5">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-pink-500 flex items-center justify-center shadow-lg shadow-indigo-500/30">
-            <Film className="w-5 h-5 text-white" />
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="flex items-center gap-2.5 flex-shrink-0">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-rose-500 via-purple-600 to-indigo-600 flex items-center justify-center shadow-md shadow-purple-500/20">
+            <Film className="w-4.5 h-4.5 text-white" />
           </div>
           <div>
             <div className="flex items-center gap-1.5">
-              <span className="font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white via-gray-200 to-indigo-300 text-lg tracking-tight">
-                Remotion AI
+              <span className="font-extrabold text-white text-sm sm:text-base tracking-tight">
+                Studio Marketing
               </span>
-              <span className="text-[10px] font-semibold tracking-wider uppercase px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">
-                Studio
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                Lá Đỏ Sa Pa
               </span>
             </div>
-            <p className="text-xs text-gray-400">Tạo & Tự động biên tập Video AI</p>
+            <p className="text-[11px] text-gray-400 hidden sm:block">Biên tập video ngắn đa nền tảng</p>
           </div>
         </div>
 
-        <div className="h-6 w-px bg-gray-800 mx-1 hidden sm:block" />
+        <div className="h-5 w-px bg-gray-800 mx-1 hidden md:block" />
 
         {/* Project Name editable */}
         <input
           type="text"
           value={project.title}
           onChange={(e) => handleTitleChange(e.target.value)}
-          className="bg-gray-800/40 hover:bg-gray-800/70 focus:bg-gray-800 border border-transparent focus:border-indigo-500/50 rounded-lg px-3 py-1.5 text-sm font-medium text-gray-200 focus:outline-none transition-all w-52 sm:w-64"
-          placeholder="Tên dự án video..."
+          className="bg-gray-800/40 hover:bg-gray-800/70 focus:bg-gray-800 border border-gray-700/40 focus:border-indigo-500/60 rounded-lg px-3 py-1.5 text-xs sm:text-sm font-medium text-gray-200 focus:outline-none transition-all w-48 sm:w-64 md:w-72 truncate"
+          placeholder="Tên video: VD Săn mây Sa Pa 2N1Đ..."
         />
       </div>
 
-      {/* Aspect Ratio Switch & Actions */}
-      <div className="flex items-center gap-3">
-        {/* View Switcher: Studio Video AI vs Đường Ray 100 Ngày */}
-        <div className="bg-gray-900/90 p-1 rounded-xl border border-gray-800 flex items-center shadow-inner">
+      {/* Center & Right Actions */}
+      <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+        {/* Aspect Ratio Switch */}
+        <div className="bg-gray-900/90 p-0.5 sm:p-1 rounded-xl border border-gray-800 flex items-center shadow-inner">
           <button
-            onClick={() => setActiveView('editor')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-              activeView === 'editor'
+            onClick={() => handleRatioChange('9:16')}
+            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              project.aspectRatio === '9:16'
                 ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md'
                 : 'text-gray-400 hover:text-gray-200'
             }`}
-            title="Giao diện Studio biên tập Video Remotion"
-          >
-            <Film className="w-3.5 h-3.5" />
-            <span>🎬 Studio Video</span>
-          </button>
-          <button
-            onClick={() => setActiveView('roadmap100')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-              activeView === 'roadmap100'
-                ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-md'
-                : 'text-gray-400 hover:text-gray-200'
-            }`}
-            title="Đường ray xương cá lộ trình 100 ngày uốn lượn"
-          >
-            <span>🛣️ Đường Ray 100 Ngày</span>
-            <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-amber-400/20 text-amber-300 border border-amber-400/40">
-              HOT
-            </span>
-          </button>
-        </div>
-
-        {/* Nút Nạp Mẫu Trình Diễn Đỉnh Cao (Max Showcase) */}
-        <button
-          type="button"
-          onClick={() => {
-            if (window.confirm('Bạn có muốn nạp Mẫu Trình Diễn Đỉnh Cao (Showcase Max Level) để xem trọn bộ hiệu ứng, chữ 3D phông xanh, âm thanh SFX và meme triệu view không?')) {
-              setProject(maxShowcaseProject);
-              localStorage.setItem('CURRENT_PROJECT', JSON.stringify(maxShowcaseProject));
-              setActiveView('editor');
-            }
-          }}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-rose-600 via-pink-600 to-amber-500 hover:from-rose-500 hover:to-amber-400 text-white text-xs font-black shadow-lg shadow-rose-500/25 transition active:scale-95 cursor-pointer animate-pulse"
-          title="Nạp kịch bản 4 phân cảnh đỉnh cao phô diễn toàn bộ tính năng CapCut Motion"
-        >
-          <span>🔥</span>
-          <span>Mẫu Đỉnh Cao (Showcase)</span>
-        </button>
-
-        {/* Aspect Ratio Toggle */}
-        <div className="bg-gray-900/80 p-1 rounded-xl border border-gray-800 flex items-center">
-          <button
-            onClick={() => handleRatioChange('9:16')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-              project.aspectRatio === '9:16'
-                ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md shadow-indigo-500/20'
-                : 'text-gray-400 hover:text-gray-200'
-            }`}
-            title="Shorts, TikTok, Reels (9:16 Dọc)"
+            title="Tỷ lệ 9:16 dọc (TikTok, Reels, Shorts)"
           >
             <Smartphone className="w-3.5 h-3.5" />
-            <span>9:16 Shorts</span>
+            <span>9:16</span>
           </button>
           <button
             onClick={() => handleRatioChange('16:9')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
               project.aspectRatio === '16:9'
-                ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md shadow-indigo-500/20'
+                ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md'
                 : 'text-gray-400 hover:text-gray-200'
             }`}
-            title="YouTube, Facebook (16:9 Ngang)"
+            title="Tỷ lệ 16:9 ngang (YouTube, Facebook)"
           >
             <Tv className="w-3.5 h-3.5" />
-            <span>16:9 YouTube</span>
+            <span>16:9</span>
           </button>
         </div>
 
-        {/* Open on GitHub Pages Button */}
-        <button
-          onClick={() => {
-            const url = localStorage.getItem('GITHUB_PAGE_URL') || 'https://hoangkyanh05.github.io/Tool_Report/';
-            if (window.electronAPI?.openPath) {
-              window.electronAPI.openPath(url);
-            } else {
-              window.open(url, '_blank');
-            }
-          }}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 text-indigo-300 hover:text-white border border-indigo-500/30 text-xs font-semibold transition-all shadow-sm"
-          title="Mở ứng dụng trên GitHub Pages"
-        >
-          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-          <span>GitHub Page</span>
-        </button>
+        {/* View Switcher: Studio Video vs Đường Ray 100 Ngày */}
+        <div className="bg-gray-900/90 p-0.5 sm:p-1 rounded-xl border border-gray-800 flex items-center shadow-inner hidden md:flex">
+          <button
+            onClick={() => setActiveView('editor')}
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              activeView === 'editor'
+                ? 'bg-indigo-600 text-white shadow-sm'
+                : 'text-gray-400 hover:text-gray-200'
+            }`}
+            title="Giao diện Studio biên tập Video"
+          >
+            <Film className="w-3.5 h-3.5" />
+            <span>Studio</span>
+          </button>
+          <button
+            onClick={() => setActiveView('roadmap100')}
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              activeView === 'roadmap100'
+                ? 'bg-amber-600 text-white shadow-sm'
+                : 'text-gray-400 hover:text-gray-200'
+            }`}
+            title="Lộ trình sáng tạo nội dung 100 ngày"
+          >
+            <span>Lộ trình 100N</span>
+          </button>
+        </div>
 
-        {/* Restart App Button */}
+        {/* Nút Nạp Mẫu Homestay Nhanh */}
+        <div className="flex items-center gap-1 bg-gray-900/80 p-0.5 rounded-xl border border-gray-800">
+          <button
+            type="button"
+            onClick={handleLoadHomestaySample}
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/40 hover:to-orange-500/40 text-amber-300 hover:text-white border border-amber-500/40 text-xs font-bold transition-all active:scale-95 cursor-pointer"
+            title="Nạp kịch bản mẫu: Giới thiệu phòng & Săn mây Lá Đỏ Sa Pa"
+          >
+            <span>🏔️</span>
+            <span className="hidden sm:inline">Mẫu Homestay</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleLoadShowcaseSample}
+            className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-gray-400 hover:text-gray-200 hover:bg-gray-800 text-xs font-medium transition-all"
+            title="Nạp mẫu kỹ xảo CapCut Motion 3D nâng cao"
+          >
+            <span>✨</span>
+            <span className="hidden lg:inline">Showcase CapCut</span>
+          </button>
+        </div>
+
+        {/* Nút Chia Video Dài Thành Video Ngắn (Smart Splitter) */}
+        {onOpenVideoSplitter && (
+          <button
+            type="button"
+            onClick={onOpenVideoSplitter}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-rose-500/25 to-pink-500/25 hover:from-rose-500/40 hover:to-pink-500/40 text-rose-300 hover:text-white border border-rose-500/40 text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-sm"
+            title="Tải video dài lên & tự động chia 5s, 10s, 15s kèm tính năng co ngắn đoạn thừa"
+          >
+            <Scissors className="w-3.5 h-3.5 text-rose-400" />
+            <span className="hidden sm:inline">Chia Video Dài</span>
+          </button>
+        )}
+
+        {/* Settings & Restart icon buttons */}
         <button
           onClick={handleRestartApp}
-          className="p-2.5 rounded-xl bg-gray-800/60 hover:bg-red-500/20 text-gray-300 hover:text-red-400 border border-gray-700/50 hover:border-red-500/30 transition-all group"
-          title="Khởi động lại ứng dụng (Restart App)"
+          className="p-2 rounded-xl bg-gray-800/60 hover:bg-gray-700/80 text-gray-300 hover:text-white border border-gray-700/40 transition-all"
+          title="Làm mới trình biên tập"
         >
-          <RotateCcw className="w-4 h-4 group-hover:rotate-[-180deg] transition-transform duration-300" />
+          <RotateCcw className="w-3.5 h-3.5" />
         </button>
 
-        {/* Settings button */}
         <button
           onClick={onOpenSettings}
-          className="p-2.5 rounded-xl bg-gray-800/60 hover:bg-gray-800 text-gray-300 hover:text-white border border-gray-700/50 transition-all"
-          title="Cài đặt API & Cấu hình"
+          className="p-2 rounded-xl bg-gray-800/60 hover:bg-gray-700/80 text-gray-300 hover:text-white border border-gray-700/40 transition-all"
+          title="Cài đặt API AI & Giọng đọc"
         >
-          <Settings className="w-4 h-4" />
+          <Settings className="w-3.5 h-3.5" />
         </button>
 
         {/* Render Video Button */}
         <button
           onClick={onOpenRender}
           disabled={isGenerating || project.scenes.length === 0}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:from-indigo-600 hover:to-pink-600 text-white font-semibold text-sm shadow-lg shadow-indigo-500/25 disabled:opacity-50 disabled:cursor-not-allowed transition-all transform active:scale-95 glow-primary"
+          className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-rose-500 via-purple-600 to-indigo-600 hover:from-rose-600 hover:to-indigo-500 text-white font-bold text-xs sm:text-sm shadow-md shadow-purple-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95"
         >
           <Download className="w-4 h-4" />
-          <span>Xuất Video MP4</span>
+          <span>Xuất Video</span>
         </button>
       </div>
     </header>

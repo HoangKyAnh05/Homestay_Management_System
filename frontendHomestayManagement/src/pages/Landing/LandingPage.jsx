@@ -210,7 +210,7 @@ function LandingPage() {
       const discountEl = document.getElementById('summary-discount');
       const totalEl = document.getElementById('summary-total');
 
-      if (nightsEl) nightsEl.textContent = `${nights} đêm x ${formatVND(pricePerNight)}:`;
+      if (nightsEl) nightsEl.textContent = `${nights === 1 ? '2 ngày 1 đêm' : `${nights + 1} ngày ${nights} đêm`} x ${formatVND(pricePerNight)}:`;
       if (roomSubtotalEl) roomSubtotalEl.textContent = formatVND(roomSubtotal);
       if (discountEl) discountEl.textContent = '-' + formatVND(discount);
       if (totalEl) totalEl.textContent = formatVND(total);
@@ -267,7 +267,7 @@ function LandingPage() {
         </div>
         <div style="display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
           <h2 style="font-family: var(--font-serif-display); font-size: 1.8rem;">${villa.name}</h2>
-          <span style="font-size: 1.4rem; font-weight: 700; color: #f5cf9e;">${formatVND(villa.price)} <small style="font-size: 0.82rem; color: var(--text-muted); font-weight: normal;">/ đêm</small></span>
+          <span style="font-size: 1.4rem; font-weight: 700; color: #f5cf9e;">${formatVND(villa.price)} <small style="font-size: 0.82rem; color: var(--text-muted); font-weight: normal;">/ 2 ngày 1 đêm</small></span>
         </div>
         <div style="display: flex; gap: 1.5rem; color: var(--text-muted); font-size: 0.88rem; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border-subtle); flex-wrap: wrap;">
           <span><strong>Diện tích:</strong> ${villa.area}</span>
@@ -513,7 +513,7 @@ function LandingPage() {
                   {dbRooms.length > 0 ? (
                     dbRooms.map((room) => (
                       <option key={room.id || room.roomTypeId} value={room.id || room.roomTypeId}>
-                        {room.name || `Căn ${room.id}`} ({formatVND(getRoomPrice(room))}/đêm)
+                        {room.name || `Căn ${room.id}`} ({formatVND(getRoomPrice(room))}/ 2 ngày 1 đêm)
                       </option>
                     ))
                   ) : (
@@ -658,7 +658,7 @@ function LandingPage() {
                       <img src={villa.image} alt={villa.name} className="villa-img" loading="lazy" />
                       <div className="villa-price-tag">
                         <span className="price">{formatVND(villa.price)}</span>
-                        <span className="unit">/ đêm</span>
+                        <span className="unit">/ 2 ngày 1 đêm</span>
                       </div>
                     </div>
                     <div className="villa-body">
@@ -1093,15 +1093,15 @@ function LandingPage() {
                 {dbRooms.length > 0 ? (
                   dbRooms.map((room) => (
                     <option key={room.id || room.roomTypeId} value={room.id || room.roomTypeId} data-price={getRoomPrice(room)}>
-                      {room.name || `Căn ${room.id}`} ({formatVND(getRoomPrice(room))}/đêm)
+                      {room.name || `Căn ${room.id}`} ({formatVND(getRoomPrice(room))}/ 2 ngày 1 đêm)
                     </option>
                   ))
                 ) : (
                   <>
-                    <option value="glass-pine" data-price="3850000">The Glass Pine Pavilion (3.850.000₫/đêm)</option>
-                    <option value="cloud-crest" data-price="4200000">Cloud Crest Loft (4.200.000₫/đêm)</option>
-                    <option value="mizu-stream" data-price="4650000">Mizu Stream Retreat (4.650.000₫/đêm)</option>
-                    <option value="aether-dome" data-price="5200000">Aether Star Observatory (5.200.000₫/đêm)</option>
+                    <option value="glass-pine" data-price="3850000">The Glass Pine Pavilion (3.850.000₫/ 2 ngày 1 đêm)</option>
+                    <option value="cloud-crest" data-price="4200000">Cloud Crest Loft (4.200.000₫/ 2 ngày 1 đêm)</option>
+                    <option value="mizu-stream" data-price="4650000">Mizu Stream Retreat (4.650.000₫/ 2 ngày 1 đêm)</option>
+                    <option value="aether-dome" data-price="5200000">Aether Star Observatory (5.200.000₫/ 2 ngày 1 đêm)</option>
                   </>
                 )}
               </select>
@@ -1126,7 +1126,7 @@ function LandingPage() {
             {/* Price Breakdown */}
             <div className="price-summary-card">
               <div className="summary-row">
-                <span id="summary-nights">1 đêm x 3.850.000₫:</span>
+                <span id="summary-nights">2 ngày 1 đêm x 3.850.000₫:</span>
                 <span id="summary-room-subtotal">3.850.000₫</span>
               </div>
               <div className="summary-row discount-row">

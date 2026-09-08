@@ -34,7 +34,9 @@ public class WishlistServiceImpl implements WishlistService {
                 .orElseThrow(() -> new IllegalArgumentException("Khong tim thay tai khoan nguoi dung"));
 
         RoomType roomType = roomTypeRepository.findById(roomTypeId)
-                .orElseThrow(() -> new IllegalArgumentException("Khong tim thay loai phong"));
+                .orElseGet(() -> roomRepository.findById(roomTypeId)
+                        .map(com.homestayManagement.homestayManagement.entity.Room::getRoomType)
+                        .orElseThrow(() -> new IllegalArgumentException("Khong tim thay loai phong")));
 
         Optional<Wishlist> existingOpt = wishlistRepository.findByAccountAndRoomType(account, roomType);
 
@@ -104,7 +106,10 @@ public class WishlistServiceImpl implements WishlistService {
         if (userEmail == null || userEmail.isBlank()) return false;
         Account account = accountRepository.findByEmail(userEmail).orElse(null);
         if (account == null) return false;
-        RoomType roomType = roomTypeRepository.findById(roomTypeId).orElse(null);
+        RoomType roomType = roomTypeRepository.findById(roomTypeId)
+                .orElseGet(() -> roomRepository.findById(roomTypeId)
+                        .map(com.homestayManagement.homestayManagement.entity.Room::getRoomType)
+                        .orElse(null));
         if (roomType == null) return false;
 
         return wishlistRepository.existsByAccountAndRoomType(account, roomType);

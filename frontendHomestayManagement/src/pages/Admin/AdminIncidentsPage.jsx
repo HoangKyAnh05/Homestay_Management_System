@@ -351,7 +351,7 @@ export default function AdminIncidentsPage() {
                 }, 'Báo đồ hỏng / mất')
               }}
             >
-              ⚠️ + Báo đồ hỏng / mất
+              ⚠️ + Báo đồ hỏng / mất (đồ quan trọng, cần thay, bảo trì ngay)
             </button>
           </div>
         </div>
@@ -669,7 +669,7 @@ export default function AdminIncidentsPage() {
           <div className="incident-modal-overlay" onClick={() => setShowReportModal(false)}>
             <div className="incident-modal" onClick={(e) => e.stopPropagation()}>
               <div className="modal-header">
-                <h2>⚠️ Báo Cáo Đồ Bị Hỏng Hóc / Mất</h2>
+                <h2>⚠️ Báo Cáo Đồ Bị Hỏng Hóc / Mất (Đồ quan trọng, cần thay, bảo trì ngay)</h2>
                 <button
                   type="button"
                   className="modal-close-btn"

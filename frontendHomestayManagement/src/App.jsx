@@ -35,6 +35,7 @@ import StayPage from './pages/Stay/StayPage'
 import StayActivationPage from './pages/Stay/StayActivationPage'
 import WishlistPage from './pages/Wishlist/WishlistPage'
 import LandingPage from './pages/Landing/LandingPage'
+import CustomerVouchersPage from './pages/Vouchers/CustomerVouchersPage'
 import FloatingContactWidget from './components/FloatingContact/FloatingContactWidget'
 import { getStoredUser } from './services/authService'
 import { STAFF_ROLES, roleCanAccess, roleDefaultPath } from './utils/roleUtils'
@@ -52,11 +53,15 @@ function CustomerSurface({ children }) {
 }
 
 function normalizePath() {
-  if (window.location.pathname === '/') {
+  let path = window.location.pathname || '/'
+  if (path.length > 1 && path.endsWith('/')) {
+    path = path.slice(0, -1)
+  }
+  if (path === '/') {
     window.history.replaceState(null, '', '/home')
     return '/home'
   }
-  return window.location.pathname
+  return path
 }
 
 function App() {
@@ -112,6 +117,11 @@ function App() {
     return () => document.removeEventListener('click', handleInternalLink)
   }, [])
 
+  if (currentPath.startsWith('/remotion-app')) {
+    window.location.replace('/remotion-app/index.html')
+    return null
+  }
+
   if (currentPath === '/landing' || currentPath === '/sanctuary' || currentPath === '/komorebi') {
     return <LandingPage />
   }
@@ -125,6 +135,9 @@ function App() {
   if (currentPath === '/booking-history') return <CustomerSurface><BookingHistoryPage /></CustomerSurface>
   if (currentPath === '/amenities') return <CustomerSurface><AmenitiesPage /></CustomerSurface>
   if (currentPath === '/wishlist') return <CustomerSurface><WishlistPage /></CustomerSurface>
+  if (currentPath === '/vouchers' || currentPath === '/my-vouchers') {
+    return <CustomerSurface><CustomerVouchersPage /></CustomerSurface>
+  }
   if (currentPath === '/stay/activate') return <StayActivationPage />
   if (currentPath === '/stay') return <CustomerSurface><StayPage /></CustomerSurface>
   if (currentPath === '/rooms') return <CustomerSurface><RoomsPage /></CustomerSurface>

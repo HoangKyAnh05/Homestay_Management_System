@@ -46,4 +46,8 @@ public class Voucher {
 
     @Column(name = "discount_value", precision = 10, scale = 2)
     private BigDecimal discountValue;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "customer_id")
+    private Customer customer;
 }

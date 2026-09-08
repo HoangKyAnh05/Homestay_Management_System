@@ -35,47 +35,51 @@ interface ScriptGeneratorProps {
   onOpenBatchVocab?: () => void;
 }
 
-const DEFAULT_SCRIPT = `Bún cá cay Hải Phòng là món ăn đặc sản nức tiếng đậm đà khó quên.
-Từng miếng cá rô phi được chiên vàng ươm giòn rụm trong miệng.
-Rất nhiều thực khách đã tìm kiếm công thức nấu nước dùng thanh ngọt này trên Google.
-Doanh thu của quán đã bùng nổ tăng trưởng hơn 320% sau khi lên xu hướng.
-Hãy bắt đầu hành trình trải nghiệm ẩm thực đỉnh cao ngay hôm nay!`;
+const DEFAULT_SCRIPT = `Chào mừng bạn đến với Lá Đỏ Homestay Sa Pa, nơi mây ôm trọn thung lũng Mường Hoa mỗi sớm mai.
+Thưởng thức tách cà phê ấm nóng bên ban công lộng gió và hít hà không khí trong lành của núi rừng.
+Không gian phòng nghỉ mộc mạc, tiện nghi ấm cúng, mang đến cảm giác an yên như ở chính ngôi nhà của mình.
+Lên lịch cho kỳ nghỉ tại Sa Pa ngay hôm nay và nhận trọn vẹn ưu đãi độc quyền từ Lá Đỏ Homestay!`;
 
 const SCRIPT_PRESETS = [
   {
-    title: '🍜 Review Ẩm Thực',
-    desc: 'Món ngon, đặc sản, tìm kiếm & tăng trưởng',
-    script: `Bún cá cay Hải Phòng là món ăn đặc sản nức tiếng đậm đà khó quên.
-Từng miếng cá rô phi được chiên vàng ươm giòn rụm trong miệng.
-Rất nhiều thực khách đã tìm kiếm công thức nấu nước dùng thanh ngọt này trên Google.
-Doanh thu của quán đã bùng nổ tăng trưởng hơn 320% sau khi lên xu hướng.
-Hãy bắt đầu hành trình trải nghiệm ẩm thực đỉnh cao ngay hôm nay!`
+    title: '🏔️ Săn Mây & Nghỉ Dưỡng Sa Pa',
+    desc: 'View thung lũng Mường Hoa, ban công săn mây, kỳ nghỉ lý tưởng',
+    script: `Chào mừng bạn đến với Lá Đỏ Homestay Sa Pa, nơi mây ôm trọn thung lũng Mường Hoa mỗi sớm mai.
+Thưởng thức tách cà phê ấm nóng bên ban công lộng gió và hít hà không khí trong lành của núi rừng.
+Không gian phòng nghỉ mộc mạc, tiện nghi ấm cúng, mang đến cảm giác an yên như ở chính ngôi nhà của mình.
+Lên lịch cho kỳ nghỉ tại Sa Pa ngay hôm nay và nhận trọn vẹn ưu đãi độc quyền từ Lá Đỏ Homestay!`
   },
   {
-    title: '💰 Tài Chính & Đầu Tư',
-    desc: 'Cổ phiếu, tài sản, ngân hàng & tự do tài chính',
-    script: `Đây là 3 thói quen quản lý tài chính giúp người giàu ngày càng giàu hơn.
-Thay vì tiêu hết thu nhập hàng tháng vào những thứ tiêu sản vô bổ.
-Họ luôn ưu tiên trích 30% để đầu tư vào cổ phiếu và tài sản sinh lời.
-Thông báo số dư tài khoản ngân hàng sẽ liên tục tăng trưởng theo thời gian.
-Lãi suất kép chính là chìa khóa kỳ diệu giúp bạn chạm tới tự do tài chính!`
+    title: '🌿 Không Gian Komorebi Chữa Lành',
+    desc: 'Ánh nắng qua tán cây, góc trà đạo, an yên và tái tạo năng lượng',
+    script: `Tạm gác lại những bộn bề nơi phố thị để tìm về góc an yên tại Lá Đỏ Homestay.
+Từng tia nắng sớm len lỏi qua tán cây rừng mang đến năng lượng bình yên thuần khiết.
+Ngồi bên hiên nhà thưởng trà, lắng nghe tiếng suối reo và tiếng lá xào xạc trong gió.
+Chuyến đi này sẽ là món quà tuyệt vời nhất để bạn chữa lành tâm hồn và nạp đầy năng lượng mới!`
   },
   {
-    title: '💻 Công Nghệ & AI',
-    desc: 'Trí tuệ nhân tạo, code tự động & bứt phá',
-    script: `Trí tuệ nhân tạo đang làm thay đổi hoàn toàn cuộc chơi của thế giới hiện đại.
-Làm sao để ứng dụng AI tự động hóa toàn bộ công việc của bạn?
-Bằng cách kết hợp các dòng code tự động và mô hình ngôn ngữ lớn siêu tốc.
-Tốc độ xử lý công việc của bạn sẽ nhanh hơn gấp 10 lần bình thường.
-Hãy nắm bắt cơ hội để bứt phá dẫn đầu tương lai công nghệ!`
+    title: '☕ Ban Công Cà Phê & BBQ Hoàng Hôn',
+    desc: 'Tiệc nướng BBQ ấm cúng, view hoàng hôn lãng mạn, chill cùng bạn bè',
+    script: `Hoàng hôn buông xuống trên đỉnh núi Sa Pa chính là khoảnh khắc đẹp nhất trong ngày.
+Cùng người thương quây quần bên bếp than hồng với bữa tiệc nướng BBQ thơm lừng.
+Nhâm nhi tách trà thảo mộc nóng và ngắm nhìn thị trấn Sa Pa dần lên đèn lung linh.
+Đừng bỏ lỡ những khoảnh khắc gắn kết tuyệt đẹp chỉ có tại Lá Đỏ Homestay!`
   },
   {
-    title: '🔥 Động Lực Phát Triển',
-    desc: 'Bứt phá giới hạn, kỷ luật & thành công',
-    script: `Đừng bao giờ từ bỏ ước mơ chỉ vì chặng đường phía trước đang đầy gian nan.
-Mỗi cú vấp ngã ngày hôm nay chính là bài học giúp bạn tôi luyện ý chí kiên cường.
-Kỷ luật thép mỗi ngày chính là cây cầu vững chắc nhất kết nối bạn tới thành công.
-Hãy hành động quyết liệt ngay bây giờ vì thời điểm hoàn hảo nhất chính là giây phút này!`
+    title: '🎁 Ưu Đãi Combo 2 Ngày 1 Đêm',
+    desc: 'Giá sốc, tặng bữa sáng & đồ uống, số lượng phòng giới hạn',
+    script: `Ưu đãi nghỉ dưỡng 2 ngày 1 đêm cực hot tại Lá Đỏ Homestay Sa Pa đang chờ bạn!
+Trọn gói phòng view núi săn mây, miễn phí bữa sáng và đồ uống chào mừng đặc sản Tây Bắc.
+Tặng ngay voucher giảm giá cho các dịch vụ trải nghiệm văn hóa bản địa độc đáo.
+Số lượng phòng ưu đãi có hạn, hãy nhanh tay liên hệ đặt phòng ngay hôm nay!`
+  },
+  {
+    title: '🍜 Review Ẩm Thực & Đặc Sản',
+    desc: 'Lẩu cá hồi, thắng cố, thịt gác bếp và ẩm thực Sa Pa',
+    script: `Đến Sa Pa nhất định phải thưởng thức nồi lẩu cá hồi thơm nức mũi giữa trời sương lạnh.
+Vị ngọt thanh của cá tươi quyện cùng rau rừng tươi xanh đậm đà khó quên.
+Trải nghiệm ẩm thực Tây Bắc trọn vẹn ngay tại không gian bếp ấm cúng của Lá Đỏ Homestay.
+Hãy bắt đầu hành trình khám phá vị giác và văn hóa Sa Pa cùng chúng mình nhé!`
   }
 ];
 

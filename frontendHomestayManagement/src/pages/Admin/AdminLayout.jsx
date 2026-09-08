@@ -154,6 +154,13 @@ function AdminLayoutInner({ activePage, children }) {
   }, [role])
 
   const [openGroupKey, setOpenGroupKey] = useState(() => getActiveGroupKey(activePage, navItems))
+
+  useEffect(() => {
+    const activeGroup = getActiveGroupKey(activePage, navItems)
+    if (activeGroup) {
+      setOpenGroupKey(activeGroup)
+    }
+  }, [activePage, navItems])
   const [navAlerts, setNavAlerts] = useState({
     bookings: false,
     'booking-orders': false,
@@ -327,16 +334,8 @@ function AdminLayoutInner({ activePage, children }) {
       let hasIncidentAlert = false
       if (incidentRes.status === 'fulfilled' && incidentRes.value.ok) {
         const summary = await incidentRes.value.json()
-        const totalIncidents = Number(summary.totalIncidents || 0)
-        latestIncidentCountRef.current = totalIncidents
-
-        const seenIncidentsCount = Number(localStorage.getItem('admin_seen_incidents_count') ?? -1)
-        if (seenIncidentsCount === -1) {
-          localStorage.setItem('admin_seen_incidents_count', String(totalIncidents))
-          hasIncidentAlert = false
-        } else {
-          hasIncidentAlert = totalIncidents > seenIncidentsCount
-        }
+        const pendingIncidents = Number(summary.reportedCount || 0) + Number(summary.inProgressCount || 0)
+        hasIncidentAlert = pendingIncidents > 0
       }
       if (activePage === 'housekeeping-incidents') hasIncidentAlert = false
       updated['housekeeping-incidents'] = hasIncidentAlert
@@ -345,14 +344,9 @@ function AdminLayoutInner({ activePage, children }) {
       if (taskRes.status === 'fulfilled' && taskRes.value.ok) {
         const tasks = await taskRes.value.json()
         if (Array.isArray(tasks)) {
-          latestTaskCountRef.current = tasks.length
-          const seenTasksCount = Number(localStorage.getItem('admin_seen_tasks_count') ?? -1)
-          if (seenTasksCount === -1) {
-            localStorage.setItem('admin_seen_tasks_count', String(tasks.length))
-            hasTaskAlert = false
-          } else {
-            hasTaskAlert = tasks.length > seenTasksCount
-          }
+          // Chỉ hiện chấm đỏ khi còn công việc vệ sinh chưa hoàn thành (cleaningStatus !== 'COMPLETED')
+          const pendingTasks = tasks.filter(t => t.cleaningStatus !== 'COMPLETED')
+          hasTaskAlert = pendingTasks.length > 0
         }
       }
       if (activePage === 'housekeeping-tasks') hasTaskAlert = false
@@ -360,20 +354,14 @@ function AdminLayoutInner({ activePage, children }) {
       updated.housekeeping = hasIncidentAlert || hasTaskAlert
     } catch (_) {}
 
-    // 4. Quản lý Đánh giá (Reviews)
+    // 4. Quản lý Đánh giá (Reviews) - Chỉ hiện khi có đánh giá chờ duyệt (PENDING)
     try {
       const reviewRes = await fetch((import.meta.env.VITE_API_URL || '') + '/api/admin/reviews', { headers })
       if (reviewRes.ok) {
         const reviews = await reviewRes.json()
         if (Array.isArray(reviews)) {
-          latestReviewCountRef.current = reviews.length
-          const seenReviewsCount = Number(localStorage.getItem('admin_seen_reviews_count') ?? -1)
-          if (seenReviewsCount === -1) {
-            localStorage.setItem('admin_seen_reviews_count', String(reviews.length))
-            updated.reviews = false
-          } else {
-            updated.reviews = activePage === 'reviews' ? false : (reviews.length > seenReviewsCount)
-          }
+          const pendingReviews = reviews.filter(r => String(r.status || '').toUpperCase() === 'PENDING')
+          updated.reviews = activePage === 'reviews' ? false : (pendingReviews.length > 0)
         }
       }
     } catch (_) {}
@@ -726,10 +714,11 @@ function AdminLayoutInner({ activePage, children }) {
   )
 }
 
-function AdminLayout({ activePage, children }) {
+function AdminLayout({ activePage, activeKey, activeNav, children }) {
+  const resolvedActivePage = activePage || activeKey || activeNav
   return (
     <ShiftGuardProvider>
-      <AdminLayoutInner activePage={activePage}>
+      <AdminLayoutInner activePage={resolvedActivePage}>
         {children}
       </AdminLayoutInner>
     </ShiftGuardProvider>

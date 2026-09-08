@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { getStoredToken } from '../../services/authService'
 import { formatDateTime as formatAppDateTime } from '../../utils/dateTimeFormat'
 import AdminLayout from './AdminLayout'
@@ -111,7 +111,7 @@ function AdminCancellationsPage() {
   }, [cancellations, statusFilter, search])
 
   return (
-    <AdminLayout activeKey="cancellations" title="Quản lý Hủy phòng & Hoàn tiền">
+    <AdminLayout activePage="cancellations" title="Quản lý Hủy phòng & Hoàn tiền">
       <div className="ac-page">
         {/* Metric Cards */}
         <div className="ac-metrics-grid">

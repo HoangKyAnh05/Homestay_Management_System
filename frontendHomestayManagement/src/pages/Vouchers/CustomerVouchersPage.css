@@ -1,0 +1,783 @@
+/* Customer Vouchers Page */
+.cvp-container {
+  min-height: 100vh;
+  background-color: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  font-family: inherit;
+}
+
+.cvp-header {
+  background: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+  padding: 16px 32px;
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.cvp-header-left {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.cvp-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 8px 14px;
+  color: #334155;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.15s ease;
+}
+
+.cvp-back-btn:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.cvp-title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.3px;
+}
+
+.cvp-subtitle {
+  margin: 2px 0 0 0;
+  font-size: 13px;
+  color: #64748b;
+}
+
+.cvp-book-now-btn {
+  background: #166534;
+  color: #ffffff;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+  box-shadow: 0 4px 12px rgba(22, 101, 52, 0.2);
+  transition: all 0.15s ease;
+}
+
+.cvp-book-now-btn:hover {
+  background: #14532d;
+  transform: translateY(-1px);
+}
+
+.cvp-main {
+  max-width: 1180px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 28px 24px 60px;
+  box-sizing: border-box;
+}
+
+/* ── LOYALTY CARD ── */
+.cvp-loyalty-card {
+  background: linear-gradient(135deg, #064e3b 0%, #166534 60%, #15803d 100%);
+  border-radius: 18px;
+  padding: 28px 32px;
+  color: #ffffff;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 12px 28px -6px rgba(22, 101, 52, 0.35);
+  position: relative;
+  overflow: hidden;
+}
+
+.cvp-loyalty-card::after {
+  content: '🍁';
+  position: absolute;
+  right: -20px;
+  bottom: -30px;
+  font-size: 160px;
+  opacity: 0.08;
+  pointer-events: none;
+}
+
+.cvp-loyalty-eyebrow {
+  display: inline-block;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-weight: 800;
+  color: #86efac;
+  margin-bottom: 4px;
+}
+
+.cvp-loyalty-left h2 {
+  margin: 0 0 14px 0;
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+
+.cvp-loyalty-stats {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(8px);
+  padding: 10px 18px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  width: fit-content;
+}
+
+.cvp-stat-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.cvp-stat-label {
+  font-size: 11px;
+  color: #dcfce7;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.cvp-stat-number {
+  font-size: 20px;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.cvp-stat-number small {
+  font-size: 13px;
+  font-weight: 600;
+  color: #bbf7d0;
+}
+
+.cvp-stat-divider {
+  width: 1px;
+  height: 32px;
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.cvp-loyalty-tip {
+  margin: 12px 0 0 0;
+  font-size: 13px;
+  color: #bbf7d0;
+  max-width: 580px;
+  line-height: 1.4;
+}
+
+.cvp-loyalty-right {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 2;
+}
+
+.cvp-loyalty-btn {
+  background: #ffffff;
+  color: #166534;
+  padding: 12px 24px;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 800;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.cvp-loyalty-btn:hover {
+  transform: translateY(-2px);
+  background: #f0fdf4;
+}
+
+.cvp-loyalty-sub-btn {
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  padding: 9px 18px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+  text-align: center;
+  text-decoration: none;
+  transition: all 0.15s ease;
+}
+
+.cvp-loyalty-sub-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* ── TABS ── */
+.cvp-tabs-wrapper {
+  margin-bottom: 24px;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.cvp-tabs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+}
+
+.cvp-tab-btn {
+  background: transparent;
+  border: none;
+  padding: 10px 18px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #64748b;
+  border-radius: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.cvp-tab-btn:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.cvp-tab-btn.is-active {
+  background: #166534;
+  color: #ffffff;
+}
+
+.cvp-tab-btn--highlight {
+  color: #d97706;
+  background: #fef3c7;
+}
+
+.cvp-tab-btn--highlight.is-active {
+  background: #d97706;
+  color: #ffffff;
+}
+
+/* ── VOUCHER GRID & CARDS ── */
+.cvp-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 20px;
+}
+
+.cvp-card {
+  background: #ffffff;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+  display: flex;
+  overflow: hidden;
+  position: relative;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.cvp-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.08);
+}
+
+.cvp-card-left {
+  width: 110px;
+  background: #166534;
+  color: #ffffff;
+  padding: 18px 12px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  position: relative;
+  border-right: 2px dashed #cbd5e1;
+}
+
+.cvp-card.is-lucky .cvp-card-left {
+  background: #ea580c;
+}
+
+.cvp-discount-tag {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 800;
+  opacity: 0.9;
+}
+
+.cvp-discount-value {
+  font-size: 20px;
+  font-weight: 800;
+  margin: 4px 0;
+  line-height: 1.1;
+}
+
+.cvp-max-discount {
+  font-size: 10px;
+  opacity: 0.85;
+}
+
+.cvp-card-right {
+  flex: 1;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.cvp-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.cvp-card-name {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.cvp-badge-lucky {
+  background: #ffedd5;
+  color: #c2410c;
+  border: 1px solid #fed7aa;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.cvp-card-desc {
+  font-size: 12px;
+  color: #64748b;
+  margin: 6px 0 10px;
+  line-height: 1.4;
+}
+
+.cvp-card-meta {
+  display: flex;
+  gap: 14px;
+  margin-bottom: 12px;
+}
+
+.cvp-meta-item {
+  font-size: 12px;
+}
+
+.cvp-meta-item span {
+  color: #94a3b8;
+  margin-right: 4px;
+}
+
+.cvp-meta-item strong {
+  color: #334155;
+}
+
+.cvp-card-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.cvp-code-box {
+  flex: 1;
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 6px;
+  padding: 4px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.cvp-code-text {
+  font-family: monospace;
+  font-size: 13px;
+  font-weight: 800;
+  color: #1e293b;
+}
+
+.cvp-btn-copy {
+  background: #e2e8f0;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.cvp-btn-copy:hover {
+  background: #cbd5e1;
+}
+
+.cvp-btn-use {
+  background: #166534;
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  padding: 7px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.cvp-btn-use:hover {
+  background: #14532d;
+}
+
+/* ── REDEEM PACKAGES SECTION ── */
+.cvp-redeem-section,
+.cvp-my-redeemed-section {
+  padding: 10px 0;
+}
+
+.cvp-section-header {
+  margin-bottom: 20px;
+}
+
+.cvp-section-header h3 {
+  margin: 0 0 4px;
+  font-size: 20px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.cvp-section-header p {
+  margin: 0;
+  font-size: 14px;
+  color: #64748b;
+}
+
+.cvp-redeem-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 20px;
+}
+
+.cvp-redeem-card {
+  background: #ffffff;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+  padding: 24px 20px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.cvp-redeem-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.08);
+}
+
+.cvp-redeem-card.is-popular {
+  border: 2px solid #166534;
+}
+
+.cvp-popular-badge {
+  position: absolute;
+  top: -12px;
+  right: 18px;
+  background: #166534;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 3px 10px;
+  border-radius: 999px;
+  text-transform: uppercase;
+}
+
+.cvp-redeem-icon {
+  font-size: 36px;
+  margin-bottom: 12px;
+}
+
+.cvp-redeem-title {
+  margin: 0 0 6px 0;
+  font-size: 17px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.cvp-redeem-price {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.cvp-redeem-price span {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.cvp-redeem-price strong {
+  font-size: 22px;
+  font-weight: 800;
+  color: #166534;
+}
+
+.cvp-redeem-desc {
+  font-size: 13px;
+  color: #64748b;
+  line-height: 1.4;
+  margin: 0 0 20px 0;
+  flex: 1;
+}
+
+.cvp-redeem-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 14px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.cvp-points-required span {
+  font-size: 11px;
+  color: #94a3b8;
+  display: block;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.cvp-points-required strong {
+  font-size: 15px;
+  font-weight: 800;
+  color: #d97706;
+}
+
+.cvp-btn-redeem {
+  border: none;
+  border-radius: 8px;
+  padding: 9px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.cvp-btn-redeem.can-redeem {
+  background: #166534;
+  color: #ffffff;
+}
+
+.cvp-btn-redeem.can-redeem:hover {
+  background: #14532d;
+}
+
+.cvp-btn-redeem.cannot-redeem {
+  background: #f1f5f9;
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
+/* ── MODALS ── */
+.cvp-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.cvp-modal {
+  background: #ffffff;
+  border-radius: 18px;
+  max-width: 480px;
+  width: 100%;
+  padding: 32px 28px;
+  text-align: center;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+  animation: cvpPop 0.25s ease-out;
+}
+
+@keyframes cvpPop {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.cvp-modal-icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+}
+
+.cvp-modal h3 {
+  margin: 0 0 8px;
+  font-size: 22px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.cvp-modal p {
+  margin: 0 0 18px;
+  font-size: 14px;
+  color: #64748b;
+}
+
+.cvp-modal-code-card {
+  background: #f0fdf4;
+  border: 2px dashed #86efac;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.cvp-modal-code-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  color: #166534;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+}
+
+.cvp-modal-code-value {
+  font-family: monospace;
+  font-size: 24px;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: 1px;
+  margin: 6px 0;
+}
+
+.cvp-modal-code-meta {
+  font-size: 12px;
+  color: #475569;
+  margin: 0 0 10px 0 !important;
+}
+
+.cvp-modal-copy-btn {
+  background: #166534;
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.cvp-modal-copy-btn:hover {
+  background: #14532d;
+}
+
+.cvp-modal-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.cvp-modal-btn-apply {
+  background: #166534;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.cvp-modal-btn-close {
+  background: #f1f5f9;
+  color: #475569;
+  border: none;
+  border-radius: 8px;
+  padding: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* Empty / State Boxes */
+.cvp-status-box,
+.cvp-empty-box,
+.cvp-error-box {
+  background: #ffffff;
+  border-radius: 14px;
+  border: 1px dashed #cbd5e1;
+  padding: 48px 24px;
+  text-align: center;
+}
+
+.cvp-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid #e2e8f0;
+  border-top-color: #166534;
+  border-radius: 50%;
+  animation: cvpSpin 0.8s linear infinite;
+  margin: 0 auto 14px;
+}
+
+@keyframes cvpSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.cvp-empty-icon {
+  font-size: 44px;
+  margin-bottom: 12px;
+}
+
+.cvp-giveaway-link {
+  display: inline-block;
+  margin-top: 14px;
+  color: #166534;
+  font-weight: 700;
+  text-decoration: none;
+  font-size: 14px;
+}
+
+@media (max-width: 768px) {
+  .cvp-header {
+    padding: 12px 16px;
+  }
+  .cvp-loyalty-card {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 18px;
+    padding: 22px 20px;
+  }
+  .cvp-loyalty-right {
+    width: 100%;
+  }
+  .cvp-loyalty-btn {
+    width: 100%;
+  }
+  .cvp-grid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -34,8 +34,6 @@ function defaultToDate() {
 
 function formatMoney(value) {
   const amount = Number(value || 0)
-  if (amount >= 1000000000) return `${(amount / 1000000000).toFixed(1)} tỷ`
-  if (amount >= 1000000) return `${(amount / 1000000).toFixed(1)} tr`
   return new Intl.NumberFormat('vi-VN').format(amount) + 'đ'
 }
 
@@ -109,7 +107,7 @@ function MetricInspectPopover({ info, position, onClose }) {
     >
       <div className="dash-inspect-head">
         <div className="dash-inspect-title-wrap">
-          <span className="dash-inspect-badge">fx CÔNG THỨC & SỐ LIỆU</span>
+          <span className="dash-inspect-badge">CÔNG THỨC & SỐ LIỆU</span>
           <h4>{info.title}</h4>
           {info.subtitle && <p className="dash-inspect-sub">{info.subtitle}</p>}
         </div>
@@ -259,7 +257,7 @@ function KpiCard({ label, value, hint, tone, inspectInfo, onInspectHover, onInsp
     >
       <div className="dash-kpi-header">
         <span>{label}</span>
-        <span className="dash-inspect-hint-icon" title="Xem công thức">ℹ️ fx</span>
+        <span className="dash-inspect-hint-icon" title="Xem chi tiết & công thức">ℹ️</span>
       </div>
       <strong>{value}</strong>
       <small>{hint}</small>

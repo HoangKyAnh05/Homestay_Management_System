@@ -320,6 +320,15 @@ function DetailCard({ detail, actionLoading, housekeepingRequested, onAction }) 
             <button type="button" disabled={!canCheckIn || loading} onClick={() => onAction(detail.bookingDetailId, 'check-in')}>
               {loading && canCheckIn ? 'Đang xử lý...' : 'Check-in'}
             </button>
+            <button
+              type="button"
+              disabled={!canCheckOut || loading}
+              style={{ background: '#ecfdf5', color: '#047857', borderColor: '#a7f3d0', fontWeight: 600 }}
+              title="Ghi thêm nước uống hoặc dịch vụ phát sinh vào hóa đơn"
+              onClick={() => onAction(detail.bookingDetailId, 'add-service')}
+            >
+              + Thêm nước / DV
+            </button>
             <button type="button" disabled={!canCheckOut || loading || housekeepingRequested} onClick={() => onAction(detail.bookingDetailId, 'housekeeping-request')}>
               {loading && canCheckOut ? 'Đang gửi...' : housekeepingRequested ? 'Đã yêu cầu kiểm tra' : 'Yêu cầu kiểm tra'}
             </button>
@@ -569,6 +578,185 @@ function IdentityCameraModal({ title, onClose, onCapture }) {
   )
 }
 
+function QuickAddServiceModal({ bookingDetailId, onClose, onCompleted }) {
+  const [detail, setDetail] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const [itemType, setItemType] = useState('MINI_BAR')
+  const [selectedItemId, setSelectedItemId] = useState('')
+  const [quantity, setQuantity] = useState(1)
+
+  useEffect(() => {
+    fetch(`${API_BASE}/details/${bookingDetailId}`, { headers: authHeaders() })
+      .then(r => r.json())
+      .then(d => setDetail(d))
+      .catch(e => setError(e.message))
+      .finally(() => setLoading(false))
+  }, [bookingDetailId])
+
+  const handleAdd = async () => {
+    if (!selectedItemId) return
+    setSaving(true)
+    setError('')
+    try {
+      let response
+      if (itemType === 'MINI_BAR') {
+        response = await fetch(`${API_BASE}/details/${bookingDetailId}/mini-bar`, {
+          method: 'POST',
+          headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+          body: JSON.stringify({ itemId: Number(selectedItemId), quantity: Number(quantity) || 1 }),
+        })
+      } else {
+        response = await fetch(`${API_BASE}/details/${bookingDetailId}/services`, {
+          method: 'POST',
+          headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+          body: JSON.stringify({ serviceId: Number(selectedItemId), quantity: Number(quantity) || 1, type: 'FACILITY' }),
+        })
+      }
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(data.message || 'Không thể thêm dịch vụ/nước uống')
+      setDetail(data)
+      setSelectedItemId('')
+      setQuantity(1)
+      if (onCompleted) await onCompleted()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleRemove = async (item) => {
+    if (!window.confirm(`Xóa mục "${item.name}" khỏi hóa đơn?`)) return
+    setSaving(true)
+    setError('')
+    try {
+      const endpoint = item.type === 'MINI_BAR' ? 'mini-bar' : 'services'
+      const response = await fetch(`${API_BASE}/details/${bookingDetailId}/${endpoint}/${item.id}`, {
+        method: 'DELETE',
+        headers: authHeaders(),
+      })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(data.message || 'Không thể xóa mục')
+      setDetail(data)
+      if (onCompleted) await onCompleted()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="aco-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <section className="aco-modal" style={{ maxWidth: 540 }} role="dialog" aria-modal="true">
+        <header className="aco-header">
+          <div className="aco-header-label">Thêm Dịch Vụ & Nước Uống</div>
+          <div className="aco-header-body">
+            <div>
+              <h2>{detail ? `Phòng ${detail.roomNumber || ''} · ${detail.customer?.fullName || ''}` : 'Đang tải...'}</h2>
+              <p>Ghi nhận nước uống, snack minibar hoặc dịch vụ thêm thẳng vào hóa đơn phòng</p>
+            </div>
+            <button type="button" className="aco-close" onClick={onClose}>×</button>
+          </div>
+        </header>
+
+        {loading ? (
+          <div style={{ padding: 30, textAlign: 'center' }}>Đang tải danh mục...</div>
+        ) : (
+          <div style={{ padding: '16px 24px' }}>
+            {error && <div style={{ color: '#dc2626', background: '#fef2f2', padding: '8px 12px', borderRadius: 6, marginBottom: 12, fontSize: 13 }}>{error}</div>}
+
+            <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+              <button
+                type="button"
+                style={{ flex: 1, padding: '8px', borderRadius: 6, border: '1px solid', borderColor: itemType === 'MINI_BAR' ? '#166534' : '#cbd5e1', background: itemType === 'MINI_BAR' ? '#ecfdf5' : '#fff', color: itemType === 'MINI_BAR' ? '#166534' : '#64748b', fontWeight: 700, cursor: 'pointer' }}
+                onClick={() => { setItemType('MINI_BAR'); setSelectedItemId('') }}
+              >
+                🥤 Nước & Minibar
+              </button>
+              <button
+                type="button"
+                style={{ flex: 1, padding: '8px', borderRadius: 6, border: '1px solid', borderColor: itemType === 'FACILITY' ? '#166534' : '#cbd5e1', background: itemType === 'FACILITY' ? '#ecfdf5' : '#fff', color: itemType === 'FACILITY' ? '#166534' : '#64748b', fontWeight: 700, cursor: 'pointer' }}
+                onClick={() => { setItemType('FACILITY'); setSelectedItemId('') }}
+              >
+                🛎️ Dịch Vụ Tiện Ích
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+              <select
+                value={selectedItemId}
+                onChange={e => setSelectedItemId(e.target.value)}
+                style={{ flex: 1, padding: '9px 10px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: 13 }}
+              >
+                <option value="">{itemType === 'MINI_BAR' ? '-- Chọn đồ uống / snack minibar --' : '-- Chọn dịch vụ tiện ích --'}</option>
+                {itemType === 'MINI_BAR'
+                  ? detail?.miniBarItems?.map(it => <option key={it.id} value={it.id}>{it.name} ({formatMoney(it.price)})</option>)
+                  : detail?.facilityServices?.map(it => <option key={it.id} value={it.id}>{it.name} ({formatMoney(it.price)})</option>)}
+              </select>
+              <input
+                type="number"
+                min="1"
+                value={quantity}
+                onChange={e => setQuantity(Math.max(1, Number(e.target.value) || 1))}
+                style={{ width: 60, padding: '9px 8px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: 13, textAlign: 'center' }}
+              />
+              <button
+                type="button"
+                disabled={!selectedItemId || saving}
+                onClick={handleAdd}
+                style={{ padding: '9px 16px', background: '#166534', color: '#fff', border: 'none', borderRadius: 6, fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: !selectedItemId || saving ? 0.6 : 1 }}
+              >
+                {saving ? 'Đang thêm...' : '+ Ghi vào HĐ'}
+              </button>
+            </div>
+
+            {/* Danh sách các dịch vụ & minibar đã ghi nhận vào hóa đơn */}
+            <h4 style={{ fontSize: 13, color: '#334155', margin: '0 0 8px 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              Danh sách đã ghi nhận trên hóa đơn ({detail?.serviceItems?.length || 0})
+            </h4>
+            {(!detail?.serviceItems || detail.serviceItems.length === 0) ? (
+              <div style={{ color: '#94a3b8', fontSize: 13, fontStyle: 'italic', padding: '12px 0' }}>
+                Chưa có dịch vụ hoặc nước uống nào được ghi nhận.
+              </div>
+            ) : (
+              <div style={{ maxHeight: 200, overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: 6 }}>
+                {detail.serviceItems.map((it, idx) => (
+                  <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', borderBottom: idx < detail.serviceItems.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
+                    <div>
+                      <strong style={{ fontSize: 13, color: '#0f172a' }}>{it.name}</strong>
+                      <div style={{ fontSize: 12, color: '#64748b' }}>SL: {it.quantity} × {formatMoney(it.unitPrice)}</div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <strong style={{ fontSize: 13, color: '#166534' }}>{formatMoney(it.totalPrice)}</strong>
+                      {it.id && (
+                        <button
+                          type="button"
+                          style={{ background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: 4, padding: '2px 6px', fontSize: 12, cursor: 'pointer' }}
+                          title="Xóa mục này"
+                          onClick={() => handleRemove(it)}
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        <footer className="aco-footer">
+          <button type="button" className="aco-btn-cancel" onClick={onClose}>Đóng</button>
+        </footer>
+      </section>
+    </div>
+  )
+}
+
 function CheckOutModal({ bookingDetailId, onClose, onCompleted }) {
   const [detail, setDetail] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -580,6 +768,11 @@ function CheckOutModal({ bookingDetailId, onClose, onCompleted }) {
   const [cashReceived, setCashReceived] = useState('')
   const [cashError, setCashError] = useState('')
   const [error, setError] = useState('')
+  const [showAddService, setShowAddService] = useState(false)
+  const [itemType, setItemType] = useState('MINI_BAR')
+  const [selectedItemId, setSelectedItemId] = useState('')
+  const [serviceQty, setServiceQty] = useState(1)
+  const [savingService, setSavingService] = useState(false)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -595,6 +788,57 @@ function CheckOutModal({ bookingDetailId, onClose, onCompleted }) {
       .finally(() => { if (!controller.signal.aborted) setLoading(false) })
     return () => controller.abort()
   }, [bookingDetailId])
+
+  const handleAddServiceItem = async () => {
+    if (!selectedItemId) return
+    setSavingService(true)
+    setError('')
+    try {
+      let response
+      if (itemType === 'MINI_BAR') {
+        response = await fetch(`${API_BASE}/details/${bookingDetailId}/mini-bar`, {
+          method: 'POST',
+          headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+          body: JSON.stringify({ itemId: Number(selectedItemId), quantity: Number(serviceQty) || 1 }),
+        })
+      } else {
+        response = await fetch(`${API_BASE}/details/${bookingDetailId}/services`, {
+          method: 'POST',
+          headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+          body: JSON.stringify({ serviceId: Number(selectedItemId), quantity: Number(serviceQty) || 1, type: 'FACILITY' }),
+        })
+      }
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(data.message || 'Không thể thêm nước uống/dịch vụ')
+      setDetail(data)
+      setSelectedItemId('')
+      setServiceQty(1)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setSavingService(false)
+    }
+  }
+
+  const handleRemoveServiceItem = async (item) => {
+    if (!window.confirm(`Bạn có chắc muốn xóa "${item.name}" khỏi hóa đơn?`)) return
+    setSavingService(true)
+    setError('')
+    try {
+      const endpoint = item.type === 'MINI_BAR' ? 'mini-bar' : 'services'
+      const response = await fetch(`${API_BASE}/details/${bookingDetailId}/${endpoint}/${item.id}`, {
+        method: 'DELETE',
+        headers: authHeaders(),
+      })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(data.message || 'Không thể xóa dịch vụ')
+      setDetail(data)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setSavingService(false)
+    }
+  }
 
   const submitCheckout = async (counterPaymentMethod) => {
     setCheckingOut(true)
@@ -846,9 +1090,25 @@ function CheckOutModal({ bookingDetailId, onClose, onCompleted }) {
                         )}
                         {detail.serviceItems?.map((item, i) => (
                           <div key={i} className="aco-item">
-                            <span className="aco-item-name">{item.name}</span>
+                            <span className="aco-item-name">
+                              {item.name}
+                              <small style={{ color: '#059669', display: 'block', fontSize: 11 }}>
+                                {item.type === 'MINI_BAR' ? 'Minibar phòng' : 'Dịch vụ tiện ích'}
+                              </small>
+                            </span>
                             <span className="aco-item-qty">×{item.quantity}</span>
                             <strong>{formatMoney(item.totalPrice)}</strong>
+                            {item.id && (
+                              <button
+                                type="button"
+                                style={{ background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: 4, width: 22, height: 22, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 12, marginLeft: 6 }}
+                                title="Xóa mục này khỏi hóa đơn"
+                                disabled={savingService}
+                                onClick={() => handleRemoveServiceItem(item)}
+                              >
+                                ✕
+                              </button>
+                            )}
                           </div>
                         ))}
                         {/* Tách bạch Bồi thường đồ hỏng/mất và Phí phạt quy định */}
@@ -905,6 +1165,69 @@ function CheckOutModal({ bookingDetailId, onClose, onCompleted }) {
                         })()}
                       </div>
                     )}
+
+                    {/* Thêm nhanh nước uống / dịch vụ phát sinh trực tiếp vào hóa đơn */}
+                    <div style={{ margin: '12px 0', padding: '10px 12px', background: '#f0fdf4', borderRadius: 8, border: '1px dashed #86efac' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <strong style={{ fontSize: 13, color: '#166534', display: 'flex', alignItems: 'center', gap: 5 }}>
+                          🥤 Thêm nước uống / dịch vụ vào hóa đơn
+                        </strong>
+                        <button
+                          type="button"
+                          style={{ fontSize: 12, color: '#166534', background: '#dcfce7', border: '1px solid #bbf7d0', borderRadius: 4, padding: '2px 8px', cursor: 'pointer', fontWeight: 600 }}
+                          onClick={() => setShowAddService(!showAddService)}
+                        >
+                          {showAddService ? 'Đóng' : '+ Thêm ngay'}
+                        </button>
+                      </div>
+                      {showAddService && (
+                        <div style={{ marginTop: 10 }}>
+                          <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+                            <button
+                              type="button"
+                              style={{ padding: '3px 10px', fontSize: 12, borderRadius: 4, border: '1px solid', borderColor: itemType === 'MINI_BAR' ? '#166534' : '#cbd5e1', background: itemType === 'MINI_BAR' ? '#166534' : '#fff', color: itemType === 'MINI_BAR' ? '#fff' : '#64748b', cursor: 'pointer', fontWeight: 600 }}
+                              onClick={() => { setItemType('MINI_BAR'); setSelectedItemId('') }}
+                            >
+                              Nước / Minibar
+                            </button>
+                            <button
+                              type="button"
+                              style={{ padding: '3px 10px', fontSize: 12, borderRadius: 4, border: '1px solid', borderColor: itemType === 'FACILITY' ? '#166534' : '#cbd5e1', background: itemType === 'FACILITY' ? '#166534' : '#fff', color: itemType === 'FACILITY' ? '#fff' : '#64748b', cursor: 'pointer', fontWeight: 600 }}
+                              onClick={() => { setItemType('FACILITY'); setSelectedItemId('') }}
+                            >
+                              Dịch vụ tiện ích
+                            </button>
+                          </div>
+                          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                            <select
+                              value={selectedItemId}
+                              onChange={e => setSelectedItemId(e.target.value)}
+                              style={{ flex: 1, padding: '7px 8px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: 12, background: '#fff' }}
+                            >
+                              <option value="">{itemType === 'MINI_BAR' ? '-- Chọn đồ uống / minibar --' : '-- Chọn dịch vụ tiện ích --'}</option>
+                              {itemType === 'MINI_BAR'
+                                ? detail.miniBarItems?.map(it => <option key={it.id} value={it.id}>{it.name} · {formatMoney(it.price)}</option>)
+                                : detail.facilityServices?.map(it => <option key={it.id} value={it.id}>{it.name} · {formatMoney(it.price)}</option>)}
+                            </select>
+                            <input
+                              type="number"
+                              min="1"
+                              value={serviceQty}
+                              onChange={e => setServiceQty(Math.max(1, Number(e.target.value) || 1))}
+                              style={{ width: 46, padding: '7px 6px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: 12, textAlign: 'center', background: '#fff' }}
+                            />
+                            <button
+                              type="button"
+                              disabled={!selectedItemId || savingService}
+                              onClick={handleAddServiceItem}
+                              style={{ padding: '7px 12px', background: '#166534', color: '#fff', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer', opacity: !selectedItemId || savingService ? 0.6 : 1, whiteSpace: 'nowrap' }}
+                            >
+                              {savingService ? '...' : '+ Ghi vào HĐ'}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
 
                     {/* Tổng kết */}
                     <div className="aco-totals">
@@ -1207,6 +1530,9 @@ function CheckInModal({ bookingDetailId, onClose, onCompleted }) {
       })
       const data = await response.json().catch(() => ({}))
       if (!response.ok) throw new Error(data.message || 'Không thể đọc thông tin căn cước')
+      if (!data.identityDocumentNumber && !data.fullName) {
+        throw new Error('Ảnh tải lên không đúng nhận dạng (form CCCD) hoặc hình ảnh không rõ nét. Vui lòng kiểm tra lại ảnh chụp rõ mặt trước và mặt sau thẻ Căn cước công dân!')
+      }
       setGuests(current => current.map((guest, guestIndex) => {
         if (guestIndex !== index) return guest
         return {
@@ -1224,9 +1550,9 @@ function CheckInModal({ bookingDetailId, onClose, onCompleted }) {
         delete next[index]
         return next
       })
-      setOcrNotice(`Đã đọc căn cước cho người lưu trú ${index + 1}. Vui lòng kiểm tra lại trước khi xác nhận.`)
+      setOcrNotice(`✓ Đã đọc căn cước cho người lưu trú ${index + 1}. Vui lòng kiểm tra lại trước khi xác nhận.`)
     } catch (err) {
-      setError(`Không thể quét CCCD tự động: ${err.message}. Bạn vẫn có thể nhập trực tiếp thông tin vào form để check-in.`)
+      setError(`⚠️ Lỗi quét CCCD: ${err.message}`)
     } finally {
       setOcrLoadingIndex(null)
     }
@@ -1450,6 +1776,7 @@ function AdminCheckInLogsPage() {
     return value && /^\d+$/.test(value) ? Number(value) : null
   })
   const [checkOutTargetId, setCheckOutTargetId] = useState(null)
+  const [quickAddTargetId, setQuickAddTargetId] = useState(null)
   const [housekeepingRequestedIds, setHousekeepingRequestedIds] = useState(() => new Set())
 
   const loadLogs = useCallback(async (silent = false) => {
@@ -1514,6 +1841,7 @@ function AdminCheckInLogsPage() {
       const actionLabels = {
         'check-in': 'Check-in nhận phòng',
         'check-out': 'Check-out trả phòng',
+        'add-service': 'Thêm nước / dịch vụ',
         'housekeeping-request': 'Yêu cầu dọn phòng',
       }
       guardAction(null, actionLabels[action] || 'Cập nhật lưu trú')
@@ -1525,6 +1853,10 @@ function AdminCheckInLogsPage() {
     }
     if (action === 'check-out') {
       setCheckOutTargetId(bookingDetailId)
+      return
+    }
+    if (action === 'add-service') {
+      setQuickAddTargetId(bookingDetailId)
       return
     }
     setActionLoading(bookingDetailId)
@@ -1657,6 +1989,15 @@ function AdminCheckInLogsPage() {
           onClose={() => setCheckOutTargetId(null)}
           onCompleted={async () => {
             setCheckOutTargetId(null)
+            await loadLogs()
+          }}
+        />
+      )}
+      {quickAddTargetId && (
+        <QuickAddServiceModal
+          bookingDetailId={quickAddTargetId}
+          onClose={() => setQuickAddTargetId(null)}
+          onCompleted={async () => {
             await loadLogs()
           }}
         />

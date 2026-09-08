@@ -195,6 +195,142 @@
   background: #dbeafe;
 }
 
+/* Excel Export Buttons & Dropdown Menu */
+.ain-export-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.ain-btn-excel {
+  height: 40px;
+  padding: 0 16px;
+  border: 1px solid #16a34a;
+  border-radius: 8px;
+  background: #16a34a;
+  color: #ffffff;
+  font-weight: 700;
+  cursor: pointer;
+  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+
+.ain-btn-excel:hover:not(:disabled) {
+  background: #15803d;
+  border-color: #15803d;
+}
+
+.ain-btn-excel:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.ain-export-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 50;
+  min-width: 280px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ain-export-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #111827;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  width: 100%;
+}
+
+.ain-export-item:hover {
+  background: #f0fdf4;
+}
+
+.ain-export-item strong {
+  font-size: 13px;
+  font-weight: 700;
+  color: #166534;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ain-export-item span {
+  font-size: 11px;
+  color: #6b7280;
+  margin-top: 2px;
+}
+
+.ain-excel-btn {
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+  background: #f0fdf4;
+  color: #166534;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.ain-excel-btn:hover {
+  background: #dcfce7;
+  border-color: #86efac;
+}
+
+.ain-modal-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ain-modal-excel-btn {
+  height: 36px;
+  padding: 0 14px;
+  border: 1px solid #16a34a;
+  border-radius: 8px;
+  background: #16a34a;
+  color: #ffffff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.15s ease;
+}
+
+.ain-modal-excel-btn:hover:not(:disabled) {
+  background: #15803d;
+}
+
+.ain-modal-excel-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .ain-empty {
   padding: 42px 20px;
   color: #6b7280;
