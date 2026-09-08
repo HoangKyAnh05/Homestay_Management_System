@@ -177,7 +177,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             title="Nạp kịch bản mẫu: Giới thiệu phòng & Săn mây Lá Đỏ Sa Pa"
           >
             <span>🏔️</span>
-            <span className="hidden sm:inline">Mẫu Homestay</span>
+            <span className="hidden sm:inline">Kịch bản mẫu Homestay</span>
           </button>
 
           <button

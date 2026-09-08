@@ -66,7 +66,7 @@ export const CenterPlayerStage: React.FC<CenterPlayerStageProps> = ({ project, s
     };
   }, [playerRef.current]);
 
-  // Hỗ trợ phím tắt Space để Play/Pause (khi người dùng không gõ phím trong input/textarea)
+  // Hỗ trợ phím tắt Space để Play/Pause và ArrowRight/ArrowLeft để tua frame
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const activeTag = (e.target as HTMLElement)?.tagName;
@@ -75,12 +75,18 @@ export const CenterPlayerStage: React.FC<CenterPlayerStageProps> = ({ project, s
       if (e.code === 'Space') {
         e.preventDefault();
         togglePlayPause();
+      } else if (e.code === 'ArrowRight') {
+        e.preventDefault();
+        handleStepFrame(1);
+      } else if (e.code === 'ArrowLeft') {
+        e.preventDefault();
+        handleStepFrame(-1);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isPlaying]);
+  }, [isPlaying, currentFrame, totalFrames]);
 
   const togglePlayPause = () => {
     if (!playerRef.current) return;

@@ -395,7 +395,7 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({ project, setProj
               {/* Âm thanh lướt chuyển cảnh */}
               <div className="flex items-center justify-between pt-3">
                 <div>
-                  <h5 className="text-xs font-semibold text-zinc-200">💨 Âm thanh lướt chuyển cảnh</h5>
+                  <h5 className="text-xs font-semibold text-zinc-200">💨 Tự động chèn âm thanh SFX</h5>
                   <p className="text-[10px] text-zinc-500">Hiệu ứng lướt (Whoosh) khi chuyển phân cảnh</p>
                 </div>
                 <input

@@ -138,6 +138,7 @@ export const StoryboardTimeline: React.FC<StoryboardTimelineProps> = ({
   const [activeMotionTypographyScene, setActiveMotionTypographyScene] = useState<Scene | null>(null);
   const [activeTikTokStudioScene, setActiveTikTokStudioScene] = useState<Scene | null>(null);
   const [expandedFxSceneId, setExpandedFxSceneId] = useState<string | null>(null);
+  const [ttsToastError, setTtsToastError] = useState<string | null>(null);
 
   // States for Live Microphone Recording (Ghi âm trực tiếp từ Mic)
   const [recordingSceneId, setRecordingSceneId] = useState<string | null>(null);
@@ -372,6 +373,8 @@ export const StoryboardTimeline: React.FC<StoryboardTimelineProps> = ({
       }
     } catch (e) {
       console.error('Failed to synthesize scene TTS', e);
+      setTtsToastError('Không thể kết nối máy chủ giọng đọc, vui lòng thử lại');
+      setTimeout(() => setTtsToastError(null), 5000);
     } finally {
       setIsSynthesizingSceneId(null);
     }
@@ -410,6 +413,8 @@ export const StoryboardTimeline: React.FC<StoryboardTimelineProps> = ({
           }
         } catch (err) {
           console.warn('Batch TTS error on scene', i, err);
+          setTtsToastError('Không thể kết nối máy chủ giọng đọc, vui lòng thử lại');
+          setTimeout(() => setTtsToastError(null), 5000);
         }
       }
     }
@@ -457,6 +462,8 @@ export const StoryboardTimeline: React.FC<StoryboardTimelineProps> = ({
         }
       } catch (e) {
         console.error('Failed to auto-synthesize scene audio', e);
+        setTtsToastError('Không thể kết nối máy chủ giọng đọc, vui lòng thử lại');
+        setTimeout(() => setTtsToastError(null), 5000);
       } finally {
         setIsSynthesizingSceneId(null);
       }
@@ -1452,6 +1459,15 @@ export const StoryboardTimeline: React.FC<StoryboardTimelineProps> = ({
 
       {/* Header bar: Tối giản, thanh lịch chuẩn Dark Studio */}
       <div className="bg-zinc-900/90 rounded-xl p-3 border border-zinc-800 flex flex-col gap-2.5">
+        {ttsToastError && (
+          <div
+            role="alert"
+            className="bg-red-950/80 border border-red-500/50 text-red-200 px-3 py-2 rounded-xl text-xs flex items-center gap-2 shadow-lg animate-in fade-in"
+          >
+            <span>⚠️</span>
+            <span>{ttsToastError}</span>
+          </div>
+        )}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="p-1.5 rounded-lg bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
@@ -1498,7 +1514,7 @@ export const StoryboardTimeline: React.FC<StoryboardTimelineProps> = ({
             title="Tự động nhận diện lời nói & khớp chữ từ sound thoại"
           >
             <Mic className="w-3.5 h-3.5 text-zinc-400" />
-            <span>{isTranscribingFullAudio ? (fullAudioStatusText || 'Đang nhận diện...') : 'Tự động chèn âm thanh hiệu ứng (SFX)'}</span>
+            <span>{isTranscribingFullAudio ? (fullAudioStatusText || 'Đang nhận diện...') : 'Tự động chèn âm thanh SFX'}</span>
           </button>
 
           {/* Nạp kịch bản */}
@@ -1542,8 +1558,8 @@ export const StoryboardTimeline: React.FC<StoryboardTimelineProps> = ({
               <option value="" disabled>🎬 Thêm kiểu diễn hoạt cảnh ▾</option>
               <option value="chat">💬 Bong bóng Chat TikTok</option>
               <option value="orbit">🪐 Quỹ đạo AI xoay phát sáng</option>
-              <option value="math">📈 Lưới tọa độ Math Grid</option>
-              <option value="radar">📡 Sóng Radar phân tích</option>
+              <option value="math">📈 Lưới tọa độ đồ họa số</option>
+              <option value="radar">📡 Sóng phân tích dữ liệu</option>
               <option value="car">🏎️ Cao tốc ánh đèn Neon</option>
               <option value="plane">✈️ Máy bay cất cánh</option>
             </select>
@@ -1615,7 +1631,7 @@ export const StoryboardTimeline: React.FC<StoryboardTimelineProps> = ({
                     ) : scene.visualType === 'radar_tech' ? (
                       <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-gray-950 via-emerald-950/50 to-cyan-950 p-3 text-center border border-emerald-500/30">
                         <span className="text-2xl mb-1">📊</span>
-                        <span className="text-xs font-black text-emerald-300">RADAR & SÓNG DỮ LIỆU</span>
+                        <span className="text-xs font-black text-emerald-300">SÓNG DỮ LIỆU & PHÂN TÍCH</span>
                         <span className="text-[10px] text-gray-400 mt-1 line-clamp-1">{scene.headerBadge || '📊 PHÂN TÍCH CHỈ SỐ'}</span>
                       </div>
                     ) : scene.visualType === 'night_highway' ? (
