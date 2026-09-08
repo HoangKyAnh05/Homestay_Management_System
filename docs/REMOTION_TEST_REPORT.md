@@ -1,11 +1,11 @@
 # BÁO CÁO KẾT QUẢ KIỂM THỬ TỰ ĐỘNG (AUTOMATED TEST REPORT)
 ## Phân hệ: Remotion AI Video Studio (Studio Marketing Lá Đỏ Homestay)
 
-* **Thời gian thực thi:** 20:43:38 8/9/2026
+* **Thời gian thực thi:** 21:22:03 8/9/2026
 * **Môi trường:** Node.js v22.21.0 • ESM • Native Assertion Engine
 * **Tổng số kịch bản kiểm thử:** 23 Test Cases
 * **Kết quả:** **23/23 PASS (100% Đạt yêu cầu)**
-* **Tổng thời gian thực thi:** 1.78 ms
+* **Tổng thời gian thực thi:** 1.8 ms
 
 ---
 
@@ -13,16 +13,16 @@
 
 | Mã Test Case | Mô tả kiểm thử | Kết quả | Thời gian (ms) |
 | :--- | :--- | :---: | :---: |
-| **TC-01** | Remotion Player Mount & Play/Pause: Kiểm tra chuyển đổi trạng thái Play/Pause và tính toán frame | `PASS` | 0.08 ms |
-| **TC-02** | Seekbar Frame Scrubbing: Tua seekbar đến frame 90 (giây thứ 3) và kiểm tra cập nhật Timecode | `PASS` | 0.06 ms |
+| **TC-01** | Remotion Player Mount & Play/Pause: Kiểm tra chuyển đổi trạng thái Play/Pause và tính toán frame | `PASS` | 0.09 ms |
+| **TC-02** | Seekbar Frame Scrubbing: Tua seekbar đến frame 90 (giây thứ 3) và kiểm tra cập nhật Timecode | `PASS` | 0.07 ms |
 | **TC-03** | Chuyển đổi khung hình 9:16 và 16:9: Kiểm tra kích thước khung hình Composition chuẩn | `PASS` | 0.06 ms |
-| **TC-04** | Smart Script Splitting: Nhập kịch bản thô 3 câu và tách chính xác thành 3 phân cảnh độc lập | `PASS` | 0.36 ms |
+| **TC-04** | Smart Script Splitting: Nhập kịch bản thô 3 câu và tách chính xác thành 3 phân cảnh độc lập | `PASS` | 0.35 ms |
 | **TC-05** | Sinh giọng đọc AI (Edge-TTS): Kiểm tra sinh giọng đọc tiếng Việt UTF-8 có dấu đầy đủ | `PASS` | 0.04 ms |
 | **TC-06** | Phụ đề chữ nhảy Karaoke: Kiểm tra từ "phá" được highlight phát sáng tại mốc 350ms | `PASS` | 0.04 ms |
 | **TC-07** | Phản hồi tức thì thuộc tính phụ đề: Cập nhật fontSize 48->64px và màu neon phản hồi < 100ms | `PASS` | 0.04 ms |
 | **TC-08** | Video Splitter: Cắt video 45s theo khoảng 10s thành đúng 5 phân đoạn có offset liên tục | `PASS` | 0.14 ms |
-| **TC-09** | Xử lý đoạn thừa (Trimmer Options): Kiểm tra dời đoạn thừa sang clip kế (Shift) và cắt bỏ (Discard) | `PASS` | 0.18 ms |
-| **TC-10** | Hiệu ứng Camera (Ken Burns): Cấu hình Zoom In đạt tỷ lệ phóng to scale >= 1.15 | `PASS` | 0.03 ms |
+| **TC-09** | Xử lý đoạn thừa (Trimmer Options): Kiểm tra dời đoạn thừa sang clip kế (Shift) và cắt bỏ (Discard) | `PASS` | 0.19 ms |
+| **TC-10** | Hiệu ứng Camera (Ken Burns): Cấu hình Zoom In đạt tỷ lệ phóng to scale >= 1.15 | `PASS` | 0.04 ms |
 | **TC-11** | Hiệu ứng Chuyển cảnh (Transitions): Áp dụng hiệu ứng mờ dần (Fade) với thời lượng 15 frames | `PASS` | 0.02 ms |
 | **TC-12** | Logic Audio Ducking (Hạ nhạc tự động): Nhạc nền tự hạ về <= 0.2 khi có tiếng và 0.8 khi im lặng | `PASS` | 0.03 ms |
 | **TC-13** | Âm thanh chuyển cảnh (SFX): Khởi tạo và nạp đúng âm thanh Whoosh tại điểm nối các phân cảnh | `PASS` | 0.02 ms |
@@ -30,9 +30,9 @@
 | **TC-15** | Render & Export MP4: Gửi payload xuất video và nhận về đường dẫn tải video MP4 thành công | `PASS` | 0.03 ms |
 | **TC-U01** | Fast-path (Quy tắc 3-Click): Nạp mẫu -> Ghép giọng AI -> Xuất video chạy mượt mà không bị chặn | `PASS` | 0.07 ms |
 | **TC-U02** | Benchmark thời gian dựng video: Đo tổng thời gian xử lý chuỗi dựng video 15s đạt tốc độ tối ưu | `PASS` | 0.18 ms |
-| **TC-U03** | Rà soát thuật ngữ giao diện (UI Text Audit): Đảm bảo không chứa từ cấm và đủ nhãn chuẩn hoá | `PASS` | 0.06 ms |
+| **TC-U03** | Rà soát thuật ngữ giao diện (UI Text Audit): Đảm bảo không chứa từ cấm và đủ nhãn chuẩn hoá | `PASS` | 0.05 ms |
 | **TC-U04** | Tối ưu hóa Re-render: Kéo slider âm lượng/vị trí chữ chỉ render cục bộ, không re-render toàn trang | `PASS` | 0.04 ms |
-| **TC-U05** | Chống mất dữ liệu (Data Persistence): Lưu vào Storage và khôi phục nguyên vẹn sau khi reload | `PASS` | 0.05 ms |
+| **TC-U05** | Chống mất dữ liệu (Data Persistence): Lưu vào Storage và khôi phục nguyên vẹn sau khi reload | `PASS` | 0.06 ms |
 | **TC-U06** | Trực quan hóa tiến trình (Feedback Status): Thanh tiến trình render tăng dần đều [10% -> 100%] | `PASS` | 0.03 ms |
 | **TC-U07** | Phím tắt điều hướng (Keyboard Shortcuts): Phím Space bật/tắt Play, phím ArrowRight tua 1 frame | `PASS` | 0.04 ms |
 | **TC-U08** | Xử lý ngoại lệ thân thiện: Mock lỗi mạng TTS hiển thị Toast tiếng Việt, không bị crash ứng dụng | `PASS` | 0.04 ms |

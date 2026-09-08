@@ -156,6 +156,22 @@ export const StoryboardTimeline: React.FC<StoryboardTimelineProps> = ({
   const transitionAudioInputRef = useRef<HTMLInputElement | null>(null);
   const [targetTransitionAudioSceneId, setTargetTransitionAudioSceneId] = useState<string | null>(null);
 
+  // Thêm file input ref cho tải ảnh/video từ máy tính (hỗ trợ cả Web Browser lẫn Electron)
+  const localMediaInputRef = useRef<HTMLInputElement | null>(null);
+  const [targetLocalMediaSceneId, setTargetLocalMediaSceneId] = useState<string | null>(null);
+
+  // Khi Remotion Player bắt đầu phát -> Tự động dừng âm thanh nghe thử ở ngoài để không bị vọng hoặc lặp tiếng
+  React.useEffect(() => {
+    const handleStopExternalAudio = () => {
+      if (audioElement) {
+        audioElement.pause();
+        setPlayingAudioSceneId(null);
+      }
+    };
+    window.addEventListener('remotion-play-started', handleStopExternalAudio);
+    return () => window.removeEventListener('remotion-play-started', handleStopExternalAudio);
+  }, [audioElement]);
+
   const handleSelectTransitionAudio = async (sceneId: string) => {
     if (window.electronAPI?.selectFile) {
       try {
@@ -1405,7 +1421,7 @@ export const StoryboardTimeline: React.FC<StoryboardTimelineProps> = ({
     }));
   };
 
-  // Local File Selector for Media
+  // Local File Selector for Media (Hỗ trợ cả Electron Desktop và Trình duyệt Web)
   const handleSelectLocalMedia = async (sceneId: string) => {
     if (window.electronAPI?.selectFile) {
       try {
@@ -1423,15 +1439,48 @@ export const StoryboardTimeline: React.FC<StoryboardTimelineProps> = ({
             mediaUrl: `file://${filePath.replace(/\\/g, '/')}`,
             mediaType: isVideo ? 'video' : 'image'
           });
+          return;
         }
       } catch (err) {
         console.error('File select error', err);
       }
     }
+
+    // Web Browser Fallback: Mở hộp thoại chọn file trên trình duyệt
+    setTargetLocalMediaSceneId(sceneId);
+    if (localMediaInputRef.current) {
+      localMediaInputRef.current.value = '';
+      localMediaInputRef.current.click();
+    }
+  };
+
+  const handleBrowserLocalMediaInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !targetLocalMediaSceneId) return;
+
+    const isVideo = file.type.startsWith('video/') || /\.(mp4|mov|webm|mkv)$/i.test(file.name);
+    const objectUrl = URL.createObjectURL(file);
+
+    updateScene(targetLocalMediaSceneId, {
+      mediaUrl: objectUrl,
+      localMediaPath: objectUrl,
+      mediaType: isVideo ? 'video' : 'image'
+    });
+
+    setTargetLocalMediaSceneId(null);
+    e.target.value = '';
   };
 
   return (
     <div className="flex flex-col gap-4">
+      {/* Hidden file input for browser media upload from PC */}
+      <input
+        type="file"
+        ref={localMediaInputRef}
+        onChange={handleBrowserLocalMediaInput}
+        accept="video/*,image/*,.mp4,.mov,.webm,.mkv,.png,.jpg,.jpeg,.webp"
+        className="hidden"
+      />
       {/* Hidden file input for browser audio/video uploads */}
       <input
         type="file"

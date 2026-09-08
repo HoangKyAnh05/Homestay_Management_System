@@ -41,6 +41,9 @@ export const CenterPlayerStage: React.FC<CenterPlayerStageProps> = ({ project, s
     return Math.max(frames, 30);
   }, [project.scenes, fps]);
 
+  // Memoize inputProps với tham chiếu ổn định để Player không bị re-mount audio trên mỗi frame tick
+  const inputProps = useMemo(() => ({ project }), [project]);
+
   const compositionWidth = project.aspectRatio === '9:16' ? 1080 : 1920;
   const compositionHeight = project.aspectRatio === '9:16' ? 1920 : 1080;
 
@@ -93,6 +96,7 @@ export const CenterPlayerStage: React.FC<CenterPlayerStageProps> = ({ project, s
     if (playerRef.current.isPlaying()) {
       playerRef.current.pause();
     } else {
+      window.dispatchEvent(new CustomEvent('remotion-play-started'));
       playerRef.current.play();
     }
   };
@@ -245,8 +249,8 @@ export const CenterPlayerStage: React.FC<CenterPlayerStageProps> = ({ project, s
             {project.scenes.length > 0 ? (
               <Player
                 ref={playerRef}
-                component={MainComposition}
-                inputProps={{ project }}
+                component={MainComposition as any}
+                inputProps={inputProps as any}
                 durationInFrames={totalFrames}
                 compositionWidth={compositionWidth}
                 compositionHeight={compositionHeight}
