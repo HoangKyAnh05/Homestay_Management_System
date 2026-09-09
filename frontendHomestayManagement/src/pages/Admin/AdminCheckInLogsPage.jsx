@@ -508,7 +508,7 @@ function createGuestForms(preparation) {
     email: index === 0 ? preparation.customer?.email || '' : '',
     phone: index === 0 ? preparation.customer?.phone || '' : '',
     address: index === 0 ? preparation.customer?.address || '' : '',
-    gender: '',
+    gender: index === 0 ? preparation.customer?.gender || '' : '',
     nationality: 'VIETNAM',
   }))
 }
@@ -1521,13 +1521,14 @@ function CheckInModal({ bookingDetailId, onClose, onCompleted }) {
   }, [bookingDetailId])
 
   const updateGuest = (index, field, value) => {
+    if (index === 0) return // Khách đặt phòng cố định thông tin, không cho sửa
     setGuests(current => current.map((guest, guestIndex) => (
       guestIndex === index ? { ...guest, [field]: value } : guest
     )))
   }
 
   const selectIdentityImage = (index, side, file) => {
-    if (!file) return
+    if (!file || index === 0) return
     const currentImages = identityImages[index] || {}
     const nextImages = { ...currentImages, [side]: file }
     setIdentityImages(current => ({ ...current, [index]: nextImages }))
@@ -1542,12 +1543,13 @@ function CheckInModal({ bookingDetailId, onClose, onCompleted }) {
   }
 
   const openIdentityCamera = (index, side) => {
+    if (index === 0) return
     setError('')
     setCameraTarget({ index, side })
   }
 
   const scanIdentityDocument = async (index, imageFront, imageBack) => {
-    if (!imageFront || !imageBack) return
+    if (!imageFront || !imageBack || index === 0) return
     setOcrLoadingIndex(index)
     setOcrNotice('')
     setError('')
@@ -1566,7 +1568,7 @@ function CheckInModal({ bookingDetailId, onClose, onCompleted }) {
         throw new Error('Ảnh tải lên không đúng nhận dạng (form CCCD) hoặc hình ảnh không rõ nét. Vui lòng kiểm tra lại ảnh chụp rõ mặt trước và mặt sau thẻ Căn cước công dân!')
       }
       setGuests(current => current.map((guest, guestIndex) => {
-        if (guestIndex !== index) return guest
+        if (guestIndex !== index || guestIndex === 0) return guest
         return {
           ...guest,
           fullName: data.fullName || guest.fullName,
@@ -1678,90 +1680,169 @@ function CheckInModal({ bookingDetailId, onClose, onCompleted }) {
 
             <section className="acl-checkin-section">
               <div className="acl-checkin-section-head">
-                <div><span>02</span><div><h3>Thông tin người lưu trú</h3><p>{preparation.preRegistered ? `Đã đăng ký ${guests.length} người lưu trú. Có thể cập nhật trước khi check-in.` : `Nhập đủ ${guests.length} người. Tên và CCCD là bắt buộc.`}</p></div></div>
+                <div><span>02</span><div><h3>Thông tin người lưu trú</h3><p>{preparation.preRegistered ? `Đã đăng ký ${guests.length} người lưu trú. Thông tin khách đặt phòng được giữ cố định.` : `Nhập đủ ${guests.length} người. Thông tin khách đặt phòng được giữ cố định.`}</p></div></div>
               </div>
               <div className="acl-guest-forms">
                 {guests.map((guest, index) => {
+                  const isRepresentative = index === 0
                   const isAdult = index < Number(preparation.numberOfAdults || 0)
                   const selectedIdentityImages = identityImages[index] || {}
                   const age = calculateAge(guest.dateOfBirth)
                   const isUnder10 = age !== null && age < 10
                   return (
-                    <article className="acl-guest-form" key={index}>
+                    <article className={`acl-guest-form ${isRepresentative ? 'acl-guest-form--rep' : ''}`} key={index}>
                       <div className="acl-guest-form-title">
-                        <strong>Người lưu trú {index + 1}</strong>
-                        <div className="acl-guest-form-actions">
-                          <div className="acl-identity-side">
-                            <span>{selectedIdentityImages.front ? 'Đã có mặt trước' : 'Mặt trước'}</span>
-                            <label className={`acl-identity-scan${ocrLoadingIndex === index ? ' is-loading' : ''}`}>
-                              <input
-                                type="file"
-                                accept="image/*"
-                                disabled={ocrLoadingIndex !== null}
-                                onChange={event => {
-                                  const file = event.target.files?.[0]
-                                  event.target.value = ''
-                                  selectIdentityImage(index, 'front', file)
-                                }}
-                              />
-                              Upload
-                            </label>
-                            <button
-                              type="button"
-                              className="acl-identity-camera-btn"
-                              disabled={ocrLoadingIndex !== null}
-                              onClick={() => openIdentityCamera(index, 'front')}
-                            >
-                              Chụp
-                            </button>
-                          </div>
-                          <div className="acl-identity-side">
-                            <span>{selectedIdentityImages.back ? 'Đã có mặt sau' : 'Mặt sau'}</span>
-                            <label className={`acl-identity-scan${ocrLoadingIndex === index ? ' is-loading' : ''}`}>
-                              <input
-                                type="file"
-                                accept="image/*"
-                                disabled={ocrLoadingIndex !== null}
-                                onChange={event => {
-                                  const file = event.target.files?.[0]
-                                  event.target.value = ''
-                                  selectIdentityImage(index, 'back', file)
-                                }}
-                              />
-                              Upload
-                            </label>
-                            <button
-                              type="button"
-                              className="acl-identity-camera-btn"
-                              disabled={ocrLoadingIndex !== null}
-                              onClick={() => openIdentityCamera(index, 'back')}
-                            >
-                              Chụp
-                            </button>
-                          </div>
-                          <span>{index === 0 ? 'Người đại diện phòng' : isUnder10 ? 'Trẻ em (<10 tuổi)' : isAdult ? 'Người lớn' : 'Trẻ em'}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <strong>Người lưu trú {index + 1}</strong>
+                          {isRepresentative ? (
+                            <span className="acl-rep-locked-badge">🔒 Người đại diện (Khách đặt phòng - Cố định)</span>
+                          ) : (
+                            <span>{isUnder10 ? 'Trẻ em (<10 tuổi)' : isAdult ? 'Người lớn' : 'Trẻ em'}</span>
+                          )}
                         </div>
+                        {!isRepresentative && (
+                          <div className="acl-guest-form-actions">
+                            <div className="acl-identity-side">
+                              <span>{selectedIdentityImages.front ? 'Đã có mặt trước' : 'Mặt trước'}</span>
+                              <label className={`acl-identity-scan${ocrLoadingIndex === index ? ' is-loading' : ''}`}>
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  disabled={ocrLoadingIndex !== null}
+                                  onChange={event => {
+                                    const file = event.target.files?.[0]
+                                    event.target.value = ''
+                                    selectIdentityImage(index, 'front', file)
+                                  }}
+                                />
+                                Upload
+                              </label>
+                              <button
+                                type="button"
+                                className="acl-identity-camera-btn"
+                                disabled={ocrLoadingIndex !== null}
+                                onClick={() => openIdentityCamera(index, 'front')}
+                              >
+                                Chụp
+                              </button>
+                            </div>
+                            <div className="acl-identity-side">
+                              <span>{selectedIdentityImages.back ? 'Đã có mặt sau' : 'Mặt sau'}</span>
+                              <label className={`acl-identity-scan${ocrLoadingIndex === index ? ' is-loading' : ''}`}>
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  disabled={ocrLoadingIndex !== null}
+                                  onChange={event => {
+                                    const file = event.target.files?.[0]
+                                    event.target.value = ''
+                                    selectIdentityImage(index, 'back', file)
+                                  }}
+                                />
+                                Upload
+                              </label>
+                              <button
+                                type="button"
+                                className="acl-identity-camera-btn"
+                                disabled={ocrLoadingIndex !== null}
+                                onClick={() => openIdentityCamera(index, 'back')}
+                              >
+                                Chụp
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                       <div className="acl-guest-fields">
-                        <label><span>Họ và tên *</span><input required maxLength="100" value={guest.fullName}
-                          onChange={event => updateGuest(index, 'fullName', event.target.value)} /></label>
-                        <label><span>Căn cước công dân {isUnder10 ? '' : '*'}</span><input required={!isUnder10} inputMode="numeric" pattern={isUnder10 ? undefined : "[0-9]{12}"} maxLength="12"
-                          title={isUnder10 ? "Trẻ em dưới 10 tuổi không bắt buộc nhập căn cước công dân" : "Căn cước công dân phải gồm đúng 12 chữ số"} value={guest.identityDocumentNumber}
-                          onChange={event => updateGuest(index, 'identityDocumentNumber', event.target.value.replace(/\D/g, ''))} /></label>
-                        <label><span>Ngày sinh</span><input type="date" value={guest.dateOfBirth || ''}
-                          onChange={event => updateGuest(index, 'dateOfBirth', event.target.value)} /></label>
-                        <label><span>Email {index === 0 ? '*' : ''}</span><input type="email" required={index === 0} maxLength={index === 0 ? 50 : 100}
-                          title={index === 0 ? 'Email này sẽ nhận link truy cập dịch vụ của phòng' : 'Vui lòng nhập đúng định dạng email'} value={guest.email}
-                          onChange={event => updateGuest(index, 'email', event.target.value)} /></label>
-                        <label><span>Số điện thoại</span><input inputMode="numeric" pattern="[0-9]{10}" maxLength="10"
-                          title="Số điện thoại phải gồm đúng 10 chữ số" value={guest.phone}
-                          onChange={event => updateGuest(index, 'phone', event.target.value.replace(/\D/g, ''))} /></label>
-                        <label><span>Giới tính</span><select value={guest.gender}
-                          onChange={event => updateGuest(index, 'gender', event.target.value)}>
-                          <option value="">Chưa chọn</option><option value="MALE">Nam</option><option value="FEMALE">Nữ</option><option value="OTHER">Khác</option>
-                        </select></label>
-                        <label className="acl-guest-field-wide"><span>Địa chỉ</span><input maxLength="255" value={guest.address}
-                          onChange={event => updateGuest(index, 'address', event.target.value)} /></label>
+                        <label>
+                          <span>Họ và tên *</span>
+                          <input
+                            required
+                            maxLength="100"
+                            value={guest.fullName}
+                            readOnly={isRepresentative}
+                            className={isRepresentative ? 'acl-field-readonly' : ''}
+                            title={isRepresentative ? 'Thông tin cố định từ khách đặt phòng' : undefined}
+                            onChange={event => updateGuest(index, 'fullName', event.target.value)}
+                          />
+                        </label>
+                        <label>
+                          <span>Căn cước công dân {isUnder10 ? '' : '*'}</span>
+                          <input
+                            required={!isUnder10}
+                            inputMode="numeric"
+                            pattern={isUnder10 ? undefined : "[0-9]{12}"}
+                            maxLength="12"
+                            title={isRepresentative ? 'Thông tin cố định từ khách đặt phòng' : isUnder10 ? "Trẻ em dưới 10 tuổi không bắt buộc nhập căn cước công dân" : "Căn cước công dân phải gồm đúng 12 chữ số"}
+                            value={guest.identityDocumentNumber}
+                            readOnly={isRepresentative}
+                            className={isRepresentative ? 'acl-field-readonly' : ''}
+                            onChange={event => updateGuest(index, 'identityDocumentNumber', event.target.value.replace(/\D/g, ''))}
+                          />
+                        </label>
+                        <label>
+                          <span>Ngày sinh</span>
+                          <input
+                            type="date"
+                            value={guest.dateOfBirth || ''}
+                            readOnly={isRepresentative}
+                            className={isRepresentative ? 'acl-field-readonly' : ''}
+                            title={isRepresentative ? 'Thông tin cố định từ khách đặt phòng' : undefined}
+                            onChange={event => updateGuest(index, 'dateOfBirth', event.target.value)}
+                          />
+                        </label>
+                        <label>
+                          <span>Email {isRepresentative ? '*' : ''}</span>
+                          <input
+                            type="email"
+                            required={isRepresentative}
+                            maxLength={isRepresentative ? 50 : 100}
+                            title={isRepresentative ? 'Email này sẽ nhận link truy cập dịch vụ của phòng (Cố định)' : 'Vui lòng nhập đúng định dạng email'}
+                            value={guest.email}
+                            readOnly={isRepresentative}
+                            className={isRepresentative ? 'acl-field-readonly' : ''}
+                            onChange={event => updateGuest(index, 'email', event.target.value)}
+                          />
+                        </label>
+                        <label>
+                          <span>Số điện thoại</span>
+                          <input
+                            inputMode="numeric"
+                            pattern="[0-9]{10}"
+                            maxLength="10"
+                            title={isRepresentative ? 'Thông tin cố định từ khách đặt phòng' : "Số điện thoại phải gồm đúng 10 chữ số"}
+                            value={guest.phone}
+                            readOnly={isRepresentative}
+                            className={isRepresentative ? 'acl-field-readonly' : ''}
+                            onChange={event => updateGuest(index, 'phone', event.target.value.replace(/\D/g, ''))}
+                          />
+                        </label>
+                        <label>
+                          <span>Giới tính</span>
+                          <select
+                            value={guest.gender}
+                            disabled={isRepresentative}
+                            className={isRepresentative ? 'acl-field-readonly' : ''}
+                            title={isRepresentative ? 'Thông tin cố định từ khách đặt phòng' : undefined}
+                            onChange={event => updateGuest(index, 'gender', event.target.value)}
+                          >
+                            <option value="">Chưa chọn</option>
+                            <option value="MALE">Nam</option>
+                            <option value="FEMALE">Nữ</option>
+                            <option value="OTHER">Khác</option>
+                          </select>
+                        </label>
+                        <label className="acl-guest-field-wide">
+                          <span>Địa chỉ</span>
+                          <input
+                            maxLength="255"
+                            value={guest.address}
+                            readOnly={isRepresentative}
+                            className={isRepresentative ? 'acl-field-readonly' : ''}
+                            title={isRepresentative ? 'Thông tin cố định từ khách đặt phòng' : undefined}
+                            onChange={event => updateGuest(index, 'address', event.target.value)}
+                          />
+                        </label>
                       </div>
                     </article>
                   )
