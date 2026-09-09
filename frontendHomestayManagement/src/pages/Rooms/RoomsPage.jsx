@@ -4,7 +4,7 @@ import { getStoredToken, getStoredUser, logout } from '../../services/authServic
 import SePayQrPayment from '../../components/SePayQrPayment/SePayQrPayment'
 import RoomScheduleCalendarModal from '../../components/RoomScheduleCalendar/RoomScheduleCalendarModal'
 import CustomDateTimePicker from '../../components/DateTimePicker/CustomDateTimePicker'
-import { clearBookingCart, readBookingCart, writeBookingCart } from '../../utils/bookingCart'
+import { clearBookingCart, isRoomSelectable, readBookingCart, writeBookingCart } from '../../utils/bookingCart'
 import { formatDateTime as formatAppDateTime } from '../../utils/dateTimeFormat'
 import { houseTypeName } from '../../utils/houseType'
 import { resolveImageUrl } from '../../utils/imageUrl'
@@ -2096,9 +2096,13 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
   )
 }
 
-function BookingCart({ selectedRooms, requestedRooms, onRemove, onOpenBooking }) {
-  const selectedCount = selectedRooms.reduce((sum, room) => sum + selectedQuantity(room), 0)
+function BookingCart({ selectedRooms, requestedRooms, onRemove, onOpenBooking, criteria }) {
+  const validSelectedRooms = selectedRooms.filter(isRoomSelectable)
+  const selectedCount = validSelectedRooms.reduce((sum, room) => sum + selectedQuantity(room), 0)
   const isEnough = selectedCount >= requestedRooms
+  const totalEstimatedPrice = validSelectedRooms.reduce((sum, room) => {
+    return sum + (roomPrice(room, criteria?.checkInDate) * selectedQuantity(room))
+  }, 0)
 
   return (
     <aside className="rooms-booking-cart" aria-label="Booking của bạn">
@@ -2106,20 +2110,30 @@ function BookingCart({ selectedRooms, requestedRooms, onRemove, onOpenBooking })
         <div>
           <h2>Booking của bạn</h2>
           <p>
-            Đã chọn {selectedRooms.length} loại · {selectedCount}/{requestedRooms} loại phòng
+            Đã chọn {validSelectedRooms.length} loại · {selectedCount}/{requestedRooms} loại phòng
           </p>
         </div>
         <span className={isEnough ? 'is-ready' : ''}>{isEnough ? 'Đủ phòng' : 'Chưa đủ'}</span>
       </div>
       <div className="rooms-booking-cart-list">
-        {selectedRooms.length ? selectedRooms.map((room) => (
-          <div key={roomKey(room)}>
-            <span>{houseTypeName(room)} × {selectedQuantity(room)}</span>
-            <button type="button" onClick={() => onRemove(roomKey(room))} aria-label="Bỏ loại phòng">×</button>
-          </div>
-        )) : <p>Chọn loại phòng từ danh sách để tạo booking.</p>}
+        {validSelectedRooms.length ? validSelectedRooms.map((room) => {
+          const itemPrice = roomPrice(room, criteria?.checkInDate) * selectedQuantity(room)
+          return (
+            <div key={roomKey(room)}>
+              <span>{houseTypeName(room)} × {selectedQuantity(room)}</span>
+              {itemPrice > 0 && <strong>{formatPrice(itemPrice)}</strong>}
+              <button type="button" onClick={() => onRemove(roomKey(room))} aria-label="Bỏ loại phòng">×</button>
+            </div>
+          )
+        }) : <p>Chọn loại phòng từ danh sách để tạo booking.</p>}
       </div>
-      <button type="button" disabled={!selectedRooms.length} onClick={onOpenBooking}>Tiếp tục đặt phòng</button>
+      {totalEstimatedPrice > 0 && (
+        <div className="rooms-booking-cart-total" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 14px', borderTop: '1px solid #f1f5f9', marginTop: 8 }}>
+          <span style={{ fontSize: 13, color: '#64748b', fontWeight: 500 }}>Tạm tính</span>
+          <strong style={{ fontSize: 16, color: '#0f172a', fontWeight: 700 }}>{formatPrice(totalEstimatedPrice)}</strong>
+        </div>
+      )}
+      <button type="button" disabled={!validSelectedRooms.length} onClick={onOpenBooking}>Tiếp tục đặt phòng</button>
     </aside>
   )
 }
@@ -2155,7 +2169,7 @@ function RoomsPage() {
         const targetId = searchCriteria?.focusRoomId || searchCriteria?.roomTypeId
         if (targetId) {
           const matched = allRooms.find((room) => String(room.roomTypeId || room.id || room.roomId) === String(targetId))
-          if (matched) {
+          if (matched && isRoomSelectable(matched)) {
             setSelectedRooms([{ ...matched, quantity: 1 }])
             writeBookingCart([{ ...matched, quantity: 1 }])
             setUnavailableNotice('')
@@ -2165,7 +2179,7 @@ function RoomsPage() {
           } else {
             const targetName = searchCriteria?.roomTypeName || 'Hạng phòng bạn chọn'
             const dateRange = hasSearchDates ? `từ ${searchCriteria.checkInDate} đến ${searchCriteria.checkOutDate}` : 'ngày bạn chọn'
-            setUnavailableNotice(`⚠️ ${targetName} hiện đã hết phòng ${dateRange}. Dưới đây là các hạng phòng còn trống khác để bạn lựa chọn:`)
+            setUnavailableNotice(`⚠️ ${targetName} hiện đã hết phòng hoặc đang bảo trì ${dateRange}. Dưới đây là các hạng phòng còn trống khác để bạn lựa chọn:`)
           }
         }
 
@@ -2178,10 +2192,18 @@ function RoomsPage() {
 
   useEffect(() => {
     if (!rooms.length || !selectedRooms.length) return
-    setSelectedRooms((current) => current.map((selectedRoom) => {
-      const freshRoom = rooms.find((room) => roomKey(room) === roomKey(selectedRoom))
-      return freshRoom ? { ...selectedRoom, ...freshRoom } : selectedRoom
-    }))
+    setSelectedRooms((current) => {
+      const updated = current
+        .map((selectedRoom) => {
+          const freshRoom = rooms.find((room) => roomKey(room) === roomKey(selectedRoom))
+          return freshRoom ? { ...selectedRoom, ...freshRoom } : selectedRoom
+        })
+        .filter((room) => {
+          const freshRoom = rooms.find((r) => roomKey(r) === roomKey(room))
+          return isRoomSelectable(freshRoom || room)
+        })
+      return updated
+    })
   }, [rooms])
 
   useEffect(() => {
@@ -2196,12 +2218,7 @@ function RoomsPage() {
   const visibleRooms = useMemo(() => {
     return rooms
       .filter((room) => {
-        const isMaintenance = String(room.status || '').toUpperCase() === 'MAINTENANCE'
-        if (isMaintenance) return false
-        const isUnavailable = !room.status ? false : (String(room.status).toUpperCase() !== 'AVAILABLE')
-        if (isUnavailable) return false
-        if (room.availableRooms != null && Number(room.availableRooms) <= 0) return false
-
+        if (!isRoomSelectable(room)) return false
         const price = roomPrice(room, searchCriteria?.checkInDate)
         const matchesPrice = price <= maxPrice
         return matchesPrice
@@ -2210,14 +2227,24 @@ function RoomsPage() {
   }, [rooms, maxPrice, searchCriteria])
 
   const requestedRooms = searchCriteria?.rooms || Math.max(1, selectedRooms.length || 1)
-  const selectedRoomIds = useMemo(() => new Set(selectedRooms.map(roomKey)), [selectedRooms])
+  const selectedRoomIds = useMemo(() => new Set(selectedRooms.filter(isRoomSelectable).map(roomKey)), [selectedRooms])
 
   const toggleRoom = (room) => {
+    if (!isRoomSelectable(room)) {
+      const name = houseTypeName(room)
+      const isMaint = String(room.status || '').toUpperCase() === 'MAINTENANCE'
+      alert(
+        isMaint
+          ? `Loại phòng "${name}" hiện đang tạm bảo trì, không thể thêm vào danh sách đặt phòng.`
+          : `Loại phòng "${name}" hiện đã hết phòng hoặc không khả dụng, không thể thêm vào danh sách đặt phòng.`
+      )
+      return
+    }
     setSelectedRooms((current) => {
       if (current.some((item) => roomKey(item) === roomKey(room))) {
         return current.filter((item) => roomKey(item) !== roomKey(room))
       }
-      return [...current, { ...room, quantity: 1 }]
+      return [...current.filter(isRoomSelectable), { ...room, quantity: 1 }]
     })
   }
 

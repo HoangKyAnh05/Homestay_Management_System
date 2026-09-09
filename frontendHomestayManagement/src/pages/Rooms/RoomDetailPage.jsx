@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { getStoredToken, getStoredUser, logout } from '../../services/authService'
 import SePayQrPayment from '../../components/SePayQrPayment/SePayQrPayment'
-import { clearBookingCart, readBookingCart } from '../../utils/bookingCart'
+import { clearBookingCart, isRoomSelectable, readBookingCart } from '../../utils/bookingCart'
 import { formatClockTime, formatVietnameseDate } from '../../utils/dateTimeFormat'
 import { houseTypeName } from '../../utils/houseType'
 import { resolveImageUrl } from '../../utils/imageUrl'
@@ -830,8 +830,9 @@ function RoomDetailPage({ roomId }) {
 
   const openBookingModal = () => {
     if (!room || isBookedOrConflicted) return
-    const storedRooms = readBookingCart()
+    const storedRooms = readBookingCart().filter(isRoomSelectable)
     const currentRoom = roomDetailToCartRoom(room)
+    if (!isRoomSelectable(currentRoom)) return
     const hasCurrentRoom = storedRooms.some((item) => String(item.roomTypeId || item.id) === String(currentRoom.roomTypeId))
     setMultiBookingRooms(hasCurrentRoom ? storedRooms : [...storedRooms, currentRoom])
     setBookingModalOpen(true)
