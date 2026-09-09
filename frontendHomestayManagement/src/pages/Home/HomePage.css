@@ -266,7 +266,7 @@
 .home-search-card {
   position: relative;
   z-index: 5;
-  width: min(1220px, calc(100% - 96px));
+  width: min(1280px, calc(100% - 48px));
   margin: -70px auto 0;
   padding: 0;
   background: #ffffff;
@@ -825,6 +825,11 @@
 /* ── Rooms section ── */
 .home-rooms {
   background: #f7f8f4;
+  padding: 36px 0 52px;
+}
+
+.home-rooms .home-section-head {
+  margin-bottom: 24px;
 }
 
 .rooms-loading {
@@ -1197,8 +1202,12 @@
 }
 
 .search-results-section {
-  padding-top: 54px;
+  padding-top: 36px;
   background: #ffffff;
+}
+
+.search-results-section .home-section-head {
+  margin-bottom: 24px;
 }
 
 .search-result-count {
@@ -1992,6 +2001,10 @@
 @media (max-width: 768px) {
   .home-section {
     padding: 48px 0;
+  }
+
+  .home-rooms {
+    padding: 24px 0 36px;
   }
 
   .home-section-inner {
