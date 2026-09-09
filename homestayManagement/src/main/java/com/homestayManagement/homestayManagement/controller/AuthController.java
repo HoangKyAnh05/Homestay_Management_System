@@ -116,11 +116,18 @@ public class AuthController {
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<Map<String, String>> handleValidationException(MethodArgumentNotValidException exception) {
+    public ResponseEntity<Map<String, Object>> handleValidationException(MethodArgumentNotValidException exception) {
+        Map<String, String> fieldErrors = new java.util.LinkedHashMap<>();
+        for (var error : exception.getBindingResult().getFieldErrors()) {
+            fieldErrors.putIfAbsent(error.getField(), error.getDefaultMessage());
+        }
         String message = exception.getBindingResult().getFieldErrors().stream()
                 .findFirst()
                 .map(error -> error.getDefaultMessage())
                 .orElse("Dữ liệu không hợp lệ");
-        return ResponseEntity.badRequest().body(Map.of("message", message));
+        return ResponseEntity.badRequest().body(Map.of(
+                "message", message,
+                "fieldErrors", fieldErrors
+        ));
     }
 }

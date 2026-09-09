@@ -29,10 +29,28 @@ function StepRegister({ onNext }) {
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
 
+  const validateFullName = (val) => {
+    const trimmed = (val || '').trim()
+    if (!trimmed) return 'Vui lòng nhập họ và tên'
+    if (trimmed.length > 100) return 'Họ và tên tối đa 100 ký tự'
+    return ''
+  }
+
   const validateEmail = (val) => {
     const trimmed = (val || '').trim()
     if (!trimmed) return 'Vui lòng nhập email'
-    if (!EMAIL_REGEX.test(trimmed)) return 'Email không hợp lệ (Ví dụ: user@example.com)'
+    if (trimmed.includes('..') || !EMAIL_REGEX.test(trimmed)) {
+      return 'Email không hợp lệ (Ví dụ: user@example.com)'
+    }
+    return ''
+  }
+
+  const validatePhone = (val) => {
+    const trimmed = (val || '').trim()
+    if (!trimmed) return 'Vui lòng nhập số điện thoại'
+    if (!/^\d{10}$/.test(trimmed)) {
+      return 'Số điện thoại phải đúng 10 chữ số (Ví dụ: 0912345678)'
+    }
     return ''
   }
 
@@ -47,25 +65,36 @@ function StepRegister({ onNext }) {
     return ''
   }
 
+  const validateConfirmPassword = (val, pwd) => {
+    if (!val) return 'Vui lòng nhập lại mật khẩu'
+    if (val !== pwd) return 'Mật khẩu nhập lại không khớp'
+    return ''
+  }
+
   const handleSubmit = async (event) => {
     event.preventDefault()
-    const trimmedEmail = email.trim()
     const trimmedName = fullName.trim()
+    const trimmedEmail = email.trim()
+    const trimmedPhone = phone.trim()
 
+    const nameErr = validateFullName(trimmedName)
     const emailErr = validateEmail(trimmedEmail)
+    const phoneErr = validatePhone(trimmedPhone)
     const passwordErr = validatePassword(password)
-    let confirmErr = ''
-    if (password !== confirmPassword) {
-      confirmErr = 'Mật khẩu nhập lại không khớp'
+    const confirmErr = validateConfirmPassword(confirmPassword, password)
+
+    const nextErrors = {
+      fullName: nameErr,
+      email: emailErr,
+      phone: phoneErr,
+      password: passwordErr,
+      confirmPassword: confirmErr,
     }
 
-    if (emailErr || passwordErr || confirmErr) {
-      setFieldErrors({
-        email: emailErr,
-        password: passwordErr,
-        confirmPassword: confirmErr,
-      })
-      setError(emailErr || passwordErr || confirmErr)
+    setFieldErrors(nextErrors)
+
+    if (nameErr || emailErr || phoneErr || passwordErr || confirmErr) {
+      setError('')
       return
     }
 
@@ -73,9 +102,16 @@ function StepRegister({ onNext }) {
     setError('')
     setIsLoading(true)
     try {
-      await register(trimmedName, trimmedEmail, phone.trim(), password)
+      await register(trimmedName, trimmedEmail, trimmedPhone, password)
       onNext(trimmedEmail)
     } catch (err) {
+      if (err.fieldErrors && typeof err.fieldErrors === 'object') {
+        setFieldErrors((prev) => ({ ...prev, ...err.fieldErrors }))
+      } else if (err.message && (err.message.toLowerCase().includes('email') || err.message.toLowerCase().includes('mail'))) {
+        setFieldErrors((prev) => ({ ...prev, email: err.message }))
+      } else if (err.message && (err.message.toLowerCase().includes('điện thoại') || err.message.toLowerCase().includes('phone'))) {
+        setFieldErrors((prev) => ({ ...prev, phone: err.message }))
+      }
       setError(err.message)
     } finally {
       setIsLoading(false)
@@ -108,9 +144,21 @@ function StepRegister({ onNext }) {
             placeholder="Nhập họ và tên"
             autoComplete="name"
             value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
+            className={fieldErrors.fullName ? 'field-input--error' : ''}
+            onChange={(e) => {
+              setFullName(e.target.value)
+              if (fieldErrors.fullName) {
+                setFieldErrors((prev) => ({ ...prev, fullName: validateFullName(e.target.value) }))
+              }
+            }}
+            onBlur={(e) => {
+              setFieldErrors((prev) => ({ ...prev, fullName: validateFullName(e.target.value) }))
+            }}
             required
           />
+          {fieldErrors.fullName && (
+            <span className="field-error" role="alert">{fieldErrors.fullName}</span>
+          )}
         </label>
 
         <label className="field-group" htmlFor="registerEmail">
@@ -122,6 +170,7 @@ function StepRegister({ onNext }) {
             placeholder="user@example.com"
             autoComplete="email"
             value={email}
+            className={fieldErrors.email ? 'field-input--error' : ''}
             onChange={(e) => {
               setEmail(e.target.value)
               if (fieldErrors.email) {
@@ -129,8 +178,7 @@ function StepRegister({ onNext }) {
               }
             }}
             onBlur={(e) => {
-              const err = validateEmail(e.target.value)
-              setFieldErrors((prev) => ({ ...prev, email: err }))
+              setFieldErrors((prev) => ({ ...prev, email: validateEmail(e.target.value) }))
             }}
             required
           />
@@ -148,13 +196,26 @@ function StepRegister({ onNext }) {
             placeholder="Nhập số điện thoại (10 chữ số)"
             autoComplete="tel"
             value={phone}
-            onChange={(e) => setPhone(e.target.value)}
+            className={fieldErrors.phone ? 'field-input--error' : ''}
+            onChange={(e) => {
+              setPhone(e.target.value)
+              if (fieldErrors.phone) {
+                setFieldErrors((prev) => ({ ...prev, phone: validatePhone(e.target.value) }))
+              }
+            }}
+            onBlur={(e) => {
+              setFieldErrors((prev) => ({ ...prev, phone: validatePhone(e.target.value) }))
+            }}
+            required
           />
+          {fieldErrors.phone && (
+            <span className="field-error" role="alert">{fieldErrors.phone}</span>
+          )}
         </label>
 
         <label className="field-group" htmlFor="registerPassword">
           <span>Mật khẩu</span>
-          <div className="password-field">
+          <div className={`password-field ${fieldErrors.password ? 'field-input--error' : ''}`}>
             <input
               id="registerPassword"
               name="password"
@@ -169,8 +230,7 @@ function StepRegister({ onNext }) {
                 }
               }}
               onBlur={(e) => {
-                const err = validatePassword(e.target.value)
-                setFieldErrors((prev) => ({ ...prev, password: err }))
+                setFieldErrors((prev) => ({ ...prev, password: validatePassword(e.target.value) }))
               }}
               required
             />
@@ -189,7 +249,7 @@ function StepRegister({ onNext }) {
 
         <label className="field-group" htmlFor="confirmPassword">
           <span>Xác nhận mật khẩu</span>
-          <div className="password-field">
+          <div className={`password-field ${fieldErrors.confirmPassword ? 'field-input--error' : ''}`}>
             <input
               id="confirmPassword"
               name="confirmPassword"
@@ -202,14 +262,14 @@ function StepRegister({ onNext }) {
                 if (fieldErrors.confirmPassword) {
                   setFieldErrors((prev) => ({
                     ...prev,
-                    confirmPassword: e.target.value !== password ? 'Mật khẩu nhập lại không khớp' : '',
+                    confirmPassword: validateConfirmPassword(e.target.value, password),
                   }))
                 }
               }}
               onBlur={(e) => {
                 setFieldErrors((prev) => ({
                   ...prev,
-                  confirmPassword: e.target.value !== password ? 'Mật khẩu nhập lại không khớp' : '',
+                  confirmPassword: validateConfirmPassword(e.target.value, password),
                 }))
               }}
               required
@@ -227,7 +287,7 @@ function StepRegister({ onNext }) {
           )}
         </label>
 
-        {error && !fieldErrors.email && !fieldErrors.password && !fieldErrors.confirmPassword && (
+        {error && !Object.values(fieldErrors).some(Boolean) && (
           <p className="auth-error">{error}</p>
         )}
 

@@ -141,7 +141,7 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     public void register(RegisterRequest request) {
         if (accountRepository.existsByEmail(request.email())) {
-            throw new IllegalArgumentException("Email da duoc su dung");
+            throw new IllegalArgumentException("Email đã được sử dụng");
         }
 
         Role customerRole = roleRepository.findByName(CUSTOMER_ROLE)

@@ -179,7 +179,11 @@ export async function register(fullName, email, phone, password) {
   }
 
   const data = await parseJson(response)
-  if (!response.ok) throw new Error(data.message || 'Đăng ký thất bại')
+  if (!response.ok) {
+    const error = new Error(data.message || 'Đăng ký thất bại')
+    if (data.fieldErrors) error.fieldErrors = data.fieldErrors
+    throw error
+  }
   return data
 }
 
