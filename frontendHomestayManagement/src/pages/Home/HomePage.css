@@ -2361,10 +2361,11 @@
   border-radius: 999px;
   background: rgba(226, 177, 115, 0.12);
   border: 1px solid rgba(226, 177, 115, 0.3);
-  font-size: 11.5px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  color: #e2b173;
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgba(253, 230, 138, 0.9);
   margin-bottom: 20px;
   backdrop-filter: blur(8px);
 }
@@ -2384,7 +2385,7 @@
   font-family: 'Playfair Display', Georgia, serif;
   font-size: clamp(28px, 4vw, 40px);
   font-weight: 700;
-  color: #ffffff;
+  color: #fffbeb;
   margin-bottom: 16px;
   line-height: 1.2;
 }
@@ -2392,14 +2393,14 @@
 .komorebi-kanji {
   font-size: 28px;
   font-weight: 300;
-  color: #e2b173;
+  color: rgba(253, 230, 138, 0.9);
   letter-spacing: 0.1em;
 }
 
 .komorebi-desc {
   font-size: 15.5px;
   line-height: 1.7;
-  color: #c4beb4;
+  color: #e2e8f0;
   margin-bottom: 24px;
 }
 

@@ -23,9 +23,13 @@ import com.homestayManagement.homestayManagement.repository.RoleRepository;
 import com.homestayManagement.homestayManagement.security.JwtService;
 import com.homestayManagement.homestayManagement.security.OtpLockedException;
 import com.homestayManagement.homestayManagement.service.AuthService;
+import jakarta.mail.MessagingException;
+import jakarta.mail.internet.MimeMessage;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.AuthenticationException;
@@ -45,6 +49,7 @@ import java.util.UUID;
 
 @Service
 public class AuthServiceImpl implements AuthService {
+    private static final Logger LOGGER = LoggerFactory.getLogger(AuthServiceImpl.class);
     private static final String GOOGLE_CUSTOMER_ROLE = "ROLE_CUSTOMER";
     private static final String CUSTOMER_ROLE = "ROLE_CUSTOMER";
     private static final String GOOGLE_TOKEN_INFO_URL = "https://oauth2.googleapis.com/tokeninfo?id_token=";
@@ -216,18 +221,75 @@ public class AuthServiceImpl implements AuthService {
                 .build();
         tokenRepository.save(token);
 
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setFrom(mailFrom);
-        message.setTo(email);
-        message.setSubject("Xac minh tai khoan - Home Stays");
-        message.setText(
-                "Xin chao,\n\n" +
-                "Cam on ban da dang ky tai khoan Home Stays.\n\n" +
-                "Ma xac minh email cua ban la: " + otp + "\n\n" +
-                "Ma co hieu luc trong " + OTP_EXPIRY_MINUTES + " phut.\n\n" +
-                "Tran trong,\nHome Stays"
-        );
-        mailSender.send(message);
+        String subject = "Mã xác minh tài khoản - Lá Đỏ Homestay";
+        String plainText = """
+                Xin chào,
+
+                Cảm ơn bạn đã đăng ký tài khoản tại Lá Đỏ Homestay.
+
+                Mã xác minh email (OTP) của bạn là: %s
+
+                Mã xác thực có hiệu lực trong %d phút.
+                Nếu bạn không thực hiện yêu cầu này, vui lòng bỏ qua email này.
+
+                Trân trọng,
+                Lá Đỏ Homestay
+                """.formatted(otp, OTP_EXPIRY_MINUTES);
+
+        String htmlText = """
+                <!DOCTYPE html>
+                <html lang="vi">
+                <head>
+                    <meta charset="UTF-8">
+                    <style>
+                        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f4f6f8; margin: 0; padding: 20px; color: #333333; }
+                        .container { max-width: 540px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 16px rgba(0,0,0,0.06); border: 1px solid #e5e7eb; }
+                        .header { background: #15573a; padding: 24px; text-align: center; color: #ffffff; }
+                        .header h1 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: 0.5px; }
+                        .body { padding: 32px 28px; line-height: 1.6; }
+                        .body p { margin: 0 0 16px; font-size: 15px; }
+                        .otp-box { margin: 24px 0; padding: 20px; background: #f0fdf4; border: 2px dashed #15573a; border-radius: 10px; text-align: center; }
+                        .otp-code { font-size: 34px; font-weight: 800; letter-spacing: 8px; color: #15573a; font-family: monospace, sans-serif; }
+                        .otp-hint { font-size: 13px; color: #6b7280; margin-top: 8px; }
+                        .footer { background: #f9fafb; padding: 20px 28px; text-align: center; font-size: 13px; color: #6b7280; border-top: 1px solid #f3f4f6; }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <div class="header">
+                            <h1>LÁ ĐỎ HOMESTAY</h1>
+                        </div>
+                        <div class="body">
+                            <p>Xin chào,</p>
+                            <p>Cảm ơn bạn đã đăng ký tài khoản tại <strong>Lá Đỏ Homestay</strong>.</p>
+                            <p>Vui lòng sử dụng mã OTP bên dưới để hoàn tất xác minh tài khoản của bạn:</p>
+                            <div class="otp-box">
+                                <div class="otp-code">%s</div>
+                                <div class="otp-hint">Mã xác minh có hiệu lực trong <strong>%d phút</strong></div>
+                            </div>
+                            <p style="color: #64748b; font-size: 14px;">Nếu bạn không thực hiện yêu cầu này, vui lòng bỏ qua email này.</p>
+                            <p style="margin-top: 24px;">Trân trọng,<br><strong>Đội ngũ Lá Đỏ Homestay</strong></p>
+                        </div>
+                        <div class="footer">
+                            Email tự động từ hệ thống quản lý Lá Đỏ Homestay Sa Pa.<br>Vui lòng không trả lời email này.
+                        </div>
+                    </div>
+                </body>
+                </html>
+                """.formatted(otp, OTP_EXPIRY_MINUTES);
+
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+            helper.setFrom(mailFrom);
+            helper.setTo(email);
+            helper.setSubject(subject);
+            helper.setText(plainText, htmlText);
+            mailSender.send(message);
+        } catch (MessagingException | RuntimeException e) {
+            LOGGER.error("Không thể gửi email OTP xác minh tài khoản tới {}", email, e);
+            throw new RuntimeException("Không thể gửi email xác thực. Vui lòng thử lại sau.");
+        }
     }
 
     @Override
