@@ -92,12 +92,6 @@ function StepRegister({ onNext }) {
           </svg>
           <span>Về trang chủ</span>
         </a>
-        <a href="/login" className="auth-back-link register-back-link" title="Quay lại trang đăng nhập">
-          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
-            <path d="M19 12H5M12 19l-7-7 7-7" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-          <span>Về trang đăng nhập</span>
-        </a>
       </div>
 
       <div className="login-heading register-heading">
@@ -352,12 +346,6 @@ function StepVerifyEmail({ email, onSuccess }) {
             <polyline points="9 22 9 12 15 12 15 22" />
           </svg>
           <span>Về trang chủ</span>
-        </a>
-        <a href="/login" className="auth-back-link register-back-link" title="Quay lại trang đăng nhập">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M19 12H5M12 19l-7-7 7-7" />
-          </svg>
-          <span>Về trang đăng nhập</span>
         </a>
       </div>
 
