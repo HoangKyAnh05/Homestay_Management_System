@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { VideoProject, SubtitleStyle, WatermarkConfig, SoundFxConfig, VIETNAMESE_VOICES } from '../types/video';
+import { SparkleBadge, WorkflowMode } from './SparkleBadge';
 import {
   Type,
   Sparkles,
@@ -17,6 +18,7 @@ import {
 interface InspectorPanelProps {
   project: VideoProject;
   setProject: React.Dispatch<React.SetStateAction<VideoProject>>;
+  workflowMode?: WorkflowMode;
 }
 
 const BGM_OPTIONS = [
@@ -59,7 +61,11 @@ const PRESET_HIGHLIGHT_COLORS = [
   { name: 'Trắng Sáng', color: '#FFFFFF' }
 ];
 
-export const InspectorPanel: React.FC<InspectorPanelProps> = ({ project, setProject }) => {
+export const InspectorPanel: React.FC<InspectorPanelProps> = ({
+  project,
+  setProject,
+  workflowMode = 'fast'
+}) => {
   const [activeTab, setActiveTab] = useState<'branding' | 'effects' | 'audio'>('branding');
 
   const updateSubtitleStyle = (updates: Partial<SubtitleStyle>) => {
@@ -131,6 +137,13 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({ project, setProj
 
   return (
     <div className="h-full flex flex-col bg-zinc-950 p-3 sm:p-4 overflow-hidden select-none">
+      {workflowMode === 'quality' && (
+        <div className="flex items-center gap-2 mb-3 px-3 py-2 rounded-xl bg-indigo-950/60 border border-indigo-500/30 text-indigo-200 text-xs shadow-md">
+          <SparkleBadge step={5} label="Chỉnh Thương hiệu & Nhạc nền" />
+          <span className="font-bold text-[11.5px]">Tinh chỉnh Logo, Màu phụ đề & Nhạc nền</span>
+        </div>
+      )}
+
       {/* 3 Tabs Điều Hướng Gọn Gàng */}
       <div className="flex items-center p-1 bg-zinc-900 rounded-xl border border-zinc-800 mb-4 gap-1">
         <button

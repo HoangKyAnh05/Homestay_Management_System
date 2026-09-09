@@ -8,8 +8,9 @@ import {
   ListPlus,
   FileText,
   Zap,
-  Rocket
+  Sparkles
 } from 'lucide-react';
+import { SparkleBadge, WorkflowMode } from './SparkleBadge';
 
 interface ScriptGeneratorProps {
   project: VideoProject;
@@ -21,6 +22,7 @@ interface ScriptGeneratorProps {
   statusText: string;
   setStatusText: (val: string) => void;
   onOpenBatchVocab?: () => void;
+  workflowMode: WorkflowMode;
 }
 
 const DEFAULT_SCRIPT = `Chào mừng bạn đến với Lá Đỏ Homestay Sa Pa, nơi mây ôm trọn thung lũng Mường Hoa mỗi sớm mai.
@@ -30,7 +32,7 @@ Lên lịch cho kỳ nghỉ tại Sa Pa ngay hôm nay và nhận trọn vẹn ư
 
 const SCRIPT_PRESETS = [
   {
-    title: '🏔️ Săn Mây & Nghỉ Dưỡng Sa Pa',
+    title: '🏔️ Săn Mây & Nghỉ Dưỡng',
     desc: 'View thung lũng Mường Hoa, ban công săn mây, kỳ nghỉ lý tưởng',
     script: `Chào mừng bạn đến với Lá Đỏ Homestay Sa Pa, nơi mây ôm trọn thung lũng Mường Hoa mỗi sớm mai.
 Thưởng thức tách cà phê ấm nóng bên ban công lộng gió và hít hà không khí trong lành của núi rừng.
@@ -38,7 +40,7 @@ Không gian phòng nghỉ mộc mạc, tiện nghi ấm cúng, mang đến cảm
 Lên lịch cho kỳ nghỉ tại Sa Pa ngay hôm nay và nhận trọn vẹn ưu đãi độc quyền từ Lá Đỏ Homestay!`
   },
   {
-    title: '🌿 Không Gian Komorebi Chữa Lành',
+    title: '🌿 Komorebi Chữa Lành',
     desc: 'Ánh nắng qua tán cây, góc trà đạo, an yên và tái tạo năng lượng',
     script: `Tạm gác lại những bộn bề nơi phố thị để tìm về góc an yên tại Lá Đỏ Homestay.
 Từng tia nắng sớm len lỏi qua tán cây rừng mang đến năng lượng bình yên thuần khiết.
@@ -46,7 +48,7 @@ Ngồi bên hiên nhà thưởng trà, lắng nghe tiếng suối reo và tiến
 Chuyến đi này sẽ là món quà tuyệt vời nhất để bạn chữa lành tâm hồn và nạp đầy năng lượng mới!`
   },
   {
-    title: '☕ Ban Công Cà Phê & BBQ Hoàng Hôn',
+    title: '☕ BBQ Hoàng Hôn',
     desc: 'Tiệc nướng BBQ ấm cúng, view hoàng hôn lãng mạn, chill cùng bạn bè',
     script: `Hoàng hôn buông xuống trên đỉnh núi Sa Pa chính là khoảnh khắc đẹp nhất trong ngày.
 Cùng người thương quây quần bên bếp than hồng với bữa tiệc nướng BBQ thơm lừng.
@@ -54,7 +56,7 @@ Nhâm nhi tách trà thảo mộc nóng và ngắm nhìn thị trấn Sa Pa dầ
 Đừng bỏ lỡ những khoảnh khắc gắn kết tuyệt đẹp chỉ có tại Lá Đỏ Homestay!`
   },
   {
-    title: '🎁 Ưu Đãi Combo 2 Ngày 1 Đêm',
+    title: '🎁 Ưu Đãi Combo 2N1Đ',
     desc: 'Giá sốc, tặng bữa sáng & đồ uống, số lượng phòng giới hạn',
     script: `Ưu đãi nghỉ dưỡng 2 ngày 1 đêm cực hot tại Lá Đỏ Homestay Sa Pa đang chờ bạn!
 Trọn gói phòng view núi săn mây, miễn phí bữa sáng và đồ uống chào mừng đặc sản Tây Bắc.
@@ -62,7 +64,7 @@ Tặng ngay voucher giảm giá cho các dịch vụ trải nghiệm văn hóa b
 Số lượng phòng ưu đãi có hạn, hãy nhanh tay liên hệ đặt phòng ngay hôm nay!`
   },
   {
-    title: '🍜 Review Ẩm Thực & Đặc Sản',
+    title: '🍜 Đặc Sản Sa Pa',
     desc: 'Lẩu cá hồi, thắng cố, thịt gác bếp và ẩm thực Sa Pa',
     script: `Đến Sa Pa nhất định phải thưởng thức nồi lẩu cá hồi thơm nức mũi giữa trời sương lạnh.
 Vị ngọt thanh của cá tươi quyện cùng rau rừng tươi xanh đậm đà khó quên.
@@ -78,7 +80,8 @@ export const ScriptGenerator: React.FC<ScriptGeneratorProps> = ({
   setIsGenerating,
   statusText,
   setStatusText,
-  onOpenBatchVocab
+  onOpenBatchVocab,
+  workflowMode
 }) => {
   // Script input state
   const [userScript, setUserScript] = useState(DEFAULT_SCRIPT);
@@ -134,13 +137,14 @@ export const ScriptGenerator: React.FC<ScriptGeneratorProps> = ({
   };
 
   return (
-    <div className="bg-gray-900/70 rounded-2xl p-5 border border-gray-800 glass-panel flex flex-col gap-4 shadow-xl">
+    <div className="bg-gray-900/70 rounded-2xl p-4 sm:p-5 border border-gray-800 glass-panel flex flex-col gap-3.5 shadow-xl">
       {/* Main Tabs Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-800 pb-3">
+      <div className="flex flex-wrap items-center justify-between gap-2.5 border-b border-gray-800 pb-2.5">
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white shadow-lg shadow-indigo-500/25">
-            <Zap className="w-4 h-4 text-amber-300" />
-            <span>🎬 Dán Kịch Bản (Auto 100% Motion & Ảnh)</span>
+          <SparkleBadge step={1} label="Chọn kịch bản & Giọng đọc" />
+          <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white shadow-lg shadow-indigo-500/25">
+            <Zap className="w-3.5 h-3.5 text-amber-300" />
+            <span>Kịch Bản Video & Giọng Đọc</span>
             <span className="px-1.5 py-0.2 text-[9px] font-black rounded bg-amber-400 text-black uppercase tracking-wider">
               1-Click
             </span>
@@ -149,14 +153,15 @@ export const ScriptGenerator: React.FC<ScriptGeneratorProps> = ({
 
         {/* Voice Selector Header Compact */}
         <div className="flex items-center gap-2">
+          {workflowMode === 'script_voice' && <SparkleBadge step={2} label="Chọn giọng đọc chuẩn tiếng Việt" />}
           <label className="text-[11px] font-medium text-gray-400 flex items-center gap-1">
             <Mic className="w-3.5 h-3.5 text-indigo-400" />
-            <span>Giọng:</span>
+            <span>Giọng đọc:</span>
           </label>
           <select
             value={selectedVoice}
             onChange={(e) => setSelectedVoice(e.target.value)}
-            className="bg-gray-950 border border-gray-800 rounded-lg px-2.5 py-1 text-xs text-gray-200 focus:outline-none focus:border-indigo-500"
+            className="bg-gray-950 border border-gray-700/80 rounded-lg px-2.5 py-1 text-xs font-semibold text-indigo-200 focus:outline-none focus:border-indigo-500 shadow-inner"
           >
             {VIETNAMESE_VOICES.map((v) => (
               <option key={v.id} value={v.id}>
@@ -167,115 +172,110 @@ export const ScriptGenerator: React.FC<ScriptGeneratorProps> = ({
         </div>
       </div>
 
-          {/* Quick Script Presets */}
-          <div className="flex flex-col gap-1.5">
-            <div className="flex items-center justify-between text-xs font-semibold text-gray-300">
-              <span className="flex items-center gap-1.5">
-                <FileText className="w-3.5 h-3.5 text-indigo-400" />
-                <span>Nhập kịch bản video của bạn:</span>
-              </span>
-              <div className="flex items-center gap-1.5">
-                <span className="text-[11px] text-gray-500 hidden sm:inline">Mẫu thử nhanh:</span>
-                {SCRIPT_PRESETS.map((preset) => (
-                  <button
-                    key={preset.title}
-                    type="button"
-                    onClick={() => setUserScript(preset.script)}
-                    className="text-[11px] px-2 py-0.5 rounded-lg bg-gray-800/80 hover:bg-indigo-600/30 text-gray-300 hover:text-white border border-gray-700/50 transition-all"
-                    title={preset.desc}
-                  >
-                    {preset.title}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Script Textarea */}
-            <div className="relative">
-              <textarea
-                value={userScript}
-                onChange={(e) => setUserScript(e.target.value)}
-                rows={5}
-                className="w-full bg-gray-950/90 border border-indigo-500/30 focus:border-indigo-500 rounded-xl px-4 py-3 text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all font-mono leading-relaxed resize-y"
-                placeholder="Dán toàn bộ kịch bản của bạn vào đây (hỗ trợ văn bản tự do, ngắt câu bằng dấu chấm, xuống dòng, hoặc số thứ tự 1. 2. 3.)..."
-              />
-              <div className="absolute right-3 bottom-3 flex items-center gap-2">
-                <span className="px-2 py-0.5 rounded-md bg-indigo-950/80 border border-indigo-500/40 text-indigo-300 text-[11px] font-bold">
-                  {detectedScenesCount} phân cảnh tự động
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Feature Highlights & AI Intelligence Badge */}
-          <div className="bg-indigo-950/30 border border-indigo-500/20 rounded-xl p-3 flex items-start gap-2.5 text-xs text-indigo-200">
-            <Rocket className="w-4 h-4 text-pink-400 mt-0.5 flex-shrink-0" />
-            <div className="space-y-0.5">
-              <div className="font-bold text-white text-[12px]">
-                Tự Động 100% - Không Cần Chọn Gì Nữa:
-              </div>
-              <p className="text-gray-300 text-[11px] leading-relaxed">
-                Hệ thống tự phân tích từng câu để gán{' '}
-                <span className="text-pink-300 font-semibold">Motion Graphics</span> (Biểu đồ tăng trưởng +320%, Google Search, Terminal Code, VS Battle, Ting Ting, Quỹ đạo AI...) kết hợp{' '}
-                <span className="text-cyan-300 font-semibold">Ảnh nền mờ Cinematic</span> và{' '}
-                <span className="text-amber-300 font-semibold">Giọng đọc Edge-TTS chuẩn tiếng Việt</span> có phụ đề nhảy chữ.
-              </p>
-            </div>
-          </div>
-
-          {/* Action Row */}
-          <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
-            <div className="text-xs text-indigo-300 flex items-center gap-2">
-              {isGenerating ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin text-indigo-400" />
-                  <span className="font-medium animate-pulse">{statusText}</span>
-                </>
-              ) : statusText ? (
-                <>
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                  <span className="text-emerald-400 font-medium">{statusText}</span>
-                </>
-              ) : (
-                <span className="text-gray-400">
-                  Sẵn sàng tạo toàn bộ video từ kịch bản trên với 1 cú click.
-                </span>
-              )}
-            </div>
-
-            <div className="flex items-center gap-2.5">
-              {onOpenBatchVocab && (
-                <button
-                  onClick={onOpenBatchVocab}
-                  type="button"
-                  className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-gray-800 hover:bg-gray-700 text-indigo-300 hover:text-white border border-indigo-500/30 font-semibold text-xs transition-all shadow-md active:scale-95"
-                  title="Nạp nhiều câu kịch bản hoặc danh sách từ vựng từ tệp hoặc dán JSON"
-                >
-                  <ListPlus className="w-4 h-4 text-indigo-400" />
-                  <span className="hidden sm:inline">Nạp file / JSON</span>
-                </button>
-              )}
-
-              {/* GIANT 1-CLICK GENERATE BUTTON */}
+      {/* Quick Script Presets */}
+      <div className="flex flex-col gap-1.5">
+        <div className="flex items-center justify-between text-xs font-semibold text-gray-300">
+          <span className="flex items-center gap-1.5">
+            <FileText className="w-3.5 h-3.5 text-indigo-400" />
+            <span>Kịch bản video:</span>
+          </span>
+          <div className="flex items-center gap-1 flex-wrap">
+            <span className="text-[11px] text-gray-400 hidden sm:inline">Mẫu thử:</span>
+            {SCRIPT_PRESETS.map((preset) => (
               <button
-                onClick={handleGenerateFromUserScript}
-                disabled={isGenerating || !userScript.trim()}
-                className="flex items-center gap-2.5 px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-500 hover:to-pink-500 text-white font-black text-sm shadow-xl shadow-indigo-500/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all transform active:scale-95 glow-primary"
+                key={preset.title}
+                type="button"
+                onClick={() => setUserScript(preset.script)}
+                className="text-[10.5px] px-2 py-0.5 rounded-lg bg-gray-800/90 hover:bg-indigo-600/40 text-gray-300 hover:text-white border border-gray-700/60 transition-all font-medium"
+                title={preset.desc}
               >
-                {isGenerating ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Đang Tạo Toàn Bộ Video...</span>
-                  </>
-                ) : (
-                  <>
-                    <Zap className="w-4 h-4 text-amber-300" />
-                    <span>TẠO VIDEO MOTION GRAPHIC TỰ ĐỘNG (1-CLICK)</span>
-                  </>
-                )}
+                {preset.title}
               </button>
-            </div>
+            ))}
           </div>
         </div>
-      );
+
+        {/* Script Textarea */}
+        <div className="relative">
+          <textarea
+            value={userScript}
+            onChange={(e) => setUserScript(e.target.value)}
+            rows={4}
+            className="w-full bg-gray-950/90 border border-indigo-500/30 focus:border-indigo-500 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all font-mono leading-relaxed resize-y"
+            placeholder="Dán kịch bản của bạn vào đây (hỗ trợ văn bản tự do, ngắt câu bằng dấu chấm, xuống dòng, hoặc số thứ tự 1. 2. 3.)..."
+          />
+          <div className="absolute right-2.5 bottom-2.5 flex items-center gap-2">
+            <span className="px-2 py-0.5 rounded-md bg-indigo-950/90 border border-indigo-500/40 text-indigo-300 text-[10.5px] font-bold">
+              {detectedScenesCount} câu phân cảnh
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Feature Highlights - Compact & Sleek */}
+      <div className="bg-indigo-950/30 border border-indigo-500/20 rounded-xl px-3 py-2 flex items-center justify-between text-xs text-indigo-200">
+        <div className="flex items-center gap-2 text-[11px]">
+          <Sparkles className="w-3.5 h-3.5 text-pink-400 flex-shrink-0" />
+          <span className="text-gray-300">
+            Tự động gán <strong className="text-pink-300">Motion Graphics</strong>, <strong className="text-cyan-300">Ảnh/Video nền</strong> & <strong className="text-amber-300">Giọng đọc Edge-TTS</strong> kèm phụ đề Karaoke.
+          </span>
+        </div>
+      </div>
+
+      {/* Action Row */}
+      <div className="flex flex-wrap items-center justify-between gap-2.5 pt-0.5">
+        <div className="text-xs text-indigo-300 flex items-center gap-2">
+          {isGenerating ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin text-indigo-400" />
+              <span className="font-medium animate-pulse">{statusText}</span>
+            </>
+          ) : statusText ? (
+            <>
+              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+              <span className="text-emerald-400 font-medium">{statusText}</span>
+            </>
+          ) : (
+            <span className="text-gray-400 text-[11.5px]">
+              Sẵn sàng tạo toàn bộ video với 1 cú click.
+            </span>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2">
+          {onOpenBatchVocab && (
+            <button
+              onClick={onOpenBatchVocab}
+              type="button"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 text-indigo-300 hover:text-white border border-indigo-500/30 font-semibold text-xs transition-all active:scale-95"
+              title="Nạp nhiều câu kịch bản hoặc danh sách từ vựng từ tệp hoặc dán JSON"
+            >
+              <ListPlus className="w-3.5 h-3.5 text-indigo-400" />
+              <span className="hidden sm:inline">Nạp file</span>
+            </button>
+          )}
+
+          {/* GIANT 1-CLICK GENERATE BUTTON */}
+          <button
+            onClick={handleGenerateFromUserScript}
+            disabled={isGenerating || !userScript.trim()}
+            className="relative flex items-center gap-2.5 px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-500 hover:to-pink-500 text-white font-black text-xs sm:text-sm shadow-xl shadow-indigo-500/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all transform active:scale-95 glow-primary"
+          >
+            <SparkleBadge step={2} label="Bấm để tự động tạo toàn bộ video" />
+            {isGenerating ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Đang Tạo Toàn Bộ Video...</span>
+              </>
+            ) : (
+              <>
+                <Zap className="w-4 h-4 text-amber-300" />
+                <span>TẠO TOÀN BỘ VIDEO TỰ ĐỘNG (1-CLICK)</span>
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 };

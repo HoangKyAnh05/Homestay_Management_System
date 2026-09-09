@@ -14,6 +14,7 @@ import { defaultProject } from './remotion/Root';
 import { maxShowcaseProject } from './remotion/sampleShowcaseProject';
 import { sampleHomestayProject } from './remotion/sampleHomestayProject';
 import { synthesizeEdgeTTS } from './services/edgeTtsService';
+import { WorkflowMode } from './components/SparkleBadge';
 
 export const App: React.FC = () => {
   const [project, setProject] = useState<VideoProject>(() => {
@@ -32,6 +33,7 @@ export const App: React.FC = () => {
     return sampleHomestayProject;
   });
 
+  const [workflowMode, setWorkflowMode] = useState<WorkflowMode>('fast');
   const [isGenerating, setIsGenerating] = useState(false);
   const [statusText, setStatusText] = useState('');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -139,7 +141,7 @@ export const App: React.FC = () => {
 
   return (
     <div className="h-screen max-h-screen overflow-hidden bg-zinc-950 text-zinc-100 flex flex-col">
-      {/* Top Navbar */}
+      {/* Top Navbar with Workflow Mode Selector */}
       <Navbar
         project={project}
         setProject={setProject}
@@ -149,6 +151,8 @@ export const App: React.FC = () => {
         isGenerating={isGenerating}
         activeView={activeView}
         setActiveView={setActiveView}
+        workflowMode={workflowMode}
+        setWorkflowMode={setWorkflowMode}
       />
 
       {/* Main Body: Either Roadmap 100 Days or Studio Video Editor */}
@@ -175,6 +179,7 @@ export const App: React.FC = () => {
               statusText={statusText}
               setStatusText={setStatusText}
               onOpenBatchVocab={() => setIsBatchVocabOpen(true)}
+              workflowMode={workflowMode}
             />
 
             {/* Danh sách phân cảnh Storyboard */}
@@ -185,6 +190,7 @@ export const App: React.FC = () => {
               apiKeyPexels={apiKeyPexels}
               onOpenBatchVocab={() => setIsBatchVocabOpen(true)}
               onOpenVideoSplitter={() => setIsVideoSplitterOpen(true)}
+              workflowMode={workflowMode}
             />
           </div>
 
@@ -201,6 +207,7 @@ export const App: React.FC = () => {
             <InspectorPanel
               project={project}
               setProject={setProject}
+              workflowMode={workflowMode}
             />
           </div>
         </main>
