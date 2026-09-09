@@ -174,21 +174,11 @@ export const Navbar: React.FC<NavbarProps> = ({
           <button
             type="button"
             onClick={handleLoadHomestaySample}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/40 hover:to-orange-500/40 text-amber-300 hover:text-white border border-amber-500/40 text-xs font-bold transition-all active:scale-95 cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/40 hover:to-orange-500/40 text-amber-300 hover:text-white border border-amber-500/40 text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-sm"
             title="Nạp kịch bản mẫu: Giới thiệu phòng & Săn mây Lá Đỏ Sa Pa"
           >
             <span>🏔️</span>
             <span className="hidden sm:inline">Kịch bản mẫu Homestay</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={handleLoadShowcaseSample}
-            className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-gray-400 hover:text-gray-200 hover:bg-gray-800 text-xs font-medium transition-all"
-            title="Nạp mẫu kỹ xảo CapCut Motion 3D nâng cao"
-          >
-            <span>✨</span>
-            <span className="hidden lg:inline">Showcase CapCut</span>
           </button>
         </div>
 
@@ -204,23 +194,6 @@ export const Navbar: React.FC<NavbarProps> = ({
             <span className="hidden sm:inline">Chia Video Dài</span>
           </button>
         )}
-
-        {/* Settings & Restart icon buttons */}
-        <button
-          onClick={handleRestartApp}
-          className="p-2 rounded-xl bg-gray-800/60 hover:bg-gray-700/80 text-gray-300 hover:text-white border border-gray-700/40 transition-all"
-          title="Làm mới trình biên tập"
-        >
-          <RotateCcw className="w-3.5 h-3.5" />
-        </button>
-
-        <button
-          onClick={onOpenSettings}
-          className="p-2 rounded-xl bg-gray-800/60 hover:bg-gray-700/80 text-gray-300 hover:text-white border border-gray-700/40 transition-all"
-          title="Cài đặt API AI & Giọng đọc"
-        >
-          <Settings className="w-3.5 h-3.5" />
-        </button>
 
         {/* Render Video Button */}
         <button
