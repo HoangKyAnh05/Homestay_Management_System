@@ -143,7 +143,15 @@ function useRoomTypes() {
   useEffect(() => {
     fetch(`${API_BASE_URL}/rooms/types`)
       .then((r) => r.json())
-      .then((data) => setRooms(Array.isArray(data) ? data : []))
+      .then((data) => {
+        const list = Array.isArray(data) ? data : []
+        const activeRooms = list.filter((r) => {
+          if (String(r.status || '').toUpperCase() === 'MAINTENANCE') return false
+          if (r.availableRooms != null && Number(r.availableRooms) <= 0) return false
+          return true
+        })
+        setRooms(activeRooms)
+      })
       .catch(() => setRooms([]))
       .finally(() => setLoading(false))
   }, [])
@@ -289,7 +297,11 @@ function SearchResultsSection({ criteria, rooms, loading, error, maxPrice, onMax
 
   const visibleRooms = useMemo(() => {
     return rooms
-      .filter(room => roomPrice(room) <= maxPrice)
+      .filter((room) => {
+        if (String(room.status || '').toUpperCase() === 'MAINTENANCE') return false
+        if (room.availableRooms != null && Number(room.availableRooms) <= 0) return false
+        return roomPrice(room) <= maxPrice
+      })
       .sort((a, b) => roomPrice(a) - roomPrice(b))
   }, [rooms, maxPrice])
 
@@ -372,7 +384,11 @@ function RoomsSection({ rooms, loading }) {
     return () => window.removeEventListener('resize', handleResize)
   }, [])
 
-  const safeRooms = Array.isArray(rooms) ? rooms : []
+  const safeRooms = (Array.isArray(rooms) ? rooms : []).filter((room) => {
+    if (String(room.status || '').toUpperCase() === 'MAINTENANCE') return false
+    if (room.availableRooms != null && Number(room.availableRooms) <= 0) return false
+    return true
+  })
   const maxIndex = Math.max(0, safeRooms.length - visibleCount)
 
   useEffect(() => {

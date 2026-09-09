@@ -2039,6 +2039,12 @@ function RoomsPage() {
   const visibleRooms = useMemo(() => {
     return rooms
       .filter((room) => {
+        const isMaintenance = String(room.status || '').toUpperCase() === 'MAINTENANCE'
+        if (isMaintenance) return false
+        const isUnavailable = !room.status ? false : (String(room.status).toUpperCase() !== 'AVAILABLE')
+        if (isUnavailable) return false
+        if (room.availableRooms != null && Number(room.availableRooms) <= 0) return false
+
         const price = roomPrice(room, searchCriteria?.checkInDate)
         const matchesPrice = price <= maxPrice
         return matchesPrice

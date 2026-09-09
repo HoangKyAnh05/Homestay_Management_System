@@ -75,6 +75,7 @@ public class RoomServiceImpl implements RoomService {
         java.util.Set<Long> inProgressRoomIds = new java.util.HashSet<>(roomIncidentRepository.findRoomIdsWithInProgressIncidents());
         return roomTypeRepository.findAll().stream()
                 .map(rt -> toRoomTypeResponse(rt, inProgressRoomIds))
+                .filter(rt -> rt.availableRooms() != null && rt.availableRooms() > 0)
                 .toList();
     }
 
