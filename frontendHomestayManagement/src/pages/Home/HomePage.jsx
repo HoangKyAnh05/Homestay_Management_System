@@ -350,11 +350,48 @@ function SearchResultsSection({ criteria, rooms, loading, error, maxPrice, onMax
 }
 
 function RoomsSection({ rooms, loading }) {
-  const carouselRooms = rooms.length > 3 ? [...rooms, ...rooms] : rooms
+  const [currentIndex, setCurrentIndex] = useState(0)
+  const [visibleCount, setVisibleCount] = useState(() => {
+    if (typeof window === 'undefined') return 3
+    if (window.innerWidth >= 1024) return 3
+    if (window.innerWidth >= 640) return 2
+    return 1
+  })
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 1024) {
+        setVisibleCount(3)
+      } else if (window.innerWidth >= 640) {
+        setVisibleCount(2)
+      } else {
+        setVisibleCount(1)
+      }
+    }
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
+  const safeRooms = Array.isArray(rooms) ? rooms : []
+  const maxIndex = Math.max(0, safeRooms.length - visibleCount)
+
+  useEffect(() => {
+    if (currentIndex > maxIndex) {
+      setCurrentIndex(maxIndex)
+    }
+  }, [maxIndex, currentIndex])
+
+  const handlePrev = () => {
+    setCurrentIndex((prev) => Math.max(0, prev - 1))
+  }
+
+  const handleNext = () => {
+    setCurrentIndex((prev) => Math.min(maxIndex, prev + 1))
+  }
 
   return (
     <section className="home-section home-rooms" id="rooms" aria-labelledby="rooms-title">
-      <div className="home-section-inner">
+      <div className="home-section-inner home-rooms-container max-w-7xl mx-auto px-6">
         <div className="home-section-head">
           <div>
             <h2 id="rooms-title">Loại phòng nổi bật</h2>
@@ -365,17 +402,67 @@ function RoomsSection({ rooms, loading }) {
 
         {loading ? (
           <div className="rooms-loading">Đang tải...</div>
-        ) : rooms.length === 0 ? (
+        ) : safeRooms.length === 0 ? (
           <div className="rooms-loading">Chưa có phòng để hiển thị.</div>
         ) : (
-          <div className={`rooms-carousel${rooms.length > 3 ? ' rooms-carousel--animated' : ''}`}>
-            <div className="rooms-carousel-track" style={{ '--room-count': rooms.length }}>
-              {carouselRooms.map((room, index) => (
-                <div className="rooms-carousel-item" key={`${room.id}-${index}`}>
-                  <RoomCard room={room} />
-                </div>
-              ))}
+          <div className="rooms-slider-shell">
+            {safeRooms.length > visibleCount && (
+              <button
+                type="button"
+                className="rooms-slider-btn rooms-slider-btn--prev"
+                onClick={handlePrev}
+                disabled={currentIndex === 0}
+                aria-label="Xem phòng trước"
+              >
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <polyline points="15 18 9 12 15 6" />
+                </svg>
+              </button>
+            )}
+
+            <div className="rooms-slider-viewport">
+              <div
+                className="rooms-slider-track"
+                style={{
+                  '--visible-count': visibleCount,
+                  transform: `translateX(calc(-${currentIndex} * ((100% - (24px * (${visibleCount} - 1))) / ${visibleCount} + 24px)))`,
+                }}
+              >
+                {safeRooms.map((room) => (
+                  <div className="rooms-slider-item" key={room.id || room.roomTypeId}>
+                    <RoomCard room={room} />
+                  </div>
+                ))}
+              </div>
             </div>
+
+            {safeRooms.length > visibleCount && (
+              <button
+                type="button"
+                className="rooms-slider-btn rooms-slider-btn--next"
+                onClick={handleNext}
+                disabled={currentIndex >= maxIndex}
+                aria-label="Xem phòng tiếp theo"
+              >
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <polyline points="9 18 15 12 9 6" />
+                </svg>
+              </button>
+            )}
+
+            {maxIndex > 0 && (
+              <div className="rooms-slider-dots">
+                {Array.from({ length: maxIndex + 1 }).map((_, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    className={`rooms-slider-dot ${idx === currentIndex ? 'active' : ''}`}
+                    onClick={() => setCurrentIndex(idx)}
+                    aria-label={`Trang ${idx + 1}`}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
