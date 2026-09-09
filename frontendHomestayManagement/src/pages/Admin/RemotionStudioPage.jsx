@@ -1,14 +1,11 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react'
+import React, { useEffect, useRef } from 'react'
 import AdminLayout, { navigate } from './AdminLayout'
 import './RemotionStudioPage.css'
 
 const REMOTION_LOCAL_URL = 'http://localhost:3000'
 
 export default function RemotionStudioPage() {
-  const isHttps =
-    typeof window !== 'undefined' &&
-    (window.location.protocol === 'https:' ||
-      (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1'))
+  const hasAutoOpened = useRef(false)
 
   const getDeployUrl = () => {
     if (typeof window !== 'undefined') {
@@ -17,99 +14,20 @@ export default function RemotionStudioPage() {
     return '/remotion-app/index.html'
   }
 
-  const [activeMode, setActiveMode] = useState('deploy')
-  const [studioUrl, setStudioUrl] = useState(getDeployUrl())
-  const [isFullscreen, setIsFullscreen] = useState(false)
-  const [isServerRunning, setIsServerRunning] = useState(false)
-  const [isChecking, setIsChecking] = useState(true)
-  const iframeRef = useRef(null)
-  const iframeLoaded = useRef(false)
-
-  const verifyServer = useCallback(async (targetUrl = studioUrl) => {
-    try {
-      if (targetUrl.includes('/remotion-app')) {
-        const res = await fetch('/remotion-app/index.html', {
-          method: 'GET',
-          cache: 'no-cache',
-        })
-        const text = await res.text()
-        if (res.ok && text.includes('Remotion AI Video Auto-Editor')) {
-          setIsServerRunning(true)
-          setIsChecking(false)
-          if (iframeRef.current && (!iframeLoaded.current || iframeRef.current.src !== targetUrl)) {
-            iframeRef.current.src = targetUrl
-            iframeLoaded.current = true
-          }
-          return true
-        }
-      } else {
-        const res = await fetch(`${targetUrl}/health`, {
-          method: 'GET',
-          cache: 'no-cache',
-          mode: 'cors',
-        })
-        const text = await res.text()
-        if (res.ok && text.trim() === 'OK') {
-          setIsServerRunning(true)
-          setIsChecking(false)
-          if (iframeRef.current && (!iframeLoaded.current || iframeRef.current.src !== targetUrl)) {
-            iframeRef.current.src = targetUrl
-            iframeLoaded.current = true
-          }
-          return true
-        }
-      }
-    } catch {
-      // Server not reachable yet
-    }
-
-    setIsServerRunning(false)
-    setIsChecking(false)
-    if (iframeRef.current && iframeRef.current.src !== 'about:blank') {
-      iframeRef.current.src = 'about:blank'
-      iframeLoaded.current = false
-    }
-    return false
-  }, [studioUrl])
-
-  // Continuous background auto-reconnect heartbeat
+  // Tự động mở tab riêng khi truy cập vào trang (chỉ trigger 1 lần)
   useEffect(() => {
-    verifyServer(studioUrl)
-    const interval = setInterval(() => {
-      verifyServer(studioUrl)
-    }, 4000)
-    return () => clearInterval(interval)
-  }, [verifyServer, studioUrl])
-
-  const handleSwitchMode = (mode) => {
-    setActiveMode(mode)
-    const newUrl = mode === 'deploy' ? getDeployUrl() : REMOTION_LOCAL_URL
-    setStudioUrl(newUrl)
-    setIsChecking(true)
-    iframeLoaded.current = false
-    verifyServer(newUrl)
-  }
-
-  const handleRefresh = () => {
-    setIsChecking(true)
-    iframeLoaded.current = false
-    const cacheBuster = `?t=${Date.now()}`
-    const freshUrl = (studioUrl || getDeployUrl()).split('?')[0] + cacheBuster
-    if (iframeRef.current) {
-      iframeRef.current.src = freshUrl
+    if (!hasAutoOpened.current) {
+      hasAutoOpened.current = true
       try {
-        iframeRef.current.contentWindow?.location?.reload()
-      } catch (e) {}
+        window.open(getDeployUrl(), '_blank')
+      } catch (e) {
+        // Fallback if blocked by browser popup
+      }
     }
-    verifyServer(freshUrl)
-  }
+  }, [])
 
-  const handleOpenStandalone = (url = studioUrl) => {
+  const handleOpenTab = (url = getDeployUrl()) => {
     window.open(url, '_blank', 'noopener,noreferrer')
-  }
-
-  const handleToggleFullscreen = () => {
-    setIsFullscreen(!isFullscreen)
   }
 
   const handleGoToPublish = () => {
@@ -118,12 +36,12 @@ export default function RemotionStudioPage() {
 
   return (
     <AdminLayout activePage="remotion-studio">
-      <div className={`remotion-studio-page ${isFullscreen ? 'remotion-studio-page--fullscreen' : ''}`}>
-        {/* Studio Top Header Bar */}
+      <div className="remotion-studio-page">
+        {/* Top Header Bar */}
         <div className="remotion-studio-header">
           <div className="remotion-studio-header-left">
             <div className="remotion-studio-icon-wrap">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18" />
                 <line x1="7" y1="2" x2="7" y2="22" />
                 <line x1="17" y1="2" x2="17" y2="22" />
@@ -136,84 +54,14 @@ export default function RemotionStudioPage() {
             </div>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                <h1 className="remotion-studio-title">Studio Biên Tập Video Lá Đỏ Homestay</h1>
-                <span
-                  style={{
-                    fontSize: '11px',
-                    fontWeight: 700,
-                    padding: '2px 8px',
-                    borderRadius: '12px',
-                    background: isServerRunning ? '#ecfdf5' : '#fef2f2',
-                    color: isServerRunning ? '#059669' : '#dc2626',
-                    border: `1px solid ${isServerRunning ? '#a7f3d0' : '#fecaca'}`,
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                  }}
-                >
-                  <span
-                    style={{
-                      width: '6px',
-                      height: '6px',
-                      borderRadius: '50%',
-                      background: isServerRunning ? '#10b981' : '#ef4444',
-                    }}
-                  />
-                  {isServerRunning
-                    ? `Studio Online (${activeMode === 'deploy' ? 'Bản Tích Hợp' : ':3000'})`
-                    : 'Đang kết nối...'}
+                <h1 className="remotion-studio-title">Studio Biên Tập Video Remotion Lá Đỏ</h1>
+                <span className="remotion-status-pill">
+                  <span className="remotion-status-dot" />
+                  Không gian làm việc Tab Độc Lập
                 </span>
-
-                {/* Switcher Mode: Deploy vs Localhost */}
-                <div
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    background: '#f1f5f9',
-                    padding: '2px',
-                    borderRadius: '8px',
-                    gap: '2px',
-                    fontSize: '11px',
-                  }}
-                >
-                  <button
-                    type="button"
-                    onClick={() => handleSwitchMode('deploy')}
-                    style={{
-                      border: 'none',
-                      background: activeMode === 'deploy' ? '#2563eb' : 'transparent',
-                      color: activeMode === 'deploy' ? '#ffffff' : '#64748b',
-                      padding: '3px 8px',
-                      borderRadius: '6px',
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      transition: 'all 0.15s ease',
-                    }}
-                    title="Dùng trình biên tập Remotion độc lập tích hợp sẵn (/remotion-app/index.html)"
-                  >
-                    🎬 Studio Tích Hợp
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleSwitchMode('local')}
-                    style={{
-                      border: 'none',
-                      background: activeMode === 'local' ? '#2563eb' : 'transparent',
-                      color: activeMode === 'local' ? '#ffffff' : '#64748b',
-                      padding: '3px 8px',
-                      borderRadius: '6px',
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      transition: 'all 0.15s ease',
-                    }}
-                    title="Dùng link nội bộ máy tính http://localhost:3000"
-                  >
-                    💻 Localhost:3000
-                  </button>
-                </div>
               </div>
               <p className="remotion-studio-subtitle">
-                Biên tập phân cảnh, lồng tiếng thuyết minh tiếng Việt & xuất bản video marketing Homestay đa nền tảng.
+                Hệ thống biên tập phân cảnh, lồng tiếng thuyết minh & cắt ghép video marketing đa nền tảng.
               </p>
             </div>
           </div>
@@ -221,128 +69,124 @@ export default function RemotionStudioPage() {
           <div className="remotion-studio-header-actions">
             <button
               type="button"
-              className="remotion-action-btn remotion-action-btn--secondary"
-              onClick={() => handleOpenStandalone(studioUrl)}
-              title="Mở Studio trong tab riêng không giới hạn iframe"
-              style={{ background: '#eff6ff', color: '#1d4ed8', borderColor: '#bfdbfe' }}
+              className="remotion-action-btn remotion-action-btn--primary"
+              onClick={() => handleOpenTab(getDeployUrl())}
+              title="Mở ngay Studio trên tab trình duyệt riêng"
             >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
                 <polyline points="15 3 21 3 21 9" />
                 <line x1="10" y1="14" x2="21" y2="3" />
               </svg>
-              <span>Mở Tab Riêng</span>
+              <span>Mở Tab Remotion Studio</span>
             </button>
 
             <button
               type="button"
               className="remotion-action-btn remotion-action-btn--secondary"
-              onClick={handleRefresh}
-              title="Tải lại trình biên tập"
-            >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M23 4v6h-6M1 20v-6h6" />
-                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
-              </svg>
-              <span>Làm mới</span>
-            </button>
-
-            <button
-              type="button"
-              className="remotion-action-btn remotion-action-btn--secondary"
-              onClick={handleToggleFullscreen}
-              title={isFullscreen ? 'Thu nhỏ cửa sổ' : 'Phóng to toàn màn hình'}
-            >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                {isFullscreen ? (
-                  <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" />
-                ) : (
-                  <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
-                )}
-              </svg>
-              <span>{isFullscreen ? 'Thu nhỏ' : 'Toàn màn hình'}</span>
-            </button>
-
-            <button
-              type="button"
-              className="remotion-action-btn remotion-action-btn--primary"
               onClick={handleGoToPublish}
-              title="Chuyển sang đăng tải bài viết lên Facebook / YouTube"
+              title="Chuyển sang AI Agent Đăng bài"
             >
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
               </svg>
-              <span>Đăng Lên Fanpage / Kênh</span>
+              <span>AI Agent Đăng Bài</span>
             </button>
           </div>
         </div>
 
-        {/* Studio Embedded Workspace */}
-        <div className="remotion-studio-workspace">
-          <iframe
-            ref={iframeRef}
-            src={isServerRunning ? studioUrl : 'about:blank'}
-            title="Remotion Video Auto Editor Studio"
-            className="remotion-studio-iframe"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; microphone; camera"
-            sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals allow-downloads"
-          />
+        {/* Main Notice Hero Workspace */}
+        <div className="remotion-notice-workspace">
+          <div className="remotion-notice-card">
+            <div className="remotion-notice-badge">🎬 Trải Nghiệm Full-Screen Đỉnh Cao</div>
+            
+            <h2 className="remotion-notice-title">
+              Studio Đã Được Mở Trên Tab Trình Duyệt Riêng Biệt
+            </h2>
 
-          {isChecking && !isServerRunning && (
-            <div className="remotion-studio-error-overlay">
-              <div className="remotion-studio-loading-card">
-                <div className="remotion-spinner" />
-                <p style={{ marginTop: '12px', color: '#475569', fontSize: '14px', fontWeight: 500 }}>
-                  Đang kiểm tra kết nối Remotion Video Studio ({activeMode === 'deploy' ? 'Ngrok Deploy' : ':3000'})...
-                </p>
-              </div>
-            </div>
-          )}
+            <p className="remotion-notice-desc">
+              Để đảm bảo <strong>hiệu năng dựng phim mượt mà 60 FPS</strong>, thao tác cắt ghép video dài không bị giật lag và có không gian làm việc rộng rãi nhất, toàn bộ công cụ <strong>Remotion Video Studio</strong> đã được chuyển sang hoạt động trên một Tab độc lập.
+            </p>
 
-          {!isChecking && !isServerRunning && (
-            <div className="remotion-studio-error-overlay">
-              <div
-                className="remotion-studio-error-card"
-                style={{ maxWidth: '560px', padding: '32px', textAlign: 'center' }}
+            {/* Prominent Action Buttons */}
+            <div className="remotion-notice-actions">
+              <button
+                type="button"
+                className="remotion-btn-launch-glow"
+                onClick={() => handleOpenTab(getDeployUrl())}
               >
-                <span style={{ fontSize: '42px', display: 'block', marginBottom: '12px' }}>🎬</span>
-                <h3 style={{ fontSize: '18px', fontWeight: 700, color: '#0f172a', marginBottom: '10px' }}>
-                  Chưa kết nối được với Remotion Video Studio
-                </h3>
-                <p style={{ fontSize: '13.5px', color: '#64748b', lineHeight: 1.6, marginBottom: '20px' }}>
-                  Trình biên tập Video Remotion sử dụng engine đồ họa và dựng phim Node.js riêng (cổng <strong>:3000</strong>). Để sử dụng, bạn hãy chạy file <code>start_remotion_studio.bat</code> hoặc <code>CHAY_HE_THONG_1_CLICK.bat</code> trên máy tính cá nhân.
-                </p>
-                <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                  <button
-                    type="button"
-                    onClick={() => handleOpenStandalone(REMOTION_LOCAL_URL)}
-                    className="remotion-action-btn remotion-action-btn--primary"
-                    style={{ padding: '9px 16px', fontSize: '13.5px' }}
-                    title="Mở localhost:3000 trên máy tính của bạn"
-                  >
-                    💻 Mở Localhost:3000
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleOpenStandalone(getDeployUrl())}
-                    className="remotion-action-btn remotion-action-btn--secondary"
-                    style={{ padding: '9px 14px', fontSize: '13.5px' }}
-                    title="Mở link deploy Ngrok trực tiếp trên tab mới"
-                  >
-                    🌐 Mở Link Ngrok Deploy
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleRefresh}
-                    className="remotion-action-btn remotion-action-btn--secondary"
-                    style={{ padding: '9px 14px', fontSize: '13.5px' }}
-                  >
-                    🔄 Thử kết nối lại
-                  </button>
+                <span className="remotion-launch-icon">🚀</span>
+                <span className="remotion-launch-text">
+                  <strong>Vào Ngay Tab Remotion Video Studio</strong>
+                  <small>Nhấp vào đây nếu tab chưa tự động mở hoặc bạn đã lỡ đóng</small>
+                </span>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M5 12h14M12 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="remotion-alternative-row">
+              <span>Hoặc mở trên các môi trường khác:</span>
+              <button
+                type="button"
+                className="remotion-link-btn"
+                onClick={() => handleOpenTab(REMOTION_LOCAL_URL)}
+                title="Mở phiên bản local Node.js chạy cổng 3000"
+              >
+                💻 Mở Localhost:3000
+              </button>
+              <span className="remotion-dot-sep">•</span>
+              <button
+                type="button"
+                className="remotion-link-btn"
+                onClick={() => handleOpenTab(getDeployUrl())}
+                title="Mở đường dẫn bản deploy tích hợp"
+              >
+                🌐 Mở /remotion-app/index.html
+              </button>
+            </div>
+
+            {/* Feature Highlights Grid */}
+            <div className="remotion-features-grid">
+              <div className="remotion-feature-item">
+                <span className="remotion-feature-icon">✂️</span>
+                <div>
+                  <h4>Cắt Ghép Video Dài Siêu Mượt</h4>
+                  <p>Tua và xem video tức thì, hỗ trợ co kéo 2 đầu trái/phải chuẩn tỷ lệ dọc 9:16 TikTok.</p>
+                </div>
+              </div>
+
+              <div className="remotion-feature-item">
+                <span className="remotion-feature-icon">🎙️</span>
+                <div>
+                  <h4>Lồng Tiếng AI Chuẩn Việt Nam</h4>
+                  <p>Tự động tạo giọng đọc truyền cảm (Bắc / Nam) bằng Edge-TTS theo từng phân cảnh kịch bản.</p>
+                </div>
+              </div>
+
+              <div className="remotion-feature-item">
+                <span className="remotion-feature-icon">📝</span>
+                <div>
+                  <h4>Phụ Đề Karaoke Nhảy Chữ</h4>
+                  <p>Tự động bóc tách từ ngữ, hiệu ứng nhảy chữ vàng/xanh neon bắt mắt, đa dạng font chữ TikTok.</p>
+                </div>
+              </div>
+
+              <div className="remotion-feature-item">
+                <span className="remotion-feature-icon">⚡</span>
+                <div>
+                  <h4>Không Gian Làm Việc Rộng Rãi</h4>
+                  <p>Tận dụng 100% diện tích màn hình máy tính, quản lý timeline và visual layer chuyên nghiệp.</p>
                 </div>
               </div>
             </div>
-          )}
+
+            {/* Footer Hint */}
+            <div className="remotion-notice-footer">
+              💡 <strong>Mẹo:</strong> Sau khi hoàn tất video ở tab Remotion Studio, bạn có thể tải video về máy và chuyển sang mục <strong>"AI Agent Đăng Bài"</strong> bên cạnh để đăng trực tiếp lên Facebook Fanpage và kênh YouTube của Lá Đỏ Homestay!
+            </div>
+          </div>
         </div>
       </div>
     </AdminLayout>

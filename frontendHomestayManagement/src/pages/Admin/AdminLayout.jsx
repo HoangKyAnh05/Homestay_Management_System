@@ -504,6 +504,9 @@ function AdminLayoutInner({ activePage, children }) {
                             className={`admin-nav-subitem${activePage === child.key ? ' admin-nav-subitem--active' : ''}`}
                             onClick={() => {
                               clearAlert(child.key)
+                              if (child.key === 'remotion-studio') {
+                                window.open('/remotion-app/index.html', '_blank')
+                              }
                               navigate(child.path)
                             }}
                           >
