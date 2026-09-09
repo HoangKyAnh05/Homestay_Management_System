@@ -182,10 +182,24 @@ export default function CustomerVouchersPage() {
     }
   }
 
+function getUsedVouchers() {
+  try {
+    const raw = localStorage.getItem('homestay_used_vouchers')
+    return raw ? JSON.parse(raw) : []
+  } catch {
+    return []
+  }
+}
+
   const currentPoints = userProfile?.memberPoints ?? currentUser?.memberPoints ?? 0
   const discountPercent = userProfile?.memberDiscountPercent ?? currentUser?.memberDiscountPercent ?? 0
 
   const filteredVouchers = vouchers.filter((v) => {
+    const used = getUsedVouchers()
+    const isUsed = used.some((u) => String(u || '').trim().toUpperCase() === String(v.code || '').trim().toUpperCase())
+    if (isUsed) return false
+    if (v.usageLimit != null && v.usedCount != null && Number(v.usedCount) >= Number(v.usageLimit)) return false
+
     if (activeTab === 'HOMESTAY') {
       return !v.code?.startsWith('LUCKY-') && !v.code?.startsWith('SPIN-')
     }

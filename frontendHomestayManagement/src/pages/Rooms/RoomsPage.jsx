@@ -46,10 +46,43 @@ function normalizeCode(value) {
   return String(value || '').trim().toUpperCase()
 }
 
+function getUsedVouchers() {
+  try {
+    const raw = localStorage.getItem('homestay_used_vouchers')
+    return raw ? JSON.parse(raw) : []
+  } catch {
+    return []
+  }
+}
+
+function isVoucherUsed(code) {
+  if (!code) return false
+  const used = getUsedVouchers()
+  return used.some((item) => normalizeCode(item) === normalizeCode(code))
+}
+
+function markVoucherAsUsed(code) {
+  if (!code) return
+  const norm = normalizeCode(code)
+  try {
+    const used = getUsedVouchers()
+    if (!used.some((item) => normalizeCode(item) === norm)) {
+      used.push(norm)
+      localStorage.setItem('homestay_used_vouchers', JSON.stringify(used))
+    }
+    const rawSaved = localStorage.getItem('homestay_saved_vouchers')
+    const saved = rawSaved ? JSON.parse(rawSaved) : []
+    const updated = saved.filter((item) => normalizeCode(item.code) !== norm)
+    localStorage.setItem('homestay_saved_vouchers', JSON.stringify(updated))
+  } catch {}
+}
+
 function getSavedVouchers() {
   try {
     const raw = localStorage.getItem('homestay_saved_vouchers')
-    return raw ? JSON.parse(raw) : []
+    const list = raw ? JSON.parse(raw) : []
+    const used = getUsedVouchers()
+    return list.filter((v) => v && v.code && !used.some((u) => normalizeCode(u) === normalizeCode(v.code)))
   } catch {
     return []
   }
@@ -57,6 +90,7 @@ function getSavedVouchers() {
 
 function saveVoucherToStorage(voucher) {
   if (!voucher || !voucher.code) return
+  if (isVoucherUsed(voucher.code)) return
   try {
     const existing = getSavedVouchers()
     if (!existing.some((v) => normalizeCode(v.code) === normalizeCode(voucher.code))) {
@@ -892,7 +926,15 @@ function BookingVoucherControl({
         list.push(sv)
       }
     })
-    return list
+    const used = getUsedVouchers()
+    return list.filter((voucher) => {
+      if (!voucher || !voucher.code) return false
+      if (used.some((u) => normalizeCode(u) === normalizeCode(voucher.code))) return false
+      if (voucher.usageLimit != null && voucher.usedCount != null && Number(voucher.usedCount) >= Number(voucher.usageLimit)) {
+        return false
+      }
+      return true
+    })
   }, [allVouchers, eligibleVouchers])
 
   const draftVoucher = combinedVouchers.find((voucher) => normalizeCode(voucher.code) === normalizeCode(draftCode))
@@ -921,6 +963,11 @@ function BookingVoucherControl({
     }
     setManualError('')
 
+    if (isVoucherUsed(trimmed)) {
+      setManualError('Mã voucher này đã được sử dụng cho đơn đặt trước đó.')
+      return
+    }
+
     // Check locally first
     const found = combinedVouchers.find((v) => normalizeCode(v.code) === normalizeCode(trimmed))
     if (found) {
@@ -937,6 +984,9 @@ function BookingVoucherControl({
       const data = await response.json()
       if (!response.ok) {
         throw new Error(data.message || 'Mã khuyến mãi không tồn tại hoặc đã hết hạn')
+      }
+      if (isVoucherUsed(data.code) || (data.usageLimit != null && data.usedCount != null && Number(data.usedCount) >= Number(data.usageLimit))) {
+        throw new Error('Mã voucher này đã hết lượt sử dụng.')
       }
       if (setVouchers) {
         setVouchers((prev) => {
@@ -1154,13 +1204,20 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
         setServiceOptions(nextServices)
         const savedList = getSavedVouchers()
         const activeList = Array.isArray(voucherData) ? voucherData : []
+        const used = getUsedVouchers()
         const mergedVouchers = [...savedList]
         activeList.forEach((v) => {
           if (!mergedVouchers.some((item) => normalizeCode(item.code) === normalizeCode(v.code))) {
             mergedVouchers.push(v)
           }
         })
-        setVouchers(mergedVouchers)
+        const availableVouchers = mergedVouchers.filter((v) => {
+          if (!v || !v.code) return false
+          if (used.some((u) => normalizeCode(u) === normalizeCode(v.code))) return false
+          if (v.usageLimit != null && v.usedCount != null && Number(v.usedCount) >= Number(v.usageLimit)) return false
+          return true
+        })
+        setVouchers(availableVouchers)
         try {
           const pending = JSON.parse(window.sessionStorage.getItem('homeStayPendingAmenityService') || 'null')
           const matched = nextServices.find(item => item.type === pending?.type && String(item.id) === String(pending?.serviceId))
@@ -1599,6 +1656,12 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
         return data
       })
       .then((data) => {
+        if (voucherCode && voucherCode.trim()) {
+          const usedCode = voucherCode.trim()
+          markVoucherAsUsed(usedCode)
+          setVouchers((prev) => prev.filter((v) => normalizeCode(v.code) !== normalizeCode(usedCode)))
+          setVoucherCode('')
+        }
         if (data.requiresDeposit) setPaymentSummary(data)
         else onCreated(data)
       })
