@@ -1678,40 +1678,22 @@ export const StoryboardTimeline: React.FC<StoryboardTimelineProps> = ({
                   </div>
 
                   {/* Quick Media Action buttons */}
-                  <div className="grid grid-cols-4 gap-1">
+                  <div className="grid grid-cols-2 gap-2">
                     <button
                       onClick={() => openMediaSearch(scene, 'video')}
-                      className="flex items-center justify-center gap-1 py-1.5 px-1 rounded-lg bg-pink-600/20 hover:bg-pink-600/40 text-pink-300 hover:text-white border border-pink-500/40 text-[10px] font-bold transition-all shadow-sm group/vbtn"
+                      className="flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg bg-pink-600/20 hover:bg-pink-600/40 text-pink-300 hover:text-white border border-pink-500/40 text-xs font-bold transition-all shadow-sm group/vbtn"
                       title="Tìm và chọn video ngắn phù hợp chủ đề kịch bản cảnh này"
                     >
-                      <Play className="w-3 h-3 text-pink-400 fill-pink-400 group-hover/vbtn:scale-110 transition-transform" />
+                      <Play className="w-3.5 h-3.5 text-pink-400 fill-pink-400 group-hover/vbtn:scale-110 transition-transform" />
                       <span>Video</span>
                     </button>
 
                     <button
-                      onClick={() => openMediaSearch(scene, 'web')}
-                      className="flex items-center justify-center gap-1 py-1.5 px-1 rounded-lg bg-gray-800/80 hover:bg-indigo-600/30 text-gray-300 hover:text-white border border-gray-700/50 text-[10px] font-medium transition-all"
-                      title="Tìm kiếm hình ảnh Web / Google"
-                    >
-                      <Search className="w-3 h-3 text-indigo-400" />
-                      <span>Ảnh Web</span>
-                    </button>
-
-                    <button
-                      onClick={() => generateAiImageForScene(scene)}
-                      className="flex items-center justify-center gap-1 py-1.5 px-1 rounded-lg bg-gray-800/80 hover:bg-purple-600/30 text-gray-300 hover:text-white border border-gray-700/50 text-[10px] font-medium transition-all"
-                      title="Tạo ảnh AI theo prompt phân cảnh"
-                    >
-                      <Sparkles className="w-3 h-3 text-purple-400" />
-                      <span>Ảnh AI</span>
-                    </button>
-
-                    <button
                       onClick={() => handleSelectLocalMedia(scene.id)}
-                      className="flex items-center justify-center gap-1 py-1.5 px-1 rounded-lg bg-gray-800/80 hover:bg-emerald-600/30 text-gray-300 hover:text-white border border-gray-700/50 text-[10px] font-medium transition-all"
+                      className="flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg bg-gray-800/80 hover:bg-emerald-600/30 text-gray-300 hover:text-white border border-gray-700/50 text-xs font-semibold transition-all"
                       title="Chọn video hoặc ảnh từ máy tính"
                     >
-                      <FolderOpen className="w-3 h-3 text-emerald-400" />
+                      <FolderOpen className="w-3.5 h-3.5 text-emerald-400" />
                       <span>Từ PC</span>
                     </button>
                   </div>
