@@ -161,6 +161,22 @@ function InvoiceDetailModal({ invoice, onClose, onExportExcel, exporting }) {
   )
 }
 
+function getThisWeekRange() {
+  const now = new Date()
+  const day = now.getDay()
+  const diffToMonday = (day === 0 ? -6 : 1) - day
+  const monday = new Date(now)
+  monday.setDate(now.getDate() + diffToMonday)
+  const sunday = new Date(monday)
+  sunday.setDate(monday.getDate() + 6)
+  const pad = (n) => String(n).padStart(2, '0')
+  const toYMD = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+  return {
+    fromDate: toYMD(monday),
+    toDate: toYMD(sunday)
+  }
+}
+
 function AdminInvoicesPage() {
   const [invoices, setInvoices] = useState([])
   const [loading, setLoading] = useState(true)
@@ -173,9 +189,10 @@ function AdminInvoicesPage() {
   const [error, setError] = useState('')
   const [page, setPage] = useState(1)
 
-  const [fromDate, setFromDate] = useState('')
-  const [toDate, setToDate] = useState('')
-  const [datePreset, setDatePreset] = useState('')
+  const initialWeek = useMemo(() => getThisWeekRange(), [])
+  const [fromDate, setFromDate] = useState(initialWeek.fromDate)
+  const [toDate, setToDate] = useState(initialWeek.toDate)
+  const [datePreset, setDatePreset] = useState('THIS_WEEK')
   const exportMenuRef = useRef(null)
 
   useEffect(() => {
@@ -308,7 +325,11 @@ function AdminInvoicesPage() {
     const pad = (n) => String(n).padStart(2, '0')
     const toYMD = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 
-    if (preset === 'TODAY') {
+    if (preset === 'THIS_WEEK') {
+      const week = getThisWeekRange()
+      setFromDate(week.fromDate)
+      setToDate(week.toDate)
+    } else if (preset === 'TODAY') {
       const todayStr = toYMD(now)
       setFromDate(todayStr)
       setToDate(todayStr)
@@ -444,48 +465,6 @@ function AdminInvoicesPage() {
         <div><span>Voucher đã giảm</span><strong style={{ color: '#2563eb' }}>{formatMoney(voucherDiscountAmount)}</strong></div>
       </div>
 
-      {/* Nút lọc nhanh thời gian gần nhất */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '14px', padding: '4px 0' }}>
-        <span style={{ fontSize: '13px', fontWeight: 700, color: '#374151', display: 'flex', alignItems: 'center', gap: '5px' }}>
-          ⏱️ Lọc thời gian:
-        </span>
-        {[
-          { key: '', label: 'Tất cả' },
-          { key: 'TODAY', label: '⚡ Hôm nay' },
-          { key: 'THIS_MONTH', label: '📅 Tháng này' },
-          { key: 'LAST_MONTH', label: '⏪ Tháng trước' },
-          { key: 'THIS_YEAR', label: '🗓️ Năm nay' },
-          { key: 'LAST_YEAR', label: '⏮️ Năm trước' },
-        ].map(item => {
-          const isActive = datePreset === item.key || (!item.key && !datePreset && !fromDate && !toDate)
-          return (
-            <button
-              key={item.key}
-              type="button"
-              onClick={() => applyDatePreset(item.key)}
-              style={{
-                height: '32px',
-                padding: '0 12px',
-                borderRadius: '20px',
-                border: isActive ? '1px solid #166534' : '1px solid #d1d5db',
-                background: isActive ? '#166534' : '#ffffff',
-                color: isActive ? '#ffffff' : '#374151',
-                fontSize: '12.5px',
-                fontWeight: isActive ? 700 : 500,
-                cursor: 'pointer',
-                transition: 'all 0.15s ease',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '4px',
-                boxShadow: isActive ? '0 2px 4px rgba(22, 101, 52, 0.2)' : 'none'
-              }}
-            >
-              {item.label}
-            </button>
-          )
-        })}
-      </div>
-
       <div className="ain-toolbar" style={{ alignItems: 'center' }}>
         <input className="ain-search" value={search} onChange={changeSearch} placeholder="Tìm mã hóa đơn, booking, khách hàng..." />
         <select className="ain-select" value={methodFilter} onChange={changeMethodFilter}>
@@ -507,9 +486,10 @@ function AdminInvoicesPage() {
           value={datePreset}
           onChange={(e) => applyDatePreset(e.target.value)}
           style={{ minWidth: '135px', fontWeight: datePreset ? 600 : 400, color: datePreset ? '#0284c7' : 'inherit' }}
-          title="Lọc nhanh thời gian: Năm nay, năm trước, tháng này, tháng trước"
+          title="Lọc nhanh thời gian: Tuần này, tháng này, năm nay..."
         >
           <option value="">Tùy chọn ngày</option>
+          <option value="THIS_WEEK">📆 Tuần này</option>
           <option value="THIS_MONTH">📅 Tháng này</option>
           <option value="LAST_MONTH">⏪ Tháng trước</option>
           <option value="THIS_YEAR">🗓️ Năm nay</option>
