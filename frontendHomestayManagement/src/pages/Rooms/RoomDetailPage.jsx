@@ -110,7 +110,7 @@ function dateKeyToDateTimeLocal(dateKey, hour, minute = 0) {
 
 function defaultCheckInValue() {
   const date = new Date()
-  date.setHours(Math.max(13, date.getHours() + 1), 0, 0, 0)
+  date.setHours(14, 0, 0, 0)
   return toDateTimeLocalValue(date)
 }
 

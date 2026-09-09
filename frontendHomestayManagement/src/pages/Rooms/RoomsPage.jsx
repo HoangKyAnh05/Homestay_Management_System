@@ -279,7 +279,7 @@ function dateKeyToDateTimeLocal(dateKey, hour) {
 
 function defaultCheckInValue() {
   const date = new Date()
-  date.setHours(Math.max(13, date.getHours() + 1), 0, 0, 0)
+  date.setHours(14, 0, 0, 0)
   return toDateTimeLocal(date)
 }
 
@@ -1105,10 +1105,10 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
     address: currentUser?.address || '',
     dateOfBirth: currentUser?.dateOfBirth || '',
     identityDocumentNumber: '',
-    checkInTarget: criteria?.checkInDate ? dateKeyToDateTimeLocal(criteria.checkInDate, 13) : defaultCheckInValue(),
+    checkInTarget: criteria?.checkInDate ? dateKeyToDateTimeLocal(criteria.checkInDate, 14) : defaultCheckInValue(),
     checkOutTarget: (criteria?.checkInDate && criteria?.checkOutDate && criteria.checkOutDate > criteria.checkInDate)
-      ? dateKeyToDateTimeLocal(criteria.checkOutDate, 11)
-      : overnightCheckoutValue(criteria?.checkInDate ? dateKeyToDateTimeLocal(criteria.checkInDate, 13) : defaultCheckInValue()),
+      ? dateKeyToDateTimeLocal(criteria.checkOutDate, 12)
+      : defaultCheckOutValue(criteria?.checkInDate ? dateKeyToDateTimeLocal(criteria.checkInDate, 14) : defaultCheckInValue()),
     pricePolicyId: '',
   })
   const [roomQuantities, setRoomQuantities] = useState(() => Object.fromEntries(selectedRooms.map((room) => [

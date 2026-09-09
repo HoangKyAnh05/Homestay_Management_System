@@ -44,7 +44,7 @@
   background: transparent;
   padding: 9px 12px;
   font-size: 13.5px;
-  font-weight: 500;
+  font-weight: 600;
   color: #1e293b;
   outline: none;
   font-family: inherit;
@@ -101,9 +101,9 @@
   background: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 12px;
-  box-shadow: 0 14px 34px -4px rgba(15, 23, 42, 0.14), 0 4px 12px -2px rgba(15, 23, 42, 0.05);
-  width: 440px;
-  max-width: 96vw;
+  box-shadow: 0 14px 34px -4px rgba(15, 23, 42, 0.16), 0 4px 12px -2px rgba(15, 23, 42, 0.06);
+  width: 330px;
+  max-width: 95vw;
   user-select: none;
   animation: datetimeFadeIn 0.15s ease-out;
   overflow: hidden;
@@ -130,12 +130,35 @@
   }
 }
 
+/* Policy Notice Banner */
+.custom-datetime-policy-notice {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: #f0fdf4;
+  border-bottom: 1px solid #dcfce7;
+  color: #166534;
+  font-size: 11.5px;
+  line-height: 1.35;
+}
+
+.custom-datetime-policy-notice svg {
+  flex-shrink: 0;
+  color: #15573a;
+}
+
+.custom-datetime-policy-notice strong {
+  color: #14532d;
+  font-weight: 700;
+}
+
 /* Header */
 .custom-datetime-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 14px;
+  padding: 8px 12px;
   border-bottom: 1px solid #f1f5f9;
   background: #f8fafc;
 }
@@ -143,18 +166,18 @@
 .custom-datetime-title-box {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .custom-datetime-month-select,
 .custom-datetime-year-select {
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 600;
   color: #0f172a;
   border: 1px solid #cbd5e1;
   background: #ffffff;
   border-radius: 6px;
-  padding: 4px 8px;
+  padding: 3px 6px;
   cursor: pointer;
   outline: none;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
@@ -174,12 +197,12 @@
 .custom-datetime-nav-buttons {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
 }
 
 .custom-datetime-nav-btn {
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -199,23 +222,21 @@
   color: #0f172a;
 }
 
-/* Main Split View: Calendar Grid + Time Selector */
+/* Main Calendar Pane */
 .custom-datetime-main {
   display: flex;
-  min-height: 250px;
+  flex-direction: column;
 }
 
 .custom-datetime-calendar-pane {
-  flex: 1;
-  padding: 10px 12px;
-  border-right: 1px solid #f1f5f9;
+  padding: 8px 10px;
 }
 
 .custom-datetime-weekdays {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 3px;
-  margin-bottom: 6px;
+  gap: 2px;
+  margin-bottom: 4px;
   text-align: center;
 }
 
@@ -233,7 +254,7 @@
 .custom-datetime-days-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 3px;
+  gap: 2px;
 }
 
 /* Day Cell */
@@ -325,7 +346,7 @@
   font-size: 8.5px;
   line-height: 1;
   font-weight: 700;
-  padding: 1.5px 3px;
+  padding: 1px 3px;
   border-radius: 3px;
   white-space: nowrap;
   letter-spacing: -0.2px;
@@ -346,97 +367,12 @@
   background: rgba(255, 255, 255, 0.25) !important;
 }
 
-/* Time Selector Pane */
-.custom-datetime-time-pane {
-  width: 145px;
-  padding: 10px 8px;
-  display: flex;
-  gap: 5px;
-  background: #fafafa;
-}
-
-.custom-datetime-time-group {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.custom-datetime-time-header-label {
-  font-size: 10.5px;
-  font-weight: 700;
-  color: #64748b;
-  text-align: center;
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
-}
-
-.custom-datetime-time-column {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  max-height: 215px;
-  overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: #cbd5e1 transparent;
-  gap: 3px;
-  padding-right: 2px;
-}
-
-.custom-datetime-time-column::-webkit-scrollbar {
-  width: 4px;
-}
-
-.custom-datetime-time-column::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.custom-datetime-time-column::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 4px;
-}
-
-.custom-datetime-time-column::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
-}
-
-.custom-datetime-time-item {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 27px;
-  min-height: 27px;
-  font-size: 12px;
-  font-weight: 600;
-  color: #334155;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 5px;
-  cursor: pointer;
-  transition: all 0.12s ease;
-  padding: 0 2px;
-}
-
-.custom-datetime-time-item:hover {
-  background: #f1f5f9;
-  border-color: #cbd5e1;
-  color: #0f172a;
-}
-
-.custom-datetime-time-item.is-active {
-  background: #15573a !important;
-  color: #ffffff !important;
-  border-color: #0f3d28 !important;
-  font-weight: 700;
-  box-shadow: 0 1px 3px rgba(21, 87, 58, 0.25);
-}
-
 /* Footer: Legend and Action Buttons */
 .custom-datetime-footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 14px;
+  padding: 8px 12px;
   border-top: 1px solid #f1f5f9;
   background: #f8fafc;
 }
@@ -444,20 +380,20 @@
 .custom-datetime-legend {
   display: flex;
   align-items: center;
-  gap: 10px;
-  font-size: 11px;
+  gap: 8px;
+  font-size: 10.5px;
   color: #475569;
 }
 
 .custom-datetime-legend-item {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
 }
 
 .custom-datetime-legend-dot {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
 }
 
@@ -476,14 +412,14 @@
 .custom-datetime-actions {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
 }
 
 .custom-datetime-action-btn {
-  padding: 4px 10px;
-  font-size: 12px;
+  padding: 3px 8px;
+  font-size: 11.5px;
   font-weight: 600;
-  border-radius: 6px;
+  border-radius: 5px;
   cursor: pointer;
   transition: all 0.12s ease;
   border: 1px solid transparent;
@@ -515,16 +451,5 @@
     width: 100vw;
     left: -16px !important;
     right: auto !important;
-  }
-  .custom-datetime-main {
-    flex-direction: column;
-  }
-  .custom-datetime-calendar-pane {
-    border-right: none;
-    border-bottom: 1px solid #f1f5f9;
-  }
-  .custom-datetime-time-pane {
-    width: 100%;
-    max-height: 120px;
   }
 }

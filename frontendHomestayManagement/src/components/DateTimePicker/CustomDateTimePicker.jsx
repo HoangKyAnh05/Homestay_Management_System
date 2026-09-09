@@ -13,10 +13,6 @@ const WEEKDAY_NAMES = [
   { label: 'CN', isWeekend: true },
 ]
 
-const HOURS_12 = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12']
-const MINUTES = ['00', '15', '30', '45']
-const PERIODS = ['AM', 'PM']
-
 function formatTwoDigits(num) {
   return String(num).padStart(2, '0')
 }
@@ -35,37 +31,12 @@ function formatDateTimeDisplay(value) {
   if (!value) return ''
   const [datePart, timePart = ''] = String(value).split('T')
   const [year, month, day] = datePart.split('-')
-  const [hourText = '', minute = ''] = timePart.split(':')
-  if (!year || !month || !day || !hourText || !minute) return value
-  const hour = Number(hourText)
+  const [hourText = '', minute = '00'] = timePart.split(':')
+  if (!year || !month || !day) return value
+  const hour = Number(hourText || 0)
   const period = hour >= 12 ? 'PM' : 'AM'
   const displayHour = formatTwoDigits(hour % 12 || 12)
   return `${day}/${month}/${year} ${displayHour}:${minute} ${period}`
-}
-
-function parseDateTimeDisplay(text) {
-  if (!text) return ''
-  const match = String(text).trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})(?:\s*(AM|PM))?$/i)
-  if (!match) return ''
-  const [, dayText, monthText, yearText, hourText, minuteText, periodText] = match
-  const day = Number(dayText)
-  const month = Number(monthText)
-  const year = Number(yearText)
-  const enteredHour = Number(hourText)
-  const minute = Number(minuteText)
-  const period = periodText?.toUpperCase()
-  if (period && (enteredHour < 1 || enteredHour > 12)) return ''
-  if (!period && (enteredHour < 0 || enteredHour > 23)) return ''
-  const hour = period
-    ? (enteredHour % 12) + (period === 'PM' ? 12 : 0)
-    : enteredHour
-  const date = new Date(year, month - 1, day, hour, minute, 0, 0)
-  const isValid = date.getFullYear() === year
-    && date.getMonth() === month - 1
-    && date.getDate() === day
-    && date.getHours() === hour
-    && date.getMinutes() === minute
-  return isValid ? toDateTimeLocal(date) : ''
 }
 
 export default function CustomDateTimePicker({
@@ -106,7 +77,7 @@ export default function CustomDateTimePicker({
   const [viewMonth, setViewMonth] = useState(() => parsedValueDate.getMonth())
   const [fetchedBusySlots, setFetchedBusySlots] = useState([])
 
-  // Keep view year & month synced when value changes significantly
+  // Keep view year & month synced when value changes
   useEffect(() => {
     if (value) {
       const d = new Date(value)
@@ -116,12 +87,6 @@ export default function CustomDateTimePicker({
       }
     }
   }, [value])
-
-  // Extract selected time (12h hour, minute, period)
-  const currentHour24 = parsedValueDate.getHours()
-  const currentHour12 = formatTwoDigits(currentHour24 % 12 || 12)
-  const currentMinute = formatTwoDigits(Math.floor(parsedValueDate.getMinutes() / 15) * 15)
-  const currentPeriod = currentHour24 >= 12 ? 'PM' : 'AM'
 
   // Fetch busy slots for viewed month if rooms or roomTargetId provided
   useEffect(() => {
@@ -198,55 +163,60 @@ export default function CustomDateTimePicker({
     const firstDayOfMonth = new Date(viewYear, viewMonth, 1)
     const totalDaysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate()
     const startingDayOfWeek = (firstDayOfMonth.getDay() + 6) % 7 // Monday = 0, Sunday = 6
+
     const days = []
 
-    const prevMonthDays = new Date(viewYear, viewMonth, 0).getDate()
+    // Previous month filler days
+    const prevMonthLastDate = new Date(viewYear, viewMonth, 0).getDate()
     for (let i = startingDayOfWeek - 1; i >= 0; i--) {
-      const dayNum = prevMonthDays - i
-      const date = new Date(viewYear, viewMonth - 1, dayNum)
+      const d = prevMonthLastDate - i
+      const prevDate = new Date(viewYear, viewMonth - 1, d)
+      const dateKey = `${prevDate.getFullYear()}-${formatTwoDigits(prevDate.getMonth() + 1)}-${formatTwoDigits(prevDate.getDate())}`
       days.push({
-        date,
-        dayNum,
+        date: prevDate,
+        dateKey,
+        dayNum: d,
         isOutside: true,
-        dateKey: `${date.getFullYear()}-${formatTwoDigits(date.getMonth() + 1)}-${formatTwoDigits(dayNum)}`,
       })
     }
 
+    // Current month days
     for (let d = 1; d <= totalDaysInMonth; d++) {
-      const date = new Date(viewYear, viewMonth, d)
+      const curDate = new Date(viewYear, viewMonth, d)
+      const dateKey = `${viewYear}-${formatTwoDigits(viewMonth + 1)}-${formatTwoDigits(d)}`
       days.push({
-        date,
+        date: curDate,
+        dateKey,
         dayNum: d,
         isOutside: false,
-        dateKey: `${viewYear}-${formatTwoDigits(viewMonth + 1)}-${formatTwoDigits(d)}`,
       })
     }
 
-    const remaining = (7 - (days.length % 7)) % 7
-    for (let i = 1; i <= remaining; i++) {
-      const date = new Date(viewYear, viewMonth + 1, i)
+    // Next month filler days (grid up to 35 or 42 cells)
+    const remainingCells = (7 - (days.length % 7)) % 7
+    for (let i = 1; i <= remainingCells; i++) {
+      const nextDate = new Date(viewYear, viewMonth + 1, i)
+      const dateKey = `${nextDate.getFullYear()}-${formatTwoDigits(nextDate.getMonth() + 1)}-${formatTwoDigits(nextDate.getDate())}`
       days.push({
-        date,
+        date: nextDate,
+        dateKey,
         dayNum: i,
         isOutside: true,
-        dateKey: `${date.getFullYear()}-${formatTwoDigits(date.getMonth() + 1)}-${formatTwoDigits(i)}`,
       })
     }
 
     return days
   }, [viewYear, viewMonth])
 
-  // Helper check if day has busy slot
+  // Check if a day has busy slots
   const isDayBusy = (dateKey) => {
-    if (!allBusySlots.length || !dateKey) return false
-    const dayStart = new Date(`${dateKey}T00:00:00`)
-    const dayEnd = new Date(`${dateKey}T23:59:59`)
-
+    if (!allBusySlots || !allBusySlots.length) return false
+    const dayStart = `${dateKey}T00:00:00`
+    const dayEnd = `${dateKey}T23:59:59`
     return allBusySlots.some((slot) => {
-      if (!slot.checkInTarget || !slot.checkOutTarget) return false
-      const slotStart = new Date(slot.checkInTarget)
-      const slotEnd = new Date(slot.checkOutTarget)
-      if (Number.isNaN(slotStart.getTime()) || Number.isNaN(slotEnd.getTime())) return false
+      const slotStart = slot.checkInTarget
+      const slotEnd = slot.checkOutTarget
+      if (!slotStart || !slotEnd) return false
       return slotStart < dayEnd && slotEnd > dayStart
     })
   }
@@ -255,10 +225,7 @@ export default function CustomDateTimePicker({
   const today = new Date()
   const todayKey = `${today.getFullYear()}-${formatTwoDigits(today.getMonth() + 1)}-${formatTwoDigits(today.getDate())}`
 
-  // Min date key
-  const minDateKey = min ? min.split('T')[0] : ''
   const selectedDateKey = value ? value.split('T')[0] : ''
-
   const checkInDateKey = checkInValue ? checkInValue.split('T')[0] : ''
   const checkOutDateKey = checkOutValue ? checkOutValue.split('T')[0] : ''
 
@@ -283,18 +250,13 @@ export default function CustomDateTimePicker({
     }
   }
 
-  // Time / Date builder
-  const commitNewDateTime = (newDateKey, newHour12, newMin, newPeriod) => {
+  // Time / Date builder with fixed homestay policy (14:00 checkin, 12:00 checkout)
+  const commitNewDateTime = (newDateKey) => {
     const targetDateKey = newDateKey || selectedDateKey || todayKey
-    const targetHour12 = Number(newHour12 || currentHour12)
-    const targetMin = newMin || currentMinute || '00'
-    const targetPeriod = newPeriod || currentPeriod
-
-    let hour24 = (targetHour12 % 12) + (targetPeriod === 'PM' ? 12 : 0)
-    const formatted = `${targetDateKey}T${formatTwoDigits(hour24)}:${formatTwoDigits(targetMin)}`
+    const hour24 = isCheckIn ? 14 : 12
+    const formatted = `${targetDateKey}T${formatTwoDigits(hour24)}:00`
 
     if (!allowBeforeMin && min && formatted < min) {
-      // Don't commit if before min
       return
     }
 
@@ -306,46 +268,18 @@ export default function CustomDateTimePicker({
     if (day.isOutside) return
     const isPast = day.dateKey < todayKey && !allowBeforeMin
     if (isPast) return
-    commitNewDateTime(day.dateKey, currentHour12, currentMinute, currentPeriod)
-  }
-
-  // Select hour
-  const handleSelectHour = (h) => {
-    commitNewDateTime(selectedDateKey, h, currentMinute, currentPeriod)
-  }
-
-  // Select minute
-  const handleSelectMinute = (m) => {
-    commitNewDateTime(selectedDateKey, currentHour12, m, currentPeriod)
-  }
-
-  // Select period
-  const handleSelectPeriod = (p) => {
-    commitNewDateTime(selectedDateKey, currentHour12, currentMinute, p)
+    commitNewDateTime(day.dateKey)
+    setIsOpen(false)
   }
 
   // Select Today
   const handleSelectToday = (e) => {
     e.stopPropagation()
     const now = new Date()
-    const defaultHour = isCheckIn ? 14 : 12
-    const nowHour12 = formatTwoDigits(defaultHour % 12 || 12)
-    const nowPeriod = defaultHour >= 12 ? 'PM' : 'AM'
-    commitNewDateTime(todayKey, nowHour12, '00', nowPeriod)
+    commitNewDateTime(todayKey)
     setViewYear(now.getFullYear())
     setViewMonth(now.getMonth())
-  }
-
-  // Manual input handling
-  const handleManualBlur = (e) => {
-    const parsed = parseDateTimeDisplay(e.target.value)
-    if (parsed) {
-      if (allowBeforeMin || !min || parsed >= min) {
-        onChange(parsed)
-        return
-      }
-    }
-    e.target.value = formatDateTimeDisplay(value)
+    setIsOpen(false)
   }
 
   return (
@@ -358,7 +292,7 @@ export default function CustomDateTimePicker({
           className="custom-datetime-text-input"
           type="text"
           aria-label={ariaLabel}
-          placeholder="dd/mm/yyyy hh:mm AM/PM"
+          placeholder={isCheckIn ? 'dd/mm/yyyy 02:00 PM' : 'dd/mm/yyyy 12:00 PM'}
           value={formatDateTimeDisplay(value)}
           disabled={disabled}
           required={required}
@@ -383,7 +317,18 @@ export default function CustomDateTimePicker({
 
       {isOpen && (
         <div className={`custom-datetime-dropdown align-${align}`} onClick={(e) => e.stopPropagation()}>
-          {/* Header */}
+          {/* Policy Notice Header */}
+          <div className="custom-datetime-policy-notice">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="10" />
+              <polyline points="12 6 12 12 16 14" />
+            </svg>
+            <span>
+              Chính sách Homestay: <strong>{isCheckIn ? 'Nhận phòng từ 14:00 (02:00 PM)' : 'Trả phòng trước 12:00 (12:00 PM)'}</strong>
+            </span>
+          </div>
+
+          {/* Header Navigation */}
           <div className="custom-datetime-header">
             <div className="custom-datetime-title-box">
               <select
@@ -426,9 +371,8 @@ export default function CustomDateTimePicker({
             </div>
           </div>
 
-          {/* Main Content: Calendar + Time Selector */}
+          {/* Main Calendar Grid */}
           <div className="custom-datetime-main">
-            {/* Calendar Pane */}
             <div className="custom-datetime-calendar-pane">
               <div className="custom-datetime-weekdays">
                 {WEEKDAY_NAMES.map((w, idx) => (
@@ -478,60 +422,6 @@ export default function CustomDateTimePicker({
                 })}
               </div>
             </div>
-
-            {/* Time Selector Pane (12h format matching native picker) */}
-            <div className="custom-datetime-time-pane">
-              {/* Hours 01-12 */}
-              <div className="custom-datetime-time-group">
-                <span className="custom-datetime-time-header-label">Giờ</span>
-                <div className="custom-datetime-time-column" title="Chọn Giờ">
-                  {HOURS_12.map((h) => (
-                    <button
-                      key={h}
-                      type="button"
-                      className={`custom-datetime-time-item${h === currentHour12 ? ' is-active' : ''}`}
-                      onClick={() => handleSelectHour(h)}
-                    >
-                      {h}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Minutes 00, 15, 30, 45 */}
-              <div className="custom-datetime-time-group">
-                <span className="custom-datetime-time-header-label">Phút</span>
-                <div className="custom-datetime-time-column" title="Chọn Phút">
-                  {MINUTES.map((m) => (
-                    <button
-                      key={m}
-                      type="button"
-                      className={`custom-datetime-time-item${m === currentMinute ? ' is-active' : ''}`}
-                      onClick={() => handleSelectMinute(m)}
-                    >
-                      {m}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* AM / PM */}
-              <div className="custom-datetime-time-group">
-                <span className="custom-datetime-time-header-label">Buổi</span>
-                <div className="custom-datetime-time-column" title="Buổi">
-                  {PERIODS.map((p) => (
-                    <button
-                      key={p}
-                      type="button"
-                      className={`custom-datetime-time-item${p === currentPeriod ? ' is-active' : ''}`}
-                      onClick={() => handleSelectPeriod(p)}
-                    >
-                      {p}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
           </div>
 
           {/* Footer with Legend and Close */}
@@ -564,7 +454,7 @@ export default function CustomDateTimePicker({
                 className="custom-datetime-action-btn btn-done"
                 onClick={() => setIsOpen(false)}
               >
-                Xong
+                Đóng
               </button>
             </div>
           </div>
