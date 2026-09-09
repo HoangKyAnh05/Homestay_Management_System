@@ -30,49 +30,6 @@ Thưởng thức tách cà phê ấm nóng bên ban công lộng gió và hít h
 Không gian phòng nghỉ mộc mạc, tiện nghi ấm cúng, mang đến cảm giác an yên như ở chính ngôi nhà của mình.
 Lên lịch cho kỳ nghỉ tại Sa Pa ngay hôm nay và nhận trọn vẹn ưu đãi độc quyền từ Lá Đỏ Homestay!`;
 
-const SCRIPT_PRESETS = [
-  {
-    title: '🏔️ Săn Mây & Nghỉ Dưỡng',
-    desc: 'View thung lũng Mường Hoa, ban công săn mây, kỳ nghỉ lý tưởng',
-    script: `Chào mừng bạn đến với Lá Đỏ Homestay Sa Pa, nơi mây ôm trọn thung lũng Mường Hoa mỗi sớm mai.
-Thưởng thức tách cà phê ấm nóng bên ban công lộng gió và hít hà không khí trong lành của núi rừng.
-Không gian phòng nghỉ mộc mạc, tiện nghi ấm cúng, mang đến cảm giác an yên như ở chính ngôi nhà của mình.
-Lên lịch cho kỳ nghỉ tại Sa Pa ngay hôm nay và nhận trọn vẹn ưu đãi độc quyền từ Lá Đỏ Homestay!`
-  },
-  {
-    title: '🌿 Komorebi Chữa Lành',
-    desc: 'Ánh nắng qua tán cây, góc trà đạo, an yên và tái tạo năng lượng',
-    script: `Tạm gác lại những bộn bề nơi phố thị để tìm về góc an yên tại Lá Đỏ Homestay.
-Từng tia nắng sớm len lỏi qua tán cây rừng mang đến năng lượng bình yên thuần khiết.
-Ngồi bên hiên nhà thưởng trà, lắng nghe tiếng suối reo và tiếng lá xào xạc trong gió.
-Chuyến đi này sẽ là món quà tuyệt vời nhất để bạn chữa lành tâm hồn và nạp đầy năng lượng mới!`
-  },
-  {
-    title: '☕ BBQ Hoàng Hôn',
-    desc: 'Tiệc nướng BBQ ấm cúng, view hoàng hôn lãng mạn, chill cùng bạn bè',
-    script: `Hoàng hôn buông xuống trên đỉnh núi Sa Pa chính là khoảnh khắc đẹp nhất trong ngày.
-Cùng người thương quây quần bên bếp than hồng với bữa tiệc nướng BBQ thơm lừng.
-Nhâm nhi tách trà thảo mộc nóng và ngắm nhìn thị trấn Sa Pa dần lên đèn lung linh.
-Đừng bỏ lỡ những khoảnh khắc gắn kết tuyệt đẹp chỉ có tại Lá Đỏ Homestay!`
-  },
-  {
-    title: '🎁 Ưu Đãi Combo 2N1Đ',
-    desc: 'Giá sốc, tặng bữa sáng & đồ uống, số lượng phòng giới hạn',
-    script: `Ưu đãi nghỉ dưỡng 2 ngày 1 đêm cực hot tại Lá Đỏ Homestay Sa Pa đang chờ bạn!
-Trọn gói phòng view núi săn mây, miễn phí bữa sáng và đồ uống chào mừng đặc sản Tây Bắc.
-Tặng ngay voucher giảm giá cho các dịch vụ trải nghiệm văn hóa bản địa độc đáo.
-Số lượng phòng ưu đãi có hạn, hãy nhanh tay liên hệ đặt phòng ngay hôm nay!`
-  },
-  {
-    title: '🍜 Đặc Sản Sa Pa',
-    desc: 'Lẩu cá hồi, thắng cố, thịt gác bếp và ẩm thực Sa Pa',
-    script: `Đến Sa Pa nhất định phải thưởng thức nồi lẩu cá hồi thơm nức mũi giữa trời sương lạnh.
-Vị ngọt thanh của cá tươi quyện cùng rau rừng tươi xanh đậm đà khó quên.
-Trải nghiệm ẩm thực Tây Bắc trọn vẹn ngay tại không gian bếp ấm cúng của Lá Đỏ Homestay.
-Hãy bắt đầu hành trình khám phá vị giác và văn hóa Sa Pa cùng chúng mình nhé!`
-  }
-];
-
 export const ScriptGenerator: React.FC<ScriptGeneratorProps> = ({
   project,
   setProject,
@@ -172,27 +129,13 @@ export const ScriptGenerator: React.FC<ScriptGeneratorProps> = ({
         </div>
       </div>
 
-      {/* Quick Script Presets */}
+      {/* Script Text Input */}
       <div className="flex flex-col gap-1.5">
         <div className="flex items-center justify-between text-xs font-semibold text-gray-300">
           <span className="flex items-center gap-1.5">
             <FileText className="w-3.5 h-3.5 text-indigo-400" />
             <span>Kịch bản video:</span>
           </span>
-          <div className="flex items-center gap-1 flex-wrap">
-            <span className="text-[11px] text-gray-400 hidden sm:inline">Mẫu thử:</span>
-            {SCRIPT_PRESETS.map((preset) => (
-              <button
-                key={preset.title}
-                type="button"
-                onClick={() => setUserScript(preset.script)}
-                className="text-[10.5px] px-2 py-0.5 rounded-lg bg-gray-800/90 hover:bg-indigo-600/40 text-gray-300 hover:text-white border border-gray-700/60 transition-all font-medium"
-                title={preset.desc}
-              >
-                {preset.title}
-              </button>
-            ))}
-          </div>
         </div>
 
         {/* Script Textarea */}

@@ -1,16 +1,28 @@
-import { VideoSegment, TrimOverflowOption, Scene } from '../types/video';
+import { VideoSegment, TrimOverflowOption, Scene, AspectRatio, TrimSide } from '../types/video';
 
 export interface VideoMetadata {
   duration: number;
   width: number;
   height: number;
+  aspectRatio: AspectRatio;
   url: string;
   name: string;
   sizeMb: number;
 }
 
 /**
- * Trích xuất siêu dữ liệu (thời lượng, kích thước, khung hình) từ file video tải lên
+ * Tự động phát hiện tỉ lệ khung hình (9:16, 16:9, 1:1) từ độ phân giải video
+ */
+export function detectVideoAspectRatio(width: number, height: number): AspectRatio {
+  if (!width || !height) return '9:16';
+  const ratio = width / height;
+  if (ratio <= 0.75) return '9:16'; // Dọc TikTok, Shorts, Reels (ví dụ 1080x1920)
+  if (ratio >= 0.85 && ratio <= 1.15) return '1:1'; // Vuông Instagram (ví dụ 1080x1080)
+  return '16:9'; // Ngang YouTube, Tivi (ví dụ 1920x1080)
+}
+
+/**
+ * Trích xuất siêu dữ liệu (thời lượng, kích thước, khung hình, tỉ lệ) từ file video tải lên
  */
 export async function inspectVideoFile(file: File): Promise<VideoMetadata> {
   return new Promise((resolve, reject) => {
@@ -22,10 +34,15 @@ export async function inspectVideoFile(file: File): Promise<VideoMetadata> {
     video.playsInline = true;
 
     video.onloadedmetadata = () => {
+      const w = video.videoWidth || 1080;
+      const h = video.videoHeight || 1920;
+      const ratio = detectVideoAspectRatio(w, h);
+
       resolve({
         duration: Number(video.duration.toFixed(2)),
-        width: video.videoWidth || 1080,
-        height: video.videoHeight || 1920,
+        width: w,
+        height: h,
+        aspectRatio: ratio,
         url: videoUrl,
         name: file.name,
         sizeMb: Number((file.size / (1024 * 1024)).toFixed(2))
@@ -39,46 +56,67 @@ export async function inspectVideoFile(file: File): Promise<VideoMetadata> {
 }
 
 /**
- * Chụp ảnh thumbnail tại một mốc giây cụ thể trong video
+ * Chụp nhanh thumbnail cho toàn bộ các phân đoạn clip bằng 1 video decoder duy nhất
+ * Giúp giao diện cực nhẹ, không bao giờ bị nghẽn decoder GPU hay lag máy
  */
-export async function captureVideoThumbnail(videoUrl: string, timeInSeconds: number): Promise<string> {
+export async function generateAllSegmentThumbnails(
+  videoUrl: string,
+  segments: VideoSegment[]
+): Promise<Record<string, string>> {
+  const result: Record<string, string> = {};
+  if (!videoUrl || segments.length === 0) return result;
+
   return new Promise((resolve) => {
     const video = document.createElement('video');
-    video.crossOrigin = 'anonymous';
     video.src = videoUrl;
     video.muted = true;
     video.playsInline = true;
+    video.preload = 'auto';
 
-    video.onloadeddata = () => {
-      video.currentTime = Math.max(0, timeInSeconds);
+    let currentIndex = 0;
+    const canvas = document.createElement('canvas');
+    let ctx: CanvasRenderingContext2D | null = null;
+
+    const captureCurrent = () => {
+      if (currentIndex >= segments.length) {
+        video.src = '';
+        resolve(result);
+        return;
+      }
+      const seg = segments[currentIndex];
+      video.currentTime = Math.max(0, seg.startOffset + 0.05);
+    };
+
+    video.onloadedmetadata = () => {
+      canvas.width = Math.min(video.videoWidth || 480, 480);
+      const aspect = (video.videoHeight || 854) / (video.videoWidth || 480);
+      canvas.height = Math.round(canvas.width * aspect);
+      ctx = canvas.getContext('2d');
+      captureCurrent();
     };
 
     video.onseeked = () => {
-      try {
-        const canvas = document.createElement('canvas');
-        canvas.width = Math.min(video.videoWidth || 480, 480);
-        const aspect = (video.videoHeight || 854) / (video.videoWidth || 480);
-        canvas.height = Math.round(canvas.width * aspect);
-
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
+      if (currentIndex < segments.length && ctx) {
+        const seg = segments[currentIndex];
+        try {
           ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-          const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
-          resolve(dataUrl);
-          return;
+          result[seg.id] = canvas.toDataURL('image/jpeg', 0.85);
+        } catch (e) {
+          // ignore
         }
-      } catch (err) {
-        console.warn('Lỗi khi chụp thumbnail canvas:', err);
+        currentIndex++;
+        captureCurrent();
       }
-      resolve('');
     };
 
     video.onerror = () => {
-      resolve('');
+      resolve(result);
     };
 
-    // Timeout phòng trường hợp seeked không kích hoạt
-    setTimeout(() => resolve(''), 3000);
+    // Timeout an toàn sau 5s
+    setTimeout(() => {
+      resolve(result);
+    }, 5000);
   });
 }
 
@@ -125,15 +163,17 @@ export function splitVideoIntoSegments(
 }
 
 /**
- * Xử lý kéo co ngắn lại đoạn video thừa với 2 Option:
- * - 'shift_to_next': Chuyển đoạn thừa (delta) sang video tiếp theo (dời startOffset của clip sau về trước)
- * - 'discard': Cắt bỏ hoàn toàn đoạn thừa
+ * Xử lý co ngắn đoạn video theo Hướng:
+ * - side = 'left': Co ngắn từ Đầu Trái (tăng startOffset)
+ * - side = 'right': Co ngắn từ Đuôi Phải (giảm endOffset)
+ * - overflowMode = 'shift_to_next' | 'shift_to_prev' | 'discard'
  */
 export function trimSegmentWithOption(
   segments: VideoSegment[],
   targetIndex: number,
   newDuration: number,
-  overflowMode: TrimOverflowOption
+  overflowMode: TrimOverflowOption = 'shift_to_next',
+  side: TrimSide = 'right'
 ): {
   updatedSegments: VideoSegment[];
   message: string;
@@ -145,59 +185,221 @@ export function trimSegmentWithOption(
   const updated = segments.map((seg) => ({ ...seg }));
   const target = updated[targetIndex];
   const oldDuration = target.duration;
-  const safeNewDuration = Math.max(1, Number(newDuration.toFixed(2)));
+  const safeNewDuration = Math.max(0.5, Number(newDuration.toFixed(2)));
   const delta = Number((oldDuration - safeNewDuration).toFixed(2));
 
-  // Cập nhật mốc kết thúc mới cho clip hiện tại
-  const newEndOffset = Number((target.startOffset + safeNewDuration).toFixed(2));
-  target.endOffset = newEndOffset;
-  target.duration = safeNewDuration;
-  target.title = `Clip #${target.order} (${safeNewDuration}s)`;
+  if (delta === 0) {
+    return { updatedSegments: updated, message: 'Thời lượng không đổi.' };
+  }
 
-  if (delta > 0) {
-    // Trường hợp co ngắn lại (thừa delta giây)
-    if (overflowMode === 'shift_to_next') {
-      if (targetIndex + 1 < updated.length) {
+  if (side === 'left') {
+    // Co từ Đầu Trái (Cắt phần đầu): startOffset dời lên
+    const newStartOffset = Number((target.endOffset - safeNewDuration).toFixed(2));
+    target.startOffset = newStartOffset;
+    target.duration = safeNewDuration;
+    target.title = `Clip #${target.order} (${safeNewDuration}s)`;
+
+    if (delta > 0) {
+      if (overflowMode === 'shift_to_prev' && targetIndex > 0) {
+        const prev = updated[targetIndex - 1];
+        prev.endOffset = newStartOffset;
+        prev.duration = Number((prev.endOffset - prev.startOffset).toFixed(2));
+        prev.title = `Clip #${prev.order} (${prev.duration}s)`;
+
+        return {
+          updatedSegments: updated,
+          message: `Đã co đầu trái Clip #${target.order} còn ${safeNewDuration}s. Đoạn thừa ${delta}s đã gộp vào Clip #${prev.order}!`
+        };
+      }
+      return {
+        updatedSegments: updated,
+        message: `Đã co đầu trái Clip #${target.order} còn ${safeNewDuration}s (xóa bỏ ${delta}s đầu).`
+      };
+    }
+  } else {
+    // Co từ Đuôi Phải (Cắt phần đuôi): endOffset lùi về
+    const newEndOffset = Number((target.startOffset + safeNewDuration).toFixed(2));
+    target.endOffset = newEndOffset;
+    target.duration = safeNewDuration;
+    target.title = `Clip #${target.order} (${safeNewDuration}s)`;
+
+    if (delta > 0) {
+      if (overflowMode === 'shift_to_next' && targetIndex + 1 < updated.length) {
         const next = updated[targetIndex + 1];
-        // Clip tiếp theo nhận đoạn thừa bằng cách dời mốc bắt đầu về newEndOffset
         next.startOffset = newEndOffset;
         next.duration = Number((next.endOffset - next.startOffset).toFixed(2));
         next.title = `Clip #${next.order} (${next.duration}s)`;
 
         return {
           updatedSegments: updated,
-          message: `Đã co Clip #${target.order} còn ${safeNewDuration}s. Đoạn thừa ${delta}s đã chuyển trọn vẹn sang Clip #${next.order}!`
-        };
-      } else {
-        return {
-          updatedSegments: updated,
-          message: `Clip #${target.order} là clip cuối cùng, đoạn thừa ${delta}s đã được cắt bỏ.`
+          message: `Đã co đuôi phải Clip #${target.order} còn ${safeNewDuration}s. Đoạn thừa ${delta}s đã chuyển sang Clip #${next.order}!`
         };
       }
-    } else {
-      // Option 'discard': Xóa bỏ đoạn thừa
       return {
         updatedSegments: updated,
-        message: `Đã co Clip #${target.order} còn ${safeNewDuration}s và xóa bỏ ${delta}s đoạn thừa.`
+        message: `Đã co đuôi phải Clip #${target.order} còn ${safeNewDuration}s (xóa bỏ ${delta}s đuôi).`
       };
     }
-  } else if (delta < 0) {
-    // Trường hợp kéo dài ra (tăng thời lượng)
-    const extra = Math.abs(delta);
-    if (targetIndex + 1 < updated.length && overflowMode === 'shift_to_next') {
-      const next = updated[targetIndex + 1];
-      // Nếu kéo dài clip 1 lấn sang clip 2, clip 2 bắt đầu muộn hơn
-      next.startOffset = Math.min(newEndOffset, next.endOffset - 1);
-      next.duration = Number((next.endOffset - next.startOffset).toFixed(2));
-      next.title = `Clip #${next.order} (${next.duration}s)`;
-    }
-    return {
-      updatedSegments: updated,
-      message: `Đã mở rộng Clip #${target.order} thêm ${extra}s.`
-    };
   }
 
-  return { updatedSegments: updated, message: 'Thời lượng không đổi.' };
+  return {
+    updatedSegments: updated,
+    message: `Đã cập nhật Clip #${target.order} thành ${safeNewDuration}s.`
+  };
+}
+
+/**
+ * Co nhanh theo số giây cụ thể từ Đầu Trái hoặc Đuôi Phải
+ */
+export function trimSegmentDirectional(
+  segments: VideoSegment[],
+  targetIndex: number,
+  trimSeconds: number,
+  side: TrimSide,
+  overflowMode: TrimOverflowOption
+): {
+  updatedSegments: VideoSegment[];
+  message: string;
+} {
+  if (targetIndex < 0 || targetIndex >= segments.length) {
+    return { updatedSegments: segments, message: 'Vị trí clip không hợp lệ' };
+  }
+  const currentDur = segments[targetIndex].duration;
+  const newDur = Math.max(0.5, currentDur - trimSeconds);
+  return trimSegmentWithOption(segments, targetIndex, newDur, overflowMode, side);
+}
+
+/**
+ * Tách video dài thành các file video con độc lập (Standalone Blobs)
+ * Giúp mỗi clip hoạt động như 1 file video riêng biệt 100%, phát mượt 60 FPS không bao giờ bị nghẽn decoder
+ */
+export async function sliceVideoIntoStandaloneBlobs(
+  videoUrl: string,
+  segments: VideoSegment[],
+  onProgress?: (percent: number, message: string) => void
+): Promise<VideoSegment[]> {
+  if (typeof window === 'undefined' || !window.MediaRecorder) {
+    return segments;
+  }
+
+  const updatedSegments = segments.map((s) => ({ ...s }));
+  const total = updatedSegments.length;
+
+  return new Promise((resolve) => {
+    const video = document.createElement('video');
+    video.src = videoUrl;
+    video.muted = true;
+    video.playsInline = true;
+    video.crossOrigin = 'anonymous';
+
+    let stream: MediaStream | null = null;
+    let currentIndex = 0;
+
+    const cleanup = () => {
+      video.pause();
+      video.src = '';
+      resolve(updatedSegments);
+    };
+
+    video.onloadedmetadata = async () => {
+      try {
+        if ((video as any).captureStream) {
+          stream = (video as any).captureStream();
+        } else if ((video as any).mozCaptureStream) {
+          stream = (video as any).mozCaptureStream();
+        }
+      } catch (e) {
+        console.warn('captureStream not available:', e);
+      }
+
+      if (!stream) {
+        resolve(updatedSegments);
+        return;
+      }
+
+      processNextSegment();
+    };
+
+    video.onerror = () => {
+      resolve(updatedSegments);
+    };
+
+    const processNextSegment = async () => {
+      if (currentIndex >= total) {
+        cleanup();
+        return;
+      }
+
+      const seg = updatedSegments[currentIndex];
+      const start = Math.max(0, seg.startOffset);
+      const end = Math.min(video.duration, seg.endOffset);
+      const dur = Number((end - start).toFixed(2));
+
+      onProgress?.(
+        Math.round(((currentIndex + 1) / total) * 100),
+        `Đang trích xuất Clip #${currentIndex + 1}/${total} (${formatTimeDisplay(start)} - ${formatTimeDisplay(end)})...`
+      );
+
+      video.currentTime = start;
+      const onSeeked = () => {
+        video.removeEventListener('seeked', onSeeked);
+
+        let chunks: Blob[] = [];
+        let recorder: MediaRecorder;
+        try {
+          const mime = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
+            ? 'video/webm;codecs=vp9'
+            : MediaRecorder.isTypeSupported('video/webm;codecs=vp8')
+            ? 'video/webm;codecs=vp8'
+            : 'video/webm';
+          recorder = new MediaRecorder(stream!, { mimeType: mime });
+        } catch (e) {
+          recorder = new MediaRecorder(stream!);
+        }
+
+        recorder.ondataavailable = (e) => {
+          if (e.data && e.data.size > 0) chunks.push(e.data);
+        };
+
+        recorder.onstop = () => {
+          const blob = new Blob(chunks, { type: 'video/webm' });
+          const standaloneUrl = URL.createObjectURL(blob);
+          seg.sourceUrl = standaloneUrl;
+          seg.isStandalone = true;
+          seg.originalStartOffset = seg.startOffset;
+          seg.originalEndOffset = seg.endOffset;
+          seg.startOffset = 0;
+          seg.endOffset = dur;
+          seg.duration = dur;
+
+          currentIndex++;
+          processNextSegment();
+        };
+
+        recorder.start(100);
+        video.playbackRate = 2.5; // Tăng tốc độ trích xuất 2.5x
+        video.play().catch(() => {});
+
+        const checkEnd = () => {
+          if (video.currentTime >= end || video.ended) {
+            video.removeEventListener('timeupdate', checkEnd);
+            video.pause();
+            if (recorder.state === 'recording') {
+              recorder.stop();
+            }
+          }
+        };
+        video.addEventListener('timeupdate', checkEnd);
+      };
+
+      video.addEventListener('seeked', onSeeked);
+    };
+
+    // Timeout an toàn sau 45s
+    setTimeout(() => {
+      cleanup();
+    }, 45000);
+  });
 }
 
 /**
@@ -213,8 +415,8 @@ export function convertSegmentsToScenes(segments: VideoSegment[]): Scene[] {
     mediaUrl: seg.sourceUrl,
     localMediaPath: seg.sourceUrl,
     sourceVideoUrl: seg.sourceUrl,
-    videoStartOffset: seg.startOffset,
-    videoEndOffset: seg.endOffset,
+    videoStartOffset: seg.isStandalone ? 0 : seg.startOffset,
+    videoEndOffset: seg.isStandalone ? seg.duration : seg.endOffset,
     audioDuration: seg.duration,
     words: [],
     transition: 'fade',

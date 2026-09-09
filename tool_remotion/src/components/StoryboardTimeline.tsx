@@ -1572,36 +1572,6 @@ export const StoryboardTimeline: React.FC<StoryboardTimelineProps> = ({
           </div>
 
           <div className="flex items-center gap-1.5">
-            {/* Nút Chia Video Dài */}
-            {onOpenVideoSplitter && (
-              <button
-                type="button"
-                onClick={onOpenVideoSplitter}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-sm ${
-                  workflowMode === 'split_long_video'
-                    ? 'bg-rose-600 hover:bg-rose-500 text-white shadow-md shadow-rose-600/30'
-                    : 'bg-zinc-800 hover:bg-zinc-700 text-rose-300 hover:text-white border border-rose-500/30'
-                }`}
-                title="Tải video dài lên & tự động chia 5s, 10s, 15s"
-              >
-                {workflowMode === 'split_long_video' && (
-                  <SparkleBadge step={1} label="Tải video dài & chia đoạn" />
-                )}
-                <Scissors className="w-3.5 h-3.5" />
-                <span>Chia Video Dài</span>
-              </button>
-            )}
-
-            {/* Thêm phân cảnh thông thường */}
-            <button
-              onClick={handleAddScene}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition-all active:scale-95 shadow-md shadow-indigo-600/20"
-              title="Thêm phân cảnh mới vào cuối kịch bản"
-            >
-              <Plus className="w-3.5 h-3.5 text-white" />
-              <span>+ Thêm cảnh</span>
-            </button>
-
             {/* Nút tự động đổi ảnh cho các cảnh đang dùng ảnh mặc định */}
             {project.scenes.some((sc) => !sc.mediaUrl || sc.mediaUrl.includes('photo-1451187580459-43490279c0fa')) && (
               <button

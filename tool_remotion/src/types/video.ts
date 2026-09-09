@@ -184,7 +184,8 @@ export interface Scene {
   motionEdit?: MotionEditConfig;
 }
 
-export type TrimOverflowOption = 'shift_to_next' | 'discard';
+export type TrimSide = 'left' | 'right';
+export type TrimOverflowOption = 'shift_to_next' | 'shift_to_prev' | 'discard';
 
 export interface VideoSegment {
   id: string;
@@ -194,6 +195,9 @@ export interface VideoSegment {
   startOffset: number;       // Giây bắt đầu trong video gốc (vd: 0.0)
   endOffset: number;         // Giây kết thúc trong video gốc (vd: 10.0)
   duration: number;          // Độ dài của clip con (endOffset - startOffset)
+  originalStartOffset?: number; // Mốc giây gốc trong video dài ban đầu
+  originalEndOffset?: number;
+  isStandalone?: boolean;    // Đã được tách thành file video độc lập siêu mượt
   thumbnail?: string;        // Ảnh chụp thumbnail đại diện của đoạn clip
   narration?: string;        // Kịch bản / lời dẫn (nếu có)
 }
