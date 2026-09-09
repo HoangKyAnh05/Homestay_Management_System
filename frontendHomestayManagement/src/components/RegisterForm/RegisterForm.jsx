@@ -105,14 +105,29 @@ function StepRegister({ onNext }) {
       await register(trimmedName, trimmedEmail, trimmedPhone, password)
       onNext(trimmedEmail)
     } catch (err) {
+      const newFieldErrors = {}
       if (err.fieldErrors && typeof err.fieldErrors === 'object') {
-        setFieldErrors((prev) => ({ ...prev, ...err.fieldErrors }))
-      } else if (err.message && (err.message.toLowerCase().includes('email') || err.message.toLowerCase().includes('mail'))) {
-        setFieldErrors((prev) => ({ ...prev, email: err.message }))
-      } else if (err.message && (err.message.toLowerCase().includes('điện thoại') || err.message.toLowerCase().includes('phone'))) {
-        setFieldErrors((prev) => ({ ...prev, phone: err.message }))
+        Object.assign(newFieldErrors, err.fieldErrors)
       }
-      setError(err.message)
+      if (err.message) {
+        const lowerMsg = err.message.toLowerCase()
+        if (lowerMsg.includes('email') || lowerMsg.includes('mail')) {
+          newFieldErrors.email = err.message
+        } else if (lowerMsg.includes('điện thoại') || lowerMsg.includes('phone') || lowerMsg.includes('sđt')) {
+          newFieldErrors.phone = err.message
+        } else if (lowerMsg.includes('họ tên') || lowerMsg.includes('họ và tên') || lowerMsg.includes('name')) {
+          newFieldErrors.fullName = err.message
+        } else if (lowerMsg.includes('mật khẩu') || lowerMsg.includes('password')) {
+          newFieldErrors.password = err.message
+        }
+      }
+
+      if (Object.keys(newFieldErrors).length > 0) {
+        setFieldErrors((prev) => ({ ...prev, ...newFieldErrors }))
+        setError('')
+      } else {
+        setError(err.message || 'Đăng ký thất bại. Vui lòng thử lại.')
+      }
     } finally {
       setIsLoading(false)
     }
@@ -233,6 +248,8 @@ function StepRegister({ onNext }) {
             />
             <button
               type="button"
+              className="password-toggle-btn"
+              tabIndex="-1"
               aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiển thị mật khẩu'}
               onClick={() => setShowPassword((v) => !v)}
             >
@@ -273,6 +290,8 @@ function StepRegister({ onNext }) {
             />
             <button
               type="button"
+              className="password-toggle-btn"
+              tabIndex="-1"
               aria-label={showConfirmPassword ? 'Ẩn mật khẩu' : 'Hiển thị mật khẩu'}
               onClick={() => setShowConfirmPassword((v) => !v)}
             >

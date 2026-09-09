@@ -1,32 +1,84 @@
 @import '../Login/LoginPage.css';
 @import '../ForgotPassword/ForgotPasswordPage.css';
 
+/* 1. Container chính, Chiều cao khung hình & Scrollbar */
 .register-page {
-  padding: 16px;
+  height: 100svh;
+  max-height: 100svh;
+  display: grid;
+  place-items: center;
+  padding: 12px;
+  box-sizing: border-box;
+  overflow: hidden;
+  background: #f6f6f3;
 }
 
 .register-shell {
-  height: min(780px, calc(100svh - 32px));
+  width: min(1080px, 100%);
+  height: min(720px, calc(100svh - 24px));
+  max-height: 94vh;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(320px, 1.12fr) minmax(320px, 0.88fr);
+  align-items: stretch;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #ffffff;
+  border: 1px solid #ededeb;
+  box-shadow: 0 20px 55px rgba(37, 40, 35, 0.08);
+}
+
+/* Đồng bộ chiều cao banner & form - items-stretch, không khoảng trắng */
+.register-page .brand-panel {
+  position: relative;
+  height: 100%;
+  width: 100%;
+  min-height: 100%;
+  overflow: hidden;
+  display: flex;
+  align-items: stretch;
+}
+
+.register-page .brand-panel img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  object-position: center;
+}
+
+/* Ẩn hoàn toàn thanh cuộn */
+.register-page .form-panel,
+.scrollbar-none {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+.register-page .form-panel::-webkit-scrollbar,
+.scrollbar-none::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }
 
 .register-page .form-panel {
-  padding: 10px 36px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 10px 34px 12px;
   overflow-y: auto;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-
-.register-page .form-panel::-webkit-scrollbar {
-  display: none;
-  width: 0;
-  height: 0;
 }
 
 .register-card {
   width: min(100%, 390px);
   margin: auto 0;
+  display: flex;
+  flex-direction: column;
 }
 
+/* Header hàng ngang: Đăng ký + Về trang chủ */
 .register-header-row {
   display: flex;
   align-items: center;
@@ -38,7 +90,7 @@
 .register-header-row h2 {
   margin: 0;
   color: #0f1110;
-  font-size: 26px;
+  font-size: 24px;
   font-weight: 800;
   line-height: 1.1;
 }
@@ -46,9 +98,9 @@
 .register-back-link {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   color: #556254;
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 600;
   text-decoration: none;
   transition: all 0.15s ease;
@@ -67,86 +119,166 @@
   transform: translateX(-3px);
 }
 
+/* 3. Tối ưu Spacing & Typography (space-y-3 compact, không cần cuộn) */
 .register-form {
-  gap: 6px;
+  display: grid;
+  gap: 5px;
 }
 
 .register-form .field-group {
+  display: grid;
   gap: 2px;
+  color: #22251f;
 }
 
 .register-form .field-group span {
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 600;
+  color: #1e293b;
+  line-height: 1.2;
 }
 
-.register-form .field-group input,
+/* Căn đều lề chữ & placeholder của tất cả input */
+.register-form .field-group input {
+  height: 36px;
+  min-height: 36px;
+  padding: 0 14px;
+  font-size: 13px;
+  line-height: 36px;
+  border-radius: 8px;
+  border: 1px solid #d6d8d2;
+  background: #ffffff;
+  color: #1d211b;
+  width: 100%;
+  box-sizing: border-box;
+  outline: none;
+  font-family: inherit;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.register-form .field-group input::placeholder {
+  color: #8b9087;
+  font-size: 13px;
+}
+
+.register-form .field-group input:focus,
+.register-form .password-field:focus-within {
+  border-color: #1f4328;
+  box-shadow: 0 0 0 3px rgba(31, 67, 40, 0.12);
+}
+
+/* Password field wrapper & Căn giữa tuyệt đối icon con mắt (top-1/2 -translate-y-1/2) */
 .register-form .password-field {
-  min-height: 37px;
-  padding: 6px 14px;
+  position: relative;
+  width: 100%;
+  height: 36px;
+  min-height: 36px;
+  border: 1px solid #d6d8d2;
+  border-radius: 8px;
+  background: #ffffff;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  padding: 0 !important;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .register-form .password-field input {
-  min-height: 35px;
-  padding: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 34px;
+  padding: 0 38px 0 14px !important;
+  border: 0 !important;
+  background: transparent !important;
+  outline: none !important;
+  font: inherit;
+  font-size: 13px;
+  line-height: 34px;
+  box-sizing: border-box;
+  border-radius: 8px;
 }
 
-.register-form .field-error {
-  margin-top: 1px;
-  font-size: 11.5px;
+.register-form .password-field input:focus {
+  box-shadow: none !important;
+  outline: none !important;
 }
 
-.register-form .primary-button {
-  min-height: 40px;
-  margin-top: 4px;
-}
-
-.cancel-register-button {
-  min-height: 48px;
-  display: inline-flex;
+.register-form .password-toggle-btn {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  width: 100%;
-  border-radius: 8px;
-  font: inherit;
-  font-weight: 700;
-  font-size: 14.5px;
-  color: #3b4d3f;
-  background: #f4f6f2;
-  border: 1.5px solid #d5ded3;
-  text-decoration: none;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #64748b;
   cursor: pointer;
-  transition: all 0.2s ease;
-  box-sizing: border-box;
+  z-index: 2;
+  transition: color 0.15s ease;
 }
 
-.cancel-register-button svg {
-  transition: transform 0.2s ease;
+.register-form .password-toggle-btn:hover {
+  color: #1f4328;
 }
 
-.cancel-register-button:hover {
-  background: #e9efe6;
-  color: #1a3821;
-  border-color: #b3c2b0;
-  box-shadow: 0 2px 6px rgba(31, 67, 40, 0.08);
+.register-form .password-toggle-btn svg {
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+  stroke-width: 2;
+  fill: none;
 }
 
-.cancel-register-button:hover svg {
-  transform: translateX(-3px);
+/* 2. Hiển thị lỗi Validation độc lập & đồng thời dưới từng ô */
+.register-form .field-error {
+  display: block;
+  margin-top: 1px;
+  color: #ef4444;
+  font-size: 11.5px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.register-form .field-input--error,
+.register-form .field-group input.field-input--error,
+.register-form .password-field.field-input--error {
+  border-color: #ef4444 !important;
+  background-color: #fef2f2 !important;
+}
+
+.register-form .password-field.field-input--error input {
+  background-color: transparent !important;
+}
+
+/* Button & bottom text */
+.register-form .primary-button {
+  min-height: 38px;
+  height: 38px;
+  margin-top: 4px;
+  font-size: 14px;
+  font-weight: 700;
+  border-radius: 8px;
 }
 
 .register-login-text {
   margin-top: 6px;
-  font-size: 14px;
+  font-size: 13.5px;
+  text-align: center;
 }
 
 @media (max-width: 820px) {
   .register-shell {
     height: 100svh;
+    max-height: 100svh;
+    border-radius: 0;
   }
 
   .register-page .form-panel {
-    padding: 28px 24px 36px;
+    padding: 20px 20px 28px;
   }
 }

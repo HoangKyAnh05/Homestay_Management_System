@@ -7,7 +7,7 @@ function RegisterPage() {
     <main className="login-page register-page">
       <section className="login-shell register-shell" aria-label="Đăng ký tài khoản HomeStay">
         <LoginHero />
-        <section className="form-panel" aria-labelledby="register-title">
+        <section className="form-panel scrollbar-none" aria-labelledby="register-title">
           <RegisterForm />
         </section>
       </section>
