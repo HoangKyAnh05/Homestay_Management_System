@@ -1,0 +1,474 @@
+/* Custom DateTime Picker with Booked Room Status */
+.custom-datetime-container {
+  position: relative;
+  width: 100%;
+  display: block;
+}
+
+.custom-datetime-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  background: #ffffff;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.custom-datetime-input-wrapper:hover:not(.is-disabled) {
+  border-color: #94a3b8;
+}
+
+.custom-datetime-input-wrapper.is-open {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.custom-datetime-input-wrapper.is-invalid {
+  border-color: #ef4444;
+  background-color: #fef2f2;
+}
+
+.custom-datetime-input-wrapper.is-disabled {
+  background: #f1f5f9;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.custom-datetime-text-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 8px 12px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: #1e293b;
+  outline: none;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.custom-datetime-text-input:disabled {
+  cursor: not-allowed;
+  color: #64748b;
+}
+
+.custom-datetime-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 7px 10px;
+  background: #f0fdf4;
+  border: none;
+  border-left: 1px solid #e2e8f0;
+  border-radius: 0 7px 7px 0;
+  color: #16a34a;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.custom-datetime-icon-btn:hover:not(:disabled) {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.custom-datetime-icon-btn:disabled {
+  background: #f8fafc;
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
+.custom-datetime-icon-btn svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Dropdown Modal / Popover */
+.custom-datetime-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  box-shadow: 0 12px 28px -4px rgba(15, 23, 42, 0.16), 0 4px 10px -2px rgba(15, 23, 42, 0.06);
+  width: 370px;
+  max-width: 95vw;
+  user-select: none;
+  animation: datetimeFadeIn 0.15s ease-out;
+}
+
+.custom-datetime-dropdown.align-left {
+  left: 0;
+  right: auto;
+}
+
+.custom-datetime-dropdown.align-right {
+  right: 0;
+  left: auto;
+}
+
+@keyframes datetimeFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.custom-datetime-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-bottom: 1px solid #f1f5f9;
+  background: #f8fafc;
+  border-radius: 9px 9px 0 0;
+}
+
+.custom-datetime-title-box {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.custom-datetime-month-select,
+.custom-datetime-year-select {
+  font-size: 13px;
+  font-weight: 700;
+  color: #0f172a;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  border-radius: 5px;
+  padding: 3px 6px;
+  cursor: pointer;
+  outline: none;
+}
+
+.custom-datetime-nav-buttons {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.custom-datetime-nav-btn {
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 5px;
+  cursor: pointer;
+  color: #334155;
+  font-weight: 700;
+  font-size: 13px;
+  transition: all 0.15s;
+}
+
+.custom-datetime-nav-btn:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+  color: #0f172a;
+}
+
+/* Main Split View: Calendar Grid + Time Selector */
+.custom-datetime-main {
+  display: flex;
+  min-height: 230px;
+}
+
+.custom-datetime-calendar-pane {
+  flex: 1;
+  padding: 8px 10px;
+  border-right: 1px solid #f1f5f9;
+}
+
+.custom-datetime-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  margin-bottom: 4px;
+  text-align: center;
+}
+
+.custom-datetime-weekday-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #64748b;
+  padding: 2px 0;
+}
+
+.custom-datetime-weekday-label.is-weekend {
+  color: #ea580c;
+}
+
+.custom-datetime-days-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.custom-datetime-day-cell {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 33px;
+  padding: 2px 1px;
+  border-radius: 5px;
+  border: 1px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.1s ease;
+  font-family: inherit;
+}
+
+.custom-datetime-day-cell:hover:not(:disabled):not(.is-disabled) {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.custom-datetime-day-cell.is-outside-month {
+  opacity: 0.3;
+}
+
+.custom-datetime-day-cell.is-past {
+  opacity: 0.25;
+  cursor: not-allowed;
+  background: #f8fafc;
+}
+
+.custom-datetime-day-cell.is-today {
+  border-color: #3b82f6;
+  font-weight: 700;
+}
+
+.custom-datetime-day-cell.is-selected {
+  background: #2563eb !important;
+  color: #ffffff !important;
+  font-weight: 700;
+  border-color: #1d4ed8;
+  box-shadow: 0 1px 4px rgba(37, 99, 235, 0.35);
+}
+
+.custom-datetime-day-cell.is-in-range {
+  background: #eff6ff;
+  color: #1e40af;
+}
+
+/* Busy / Booked Day Styling */
+.custom-datetime-day-cell.is-busy {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #991b1b;
+}
+
+.custom-datetime-day-cell.is-busy:hover:not(:disabled) {
+  background: #fee2e2;
+}
+
+.custom-datetime-day-cell.is-busy.is-selected {
+  background: #dc2626 !important;
+  color: #ffffff !important;
+  border-color: #b91c1c;
+}
+
+.custom-datetime-day-number {
+  font-size: 11.5px;
+  line-height: 1;
+}
+
+.custom-datetime-day-status-badge {
+  font-size: 8px;
+  line-height: 1;
+  font-weight: 700;
+  margin-top: 1.5px;
+  padding: 1px 2px;
+  border-radius: 2px;
+  white-space: nowrap;
+  letter-spacing: -0.2px;
+}
+
+.custom-datetime-day-status-badge.status-busy {
+  background: #ef4444;
+  color: #ffffff;
+}
+
+.custom-datetime-day-status-badge.status-available {
+  color: #16a34a;
+}
+
+.custom-datetime-day-cell.is-selected .custom-datetime-day-status-badge {
+  color: #ffffff !important;
+  background: transparent !important;
+}
+
+/* Time Selector Pane */
+.custom-datetime-time-pane {
+  width: 120px;
+  padding: 8px 6px;
+  display: flex;
+  gap: 3px;
+  background: #fafafa;
+  border-radius: 0 0 9px 0;
+}
+
+.custom-datetime-time-column {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  max-height: 215px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  gap: 2px;
+}
+
+.custom-datetime-time-column::-webkit-scrollbar {
+  width: 3px;
+}
+
+.custom-datetime-time-column::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+.custom-datetime-time-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 25px;
+  min-height: 25px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #334155;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.1s;
+  padding: 0 2px;
+}
+
+.custom-datetime-time-item:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.custom-datetime-time-item.is-active {
+  background: #0070f3 !important;
+  color: #ffffff !important;
+  border-color: #0060df !important;
+  font-weight: 700;
+}
+
+/* Footer: Legend and Action Buttons */
+.custom-datetime-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 12px;
+  border-top: 1px solid #f1f5f9;
+  background: #f8fafc;
+  border-radius: 0 0 9px 9px;
+}
+
+.custom-datetime-legend {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10.5px;
+  color: #475569;
+}
+
+.custom-datetime-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.custom-datetime-legend-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.custom-datetime-legend-dot.dot-busy {
+  background: #ef4444;
+}
+
+.custom-datetime-legend-dot.dot-available {
+  background: #22c55e;
+}
+
+.custom-datetime-legend-dot.dot-selected {
+  background: #2563eb;
+}
+
+.custom-datetime-actions {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.custom-datetime-action-btn {
+  padding: 3px 8px;
+  font-size: 11.5px;
+  font-weight: 600;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.12s;
+  border: 1px solid transparent;
+}
+
+.custom-datetime-action-btn.btn-today {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  color: #334155;
+}
+
+.custom-datetime-action-btn.btn-today:hover {
+  background: #f1f5f9;
+}
+
+.custom-datetime-action-btn.btn-done {
+  background: #059669;
+  color: #ffffff;
+}
+
+.custom-datetime-action-btn.btn-done:hover {
+  background: #047857;
+}
+
+@media (max-width: 480px) {
+  .custom-datetime-dropdown {
+    width: 100vw;
+    left: -16px !important;
+    right: auto !important;
+  }
+  .custom-datetime-main {
+    flex-direction: column;
+  }
+  .custom-datetime-calendar-pane {
+    border-right: none;
+    border-bottom: 1px solid #f1f5f9;
+  }
+  .custom-datetime-time-pane {
+    width: 100%;
+    max-height: 110px;
+  }
+}

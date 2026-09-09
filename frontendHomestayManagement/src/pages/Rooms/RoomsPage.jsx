@@ -3,6 +3,7 @@ import { useRef } from 'react'
 import { getStoredToken, getStoredUser, logout } from '../../services/authService'
 import SePayQrPayment from '../../components/SePayQrPayment/SePayQrPayment'
 import RoomScheduleCalendarModal from '../../components/RoomScheduleCalendar/RoomScheduleCalendarModal'
+import CustomDateTimePicker from '../../components/DateTimePicker/CustomDateTimePicker'
 import { clearBookingCart, readBookingCart, writeBookingCart } from '../../utils/bookingCart'
 import { formatDateTime as formatAppDateTime } from '../../utils/dateTimeFormat'
 import { houseTypeName } from '../../utils/houseType'
@@ -204,75 +205,37 @@ function LocalizedDateTimeInput({
   value,
   onChange,
   min,
+  max,
   disabled = false,
   required = false,
   allowBeforeMin = false,
   invalid = false,
-  ariaLabel,
+  ariaLabel = 'Ngày giờ',
+  busySlots = [],
+  rooms = [],
+  roomTargetId = null,
+  checkInValue = null,
+  checkOutValue = null,
+  isCheckIn = true,
 }) {
-  const pickerId = `picker-${ariaLabel.toLowerCase().replaceAll(' ', '-')}`
-  const isAllowed = (nextValue) => nextValue && (allowBeforeMin || !min || nextValue >= min)
-  const commitManualValue = (event) => {
-    const parsedValue = parseDateTimeLocalDisplay(event.currentTarget.value)
-    if (isAllowed(parsedValue)) {
-      onChange(parsedValue)
-      event.currentTarget.value = formatDateTimeLocalDisplay(parsedValue)
-      return
-    }
-    event.currentTarget.value = formatDateTimeLocalDisplay(value)
-  }
-
   return (
-    <div className={`public-localized-datetime${disabled ? ' is-disabled' : ''}${invalid ? ' is-invalid' : ''}`}>
-      <input
-        key={value}
-        className="public-localized-datetime-text"
-        type="text"
-        aria-label={ariaLabel}
-        placeholder="dd/mm/yyyy hh:mm AM/PM"
-        defaultValue={formatDateTimeLocalDisplay(value)}
-        disabled={disabled}
-        required={required}
-        onChange={(event) => {
-          const parsedValue = parseDateTimeLocalDisplay(event.target.value)
-          if (isAllowed(parsedValue)) onChange(parsedValue)
-        }}
-        onBlur={commitManualValue}
-        onKeyDown={(event) => {
-          if (event.key === 'Enter') {
-            event.preventDefault()
-            event.currentTarget.blur()
-          }
-        }}
-      />
-      <button
-        className="public-localized-datetime-button"
-        type="button"
-        disabled={disabled}
-        aria-label={`Mở lịch ${ariaLabel.toLowerCase()}`}
-        onClick={() => {
-          const picker = document.getElementById(pickerId)
-          if (picker?.showPicker) picker.showPicker()
-          else picker?.click()
-        }}
-      >
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M7 2v3M17 2v3M3.5 9h17M5.5 4h13a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z" />
-          <path d="M8 13h3v3H8z" />
-        </svg>
-      </button>
-      <input
-        id={pickerId}
-        className="public-localized-datetime-picker"
-        type="datetime-local"
-        lang="vi-VN"
-        aria-label={`${ariaLabel} bằng lịch`}
-        value={value}
-        min={min}
-        disabled={disabled}
-        onChange={(event) => onChange(event.target.value)}
-      />
-    </div>
+    <CustomDateTimePicker
+      value={value}
+      onChange={onChange}
+      min={min}
+      max={max}
+      disabled={disabled}
+      required={required}
+      allowBeforeMin={allowBeforeMin}
+      invalid={invalid}
+      ariaLabel={ariaLabel}
+      busySlots={busySlots}
+      rooms={rooms}
+      roomTargetId={roomTargetId}
+      checkInValue={checkInValue}
+      checkOutValue={checkOutValue}
+      isCheckIn={isCheckIn}
+    />
   )
 }
 
@@ -1718,6 +1681,11 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
                   value={form.checkInTarget}
                   min={nowDateTimeLocalMin()}
                   onChange={updateCheckInTarget}
+                  busySlots={roomSchedules.flatMap(s => s.busySlots)}
+                  rooms={selectedRooms}
+                  checkInValue={form.checkInTarget}
+                  checkOutValue={form.checkOutTarget}
+                  isCheckIn={true}
                 />
               </label>
               <label>
@@ -1731,6 +1699,11 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
                   min={form.checkInTarget || nowDateTimeLocalMin()}
                   onChange={updateCheckOutTarget}
                   disabled={isAutoCheckoutPolicy(selectedPolicy)}
+                  busySlots={roomSchedules.flatMap(s => s.busySlots)}
+                  rooms={selectedRooms}
+                  checkInValue={form.checkInTarget}
+                  checkOutValue={form.checkOutTarget}
+                  isCheckIn={false}
                 />
               </label>
             </div>

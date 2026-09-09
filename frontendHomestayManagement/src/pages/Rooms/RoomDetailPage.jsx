@@ -5,6 +5,7 @@ import { clearBookingCart, readBookingCart } from '../../utils/bookingCart'
 import { formatClockTime, formatVietnameseDate } from '../../utils/dateTimeFormat'
 import { houseTypeName } from '../../utils/houseType'
 import { resolveImageUrl } from '../../utils/imageUrl'
+import CustomDateTimePicker from '../../components/DateTimePicker/CustomDateTimePicker'
 import { MultiBookingModal } from './RoomsPage'
 import '../Home/HomePage.css'
 import './RoomsPage.css'
@@ -603,17 +604,44 @@ function BookingModal({ room, initialBookingData, onClose, onCreated }) {
               </p>
             )}
             <div className="public-booking-grid">
-              <label><span>Nhận phòng dự kiến</span><input type="datetime-local" required value={form.checkInTarget} min={nowDateTimeLocalMin()} onChange={(e) => {
-                const value = e.target.value
-                const now = new Date(); now.setSeconds(0, 0)
-                if (value && new Date(value) < now) return
-                setForm({ ...form, checkInTarget: value })
-              }} /></label>
-              <label><span>Trả phòng dự kiến</span><input type="datetime-local" required value={form.checkOutTarget} min={form.checkInTarget || nowDateTimeLocalMin()} onChange={(e) => {
-                const value = e.target.value
-                if (value && form.checkInTarget && new Date(value) <= new Date(form.checkInTarget)) return
-                setForm({ ...form, checkOutTarget: value })
-              }} /></label>
+              <label>
+                <span>Nhận phòng dự kiến</span>
+                <CustomDateTimePicker
+                  ariaLabel="Ngày giờ nhận phòng"
+                  required
+                  value={form.checkInTarget}
+                  min={nowDateTimeLocalMin()}
+                  onChange={(val) => {
+                    const now = new Date()
+                    now.setSeconds(0, 0)
+                    if (val && new Date(val) < now) return
+                    setForm({ ...form, checkInTarget: val })
+                  }}
+                  busySlots={busySlots}
+                  roomTargetId={room?.roomId || room?.roomTypeId || room?.id}
+                  checkInValue={form.checkInTarget}
+                  checkOutValue={form.checkOutTarget}
+                  isCheckIn={true}
+                />
+              </label>
+              <label>
+                <span>Trả phòng dự kiến</span>
+                <CustomDateTimePicker
+                  ariaLabel="Ngày giờ trả phòng"
+                  required
+                  value={form.checkOutTarget}
+                  min={form.checkInTarget || nowDateTimeLocalMin()}
+                  onChange={(val) => {
+                    if (val && form.checkInTarget && new Date(val) <= new Date(form.checkInTarget)) return
+                    setForm({ ...form, checkOutTarget: val })
+                  }}
+                  busySlots={busySlots}
+                  roomTargetId={room?.roomId || room?.roomTypeId || room?.id}
+                  checkInValue={form.checkInTarget}
+                  checkOutValue={form.checkOutTarget}
+                  isCheckIn={false}
+                />
+              </label>
               <label><span>Người lớn</span><input type="number" min="1" max={room.maxAdults || undefined} value={form.numberOfAdults} onChange={(e) => setForm({ ...form, numberOfAdults: e.target.value })} /></label>
               <label><span>Trẻ em</span><input type="number" min="0" max={room.maxChildren || undefined} value={form.numberOfChildren} onChange={(e) => setForm({ ...form, numberOfChildren: e.target.value })} /></label>
             </div>
