@@ -105,8 +105,9 @@ export const Navbar: React.FC<NavbarProps> = ({
         <input
           type="text"
           value={project.title}
+          title={project.title}
           onChange={(e) => handleTitleChange(e.target.value)}
-          className="bg-gray-800/40 hover:bg-gray-800/70 focus:bg-gray-800 border border-gray-700/40 focus:border-indigo-500/60 rounded-lg px-3 py-1.5 text-xs sm:text-sm font-medium text-gray-200 focus:outline-none transition-all w-48 sm:w-64 md:w-72 truncate"
+          className="bg-gray-800/60 hover:bg-gray-800/90 focus:bg-gray-800 border border-indigo-500/40 focus:border-indigo-400 rounded-lg px-3.5 py-1.5 text-xs sm:text-sm font-semibold text-indigo-200 focus:text-white focus:outline-none transition-all w-52 sm:w-80 md:w-96 lg:w-[420px] max-w-full shadow-inner"
           placeholder="Tên video: VD Săn mây Sa Pa 2N1Đ..."
         />
       </div>
