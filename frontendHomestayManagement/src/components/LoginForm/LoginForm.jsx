@@ -48,7 +48,7 @@ function LoginForm() {
   const handleGoogleAccessToken = useCallback(async (response) => {
     if (response.error) {
       setIsGoogleLoading(false)
-      setErrorMessage('Dang nhap Google that bai')
+      setErrorMessage('Đăng nhập Google thất bại')
       return
     }
 
@@ -283,7 +283,7 @@ function LoginForm() {
 
         <button className="google-button" type="button" onClick={handleGoogleLogin} disabled={isGoogleLoading}>
           <span aria-hidden="true">G</span>
-          {isGoogleLoading ? 'Dang dang nhap Google...' : 'Login with Google'}
+          {isGoogleLoading ? 'Đang đăng nhập bằng Google...' : 'Đăng nhập bằng Google'}
         </button>
       </form>
 
