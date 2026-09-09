@@ -252,6 +252,11 @@ function RoomCard({ room, criteria }) {
     }
   }
 
+  const isMaintenance = String(room.status || '').toUpperCase() === 'MAINTENANCE'
+  const isSoldOut = room.availableRooms != null && Number(room.availableRooms) <= 0
+  const isBooked = isSoldOut || String(room.status || '').toUpperCase() === 'BOOKED' || String(room.status || '').toUpperCase() === 'OCCUPIED'
+  const isAvailable = !isMaintenance && !isBooked
+
   return (
     <article className="room-card">
       <div
@@ -360,9 +365,11 @@ function RoomCard({ room, criteria }) {
           <button
             className="room-card-btn"
             type="button"
-            onClick={() => window.location.assign(buildBookingUrl(room, criteria))}
+            disabled={!isAvailable}
+            onClick={() => isAvailable && window.location.assign(buildBookingUrl(room, criteria))}
+            style={!isAvailable ? { background: '#94a3b8', cursor: 'not-allowed', opacity: 0.8 } : undefined}
           >
-            {criteria ? 'Đặt phòng' : 'Xem phòng'}
+            {isMaintenance ? 'Đang bảo trì' : isBooked ? 'Đã kín lịch' : criteria ? 'Đặt phòng' : 'Xem phòng'}
           </button>
         </div>
       </div>

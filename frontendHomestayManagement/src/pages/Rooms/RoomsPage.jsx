@@ -656,7 +656,10 @@ function RoomCard({ room, selected, onToggle, criteria }) {
   }
 
 
-  const isAvailable = typeOnly ? (Number(room.availableRooms || 0) > 0) : (!room.status || room.status === 'AVAILABLE')
+  const isMaintenance = String(room.status || '').toUpperCase() === 'MAINTENANCE'
+  const isSoldOut = typeOnly ? (Number(room.availableRooms || 0) <= 0) : (room.status && room.status !== 'AVAILABLE')
+  const isBooked = isSoldOut || String(room.status || '').toUpperCase() === 'BOOKED' || String(room.status || '').toUpperCase() === 'OCCUPIED'
+  const isAvailable = !isMaintenance && !isBooked
 
   const [isVideoPlaying, setIsVideoPlaying] = useState(false)
   const videoRef = useRef(null)
@@ -753,8 +756,10 @@ function RoomCard({ room, selected, onToggle, criteria }) {
             </span>
           )}
           <span className={`public-room-badge${!isAvailable ? ' is-maintenance' : ''}`}>
-            {!isAvailable
+            {isMaintenance
               ? '⚠️ Tạm bảo trì'
+              : isBooked
+              ? '🔴 Đã kín lịch'
               : typeOnly
               ? `Còn ${room.availableRooms || 0} phòng`
               : 'Sẵn sàng đặt'}
@@ -800,9 +805,9 @@ function RoomCard({ room, selected, onToggle, criteria }) {
             className={selected ? 'is-selected' : ''}
             disabled={!isAvailable}
             onClick={() => isAvailable && onToggle(room)}
-            title={!isAvailable ? 'Phòng đang bảo trì, tạm thời không thể đặt' : undefined}
+            title={!isAvailable ? (isMaintenance ? 'Phòng đang bảo trì, tạm thời không thể đặt' : 'Phòng đã có lịch đặt, không thể chọn') : undefined}
           >
-            {!isAvailable ? 'Đang bảo trì' : selected ? 'Bỏ chọn' : typeOnly ? 'Đặt phòng' : 'Chọn phòng'}
+            {isMaintenance ? 'Đang bảo trì' : isBooked ? 'Đã kín lịch' : selected ? 'Bỏ chọn' : typeOnly ? 'Đặt phòng' : 'Chọn phòng'}
           </button>
         </div>
       </div>

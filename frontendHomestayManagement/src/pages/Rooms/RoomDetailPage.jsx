@@ -720,8 +720,27 @@ function RoomDetailPage({ roomId }) {
   const groupedSlots = useMemo(() => groupSlotsByDate(room?.busySlots || []), [room])
   const groupedPrices = useMemo(() => groupPrices(room?.prices || []), [room])
 
+  const isMaintenance = String(room?.status || '').toUpperCase() === 'MAINTENANCE'
+  const isSoldOut = room?.availableRooms != null && Number(room.availableRooms) <= 0
+  const isDirectBooked = String(room?.status || '').toUpperCase() === 'BOOKED' || String(room?.status || '').toUpperCase() === 'OCCUPIED'
+
+  const hasScheduleConflict = useMemo(() => {
+    if (!room?.busySlots?.length) return false
+    const checkIn = initialBookingData.checkInTarget ? new Date(initialBookingData.checkInTarget) : null
+    const checkOut = initialBookingData.checkOutTarget ? new Date(initialBookingData.checkOutTarget) : null
+    if (!checkIn || !checkOut || Number.isNaN(checkIn.getTime()) || Number.isNaN(checkOut.getTime())) return false
+
+    return room.busySlots.some((slot) => {
+      const slotIn = new Date(slot.checkInTarget)
+      const slotOut = new Date(slot.checkOutTarget)
+      return !Number.isNaN(slotIn.getTime()) && !Number.isNaN(slotOut.getTime()) && slotIn < checkOut && slotOut > checkIn
+    })
+  }, [room?.busySlots, initialBookingData.checkInTarget, initialBookingData.checkOutTarget])
+
+  const isBookedOrConflicted = isMaintenance || isSoldOut || isDirectBooked || hasScheduleConflict
+
   const openBookingModal = () => {
-    if (!room) return
+    if (!room || isBookedOrConflicted) return
     const storedRooms = readBookingCart()
     const currentRoom = roomDetailToCartRoom(room)
     const hasCurrentRoom = storedRooms.some((item) => String(item.roomTypeId || item.id) === String(currentRoom.roomTypeId))
@@ -911,10 +930,22 @@ function RoomDetailPage({ roomId }) {
                   <div className="room-booking-head">
                     <div>
                       <h2>Đặt loại phòng này</h2>
-                      <p>Chọn thời gian lưu trú và gói thuê phù hợp để tạo đơn đặt phòng.</p>
+                      <p style={{ color: isBookedOrConflicted ? '#dc2626' : undefined, fontWeight: isBookedOrConflicted ? 600 : undefined }}>
+                        {isMaintenance
+                          ? '⚠️ Hạng phòng này hiện đang tạm bảo trì.'
+                          : isBookedOrConflicted
+                          ? '⚠️ Hạng phòng này đã có khách đặt trước trong khung giờ bạn chọn.'
+                          : 'Chọn thời gian lưu trú và gói thuê phù hợp để tạo đơn đặt phòng.'}
+                      </p>
                     </div>
-                    <button className="room-detail-cta" type="button" onClick={openBookingModal}>
-                      Chọn lịch đặt phòng
+                    <button
+                      className={`room-detail-cta${isBookedOrConflicted ? ' is-disabled' : ''}`}
+                      type="button"
+                      disabled={isBookedOrConflicted}
+                      onClick={openBookingModal}
+                      title={isBookedOrConflicted ? (isMaintenance ? 'Phòng đang bảo trì' : 'Phòng đã có khách đặt trước trong khung giờ này') : undefined}
+                    >
+                      {isMaintenance ? 'Đang bảo trì' : isBookedOrConflicted ? 'Đã kín lịch' : 'Chọn lịch đặt phòng'}
                     </button>
                   </div>
                 </section>

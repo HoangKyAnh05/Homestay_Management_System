@@ -376,6 +376,17 @@
   font-weight: 750;
   text-decoration: none;
   cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.room-detail-cta:disabled,
+.room-detail-cta.is-disabled {
+  background: #94a3b8 !important;
+  color: #f1f5f9 !important;
+  cursor: not-allowed !important;
+  opacity: 0.8 !important;
+  box-shadow: none !important;
+  transform: none !important;
 }
 
 .room-created-toast {
