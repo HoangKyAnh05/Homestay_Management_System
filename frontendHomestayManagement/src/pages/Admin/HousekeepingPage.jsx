@@ -305,6 +305,9 @@ function HousekeepingPage() {
   const [tasks, setTasks] = useState([])
   const [tab, setTab] = useState('PENDING')
   const [selectedId, setSelectedId] = useState(null)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(9)
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -324,16 +327,49 @@ function HousekeepingPage() {
   }, [])
 
   useEffect(() => {
-    // The request updates loading state before synchronizing with the API.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadTasks()
     const timer = window.setInterval(() => loadTasks(true), 20000)
     return () => window.clearInterval(timer)
   }, [loadTasks])
 
   const selected = tasks.find(task => task.id === selectedId) || null
-  const visibleTasks = useMemo(() => tasks.filter(task => matchesTab(task, tab)), [tasks, tab])
+  
+  const tabFilteredTasks = useMemo(() => tasks.filter(task => matchesTab(task, tab)), [tasks, tab])
+  
+  const filteredTasks = useMemo(() => {
+    if (!searchQuery.trim()) return tabFilteredTasks
+    const q = searchQuery.trim().toLowerCase()
+    return tabFilteredTasks.filter(task => {
+      const room = String(task.roomNumber || '').toLowerCase()
+      const cust = String(task.customerName || '').toLowerCase()
+      const code = String(task.bookingCode || '').toLowerCase()
+      const phone = String(task.customerPhone || '').toLowerCase()
+      const staff = String(task.assignedHousekeepingName || '').toLowerCase()
+      return room.includes(q) || cust.includes(q) || code.includes(q) || phone.includes(q) || staff.includes(q)
+    })
+  }, [tabFilteredTasks, searchQuery])
+
   const count = key => tasks.filter(task => matchesTab(task, key)).length
+
+  // Pagination logic
+  const totalItems = filteredTasks.length
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize))
+  const safeCurrentPage = Math.min(currentPage, totalPages)
+  const paginatedTasks = useMemo(() => {
+    const start = (safeCurrentPage - 1) * pageSize
+    return filteredTasks.slice(start, start + pageSize)
+  }, [filteredTasks, safeCurrentPage, pageSize])
+
+  const handleTabChange = (newTab) => {
+    setTab(newTab)
+    setSelectedId(null)
+    setCurrentPage(1)
+  }
+
+  const handleSearchChange = (e) => {
+    setSearchQuery(e.target.value)
+    setCurrentPage(1)
+  }
 
   const runAction = async (path, options, success) => {
     setBusy(true)
@@ -460,33 +496,142 @@ function HousekeepingPage() {
         </header>
 
         <div className="hk-stats">
-          <div><span>Chờ kiểm tra</span><strong>{count('PENDING')}</strong></div>
-          <div><span>Đang xử lý</span><strong>{count('IN_PROGRESS')}</strong></div>
-          <div><span>Đã gửi lễ tân</span><strong>{count('INSPECTED')}</strong></div>
-          <div><span>Hoàn thành</span><strong>{count('COMPLETED')}</strong></div>
+          <div onClick={() => handleTabChange('PENDING')} style={{ cursor: 'pointer' }}><span>Chờ kiểm tra</span><strong>{count('PENDING')}</strong></div>
+          <div onClick={() => handleTabChange('IN_PROGRESS')} style={{ cursor: 'pointer' }}><span>Đang xử lý</span><strong>{count('IN_PROGRESS')}</strong></div>
+          <div onClick={() => handleTabChange('INSPECTED')} style={{ cursor: 'pointer' }}><span>Đã gửi lễ tân</span><strong>{count('INSPECTED')}</strong></div>
+          <div onClick={() => handleTabChange('COMPLETED')} style={{ cursor: 'pointer' }}><span>Hoàn thành</span><strong>{count('COMPLETED')}</strong></div>
         </div>
 
         {error && <div className="hk-alert hk-alert--error">{error}</div>}
         {notice && <div className="hk-alert hk-alert--success">{notice}</div>}
 
-        <div className="hk-tabs">
-          {TABS.map(item => <button type="button" key={item.key} className={tab === item.key ? 'is-active' : ''} onClick={() => { setTab(item.key); setSelectedId(null) }}>{item.label}<b>{count(item.key)}</b></button>)}
+        <div className="hk-tabs-filter-bar">
+          <div className="hk-tabs">
+            {TABS.map(item => (
+              <button
+                type="button"
+                key={item.key}
+                className={tab === item.key ? 'is-active' : ''}
+                onClick={() => handleTabChange(item.key)}
+              >
+                {item.label}<b>{count(item.key)}</b>
+              </button>
+            ))}
+          </div>
+
+          <div className="hk-search-box">
+            <span className="hk-search-icon">🔍</span>
+            <input
+              type="text"
+              placeholder="Tìm theo số phòng, tên khách, mã booking..."
+              value={searchQuery}
+              onChange={handleSearchChange}
+              className="hk-search-input"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                className="hk-search-clear"
+                onClick={() => { setSearchQuery(''); setCurrentPage(1) }}
+                title="Xóa tìm kiếm"
+              >
+                ✕
+              </button>
+            )}
+          </div>
         </div>
 
-        <div className={`hk-workspace${selected ? ' hk-workspace--detail-open' : ''}`}>
-          <div className="hk-list">
-            {loading ? <div className="hk-list-empty">Đang tải công việc...</div> : visibleTasks.length === 0 ? <div className="hk-list-empty"><b>Không có phòng trong nhóm này</b><span>Danh sách sẽ tự cập nhật khi có yêu cầu mới.</span></div> : visibleTasks.map(task => <TaskCard key={task.id} task={task} active={task.id === selectedId} onClick={() => setSelectedId(task.id)} />)}
+        {/* Workspace: Grid mode when no room selected, Split mode when room selected */}
+        <div className={`hk-workspace${selected ? ' hk-workspace--detail-open' : ' hk-workspace--grid-only'}`}>
+          <div className="hk-list-container">
+            {selected && (
+              <div className="hk-list-back-bar">
+                <button type="button" className="hk-btn-back-grid" onClick={() => setSelectedId(null)}>
+                  ← Xem toàn bộ danh sách phòng ({totalItems})
+                </button>
+              </div>
+            )}
+
+            <div className="hk-list">
+              {loading ? (
+                <div className="hk-list-empty">Đang tải công việc...</div>
+              ) : paginatedTasks.length === 0 ? (
+                <div className="hk-list-empty">
+                  <b>{searchQuery ? 'Không tìm thấy phòng phù hợp' : 'Không có phòng trong nhóm này'}</b>
+                  <span>{searchQuery ? 'Thử tìm kiếm với từ khóa khác.' : 'Danh sách sẽ tự cập nhật khi có yêu cầu mới.'}</span>
+                </div>
+              ) : (
+                paginatedTasks.map(task => (
+                  <TaskCard
+                    key={task.id}
+                    task={task}
+                    active={task.id === selectedId}
+                    onClick={() => setSelectedId(task.id)}
+                  />
+                ))
+              )}
+            </div>
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="hk-pagination">
+                <span className="hk-pagination-info">
+                  Hiển thị <strong>{Math.min((safeCurrentPage - 1) * pageSize + 1, totalItems)} - {Math.min(safeCurrentPage * pageSize, totalItems)}</strong> / <strong>{totalItems}</strong> phòng
+                </span>
+                <div className="hk-pagination-btns">
+                  <button
+                    type="button"
+                    disabled={safeCurrentPage <= 1}
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    className="hk-page-btn"
+                  >
+                    ‹ Trước
+                  </button>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
+                    <button
+                      key={p}
+                      type="button"
+                      className={`hk-page-btn${p === safeCurrentPage ? ' is-active' : ''}`}
+                      onClick={() => setCurrentPage(p)}
+                    >
+                      {p}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    disabled={safeCurrentPage >= totalPages}
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    className="hk-page-btn"
+                  >
+                    Sau ›
+                  </button>
+                </div>
+                <select
+                  value={pageSize}
+                  onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1) }}
+                  className="hk-page-size-select"
+                >
+                  <option value={6}>6 phòng / trang</option>
+                  <option value={9}>9 phòng / trang</option>
+                  <option value={12}>12 phòng / trang</option>
+                  <option value={24}>24 phòng / trang</option>
+                </select>
+              </div>
+            )}
           </div>
-          <TaskDetail
-            key={selected ? `${selected.id}-${selected.version}-${selected.inspectionStatus}-${selected.cleaningStatus}` : 'empty'}
-            task={selected}
-            busy={busy}
-            onClose={() => setSelectedId(null)}
-            onStart={() => runAction(`/tasks/${selected.id}/start`, { method: 'POST' }, `Đã nhận phòng ${selected.roomNumber}`)}
-            onSubmitInspection={body => runAction(`/tasks/${selected.id}/inspection`, { method: 'PUT', body: JSON.stringify(body) }, 'Đã gửi chi phí cho lễ tân')}
-            onCompleteCleaning={body => runAction(`/tasks/${selected.id}/complete-cleaning`, { method: 'POST', body: JSON.stringify(body) }, `Phòng ${selected.roomNumber} đã sẵn sàng`)}
-            onReportIncident={handleOpenReport}
-          />
+
+          {selected && (
+            <TaskDetail
+              key={`${selected.id}-${selected.version}-${selected.inspectionStatus}-${selected.cleaningStatus}`}
+              task={selected}
+              busy={busy}
+              onClose={() => setSelectedId(null)}
+              onStart={() => runAction(`/tasks/${selected.id}/start`, { method: 'POST' }, `Đã nhận phòng ${selected.roomNumber}`)}
+              onSubmitInspection={body => runAction(`/tasks/${selected.id}/inspection`, { method: 'PUT', body: JSON.stringify(body) }, 'Đã gửi chi phí cho lễ tân')}
+              onCompleteCleaning={body => runAction(`/tasks/${selected.id}/complete-cleaning`, { method: 'POST', body: JSON.stringify(body) }, `Phòng ${selected.roomNumber} đã sẵn sàng`)}
+              onReportIncident={handleOpenReport}
+            />
+          )}
         </div>
 
         {reportingTask && (
