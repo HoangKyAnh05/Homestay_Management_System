@@ -182,7 +182,20 @@ function PublicHeader() {
         <a href="/rooms" className="home-nav-active">Phòng</a>
         <a href="/wishlist">Yêu thích</a>
         <a href="/amenities">Tiện nghi</a>
-        <a href="/giveaway" title="Vòng quay may mắn & Nhận ưu đãi">Liên hệ</a>
+        <a
+          href="/giveaway"
+          className="home-nav-lucky-wheel"
+          title="Vòng quay may mắn - Nhận ưu đãi nghỉ dưỡng!"
+          aria-label="Vòng quay may mắn"
+        >
+          <svg className="lucky-wheel-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="10" r="7.5" />
+            <path d="M12 2.5v15M4.5 10h15M6.7 4.7l10.6 10.6M6.7 15.3l10.6-10.6" />
+            <circle cx="12" cy="10" r="2" fill="#fbbf24" stroke="#ffffff" strokeWidth="1.2" />
+            <path d="M8 21.5l2.5-4h3l2.5 4" />
+            <line x1="6" y1="21.5" x2="18" y2="21.5" />
+          </svg>
+        </a>
         <a href="/home#about">Giới thiệu</a>
       </nav>
 
