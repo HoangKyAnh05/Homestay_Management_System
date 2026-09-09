@@ -642,8 +642,56 @@ function BookingModal({ room, initialBookingData, onClose, onCreated }) {
                   isCheckIn={false}
                 />
               </label>
-              <label><span>Người lớn</span><input type="number" min="1" max={room.maxAdults || undefined} value={form.numberOfAdults} onChange={(e) => setForm({ ...form, numberOfAdults: e.target.value })} /></label>
-              <label><span>Trẻ em</span><input type="number" min="0" max={room.maxChildren || undefined} value={form.numberOfChildren} onChange={(e) => setForm({ ...form, numberOfChildren: e.target.value })} /></label>
+              <label>
+                <span>Người lớn</span>
+                <input
+                  type="number"
+                  min="1"
+                  max={room.maxAdults || undefined}
+                  value={form.numberOfAdults}
+                  onChange={(e) => {
+                    const val = Number(e.target.value)
+                    const max = Number(room.maxAdults || 1)
+                    if (val < 1) {
+                      setError('Số lượng người lớn tối thiểu là 1 người. Không thể giảm thêm.')
+                      setForm({ ...form, numberOfAdults: 1 })
+                      return
+                    }
+                    if (val > max) {
+                      setError(`Loại phòng ${houseTypeName(room)} chỉ đón tối đa ${max} người lớn. Không thể tăng thêm.`)
+                      setForm({ ...form, numberOfAdults: max })
+                      return
+                    }
+                    setError('')
+                    setForm({ ...form, numberOfAdults: val })
+                  }}
+                />
+              </label>
+              <label>
+                <span>Trẻ em</span>
+                <input
+                  type="number"
+                  min="0"
+                  max={room.maxChildren || undefined}
+                  value={form.numberOfChildren}
+                  onChange={(e) => {
+                    const val = Number(e.target.value)
+                    const max = Number(room.maxChildren || 0)
+                    if (val < 0) {
+                      setError('Số lượng trẻ em không thể nhỏ hơn 0.')
+                      setForm({ ...form, numberOfChildren: 0 })
+                      return
+                    }
+                    if (val > max) {
+                      setError(`Loại phòng ${houseTypeName(room)} chỉ đón tối đa ${max} trẻ em. Không thể tăng thêm.`)
+                      setForm({ ...form, numberOfChildren: max })
+                      return
+                    }
+                    setError('')
+                    setForm({ ...form, numberOfChildren: val })
+                  }}
+                />
+              </label>
             </div>
             <div style={{ marginTop: 10, padding: '8px 12px', background: '#f8fafc', borderRadius: 6, color: '#334155', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
               <span>📅</span>

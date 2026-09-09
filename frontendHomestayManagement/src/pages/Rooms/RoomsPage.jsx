@@ -1081,6 +1081,7 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
   const [viewingScheduleRoom, setViewingScheduleRoom] = useState(null)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const [quantityErrors, setQuantityErrors] = useState({})
   const [paymentSummary, setPaymentSummary] = useState(null)
   const [sePayPayment, setSePayPayment] = useState(null)
   const [paymentLoading, setPaymentLoading] = useState(false)
@@ -1361,20 +1362,62 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
   }
 
   const updateRoomGuest = (unitKey, field, value) => {
-    setRoomUnits((current) => current.map((unit) => {
-      if (unit.key !== unitKey) return unit
-      const numericValue = Number(value)
+    const unit = roomUnits.find((u) => u.key === unitKey)
+    if (!unit) return
+    const numericValue = Number(value)
+    if (field === 'numberOfAdults') {
+      const max = Number(unit.room.maxAdults || 1)
+      if (isNaN(numericValue) || numericValue < 1) {
+        setError(`Phòng ${unit.unitIndex} (${houseTypeName(unit.room)}) cần tối thiểu 1 người lớn. Không thể giảm thêm.`)
+        return
+      }
+      if (numericValue > max) {
+        setError(`Phòng ${unit.unitIndex} (${houseTypeName(unit.room)}) chỉ đón tối đa ${max} người lớn. Không thể tăng thêm.`)
+        return
+      }
+    } else if (field === 'numberOfChildren') {
+      const max = Number(unit.room.maxChildren || 0)
+      if (isNaN(numericValue) || numericValue < 0) {
+        setError('Số lượng trẻ em không thể nhỏ hơn 0.')
+        return
+      }
+      if (numericValue > max) {
+        setError(`Phòng ${unit.unitIndex} (${houseTypeName(unit.room)}) chỉ đón tối đa ${max} trẻ em. Không thể tăng thêm.`)
+        return
+      }
+    }
+    setError('')
+    setRoomUnits((current) => current.map((item) => {
+      if (item.key !== unitKey) return item
       const nextValue = field === 'numberOfAdults'
-        ? Math.max(1, Math.min(Number(unit.room.maxAdults || 1), numericValue || 1))
-        : Math.max(0, Math.min(Number(unit.room.maxChildren || 0), numericValue || 0))
-      return { ...unit, [field]: nextValue }
+        ? Math.max(1, Math.min(Number(item.room.maxAdults || 1), numericValue || 1))
+        : Math.max(0, Math.min(Number(item.room.maxChildren || 0), numericValue || 0))
+      return { ...item, [field]: nextValue }
     }))
   }
 
   const updateRoomQuantity = (room, nextQuantity) => {
-    const maxQuantity = Number(room.availableRooms || 99)
-    const quantity = Math.max(1, Math.min(maxQuantity, Number(nextQuantity || 1)))
     const key = roomKey(room)
+    const maxQuantity = Number(room.availableRooms != null ? room.availableRooms : 99)
+    const currentQty = Number(roomQuantities[key] || 1)
+    const requested = Number(nextQuantity)
+
+    if (isNaN(requested) || requested < 1) {
+      const msg = `Số lượng ${houseTypeName(room)} tối thiểu là 1 phòng. Không thể giảm thêm.`
+      setError(msg)
+      setQuantityErrors((prev) => ({ ...prev, [key]: msg }))
+      return
+    }
+    if (requested > maxQuantity) {
+      const msg = `Loại phòng ${houseTypeName(room)} hiện chỉ còn ${maxQuantity} phòng khả dụng. Không thể tăng thêm.`
+      setError(msg)
+      setQuantityErrors((prev) => ({ ...prev, [key]: msg }))
+      return
+    }
+
+    setError('')
+    setQuantityErrors((prev) => ({ ...prev, [key]: '' }))
+    const quantity = Math.max(1, Math.min(maxQuantity, requested))
     setRoomQuantities((current) => ({
       ...current,
       [key]: quantity,
@@ -1392,8 +1435,8 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
       if (quantity <= sameTypeUnits.length) {
         return orderBySelectedRoom([...otherUnits, ...sameTypeUnits.slice(0, quantity)])
       }
-      const totalRoomCount = Object.entries(roomQuantities).reduce(
-        (sum, [typeKey, currentQuantity]) => sum + (typeKey === key ? quantity : Number(currentQuantity || 0)),
+      const totalRoomCount = Object.entries({ ...roomQuantities, [key]: quantity }).reduce(
+        (sum, [, currentQuantity]) => sum + Number(currentQuantity || 0),
         0,
       )
       const template = sameTypeUnits[0]
@@ -1758,14 +1801,21 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
                     </div>
                   </div>
                   <b>{formatPrice(roomPriceItems.find((item) => roomKey(item.room) === roomKey(room))?.price || roomPrice(room))}{isHourlyPolicy(selectedPolicy) && <small>/giờ</small>}</b>
-                  <label className="room-quantity-field">
-                    <span>Số phòng</span>
-                    <div className="room-quantity-stepper">
-                      <button type="button" onClick={() => updateRoomQuantity(room, (roomQuantities[roomKey(room)] || 1) - 1)}>-</button>
-                      <input type="number" min="1" max={room.availableRooms || undefined} value={roomQuantities[roomKey(room)] || 1} onChange={(e) => updateRoomQuantity(room, e.target.value)} />
-                      <button type="button" onClick={() => updateRoomQuantity(room, (roomQuantities[roomKey(room)] || 1) + 1)}>+</button>
-                    </div>
-                  </label>
+                  <div className="room-quantity-wrapper">
+                    <label className="room-quantity-field">
+                      <span>Số phòng</span>
+                      <div className="room-quantity-stepper">
+                        <button type="button" onClick={() => updateRoomQuantity(room, (roomQuantities[roomKey(room)] || 1) - 1)}>-</button>
+                        <input type="number" min="1" max={room.availableRooms || undefined} value={roomQuantities[roomKey(room)] || 1} onChange={(e) => updateRoomQuantity(room, e.target.value)} />
+                        <button type="button" onClick={() => updateRoomQuantity(room, (roomQuantities[roomKey(room)] || 1) + 1)}>+</button>
+                      </div>
+                    </label>
+                    {quantityErrors[roomKey(room)] && (
+                      <span className="room-quantity-inline-error">
+                        ⚠️ {quantityErrors[roomKey(room)]}
+                      </span>
+                    )}
+                  </div>
                 </article>
               ))}
             </div>
