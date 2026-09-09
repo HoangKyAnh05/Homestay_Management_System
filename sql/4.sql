@@ -207,11 +207,11 @@ ON DUPLICATE KEY UPDATE room_id = VALUES(room_id), start_time = VALUES(start_tim
 -- 10. price_policies - 5 rows
 -- ============================================================
 INSERT INTO price_policies (id, policy_name, rent_type, standard_check_in, standard_check_out, limit_hours) VALUES
-(1, 'Thue qua dem', 'OVERNIGHT', '19:00:00', '11:00:00', NULL),
-(2, 'Thue theo ngay', 'DAILY', '14:00:00', '12:00:00', NULL),
-(3, 'Combo 2 gio', 'COMBO', NULL, NULL, 2),
-(4, 'Combo 4 gio', 'COMBO', NULL, NULL, 4),
-(5, 'Thue theo gio', 'HOURLY', NULL, NULL, 1)
+(1, 'Thuê qua đêm', 'OVERNIGHT', '19:00:00', '11:00:00', NULL),
+(2, 'Thuê theo ngày', 'DAILY', '14:00:00', '12:00:00', NULL),
+(3, 'Combo 2 giờ', 'COMBO', NULL, NULL, 2),
+(4, 'Combo 4 giờ', 'COMBO', NULL, NULL, 4),
+(5, 'Thuê theo giờ', 'HOURLY', NULL, NULL, 1)
 ON DUPLICATE KEY UPDATE policy_name = VALUES(policy_name), rent_type = VALUES(rent_type), standard_check_in = VALUES(standard_check_in), standard_check_out = VALUES(standard_check_out), limit_hours = VALUES(limit_hours);
 
 -- ============================================================

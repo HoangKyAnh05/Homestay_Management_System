@@ -483,7 +483,7 @@ function rentTypeLabel(rentType) {
     DAILY: 'ngày',
     BY_DAY: 'ngày',
     HOURLY: 'giờ',
-    COMBO: 'combo',
+    COMBO: 'Combo',
   }
   return labels[String(rentType || '').toUpperCase()] || '2 ngày 1 đêm'
 }
