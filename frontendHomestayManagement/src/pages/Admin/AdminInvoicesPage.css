@@ -22,29 +22,69 @@
 .ain-stats {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 12px;
-  margin-bottom: 18px;
+  gap: 14px;
+  margin-bottom: 20px;
 }
 
 .ain-stats div {
-  padding: 16px;
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
+  padding: 18px 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
   background: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
+
+.ain-stats div:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.08);
+}
+
+.ain-stats div:nth-child(1) {
+  background: linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%);
+  border-color: #bae6fd;
+}
+.ain-stats div:nth-child(1) strong { color: #0284c7; }
+
+.ain-stats div:nth-child(2) {
+  background: linear-gradient(135deg, #ffffff 0%, #f5f3ff 100%);
+  border-color: #ddd6fe;
+}
+.ain-stats div:nth-child(2) strong { color: #6d28d9; }
+
+.ain-stats div:nth-child(3) {
+  background: linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%);
+  border-color: #bbf7d0;
+}
+.ain-stats div:nth-child(3) strong { color: #16a34a; }
+
+.ain-stats div:nth-child(4) {
+  background: linear-gradient(135deg, #ffffff 0%, #fff1f2 100%);
+  border-color: #fecdd3;
+}
+.ain-stats div:nth-child(4) strong { color: #e11d48; }
+
+.ain-stats div:nth-child(5) {
+  background: linear-gradient(135deg, #ffffff 0%, #faf5ff 100%);
+  border-color: #e9d5ff;
+}
+.ain-stats div:nth-child(5) strong { color: #9333ea; }
 
 .ain-stats span {
   display: block;
   margin-bottom: 8px;
-  color: #6b7280;
+  color: #64748b;
   font-size: 12px;
   font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
 .ain-stats strong {
-  color: #111827;
+  color: #0f172a;
   font-size: 20px;
   font-weight: 800;
+  letter-spacing: -0.01em;
 }
 
 .ain-toolbar {
@@ -56,14 +96,15 @@
 
 .ain-search,
 .ain-select {
-  height: 40px;
-  border: 1px solid #d1d5db;
+  height: 42px;
+  border: 1px solid #cbd5e1;
   border-radius: 8px;
   background: #ffffff;
-  color: #111827;
+  color: #0f172a;
   font: inherit;
   font-size: 14px;
   outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
 
 .ain-search {
@@ -80,15 +121,16 @@
 
 .ain-search:focus,
 .ain-select:focus {
-  border-color: #2d5a3d;
-  box-shadow: 0 0 0 3px rgba(45,90,61,0.1);
+  border-color: #059669;
+  box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.15);
 }
 
 .ain-table-wrap {
   background: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
   overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 .ain-table {
@@ -97,62 +139,77 @@
 }
 
 .ain-table th {
-  height: 44px;
+  height: 46px;
   padding: 0 16px;
-  background: #f9fafb;
-  color: #6b7280;
+  background: #f8fafc;
+  color: #475569;
   font-size: 12px;
   font-weight: 800;
   text-align: left;
   text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid #e2e8f0;
 }
 
 .ain-table td {
-  padding: 15px 16px;
-  border-top: 1px solid #edf0f4;
-  color: #111827;
+  padding: 14px 16px;
+  border-top: 1px solid #f1f5f9;
+  color: #1e293b;
   font-size: 14px;
   vertical-align: middle;
+}
+
+.ain-table tbody tr:nth-child(even) td {
+  background: #fafbfc;
+}
+
+.ain-table tbody tr:hover td {
+  background: #f0fdf4 !important;
 }
 
 .ain-table td strong {
   display: block;
   margin-bottom: 3px;
-  color: #111827;
+  color: #0f172a;
   font-size: 14px;
   font-weight: 800;
 }
 
 .ain-table td span {
   display: block;
-  color: #6b7280;
+  color: #64748b;
   font-size: 12px;
 }
 
 .ain-badge {
   display: inline-flex !important;
   align-items: center;
+  gap: 4px;
   width: fit-content;
   min-height: 26px;
-  padding: 4px 10px;
+  padding: 4px 12px;
   border-radius: 999px;
   font-size: 12px !important;
   font-weight: 800;
+  letter-spacing: 0.02em;
 }
 
 .ain-badge--success {
   background: #dcfce7;
-  color: #166534 !important;
+  color: #15803d !important;
+  border: 1px solid #86efac;
 }
 
 .ain-badge--failed {
   background: #fee2e2;
-  color: #991b1b !important;
+  color: #b91c1c !important;
+  border: 1px solid #fca5a5;
 }
 
 .ain-badge--pending {
   background: #fef3c7;
-  color: #92400e !important;
+  color: #b45309 !important;
+  border: 1px solid #fde68a;
 }
 
 .ain-voucher-cell {
@@ -161,7 +218,7 @@
   align-items: flex-start;
   gap: 3px;
   min-width: 118px;
-  padding: 8px 10px;
+  padding: 6px 10px;
   border: 1px solid #bbf7d0;
   border-radius: 8px;
   background: #f0fdf4;
@@ -169,12 +226,12 @@
 
 .ain-voucher-cell strong {
   margin: 0 !important;
-  color: #166534 !important;
-  font-size: 13px !important;
+  color: #15803d !important;
+  font-size: 12px !important;
 }
 
 .ain-voucher-cell span {
-  color: #15803d !important;
+  color: #166534 !important;
   font-weight: 700;
 }
 

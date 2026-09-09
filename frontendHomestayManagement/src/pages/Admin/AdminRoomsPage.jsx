@@ -1531,8 +1531,12 @@ function PriceConfigTab({ roomTypes, pricePolicies, setPricePolicies, priceConfi
                 <tbody>
                   {filteredConfigs.map(c => (
                     <tr key={c.id}>
-                      <td className="arm-fw">{c.roomTypeName}</td>
-                      <td>{c.policyName}</td>
+                      <td className="arm-fw">
+                        <span className="arm-room-type-tag">🏠 {c.roomTypeName}</span>
+                      </td>
+                      <td>
+                        <strong className="arm-policy-name">{c.policyName}</strong>
+                      </td>
                       <td>
                         <span className={`arm-rent-badge arm-rent-badge--${c.rentType?.toLowerCase()}`}>
                           {RENT_TYPE_LABEL[c.rentType] || c.rentType}
@@ -1540,15 +1544,15 @@ function PriceConfigTab({ roomTypes, pricePolicies, setPricePolicies, priceConfi
                       </td>
                       <td>
                         <span className={`arm-day-badge${c.dayType==='WEEKEND'?' arm-day-badge--weekend':''}`}>
-                          {DAY_TYPE_LABEL[c.dayType] || c.dayType}
+                          {c.dayType === 'WEEKEND' ? '🌟 Cuối tuần' : '📅 Ngày thường'}
                         </span>
                       </td>
                       <td className="arm-price-strong">{formatPrice(c.price)}</td>
                       <td><div className="arm-actions">
-                        <button type="button" className="arm-icon-btn arm-icon-btn--edit" onClick={() => setModalConfig(c)}>
+                        <button type="button" className="arm-icon-btn arm-icon-btn--edit" title="Sửa giá" onClick={() => setModalConfig(c)}>
                           <svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                         </button>
-                        <button type="button" className="arm-icon-btn arm-icon-btn--delete" onClick={() => setDeleteConfigTarget(c)}>
+                        <button type="button" className="arm-icon-btn arm-icon-btn--delete" title="Xóa cấu hình" onClick={() => setDeleteConfigTarget(c)}>
                           <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
                         </button>
                       </div></td>

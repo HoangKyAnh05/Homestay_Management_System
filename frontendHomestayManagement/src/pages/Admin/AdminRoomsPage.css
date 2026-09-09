@@ -200,6 +200,100 @@
 .badge--inactive  { background: #fee2e2; color: #991b1b; }
 .badge--default   { background: #f3f4f6; color: #374151; }
 
+/* ── Rent Type & Day Type Badges (Ma trận giá) ── */
+.arm-rent-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.arm-rent-badge--overnight,
+.arm-rent-badge--by_night,
+.arm-rent-badge--nightly {
+  background: #ede9fe;
+  color: #6d28d9;
+  border: 1px solid #ddd6fe;
+}
+
+.arm-rent-badge--daily,
+.arm-rent-badge--by_day {
+  background: #ffedd5;
+  color: #c2410c;
+  border: 1px solid #fed7aa;
+}
+
+.arm-rent-badge--combo,
+.arm-rent-badge--hourly,
+.arm-rent-badge--by_hour {
+  background: #ecfdf5;
+  color: #047857;
+  border: 1px solid #a7f3d0;
+}
+
+.arm-rent-badge--monthly {
+  background: #e0f2fe;
+  color: #0369a1;
+  border: 1px solid #bae6fd;
+}
+
+.arm-day-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+}
+
+.arm-day-badge--weekend {
+  background: #ffe4e6;
+  color: #be123c;
+  border: 1px solid #fecdd3;
+  font-weight: 800;
+}
+
+.arm-price-strong {
+  color: #059669;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.arm-room-type-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #1e293b;
+  font-weight: 700;
+  border: 1px solid #e2e8f0;
+}
+
+.arm-policy-name {
+  color: #334155;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.arm-table tbody tr:nth-child(even) td {
+  background: #fafbfc;
+}
+
+.arm-table tbody tr:hover td {
+  background: #f0fdf4 !important;
+}
+
 /* ── Icon buttons ── */
 .arm-actions { display: flex; gap: 6px; }
 
