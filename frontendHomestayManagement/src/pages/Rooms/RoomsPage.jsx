@@ -1939,10 +1939,7 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
   )
 }
 
-function BookingCart({ selectedRooms, requestedRooms, onRemove, onOpenBooking, criteria }) {
-  const targetDate = criteria?.checkInDate
-  const isWeekend = isWeekendDay(targetDate)
-  const total = selectedRooms.reduce((sum, room) => sum + roomPrice(room, targetDate) * selectedQuantity(room), 0)
+function BookingCart({ selectedRooms, requestedRooms, onRemove, onOpenBooking }) {
   const selectedCount = selectedRooms.reduce((sum, room) => sum + selectedQuantity(room), 0)
   const isEnough = selectedCount >= requestedRooms
 
@@ -1953,7 +1950,6 @@ function BookingCart({ selectedRooms, requestedRooms, onRemove, onOpenBooking, c
           <h2>Booking của bạn</h2>
           <p>
             Đã chọn {selectedRooms.length} loại · {selectedCount}/{requestedRooms} loại phòng
-            {isWeekend && <span style={{ color: '#e11d48', fontWeight: 600, display: 'inline-block', marginLeft: 4 }}> · Giá cuối tuần</span>}
           </p>
         </div>
         <span className={isEnough ? 'is-ready' : ''}>{isEnough ? 'Đủ phòng' : 'Chưa đủ'}</span>
@@ -1962,14 +1958,9 @@ function BookingCart({ selectedRooms, requestedRooms, onRemove, onOpenBooking, c
         {selectedRooms.length ? selectedRooms.map((room) => (
           <div key={roomKey(room)}>
             <span>{houseTypeName(room)} × {selectedQuantity(room)}</span>
-            <strong>{formatPrice(roomPrice(room, targetDate))}</strong>
             <button type="button" onClick={() => onRemove(roomKey(room))} aria-label="Bỏ loại phòng">×</button>
           </div>
         )) : <p>Chọn loại phòng từ danh sách để tạo booking.</p>}
-      </div>
-      <div className="rooms-booking-cart-total">
-        <span>Tạm tính {isWeekend && <small style={{ color: '#e11d48', fontWeight: 600 }}>(Cuối tuần)</small>}</span>
-        <strong>{formatPrice(total)}</strong>
       </div>
       <button type="button" disabled={!selectedRooms.length} onClick={onOpenBooking}>Tiếp tục đặt phòng</button>
     </aside>

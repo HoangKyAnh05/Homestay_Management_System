@@ -40,16 +40,48 @@ function toDateInputValue(date) {
   return `${year}-${month}-${day}`
 }
 
+function getWeekRange(refDate = new Date()) {
+  const date = new Date(refDate)
+  const day = date.getDay()
+  const diffToMonday = day === 0 ? -6 : 1 - day
+  const monday = new Date(date)
+  monday.setDate(date.getDate() + diffToMonday)
+
+  const sunday = new Date(monday)
+  sunday.setDate(monday.getDate() + 6)
+
+  return {
+    from: toDateInputValue(monday),
+    to: toDateInputValue(sunday),
+  }
+}
+
+function getMonthRange(refDate = new Date()) {
+  const date = new Date(refDate)
+  const firstDay = new Date(date.getFullYear(), date.getMonth(), 1)
+  const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0)
+  return {
+    from: toDateInputValue(firstDay),
+    to: toDateInputValue(lastDay),
+  }
+}
+
+function getYearRange(refDate = new Date()) {
+  const date = new Date(refDate)
+  const firstDay = new Date(date.getFullYear(), 0, 1)
+  const lastDay = new Date(date.getFullYear(), 11, 31)
+  return {
+    from: toDateInputValue(firstDay),
+    to: toDateInputValue(lastDay),
+  }
+}
+
 function defaultFromDate() {
-  const date = new Date()
-  date.setDate(date.getDate() - 14)
-  return toDateInputValue(date)
+  return getWeekRange().from
 }
 
 function defaultToDate() {
-  const date = new Date()
-  date.setDate(date.getDate() + 14)
-  return toDateInputValue(date)
+  return getWeekRange().to
 }
 
 function formatDate(value) {
@@ -1763,10 +1795,39 @@ function AdminCheckInLogsPage() {
   const { isInShift, guardAction } = useShiftGuard()
   const [bookings, setBookings] = useState([])
   const [selectedBookingId, setSelectedBookingId] = useState(null)
+  const [periodFilter, setPeriodFilter] = useState('week')
   const [fromDate, setFromDate] = useState(defaultFromDate)
   const [toDate, setToDate] = useState(defaultToDate)
   const [search, setSearch] = useState('')
   const [stageFilter, setStageFilter] = useState('')
+
+  const handlePeriodChange = (event) => {
+    const nextPeriod = event.target.value
+    setPeriodFilter(nextPeriod)
+    if (nextPeriod === 'week') {
+      const range = getWeekRange()
+      setFromDate(range.from)
+      setToDate(range.to)
+    } else if (nextPeriod === 'month') {
+      const range = getMonthRange()
+      setFromDate(range.from)
+      setToDate(range.to)
+    } else if (nextPeriod === 'year') {
+      const range = getYearRange()
+      setFromDate(range.from)
+      setToDate(range.to)
+    }
+  }
+
+  const handleFromDateChange = (event) => {
+    setFromDate(event.target.value)
+    setPeriodFilter('custom')
+  }
+
+  const handleToDateChange = (event) => {
+    setToDate(event.target.value)
+    setPeriodFilter('custom')
+  }
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [actionError, setActionError] = useState('')
@@ -1900,9 +1961,20 @@ function AdminCheckInLogsPage() {
 
       <section className="acl-toolbar">
         <input value={search} onChange={event => setSearch(event.target.value)} placeholder="Tìm booking, khách hàng, số phòng, số điện thoại..." />
-        <input type="date" value={fromDate} onChange={event => setFromDate(event.target.value)} />
-        <input type="date" value={toDate} onChange={event => setToDate(event.target.value)} />
-        <select value={stageFilter} onChange={event => setStageFilter(event.target.value)}>
+        <select
+          className="acl-period-select"
+          value={periodFilter}
+          onChange={handlePeriodChange}
+          aria-label="Lọc theo khoảng thời gian"
+        >
+          <option value="week">Theo tuần</option>
+          <option value="month">Theo tháng</option>
+          <option value="year">Theo năm</option>
+          {periodFilter === 'custom' && <option value="custom">Tùy chọn</option>}
+        </select>
+        <input type="date" value={fromDate} onChange={handleFromDateChange} title="Từ ngày" aria-label="Từ ngày" />
+        <input type="date" value={toDate} onChange={handleToDateChange} title="Đến ngày" aria-label="Đến ngày" />
+        <select value={stageFilter} onChange={event => setStageFilter(event.target.value)} aria-label="Trạng thái lưu trú">
           <option value="">Tất cả lưu trú</option>
           <option value="waiting">Chưa check-in</option>
           <option value="staying">Đang lưu trú</option>
