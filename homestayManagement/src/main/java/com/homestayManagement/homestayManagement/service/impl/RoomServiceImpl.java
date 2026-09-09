@@ -151,7 +151,8 @@ public class RoomServiceImpl implements RoomService {
                 imageUrls.isEmpty() ? null : imageUrls.get(0),
                 imageUrls,
                 prices,
-                busySlots
+                busySlots,
+                roomType.getVideoUrl()
         );
     }
 
@@ -260,7 +261,8 @@ public class RoomServiceImpl implements RoomService {
                 availableRooms,
                 primaryImageUrl,
                 imageUrls,
-                prices
+                prices,
+                roomType.getVideoUrl()
         ));
     }
 
@@ -288,7 +290,8 @@ public class RoomServiceImpl implements RoomService {
                 depositPolicy != null ? depositPolicy.getDescription() : null,
                 imageUrls.isEmpty() ? null : imageUrls.get(0),
                 imageUrls,
-                prices
+                prices,
+                roomType.getVideoUrl()
         );
     }
 
@@ -354,7 +357,8 @@ public class RoomServiceImpl implements RoomService {
                 availableRooms,
                 primaryUrl,
                 allUrls,
-                prices
+                prices,
+                roomType.getVideoUrl()
         );
     }
 

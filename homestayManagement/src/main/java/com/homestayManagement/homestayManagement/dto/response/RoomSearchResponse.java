@@ -16,6 +16,7 @@ public record RoomSearchResponse(
         Integer availableRooms,
         String primaryImageUrl,
         List<String> imageUrls,
-        List<RoomPublicPriceResponse> prices
+        List<RoomPublicPriceResponse> prices,
+        String videoUrl
 ) {
 }

@@ -19,7 +19,7 @@ public record RoomTypeRequest(
         Integer maxChildren,
 
         Long depositPolicyId,
-
-        String description
+        String description,
+        String videoUrl
 ) {
 }

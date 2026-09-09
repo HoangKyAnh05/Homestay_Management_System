@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import HomeSearch from '../../components/HomeSearch/HomeSearch'
 import { getStoredUser, getStoredToken, logout } from '../../services/authService'
 import { houseTypeName } from '../../utils/houseType'
@@ -232,18 +232,99 @@ function RoomCard({ room, criteria }) {
     return () => window.clearInterval(intervalId)
   }, [hasRotatingPrice])
 
+  const [isVideoPlaying, setIsVideoPlaying] = useState(false)
+  const videoRef = useRef(null)
+
+  const handleStartHold = () => {
+    if (!room.videoUrl) return
+    setIsVideoPlaying(true)
+    if (videoRef.current) {
+      videoRef.current.play().catch(() => {})
+    }
+  }
+
+  const handleEndHold = () => {
+    if (!room.videoUrl) return
+    setIsVideoPlaying(false)
+    if (videoRef.current) {
+      videoRef.current.pause()
+      videoRef.current.currentTime = 0
+    }
+  }
+
   return (
     <article className="room-card">
-      <div className="room-card-img">
+      <div
+        className="room-card-img"
+        onMouseEnter={handleStartHold}
+        onMouseLeave={handleEndHold}
+        onPointerDown={handleStartHold}
+        onPointerUp={handleEndHold}
+        onTouchStart={handleStartHold}
+        onTouchEnd={handleEndHold}
+        style={{ position: 'relative', overflow: 'hidden', cursor: room.videoUrl ? 'pointer' : 'default' }}
+      >
         <img
           src={resolveImageUrl(room.primaryImageUrl) || getFallbackRoomImage(title, roomTypeId)}
           alt={title}
           loading="lazy"
+          style={{ opacity: isVideoPlaying ? 0 : 1, transition: 'opacity 0.3s ease' }}
           onError={(e) => {
             e.target.onerror = null;
             e.target.src = getFallbackRoomImage(title, roomTypeId);
           }}
         />
+        {room.videoUrl && (
+          <video
+            ref={videoRef}
+            src={resolveImageUrl(room.videoUrl)}
+            muted
+            loop
+            playsInline
+            preload="metadata"
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              opacity: isVideoPlaying ? 1 : 0,
+              transition: 'opacity 0.3s ease',
+              pointerEvents: 'none',
+            }}
+          />
+        )}
+        {room.videoUrl && (
+          <span
+            className="room-video-preview-badge"
+            style={{
+              position: 'absolute',
+              bottom: 12,
+              left: 12,
+              zIndex: 3,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 5,
+              padding: '4px 9px',
+              borderRadius: 999,
+              background: isVideoPlaying ? 'rgba(225, 29, 72, 0.9)' : 'rgba(15, 23, 42, 0.75)',
+              backdropFilter: 'blur(6px)',
+              color: '#ffffff',
+              fontSize: '11px',
+              fontWeight: 600,
+              letterSpacing: '0.02em',
+              transition: 'all 0.25s ease',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
+              pointerEvents: 'none',
+            }}
+          >
+            <span style={{ display: 'inline-block', transform: isVideoPlaying ? 'scale(1.2)' : 'scale(1)', transition: 'transform 0.2s ease' }}>
+              {isVideoPlaying ? '▶' : '🎬'}
+            </span>
+            <span>{isVideoPlaying ? 'Đang phát video' : 'Hold xem video'}</span>
+          </span>
+        )}
         <span className="room-card-badge">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
           4.9

@@ -9,6 +9,7 @@ public record AdminRoomTypeResponse(
         Long depositPolicyId,
         String depositPolicyName,
         String description,
-        int roomCount
+        int roomCount,
+        String videoUrl
 ) {
 }

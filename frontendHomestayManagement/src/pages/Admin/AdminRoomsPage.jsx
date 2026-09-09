@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { getStoredToken } from '../../services/authService'
 import { resolveImageUrl } from '../../utils/imageUrl'
 import AdminLayout from './AdminLayout'
@@ -90,6 +90,7 @@ function RoomTypeModal({ roomType, depositPolicies, rooms = [], onClose, onSave 
     maxChildren:    roomType?.maxChildren || 0,
     depositPolicyId:roomType?.depositPolicyId || '',
     description:    roomType?.description || '',
+    videoUrl:       roomType?.videoUrl || '',
   })
 
   const typeRooms = isEdit ? rooms.filter(r => r.roomTypeId === roomType.id) : []
@@ -97,10 +98,65 @@ function RoomTypeModal({ roomType, depositPolicies, rooms = [], onClose, onSave 
   const [images, setImages] = useState(repRoom?.images || [])
   const [pendingFiles, setPendingFiles] = useState([])
   const [uploading, setUploading] = useState(false)
+  const [videoUploading, setVideoUploading] = useState(false)
+  const [pendingVideoFile, setPendingVideoFile] = useState(null)
   const [error, setSaving] = useState('')
   const [saving, setSavingState] = useState(false)
   const fileRef = useRef()
+  const videoFileRef = useRef()
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
+
+  const handleVideoFileChange = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (!isEdit || !roomType?.id) {
+      setPendingVideoFile(file)
+      setForm(f => ({ ...f, videoUrl: URL.createObjectURL(file) }))
+      return
+    }
+    setVideoUploading(true)
+    setSaving('')
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      const res = await fetch(`${API}/types/${roomType.id}/video`, {
+        method: 'POST',
+        headers: authHeaders(true),
+        body: formData,
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.message || 'Lỗi tải video preview')
+      setForm(f => ({ ...f, videoUrl: data.videoUrl || '' }))
+    } catch (err) {
+      setSaving(err.message)
+    } finally {
+      setVideoUploading(false)
+      if (videoFileRef.current) videoFileRef.current.value = ''
+    }
+  }
+
+  const handleDeleteVideo = async () => {
+    if (!isEdit || !roomType?.id) {
+      setPendingVideoFile(null)
+      setForm(f => ({ ...f, videoUrl: '' }))
+      return
+    }
+    setVideoUploading(true)
+    setSaving('')
+    try {
+      const res = await fetch(`${API}/types/${roomType.id}/video`, {
+        method: 'DELETE',
+        headers: authHeaders(),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.message || 'Lỗi xoá video')
+      setForm(f => ({ ...f, videoUrl: '' }))
+    } catch (err) {
+      setSaving(err.message)
+    } finally {
+      setVideoUploading(false)
+    }
+  }
 
   const processFiles = async (files) => {
     const fileList = Array.from(files).filter(f => f.type.startsWith('image/'))
@@ -208,10 +264,27 @@ function RoomTypeModal({ roomType, depositPolicies, rooms = [], onClose, onSave 
           maxAdults:  Number(form.maxAdults),
           maxChildren:Number(form.maxChildren),
           depositPolicyId: form.depositPolicyId ? Number(form.depositPolicyId) : null,
+          videoUrl: form.videoUrl?.startsWith('blob:') ? null : (form.videoUrl?.trim() || null),
         }),
       })
       let data = await res.json()
       if (!res.ok) throw new Error(data.message || 'Lỗi')
+
+      if (pendingVideoFile && data.id) {
+        try {
+          const videoFormData = new FormData()
+          videoFormData.append('file', pendingVideoFile)
+          const videoRes = await fetch(`${API}/types/${data.id}/video`, {
+            method: 'POST',
+            headers: authHeaders(true),
+            body: videoFormData,
+          })
+          const updatedWithVideo = await videoRes.json()
+          if (videoRes.ok) data = updatedWithVideo
+        } catch {
+          // ignore video upload error to avoid blocking room type creation
+        }
+      }
 
       if (pendingFiles.length > 0) {
         let targetRoomId = repRoom?.id
@@ -316,6 +389,65 @@ function RoomTypeModal({ roomType, depositPolicies, rooms = [], onClose, onSave 
               <p style={{ fontSize: 13, color: '#15573a', margin: '4px 0 0', fontWeight: 600 }}>
                 ✓ Đã chọn {pendingFiles.length} file ảnh (sẽ được tự động tải lên sau khi lưu loại phòng)
               </p>
+            )}
+          </div>
+
+          <div className="arm-field" style={{ marginTop: '14px', padding: '14px', background: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+              <span style={{ fontWeight: 600, fontSize: '13px', color: '#1e293b', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ fontSize: '16px' }}>🎬</span> Video preview phòng (Phát khi hold ở ngoài & xem ở chi tiết)
+              </span>
+              {form.videoUrl && (
+                <button
+                  type="button"
+                  onClick={handleDeleteVideo}
+                  disabled={videoUploading}
+                  style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: 600 }}
+                >
+                  ✕ Xoá video preview
+                </button>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <input
+                ref={videoFileRef}
+                type="file"
+                accept="video/mp4,video/webm,video/quicktime,video/ogg"
+                onChange={handleVideoFileChange}
+                style={{ display: 'none' }}
+                id="room-video-upload-input"
+              />
+              <label
+                htmlFor="room-video-upload-input"
+                className="arm-btn arm-btn--ghost"
+                style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '7px 14px', fontSize: '13px', border: '1px solid #cbd5e1', background: '#fff' }}
+              >
+                📁 {videoUploading ? 'Đang xử lý video...' : 'Tải lên tệp video (.mp4, .webm)'}
+              </label>
+              <input
+                type="text"
+                placeholder="Hoặc dán URL video preview (/uploads/... hoặc https://...)"
+                value={form.videoUrl || ''}
+                onChange={e => set('videoUrl', e.target.value)}
+                style={{ flex: 1, minWidth: '220px', padding: '7px 12px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '13px', background: '#fff' }}
+              />
+            </div>
+
+            {form.videoUrl && (
+              <div style={{ marginTop: '10px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #cbd5e1', background: '#020617', maxWidth: '380px' }}>
+                <video
+                  src={form.videoUrl.startsWith('blob:') ? form.videoUrl : resolveImageUrl(form.videoUrl)}
+                  controls
+                  playsInline
+                  muted
+                  style={{ width: '100%', maxHeight: '200px', display: 'block', objectFit: 'cover' }}
+                />
+                <div style={{ padding: '6px 10px', fontSize: '11px', color: '#94a3b8', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#0f172a' }}>
+                  <span>✓ Sẵn sàng phát preview</span>
+                  <span>{form.videoUrl.startsWith('blob:') ? 'Chờ lưu để đẩy file' : 'Đã gắn vào loại phòng'}</span>
+                </div>
+              </div>
             )}
           </div>
 

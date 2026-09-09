@@ -691,6 +691,7 @@ function RoomDetailPage({ roomId }) {
   const [toDate, setToDate] = useState(initialCheckOutDate || formatDateInput(addDays(today, 14)))
   const [room, setRoom] = useState(null)
   const [selectedImage, setSelectedImage] = useState('')
+  const [isVideoSelected, setIsVideoSelected] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [bookingModalOpen, setBookingModalOpen] = useState(false)
@@ -827,20 +828,65 @@ function RoomDetailPage({ roomId }) {
 
             <section className="room-detail-layout">
               <aside className="room-detail-media-panel" aria-label="Ảnh phòng">
-                <div className="room-detail-main-photo">
-                  {selectedImage ? (
+                <div className="room-detail-main-photo" style={{ position: 'relative', overflow: 'hidden', background: '#020617' }}>
+                  {isVideoSelected && room?.videoUrl ? (
+                    <video
+                      src={resolveImageUrl(room.videoUrl)}
+                      controls
+                      autoPlay
+                      playsInline
+                      className="room-detail-video-player"
+                      style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                    />
+                  ) : selectedImage ? (
                     <img src={resolveImageUrl(selectedImage)} alt={houseTypeName(room, 'Loại phòng')} />
                   ) : (
                     <div>Home Stays</div>
                   )}
                 </div>
                 <div className="room-detail-thumbs">
+                  {room?.videoUrl && (
+                    <button
+                      type="button"
+                      className={`room-thumb-video-btn${isVideoSelected ? ' room-thumb-active' : ''}`}
+                      onClick={() => setIsVideoSelected(true)}
+                      title="Xem video preview phòng"
+                      style={{ position: 'relative', overflow: 'hidden', cursor: 'pointer' }}
+                    >
+                      <img
+                        src={resolveImageUrl(room.primaryImageUrl || imageUrls[0])}
+                        alt="Video preview"
+                        style={{ filter: 'brightness(0.65)' }}
+                      />
+                      <span
+                        style={{
+                          position: 'absolute',
+                          inset: 0,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: '#ffffff',
+                          fontWeight: 700,
+                          fontSize: '11px',
+                          textShadow: '0 2px 4px rgba(0,0,0,0.8)',
+                          background: isVideoSelected ? 'rgba(225, 29, 72, 0.45)' : 'rgba(0,0,0,0.25)',
+                        }}
+                      >
+                        <span style={{ fontSize: '18px', lineHeight: 1 }}>▶</span>
+                        <span style={{ fontSize: '10px', marginTop: 2 }}>Video</span>
+                      </span>
+                    </button>
+                  )}
                   {imageUrls.slice(0, 6).map((url) => (
                     <button
                       key={url}
                       type="button"
-                      className={selectedImage === url ? 'room-thumb-active' : ''}
-                      onClick={() => setSelectedImage(url)}
+                      className={!isVideoSelected && selectedImage === url ? 'room-thumb-active' : ''}
+                      onClick={() => {
+                        setIsVideoSelected(false)
+                        setSelectedImage(url)
+                      }}
                     >
                       <img src={resolveImageUrl(url)} alt="Ảnh phòng" />
                     </button>

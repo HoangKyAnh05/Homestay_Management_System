@@ -41,5 +41,8 @@ public class RoomType {
     @Builder.Default
     @Column(name = "total_reviews")
     private Integer totalReviews = 0;
+
+    @Column(name = "video_url", length = 500)
+    private String videoUrl;
 }
 

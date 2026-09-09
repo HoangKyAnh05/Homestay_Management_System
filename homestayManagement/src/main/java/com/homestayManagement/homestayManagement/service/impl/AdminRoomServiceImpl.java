@@ -37,7 +37,9 @@ import java.util.UUID;
 public class AdminRoomServiceImpl implements AdminRoomService {
 
     private static final Path UPLOAD_DIR = Paths.get("uploads");
-    private static final Set<String> ALLOWED_TYPES = Set.of("image/jpeg", "image/png", "image/webp");
+    private static final Set<String> ALLOWED_IMAGE_TYPES = Set.of("image/jpeg", "image/png", "image/webp");
+    private static final Set<String> ALLOWED_VIDEO_TYPES = Set.of("video/mp4", "video/webm", "video/quicktime", "video/ogg");
+    private static final Set<String> ALLOWED_TYPES = Set.of("image/jpeg", "image/png", "image/webp", "video/mp4", "video/webm", "video/quicktime", "video/ogg");
     private static final Set<String> ALLOWED_STATUSES = Set.of("AVAILABLE", "OCCUPIED", "CLEANING", "MAINTENANCE");
     private static final Set<String> ALLOWED_DEPOSIT_TYPES = Set.of("PERCENTAGE", "FIXED_AMOUNT");
 
@@ -134,6 +136,7 @@ public class AdminRoomServiceImpl implements AdminRoomService {
                 .maxChildren(request.maxChildren())
                 .depositPolicy(getOptionalDepositPolicy(request.depositPolicyId()))
                 .description(request.description())
+                .videoUrl(request.videoUrl())
                 .build();
         return toRoomTypeResponse(roomTypeRepository.save(roomType));
     }
@@ -147,6 +150,9 @@ public class AdminRoomServiceImpl implements AdminRoomService {
         roomType.setMaxChildren(request.maxChildren());
         roomType.setDepositPolicy(getOptionalDepositPolicy(request.depositPolicyId()));
         roomType.setDescription(request.description());
+        if (request.videoUrl() != null) {
+            roomType.setVideoUrl(request.videoUrl().isBlank() ? null : request.videoUrl().trim());
+        }
         return toRoomTypeResponse(roomTypeRepository.save(roomType));
     }
 
@@ -160,7 +166,47 @@ public class AdminRoomServiceImpl implements AdminRoomService {
         roomPriceConfigRepository.deleteByRoomTypeId(id);
         housekeepingChecklistTemplateRepository.findByRoomTypeIdAndRoomIsNull(id)
                 .ifPresent(housekeepingChecklistTemplateRepository::delete);
+        RoomType roomType = getRoomTypeById(id);
+        if (roomType.getVideoUrl() != null) {
+            deleteFile(roomType.getVideoUrl());
+        }
         roomTypeRepository.deleteById(id);
+    }
+
+    @Override
+    @Transactional
+    public AdminRoomTypeResponse uploadRoomTypeVideo(Long typeId, MultipartFile file) {
+        RoomType roomType = getRoomTypeById(typeId);
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("Vui lòng chọn tệp video");
+        }
+        String contentType = file.getContentType();
+        String origName = file.getOriginalFilename();
+        boolean isAllowedVideo = (contentType != null && ALLOWED_VIDEO_TYPES.contains(contentType.toLowerCase()))
+                || (origName != null && (origName.toLowerCase().endsWith(".mp4")
+                || origName.toLowerCase().endsWith(".webm")
+                || origName.toLowerCase().endsWith(".mov")));
+        if (!isAllowedVideo) {
+            throw new IllegalArgumentException("Chỉ hỗ trợ tệp video định dạng MP4, WebM, MOV");
+        }
+        if (roomType.getVideoUrl() != null) {
+            deleteFile(roomType.getVideoUrl());
+        }
+        String url = saveFile(file);
+        roomType.setVideoUrl(url);
+        return toRoomTypeResponse(roomTypeRepository.save(roomType));
+    }
+
+    @Override
+    @Transactional
+    public AdminRoomTypeResponse deleteRoomTypeVideo(Long typeId) {
+        RoomType roomType = getRoomTypeById(typeId);
+        if (roomType.getVideoUrl() != null) {
+            deleteFile(roomType.getVideoUrl());
+            roomType.setVideoUrl(null);
+            roomType = roomTypeRepository.save(roomType);
+        }
+        return toRoomTypeResponse(roomType);
     }
 
     // ── Images ────────────────────────────────────────────
@@ -326,7 +372,7 @@ public class AdminRoomServiceImpl implements AdminRoomService {
                 rt.getMaxAdults(), rt.getMaxChildren(),
                 policy != null ? policy.getId() : null,
                 policy != null ? policy.getPolicyName() : null,
-                rt.getDescription(), roomCount);
+                rt.getDescription(), roomCount, rt.getVideoUrl());
     }
 
     private DepositPolicyResponse toDepositPolicyResponse(DepositPolicy policy) {

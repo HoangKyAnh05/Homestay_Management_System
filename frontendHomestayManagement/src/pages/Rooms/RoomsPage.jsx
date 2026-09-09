@@ -660,19 +660,100 @@ function RoomCard({ room, selected, onToggle, criteria }) {
 
   const isAvailable = typeOnly ? (Number(room.availableRooms || 0) > 0) : (!room.status || room.status === 'AVAILABLE')
 
+  const [isVideoPlaying, setIsVideoPlaying] = useState(false)
+  const videoRef = useRef(null)
+
+  const handleStartHold = () => {
+    if (!room.videoUrl) return
+    setIsVideoPlaying(true)
+    if (videoRef.current) {
+      videoRef.current.play().catch(() => {})
+    }
+  }
+
+  const handleEndHold = () => {
+    if (!room.videoUrl) return
+    setIsVideoPlaying(false)
+    if (videoRef.current) {
+      videoRef.current.pause()
+      videoRef.current.currentTime = 0
+    }
+  }
+
   return (
     <article className={`public-room-card${selected ? ' is-selected' : ''}${!isAvailable ? ' is-room-disabled' : ''}`}>
       <a className="public-room-card-link" href={detailUrl || window.location.href} onClick={(event) => !detailUrl && event.preventDefault()}>
-        <div className="public-room-photo">
+        <div
+          className="public-room-photo"
+          onMouseEnter={handleStartHold}
+          onMouseLeave={handleEndHold}
+          onPointerDown={handleStartHold}
+          onPointerUp={handleEndHold}
+          onTouchStart={handleStartHold}
+          onTouchEnd={handleEndHold}
+          style={{ position: 'relative', overflow: 'hidden', cursor: room.videoUrl ? 'pointer' : 'default' }}
+        >
           <img
             src={resolveImageUrl(imageUrl) || getFallbackRoomImage(title, roomTypeId)}
             alt={title}
             loading="lazy"
+            style={{ opacity: isVideoPlaying ? 0 : 1, transition: 'opacity 0.3s ease' }}
             onError={(e) => {
               e.target.onerror = null;
               e.target.src = getFallbackRoomImage(title, roomTypeId);
             }}
           />
+          {room.videoUrl && (
+            <video
+              ref={videoRef}
+              src={resolveImageUrl(room.videoUrl)}
+              muted
+              loop
+              playsInline
+              preload="metadata"
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                opacity: isVideoPlaying ? 1 : 0,
+                transition: 'opacity 0.3s ease',
+                pointerEvents: 'none',
+              }}
+            />
+          )}
+          {room.videoUrl && (
+            <span
+              className="room-video-preview-badge"
+              style={{
+                position: 'absolute',
+                bottom: 12,
+                left: 12,
+                zIndex: 3,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 5,
+                padding: '4px 9px',
+                borderRadius: 999,
+                background: isVideoPlaying ? 'rgba(225, 29, 72, 0.9)' : 'rgba(15, 23, 42, 0.75)',
+                backdropFilter: 'blur(6px)',
+                color: '#ffffff',
+                fontSize: '11px',
+                fontWeight: 600,
+                letterSpacing: '0.02em',
+                transition: 'all 0.25s ease',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
+                pointerEvents: 'none',
+              }}
+            >
+              <span style={{ display: 'inline-block', transform: isVideoPlaying ? 'scale(1.2)' : 'scale(1)', transition: 'transform 0.2s ease' }}>
+                {isVideoPlaying ? '▶' : '🎬'}
+              </span>
+              <span>{isVideoPlaying ? 'Đang phát video' : 'Hold xem video'}</span>
+            </span>
+          )}
           <span className={`public-room-badge${!isAvailable ? ' is-maintenance' : ''}`}>
             {!isAvailable
               ? '⚠️ Tạm bảo trì'

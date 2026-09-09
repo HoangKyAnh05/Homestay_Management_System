@@ -19,6 +19,7 @@ public record RoomDetailPublicResponse(
         String primaryImageUrl,
         List<String> imageUrls,
         List<RoomPublicPriceResponse> prices,
-        List<RoomBusySlotResponse> busySlots
+        List<RoomBusySlotResponse> busySlots,
+        String videoUrl
 ) {
 }

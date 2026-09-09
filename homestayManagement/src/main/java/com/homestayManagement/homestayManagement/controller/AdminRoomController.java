@@ -72,6 +72,19 @@ public class AdminRoomController {
         return ResponseEntity.noContent().build();
     }
 
+    @PostMapping(value = "/types/{id}/video", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public AdminRoomTypeResponse uploadRoomTypeVideo(
+            @PathVariable Long id,
+            @RequestParam("file") MultipartFile file
+    ) {
+        return adminRoomService.uploadRoomTypeVideo(id, file);
+    }
+
+    @DeleteMapping("/types/{id}/video")
+    public AdminRoomTypeResponse deleteRoomTypeVideo(@PathVariable Long id) {
+        return adminRoomService.deleteRoomTypeVideo(id);
+    }
+
     // ── Room CRUD ─────────────────────────────────────────
 
     @GetMapping

@@ -22,6 +22,8 @@ public interface AdminRoomService {
     AdminRoomTypeResponse createRoomType(RoomTypeRequest request);
     AdminRoomTypeResponse updateRoomType(Long id, RoomTypeRequest request);
     void deleteRoomType(Long id);
+    AdminRoomTypeResponse uploadRoomTypeVideo(Long typeId, MultipartFile file);
+    AdminRoomTypeResponse deleteRoomTypeVideo(Long typeId);
 
     // Images (per physical room)
     AdminRoomResponse addImages(Long roomId, List<MultipartFile> files, Long primaryImageId);
