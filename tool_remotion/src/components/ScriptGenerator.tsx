@@ -1,25 +1,13 @@
 import React, { useState } from 'react';
-import { VideoProject, VIETNAMESE_VOICES, Scene } from '../types/video';
-import { generateAiScript } from '../services/aiScriptService';
-import { searchWebMedia, generateAiImageUrl } from '../services/mediaService';
-import { synthesizeEdgeTTS } from '../services/edgeTtsService';
+import { VideoProject, VIETNAMESE_VOICES } from '../types/video';
 import { buildMotionScenesFromScript, splitScriptIntoSentences } from '../services/scriptToMotionEngine';
 import {
-  Sparkles,
-  Wand2,
   Mic,
-  Sliders,
-  Layers,
-  Flame,
   CheckCircle2,
   Loader2,
-  RefreshCw,
   ListPlus,
   FileText,
-  Play,
   Zap,
-  TrendingUp,
-  Cpu,
   Rocket
 } from 'lucide-react';
 
@@ -86,27 +74,17 @@ Hãy bắt đầu hành trình khám phá vị giác và văn hóa Sa Pa cùng c
 export const ScriptGenerator: React.FC<ScriptGeneratorProps> = ({
   project,
   setProject,
-  apiKeyGemini,
-  apiKeyPexels,
   isGenerating,
   setIsGenerating,
   statusText,
   setStatusText,
   onOpenBatchVocab
 }) => {
-  // Mode selection: 'paste_script' (User script -> 1-Click Video) or 'ai_topic' (AI writes script from topic)
-  const [activeTab, setActiveTab] = useState<'paste_script' | 'ai_topic'>('paste_script');
-
-  // Tab 1 State: User's Own Script
+  // Script input state
   const [userScript, setUserScript] = useState(DEFAULT_SCRIPT);
   const detectedScenesCount = splitScriptIntoSentences(userScript).length;
 
-  // Tab 2 State: AI Topic Generator
-  const [topic, setTopic] = useState(project.topic || '5 Sự thật kinh ngạc về Vũ Trụ bao la');
-  const [niche, setNiche] = useState<'science' | 'finance' | 'motivation' | 'tech'>('science');
-  const [sceneCount, setSceneCount] = useState(4);
-
-  // Common Voice
+  // Voice selector state
   const [selectedVoice, setSelectedVoice] = useState(project.voice.name || 'vi-VN-HoaiMyNeural');
 
   // =========================================================================
@@ -155,145 +133,18 @@ export const ScriptGenerator: React.FC<ScriptGeneratorProps> = ({
     }
   };
 
-  // =========================================================================
-  // TOPIC GENERATOR WORKFLOW: AI CREATES SCRIPT FROM TOPIC PROMPT
-  // =========================================================================
-  const handleGenerateFromTopic = async () => {
-    if (!topic.trim()) return;
-
-    setIsGenerating(true);
-    setStatusText('Đang tạo kịch bản & phân cảnh từ chủ đề...');
-
-    try {
-      const rawScenes = await generateAiScript({
-        topic,
-        niche,
-        sceneCount,
-        aspectRatio: project.aspectRatio,
-        language: 'vi',
-        apiKey: apiKeyGemini,
-        provider: apiKeyGemini ? 'gemini' : 'builtin'
-      });
-
-      setStatusText(`Đang tìm kiếm media & tổng hợp giọng đọc cho ${rawScenes.length} phân cảnh...`);
-
-      const fullScenes: Scene[] = [];
-      let totalAudioDuration = 0;
-
-      for (let i = 0; i < rawScenes.length; i++) {
-        const raw = rawScenes[i];
-        setStatusText(`Đang xử lý phân cảnh ${i + 1}/${rawScenes.length}: Giọng đọc & Media...`);
-
-        let audioData;
-        try {
-          audioData = await synthesizeEdgeTTS(
-            raw.narration,
-            selectedVoice,
-            project.voice.rate,
-            project.voice.pitch
-          );
-        } catch (e) {
-          console.warn('TTS fallback for scene', i, e);
-          audioData = {
-            audioUrl: '',
-            duration: 4.0,
-            words: []
-          };
-        }
-
-        let mediaUrl = '';
-        let mediaType: 'image' | 'video' = raw.mediaType;
-
-        try {
-          const mediaList = await searchWebMedia(raw.searchKeyword, project.aspectRatio);
-
-          if (mediaList && mediaList.length > 0) {
-            mediaUrl = mediaList[0].url || mediaList[0].thumbnail;
-            mediaType = mediaList[0].type || 'image';
-          } else {
-            mediaUrl = generateAiImageUrl(raw.imagePrompt || raw.searchKeyword, project.aspectRatio);
-            mediaType = 'image';
-          }
-        } catch (err) {
-          mediaUrl = generateAiImageUrl(raw.imagePrompt || raw.searchKeyword, project.aspectRatio);
-          mediaType = 'image';
-        }
-
-        totalAudioDuration += audioData.duration;
-
-        fullScenes.push({
-          id: raw.id,
-          order: raw.order,
-          narration: raw.narration,
-          searchKeyword: raw.searchKeyword,
-          imagePrompt: raw.imagePrompt,
-          mediaType,
-          mediaUrl,
-          audioUrl: audioData.audioUrl,
-          audioDuration: audioData.duration,
-          words: audioData.words,
-          transition: raw.transition,
-          kenBurns: raw.kenBurns
-        });
-      }
-
-      setProject((prev) => ({
-        ...prev,
-        title: topic,
-        topic,
-        voice: {
-          ...prev.voice,
-          name: selectedVoice
-        },
-        scenes: fullScenes,
-        totalDuration: totalAudioDuration
-      }));
-
-      setStatusText('Hoàn tất tạo video!');
-    } catch (err: any) {
-      console.error('Topic generation error:', err);
-      setStatusText(`Có lỗi xảy ra: ${err.message || err}`);
-    } finally {
-      setIsGenerating(false);
-      setTimeout(() => setStatusText(''), 3000);
-    }
-  };
-
   return (
     <div className="bg-gray-900/70 rounded-2xl p-5 border border-gray-800 glass-panel flex flex-col gap-4 shadow-xl">
-      {/* Mode Switcher Tabs */}
+      {/* Main Tabs Header */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-800 pb-3">
         <div className="flex items-center gap-2">
-          {/* Tab 1: Dán kịch bản có sẵn (Active by default) */}
-          <button
-            type="button"
-            onClick={() => setActiveTab('paste_script')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-              activeTab === 'paste_script'
-                ? 'bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white shadow-lg shadow-indigo-500/25'
-                : 'bg-gray-800/80 hover:bg-gray-800 text-gray-300 hover:text-white border border-gray-700/50'
-            }`}
-          >
+          <div className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white shadow-lg shadow-indigo-500/25">
             <Zap className="w-4 h-4 text-amber-300" />
             <span>🎬 Dán Kịch Bản (Auto 100% Motion & Ảnh)</span>
             <span className="px-1.5 py-0.2 text-[9px] font-black rounded bg-amber-400 text-black uppercase tracking-wider">
               1-Click
             </span>
-          </button>
-
-          {/* Tab 2: Tạo từ chủ đề */}
-          <button
-            type="button"
-            onClick={() => setActiveTab('ai_topic')}
-            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all ${
-              activeTab === 'ai_topic'
-                ? 'bg-indigo-600 text-white shadow-md'
-                : 'bg-gray-800/80 hover:bg-gray-800 text-gray-400 hover:text-gray-200 border border-gray-700/40'
-            }`}
-          >
-            <Sparkles className="w-3.5 h-3.5 text-purple-400" />
-            <span>Viết Kịch Bản Từ Chủ Đề</span>
-          </button>
+          </div>
         </div>
 
         {/* Voice Selector Header Compact */}
@@ -316,11 +167,6 @@ export const ScriptGenerator: React.FC<ScriptGeneratorProps> = ({
         </div>
       </div>
 
-      {/* ================================================================= */}
-      {/* TAB 1: PASTE YOUR SCRIPT (AUTO MOTION & IMAGE 1-CLICK) */}
-      {/* ================================================================= */}
-      {activeTab === 'paste_script' && (
-        <div className="flex flex-col gap-3.5">
           {/* Quick Script Presets */}
           <div className="flex flex-col gap-1.5">
             <div className="flex items-center justify-between text-xs font-semibold text-gray-300">
@@ -431,90 +277,5 @@ export const ScriptGenerator: React.FC<ScriptGeneratorProps> = ({
             </div>
           </div>
         </div>
-      )}
-
-      {/* ================================================================= */}
-      {/* TAB 2: AI TOPIC WRITER (CREATE SCRIPT FROM TOPIC PROMPT) */}
-      {/* ================================================================= */}
-      {activeTab === 'ai_topic' && (
-        <div className="flex flex-col gap-4">
-          <div className="flex flex-col gap-2">
-            <label className="text-xs font-semibold text-gray-300 flex items-center justify-between">
-              <span>Chủ đề / Ý tưởng video bạn muốn AI viết:</span>
-              <span className="text-gray-500 text-[11px]">Hỗ trợ tiếng Việt hoặc tiếng Anh</span>
-            </label>
-            <div className="relative">
-              <textarea
-                value={topic}
-                onChange={(e) => setTopic(e.target.value)}
-                rows={2}
-                className="w-full bg-gray-950/80 border border-gray-800 rounded-xl px-3.5 py-2.5 text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all resize-none"
-                placeholder="Nhập chủ đề video bạn muốn tạo (Ví dụ: 3 Bí quyết sống khỏe mỗi ngày, Sự thật về kim tự tháp Ai Cập...)"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-gray-300 flex items-center gap-1.5">
-                <Layers className="w-3.5 h-3.5 text-purple-400" />
-                <span>Chủ đề / Phong cách:</span>
-              </label>
-              <select
-                value={niche}
-                onChange={(e) => setNiche(e.target.value as any)}
-                className="bg-gray-950 border border-gray-800 rounded-xl px-3 py-2 text-xs text-gray-200 focus:outline-none focus:border-indigo-500"
-              >
-                <option value="science">🌌 Bí ẩn Vũ trụ & Khoa học</option>
-                <option value="finance">💰 Tài chính & Kinh doanh</option>
-                <option value="motivation">🔥 Động lực & Phát triển</option>
-                <option value="tech">⚡ Công nghệ & AI</option>
-              </select>
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <div className="flex items-center justify-between text-xs font-medium text-gray-300">
-                <span className="flex items-center gap-1.5">
-                  <Sliders className="w-3.5 h-3.5 text-pink-400" />
-                  <span>Số phân cảnh:</span>
-                </span>
-                <span className="font-bold text-indigo-400">{sceneCount} cảnh (~{sceneCount * 4}s)</span>
-              </div>
-              <input
-                type="range"
-                min="2"
-                max="25"
-                step="1"
-                value={sceneCount}
-                onChange={(e) => setSceneCount(parseInt(e.target.value))}
-                className="w-full accent-indigo-500 h-2 bg-gray-800 rounded-lg cursor-pointer mt-1"
-              />
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
-            <div className="text-xs text-indigo-300 flex items-center gap-2">
-              {isGenerating ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin text-indigo-400" />
-                  <span className="font-medium animate-pulse">{statusText}</span>
-                </>
-              ) : (
-                <span className="text-gray-400">AI sẽ tự viết kịch bản và dựng phân cảnh</span>
-              )}
-            </div>
-
-            <button
-              onClick={handleGenerateFromTopic}
-              disabled={isGenerating || !topic.trim()}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all transform active:scale-95"
-            >
-              <Wand2 className="w-4 h-4" />
-              <span>Viết Kịch Bản & Tạo Video</span>
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
+      );
 };

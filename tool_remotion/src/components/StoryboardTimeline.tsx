@@ -1554,74 +1554,15 @@ export const StoryboardTimeline: React.FC<StoryboardTimelineProps> = ({
         </div>
 
         {/* Toolbar công cụ phụ: Đồng bộ style tối giản tinh gọn */}
-        <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-zinc-800/80">
-          {/* Tự động chèn âm thanh hiệu ứng */}
-          <button
-            onClick={handleFullAudioVoiceoverUpload}
-            disabled={isBatchSynthesizing || isTranscribingFullAudio}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white border border-zinc-700 text-xs font-medium transition-all active:scale-95"
-            title="Tự động nhận diện lời nói & khớp chữ từ sound thoại"
-          >
-            <Mic className="w-3.5 h-3.5 text-zinc-400" />
-            <span>{isTranscribingFullAudio ? (fullAudioStatusText || 'Đang nhận diện...') : 'Tự động chèn âm thanh SFX'}</span>
-          </button>
-
-          {/* Nạp kịch bản */}
-          <button
-            onClick={onOpenBatchVocab}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white border border-zinc-700 text-xs font-medium transition-all active:scale-95"
-            title="Nạp nhiều câu thoại kịch bản cùng lúc"
-          >
-            <ListPlus className="w-3.5 h-3.5 text-zinc-400" />
-            <span>Nạp kịch bản ( . )</span>
-          </button>
-
-          {/* Chia Video Dài */}
-          {onOpenVideoSplitter && (
-            <button
-              onClick={onOpenVideoSplitter}
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 hover:text-white border border-zinc-700 text-xs font-medium transition-all active:scale-95"
-              title="Tải video dài lên & tự động chia theo 5s, 10s, 15s"
-            >
-              <Scissors className="w-3.5 h-3.5 text-rose-400" />
-              <span>✂️ Chia Video Dài</span>
-            </button>
-          )}
-
-          {/* GOM 6 HOẠT CẢNH VÀO 1 DROPDOWN DUY NHẤT */}
-          <div className="relative inline-block">
-            <select
-              onChange={(e) => {
-                const val = e.target.value;
-                if (val === 'chat') handleAddChatScene();
-                else if (val === 'orbit') handleAddOrbitScene();
-                else if (val === 'math') handleAddMathScene();
-                else if (val === 'radar') handleAddRadarScene();
-                else if (val === 'car') handleAddCarScene();
-                else if (val === 'plane') handleAddPlaneScene();
-                e.target.value = '';
-              }}
-              className="bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs font-medium focus:outline-none cursor-pointer"
-              defaultValue=""
-            >
-              <option value="" disabled>🎬 Thêm kiểu diễn hoạt cảnh ▾</option>
-              <option value="chat">💬 Bong bóng Chat TikTok</option>
-              <option value="orbit">🪐 Quỹ đạo AI xoay phát sáng</option>
-              <option value="math">📈 Lưới tọa độ đồ họa số</option>
-              <option value="radar">📡 Sóng phân tích dữ liệu</option>
-              <option value="car">🏎️ Cao tốc ánh đèn Neon</option>
-              <option value="plane">✈️ Máy bay cất cánh</option>
-            </select>
-          </div>
-
+        <div className="flex flex-wrap items-center justify-end gap-1.5 pt-2 border-t border-zinc-800/80">
           {/* Thêm phân cảnh thông thường */}
           <button
             onClick={handleAddScene}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white border border-zinc-700 text-xs font-medium transition-all active:scale-95"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition-all active:scale-95 shadow-md shadow-indigo-600/20"
             title="Thêm phân cảnh mới vào cuối kịch bản"
           >
-            <Plus className="w-3.5 h-3.5 text-zinc-400" />
-            <span>Thêm cảnh</span>
+            <Plus className="w-3.5 h-3.5 text-white" />
+            <span>+ Thêm cảnh</span>
           </button>
 
           {/* Nút tự động đổi ảnh cho các cảnh đang dùng ảnh mặc định */}
