@@ -289,12 +289,9 @@ function HomeSearch({ onSearch, isSearching = false }) {
 
     setCheckInDate(date)
     setDateError('')
-    if (checkOutDate && date < checkOutDate) {
-      setActiveDateField('checkout')
-      return
-    }
-
-    setCheckOutDate(null)
+    const nextOut = new Date(date)
+    nextOut.setDate(nextOut.getDate() + 1)
+    setCheckOutDate(nextOut)
     setActiveDateField('checkout')
   }
 

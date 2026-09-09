@@ -453,20 +453,17 @@ function overnightCheckoutValue(checkInTarget) {
 }
 
 function normalizeBookingTime(form, policy) {
-  if (!policy || !form.checkInTarget) return form
-  if (isOvernightPolicy(policy)) {
-    return {
-      ...form,
-      checkOutTarget: overnightCheckoutValue(form.checkInTarget),
-    }
-  }
+  if (!form.checkInTarget) return form
   if (isAutoCheckoutPolicy(policy)) {
     return {
       ...form,
-      checkOutTarget: addHoursToDateTimeLocal(form.checkInTarget, policy.limitHours || 1),
+      checkOutTarget: addHoursToDateTimeLocal(form.checkInTarget, policy?.limitHours || 1),
     }
   }
-  return form
+  return {
+    ...form,
+    checkOutTarget: overnightCheckoutValue(form.checkInTarget),
+  }
 }
 
 function validateBookingTime(form) {
@@ -1077,7 +1074,9 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
     dateOfBirth: currentUser?.dateOfBirth || '',
     identityDocumentNumber: '',
     checkInTarget: criteria?.checkInDate ? dateKeyToDateTimeLocal(criteria.checkInDate, 13) : defaultCheckInValue(),
-    checkOutTarget: criteria?.checkOutDate ? dateKeyToDateTimeLocal(criteria.checkOutDate, 12) : '',
+    checkOutTarget: (criteria?.checkInDate && criteria?.checkOutDate && criteria.checkOutDate > criteria.checkInDate)
+      ? dateKeyToDateTimeLocal(criteria.checkOutDate, 11)
+      : overnightCheckoutValue(criteria?.checkInDate ? dateKeyToDateTimeLocal(criteria.checkInDate, 13) : defaultCheckInValue()),
     pricePolicyId: '',
   })
   const [roomQuantities, setRoomQuantities] = useState(() => Object.fromEntries(selectedRooms.map((room) => [
@@ -1367,10 +1366,8 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
       if (isAutoCheckoutPolicy(selectedPolicy)) {
         return normalizeBookingTime(next, selectedPolicy)
       }
-      if (isOvernightPolicy(selectedPolicy)) {
-        return { ...next, checkOutTarget: overnightCheckoutValue(value) }
-      }
-      return next
+      // Tự động đổi ngày trả phòng thành 2 ngày 1 đêm sau ngày nhận phòng
+      return { ...next, checkOutTarget: overnightCheckoutValue(value) }
     })
   }
 
