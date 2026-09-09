@@ -1144,6 +1144,12 @@
   line-height: 1;
 }
 
+.room-card-meta span.is-out-of-stock {
+  background: #fee2e2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}
+
 .room-card-footer {
   margin-top: auto;
   display: flex;

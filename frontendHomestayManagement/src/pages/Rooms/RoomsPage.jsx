@@ -768,8 +768,8 @@ function RoomCard({ room, selected, onToggle, criteria }) {
           <span className={`public-room-badge${!isAvailable ? ' is-maintenance' : ''}`}>
             {isMaintenance
               ? '⚠️ Tạm bảo trì'
-              : isBooked
-              ? '🔴 Đã kín lịch'
+              : isBooked || (typeOnly && Number(room.availableRooms || 0) <= 0)
+              ? (typeOnly && Number(room.availableRooms || 0) <= 0 ? '🔴 Còn 0 phòng' : '🔴 Đã kín lịch')
               : typeOnly
               ? `Còn ${room.availableRooms || 0} phòng`
               : 'Sẵn sàng đặt'}

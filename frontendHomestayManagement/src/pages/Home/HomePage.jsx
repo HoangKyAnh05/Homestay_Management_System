@@ -350,7 +350,9 @@ function RoomCard({ room, criteria }) {
         <div className="room-card-meta">
           <span>{room.maxAdults || 0} người lớn · {room.maxChildren || 0} trẻ em</span>
           {Number.isFinite(Number(room.availableRooms)) && (
-            <span>Còn {room.availableRooms} phòng</span>
+            <span className={Number(room.availableRooms) <= 0 ? 'is-out-of-stock' : ''}>
+              {Number(room.availableRooms) <= 0 ? 'Còn 0 phòng' : `Còn ${room.availableRooms} phòng`}
+            </span>
           )}
         </div>
         <div className="room-card-footer">
