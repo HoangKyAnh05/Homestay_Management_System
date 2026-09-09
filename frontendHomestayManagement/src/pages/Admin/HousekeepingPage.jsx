@@ -101,9 +101,8 @@ function TaskDetail({ task, busy, onStart, onSubmitInspection, onCompleteCleanin
 
   const changeQuantity = (item, delta) => {
     if (inspectionDone) return
-    const minAllowed = Number(item.quantityUsed || 0)
     setQuantities(current => {
-      const next = Math.max(minAllowed, Math.min(item.quantityInStock, Number(current[item.itemId] || 0) + delta))
+      const next = Math.max(0, Math.min(item.quantityInStock, Number(current[item.itemId] || 0) + delta))
       return { ...current, [item.itemId]: next }
     })
   }
@@ -151,37 +150,40 @@ function TaskDetail({ task, busy, onStart, onSubmitInspection, onCompleteCleanin
         <div className="hk-detail__body">
           <section className="hk-section">
             <div className="hk-section-title">
-              <div><span>Kiểm tra đồ uống phòng</span><h3>Minibar tiêu thụ</h3></div>
-              {inspectionDone && <span className="hk-lock">Đã khóa kết quả</span>}
+              <div><span>Kiểm tra đồ dùng tại phòng</span><h3>Đếm đồ uống / Lon nước tiêu thụ</h3></div>
+              {inspectionDone && <span className="hk-lock">Đã gửi cho lễ tân</span>}
               <strong>{money(total)}</strong>
             </div>
 
             <div className="hk-items">
               {task.miniBarItems.length === 0 ? (
-                <div className="hk-no-items">Chưa có mặt hàng mini-bar trong danh mục.</div>
+                <div className="hk-no-items">Chưa có mặt hàng mini-bar trong danh mục phòng.</div>
               ) : task.miniBarItems.map(item => (
                 <div className="hk-item" key={item.itemId}>
                   <div className="hk-item__icon">{item.name?.charAt(0)?.toUpperCase()}</div>
                   <div className="hk-item__name">
                     <strong>{item.name}</strong>
                     <span>{money(item.unitPrice)} / sản phẩm</span>
-                    {Number(item.quantityUsed || 0) > 0 && (
-                      <small style={{ color: '#059669', display: 'block', fontWeight: 600 }}>
-                        ✓ Đã ghi nhận khách mua: {item.quantityUsed}
-                      </small>
-                    )}
+                    <small style={{ color: '#64748b', display: 'block', fontSize: '11.5px', marginTop: '2px' }}>
+                      Có sẵn trong phòng: {item.quantityInStock}
+                    </small>
                   </div>
                   <div className="hk-stepper">
                     <button
                       type="button"
-                      disabled={inspectionDone || busy || (quantities[item.itemId] || 0) <= Number(item.quantityUsed || 0)}
-                      title={Number(item.quantityUsed || 0) > 0 && (quantities[item.itemId] || 0) <= Number(item.quantityUsed || 0) ? 'Không thể giảm dưới số lượng khách đã mua' : undefined}
+                      disabled={inspectionDone || busy || (quantities[item.itemId] || 0) <= 0}
                       onClick={() => changeQuantity(item, -1)}
                     >
                       −
                     </button>
                     <b>{quantities[item.itemId] || 0}</b>
-                    <button type="button" disabled={inspectionDone || busy || quantities[item.itemId] >= item.quantityInStock} onClick={() => changeQuantity(item, 1)}>+</button>
+                    <button
+                      type="button"
+                      disabled={inspectionDone || busy || (quantities[item.itemId] || 0) >= item.quantityInStock}
+                      onClick={() => changeQuantity(item, 1)}
+                    >
+                      +
+                    </button>
                   </div>
                   <strong className="hk-item__total">{money(Number(item.unitPrice) * Number(quantities[item.itemId] || 0))}</strong>
                 </div>

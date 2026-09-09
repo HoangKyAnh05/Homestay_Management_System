@@ -50,21 +50,29 @@ public class CustomerVoucherRedeemServiceImpl implements CustomerVoucherRedeemSe
             throw new IllegalArgumentException("Vui lòng chọn gói đổi voucher");
         }
         return switch (packageId.trim().toUpperCase(Locale.ROOT)) {
+            case "PACKAGE_20K" -> new RewardPackage(
+                    "PACKAGE_20K", "Voucher Lá Đỏ 20.000đ", 5,
+                    "FIXED_AMOUNT", BigDecimal.valueOf(20_000), BigDecimal.valueOf(200_000), BigDecimal.valueOf(20_000), 30
+            );
             case "PACKAGE_50K" -> new RewardPackage(
                     "PACKAGE_50K", "Voucher Lá Đỏ 50.000đ", 10,
-                    "FIXED_AMOUNT", BigDecimal.valueOf(50_000), BigDecimal.valueOf(300_000), BigDecimal.valueOf(50_000), 30
+                    "FIXED_AMOUNT", BigDecimal.valueOf(50_000), BigDecimal.valueOf(400_000), BigDecimal.valueOf(50_000), 30
             );
             case "PACKAGE_100K" -> new RewardPackage(
                     "PACKAGE_100K", "Voucher Lá Đỏ 100.000đ", 20,
-                    "FIXED_AMOUNT", BigDecimal.valueOf(100_000), BigDecimal.valueOf(500_000), BigDecimal.valueOf(100_000), 30
+                    "FIXED_AMOUNT", BigDecimal.valueOf(100_000), BigDecimal.valueOf(800_000), BigDecimal.valueOf(100_000), 30
             );
             case "PACKAGE_10PCT" -> new RewardPackage(
                     "PACKAGE_10PCT", "Voucher Giảm 10% Tối Đa 150.000đ", 30,
-                    "PERCENTAGE", BigDecimal.valueOf(10), BigDecimal.valueOf(500_000), BigDecimal.valueOf(150_000), 30
+                    "PERCENTAGE", BigDecimal.valueOf(10), BigDecimal.valueOf(600_000), BigDecimal.valueOf(150_000), 30
             );
             case "PACKAGE_200K" -> new RewardPackage(
                     "PACKAGE_200K", "Voucher Tri Ân Lá Đỏ 200.000đ", 50,
-                    "FIXED_AMOUNT", BigDecimal.valueOf(200_000), BigDecimal.valueOf(1_000_000), BigDecimal.valueOf(200_000), 45
+                    "FIXED_AMOUNT", BigDecimal.valueOf(200_000), BigDecimal.valueOf(1_500_000), BigDecimal.valueOf(200_000), 45
+            );
+            case "PACKAGE_500K" -> new RewardPackage(
+                    "PACKAGE_500K", "Voucher VIP Lá Đỏ 500.000đ", 100,
+                    "FIXED_AMOUNT", BigDecimal.valueOf(500_000), BigDecimal.valueOf(3_000_000), BigDecimal.valueOf(500_000), 60
             );
             default -> throw new IllegalArgumentException("Gói đổi điểm không hợp lệ hoặc đã hết hạn");
         };

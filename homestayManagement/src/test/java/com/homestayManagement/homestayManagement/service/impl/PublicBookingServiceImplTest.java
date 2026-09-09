@@ -232,8 +232,8 @@ class PublicBookingServiceImplTest {
         assertEquals(BigDecimal.valueOf(7_000), response.serviceCharge());
         assertEquals(BigDecimal.valueOf(2), response.memberDiscountPercent());
         assertEquals(BigDecimal.valueOf(440), response.memberDiscountAmount());
-        assertEquals(1, response.earnedMemberPoints());
-        assertEquals(21, customer.getMemberPoints());
+        assertEquals(0, response.earnedMemberPoints());
+        assertEquals(20, customer.getMemberPoints());
         assertEquals(2, response.rooms().size());
         verify(eventPublisher, never()).publishEvent(any(PublicBookingConfirmationEmailEvent.class));
         assertEquals(100L, savedServices.get(0).getBookingDetail().getId());

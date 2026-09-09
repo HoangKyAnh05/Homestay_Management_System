@@ -34,28 +34,28 @@ public class ReviewServiceImpl implements ReviewService {
                 .orElseThrow(() -> new IllegalArgumentException("Khong tim thay thong tin khach hang"));
 
         Booking booking = bookingRepository.findById(request.getBookingId())
-                .orElseThrow(() -> new IllegalArgumentException("Khong tim thay don dat phong"));
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đơn đặt phòng"));
 
         // Check ownership
         if (!booking.getCustomer().getId().equals(customer.getId())) {
-            throw new IllegalArgumentException("Ban khong co quyen danh gia don dat phong nay");
+            throw new IllegalArgumentException("Bạn không có quyền đánh giá đơn đặt phòng này");
         }
 
         // Check booking status - must be CHECKED_OUT or COMPLETED
         String status = booking.getStatus();
         if (!"CHECKED_OUT".equalsIgnoreCase(status) && !"COMPLETED".equalsIgnoreCase(status)) {
-            throw new IllegalArgumentException("Ban chi co the danh gia sau khi hoan thanh ky nghỉ (CHECKED_OUT/COMPLETED)");
+            throw new IllegalArgumentException("Bạn chỉ có thể đánh giá sau khi hoàn thành kỳ nghỉ (CHECKED_OUT/COMPLETED)");
         }
 
         // Check if review already exists for this booking
         if (reviewRepository.existsByBooking(booking)) {
-            throw new IllegalArgumentException("Don dat phong nay da duoc danh gia truoc do");
+            throw new IllegalArgumentException("Đơn đặt phòng này đã được đánh giá trước đó");
         }
 
         // Find RoomType from BookingDetail
         List<BookingDetail> details = bookingDetailRepository.findByBookingId(booking.getId());
         if (details.isEmpty()) {
-            throw new IllegalArgumentException("Khong tim thay chi tiet phong cho don dat phong này");
+            throw new IllegalArgumentException("Không tìm thấy chi tiết phòng cho đơn đặt phòng này");
         }
         RoomType roomType = details.get(0).getRoomType();
 
@@ -84,7 +84,7 @@ public class ReviewServiceImpl implements ReviewService {
     @Transactional(readOnly = true)
     public List<ReviewResponseDto> getReviewsByRoomType(Long roomTypeId) {
         RoomType roomType = roomTypeRepository.findById(roomTypeId)
-                .orElseThrow(() -> new IllegalArgumentException("Khong tim thay loai phong"));
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy loại phòng"));
 
         List<Review> reviews = reviewRepository.findApprovedByRoomTypeOrderByCreatedAtDesc(roomType);
 
@@ -102,7 +102,7 @@ public class ReviewServiceImpl implements ReviewService {
     @Transactional(readOnly = true)
     public ReviewResponseDto getReviewByBooking(Long bookingId) {
         Booking booking = bookingRepository.findById(bookingId)
-                .orElseThrow(() -> new IllegalArgumentException("Khong tim thay don dat phong"));
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đơn đặt phòng"));
 
         Review review = reviewRepository.findByBooking(booking).orElse(null);
         if (review == null) return null;
@@ -121,11 +121,11 @@ public class ReviewServiceImpl implements ReviewService {
     @Transactional
     public ReviewResponseDto updateReviewStatus(Long reviewId, com.homestayManagement.homestayManagement.dto.UpdateReviewStatusRequestDto request) {
         Review review = reviewRepository.findById(reviewId)
-                .orElseThrow(() -> new IllegalArgumentException("Khong tim thay danh gia ID: " + reviewId));
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đánh giá ID: " + reviewId));
 
         String newStatus = request.getStatus();
         if (!"APPROVED".equalsIgnoreCase(newStatus) && !"HIDDEN".equalsIgnoreCase(newStatus) && !"PENDING".equalsIgnoreCase(newStatus)) {
-            throw new IllegalArgumentException("Trang thai danh gia khong hop le (APPROVED, HIDDEN, PENDING)");
+            throw new IllegalArgumentException("Trạng thái đánh giá không hợp lệ (APPROVED, HIDDEN, PENDING)");
         }
 
         review.setStatus(newStatus.toUpperCase());

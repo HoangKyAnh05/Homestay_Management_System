@@ -79,11 +79,11 @@ public class UserServiceImpl implements UserService {
     @Transactional
     public UserResponse updateCurrentUserAvatar(String email, MultipartFile avatar) {
         if (avatar == null || avatar.isEmpty()) {
-            throw new IllegalArgumentException("Vui long chon anh dai dien");
+            throw new IllegalArgumentException("Vui lòng chọn ảnh đại diện");
         }
 
         if (!ALLOWED_IMAGE_TYPES.contains(avatar.getContentType())) {
-            throw new IllegalArgumentException("Anh dai dien chi ho tro JPG, PNG hoac WEBP");
+            throw new IllegalArgumentException("Ảnh đại diện chỉ hỗ trợ JPG, PNG hoặc WEBP");
         }
 
         Account account = getAccountByEmail(email);
@@ -112,7 +112,7 @@ public class UserServiceImpl implements UserService {
                 employeeRepository.save(employee);
             }
         } catch (IOException exception) {
-            throw new IllegalArgumentException("Khong the luu anh dai dien");
+            throw new IllegalArgumentException("Không thể lưu ảnh đại diện");
         }
 
         return toUserResponse(account);
@@ -120,7 +120,7 @@ public class UserServiceImpl implements UserService {
 
     private Account getAccountByEmail(String email) {
         return accountRepository.findByEmail(email)
-                .orElseThrow(() -> new IllegalArgumentException("Khong tim thay nguoi dung"));
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy người dùng"));
     }
 
     private UserResponse toUserResponse(Account account) {
@@ -166,7 +166,7 @@ public class UserServiceImpl implements UserService {
 
     private void validatePhoneLength(String phone, int maxLength) {
         if (phone != null && phone.length() > maxLength) {
-            throw new IllegalArgumentException("So dien thoai toi da " + maxLength + " ky tu");
+            throw new IllegalArgumentException("Số điện thoại tối đa " + maxLength + " ký tự");
         }
     }
 

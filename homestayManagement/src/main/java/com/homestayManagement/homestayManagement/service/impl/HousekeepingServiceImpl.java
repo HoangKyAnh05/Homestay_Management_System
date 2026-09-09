@@ -417,11 +417,13 @@ public class HousekeepingServiceImpl implements HousekeepingService {
                         .penaltyAmount(BigDecimal.valueOf(50000))
                         .build());
                 allRules = new ArrayList<>(allRules);
-                allRules.add(otherRule);
+                if (otherRule != null) {
+                    allRules.add(otherRule);
+                }
             } catch (Exception ignored) {}
         } else {
             for (RulesPenalty r : allRules) {
-                if (r.getTitle() != null && (r.getTitle().equalsIgnoreCase("Khoản phạt khác") || r.getTitle().toLowerCase().contains("phạt khác"))) {
+                if (r != null && r.getTitle() != null && (r.getTitle().equalsIgnoreCase("Khoản phạt khác") || r.getTitle().toLowerCase().contains("phạt khác"))) {
                     if (r.getPenaltyAmount() == null || r.getPenaltyAmount().compareTo(BigDecimal.valueOf(50000)) != 0) {
                         r.setPenaltyAmount(BigDecimal.valueOf(50000));
                         rulesPenaltyRepository.save(r);
@@ -430,9 +432,10 @@ public class HousekeepingServiceImpl implements HousekeepingService {
             }
         }
         List<HousekeepingPenaltyItemResponse> penaltyItems = allRules.stream()
-                .sorted(Comparator.comparing(RulesPenalty::getTitle, String.CASE_INSENSITIVE_ORDER))
+                .filter(Objects::nonNull)
+                .sorted(Comparator.comparing(r -> r.getTitle() != null ? r.getTitle() : "", String.CASE_INSENSITIVE_ORDER))
                 .map(rule -> new HousekeepingPenaltyItemResponse(
-                        rule.getId(), rule.getTitle(), rule.getPenaltyAmount(), selectedPenaltyIds.contains(rule.getId())
+                        rule.getId(), rule.getTitle(), rule.getPenaltyAmount(), rule.getId() != null && selectedPenaltyIds.contains(rule.getId())
                 ))
                 .toList();
         BigDecimal totalPenaltyCharge = penaltyItems.stream()

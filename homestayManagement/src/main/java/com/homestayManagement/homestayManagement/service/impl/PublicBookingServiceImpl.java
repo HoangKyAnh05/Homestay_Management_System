@@ -241,7 +241,7 @@ public class PublicBookingServiceImpl implements PublicBookingService {
 
         Account account = findAuthenticatedCustomerAccount(authenticatedEmail);
         if (account == null && (request.email() == null || request.email().isBlank())) {
-            throw new IllegalArgumentException("Vui long nhap email de nhan xac nhan dat phong");
+            throw new IllegalArgumentException("Vui lòng nhập email để nhận xác nhận đặt phòng");
         }
         Customer customer = findBookingCustomer(account, request);
         updateCustomer(customer, request);
@@ -512,7 +512,7 @@ public class PublicBookingServiceImpl implements PublicBookingService {
                     null
             ));
         }
-        throw new IllegalArgumentException("Vui long chon it nhat mot loai phong");
+        throw new IllegalArgumentException("Vui lòng chọn ít nhất một loại phòng");
     }
 
     private Long resolveRoomTypeId(PublicBookingRoomRequest selectedRoom) {
@@ -522,9 +522,9 @@ public class PublicBookingServiceImpl implements PublicBookingService {
         if (selectedRoom.roomId() != null) {
             return roomRepository.findById(selectedRoom.roomId())
                     .map(room -> room.getRoomType().getId())
-                    .orElseThrow(() -> new IllegalArgumentException("Khong tim thay phong da chon"));
+                    .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy phòng đã chọn"));
         }
-        throw new IllegalArgumentException("Vui long chon loai phong");
+        throw new IllegalArgumentException("Vui lòng chọn loại phòng");
     }
 
     private int quantityOf(PublicBookingRoomRequest selectedRoom) {
@@ -668,11 +668,21 @@ public class PublicBookingServiceImpl implements PublicBookingService {
     }
 
     private int calculateEarnedMemberPoints(BigDecimal totalAmount) {
-        if (totalAmount == null || totalAmount.compareTo(BigDecimal.ZERO) <= 0) {
+        if (totalAmount == null || totalAmount.compareTo(BigDecimal.valueOf(400_000)) < 0) {
             return 0;
         }
-        int points = totalAmount.divide(BigDecimal.valueOf(1_000_000), 0, RoundingMode.DOWN).intValue();
-        return Math.max(1, points);
+        long amount = totalAmount.longValue();
+        if (amount < 800_000) {
+            return 5;
+        } else if (amount < 1_500_000) {
+            return 12;
+        } else if (amount < 3_000_000) {
+            return 25;
+        } else if (amount < 5_000_000) {
+            return 50;
+        } else {
+            return 100;
+        }
     }
 
     private void addMemberPoints(Customer customer, int earnedMemberPoints) {
@@ -902,25 +912,25 @@ public class PublicBookingServiceImpl implements PublicBookingService {
             return VoucherDiscount.empty();
         }
         Voucher voucher = voucherRepository.findByCodeIgnoreCase(voucherCode.trim())
-                .orElseThrow(() -> new IllegalArgumentException("Ma voucher khong ton tai"));
+                .orElseThrow(() -> new IllegalArgumentException("Mã voucher không tồn tại"));
         LocalDateTime now = LocalDateTime.now();
         if (voucher.getStartDate() != null && voucher.getStartDate().isAfter(now)) {
-            throw new IllegalArgumentException("Voucher chua den thoi gian ap dung");
+            throw new IllegalArgumentException("Voucher chưa đến thời gian áp dụng");
         }
         if (voucher.getEndDate() != null && voucher.getEndDate().isBefore(now)) {
-            throw new IllegalArgumentException("Voucher da het han");
+            throw new IllegalArgumentException("Voucher đã hết hạn");
         }
         int used = voucher.getUsedCount() == null ? 0 : voucher.getUsedCount();
         if (voucher.getUsageLimit() != null && used >= voucher.getUsageLimit()) {
-            throw new IllegalArgumentException("Voucher da het luot su dung");
+            throw new IllegalArgumentException("Voucher đã hết lượt sử dụng");
         }
         BigDecimal minOrderValue = zero(voucher.getMinOrderValue());
         if (roomChargeBeforeDiscount.compareTo(minOrderValue) < 0) {
-            throw new IllegalArgumentException("Tong tien phong chua dat dieu kien voucher");
+            throw new IllegalArgumentException("Tổng tiền phòng chưa đạt điều kiện voucher");
         }
         BigDecimal discountAmount = calculateVoucherAmount(voucher, roomChargeBeforeDiscount);
         if (discountAmount.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("Voucher khong co gia tri giam hop le");
+            throw new IllegalArgumentException("Voucher không có giá trị giảm hợp lệ");
         }
         return new VoucherDiscount(
                 voucher,

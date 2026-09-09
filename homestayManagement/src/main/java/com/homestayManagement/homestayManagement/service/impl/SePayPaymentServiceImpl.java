@@ -114,7 +114,7 @@ public class SePayPaymentServiceImpl implements SePayPaymentService {
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public SePayPaymentResponse createPublicBookingPayment(Long bookingId, String email) {
         if (email == null || email.isBlank()) {
-            throw new IllegalArgumentException("Vui long nhap email dat phong");
+            throw new IllegalArgumentException("Vui lòng nhập email đặt phòng");
         }
         return createBookingPayment(bookingId, email.trim());
     }
@@ -312,11 +312,11 @@ public class SePayPaymentServiceImpl implements SePayPaymentService {
 
     private void ensureBookingEmailMatches(Booking booking, String email) {
         if (email == null || email.isBlank()) {
-            throw new IllegalArgumentException("Vui long nhap email dat phong");
+            throw new IllegalArgumentException("Vui lòng nhập email đặt phòng");
         }
         String ownerEmail = bookingEmail(booking);
         if (ownerEmail == null || !email.trim().equalsIgnoreCase(ownerEmail)) {
-            throw new IllegalArgumentException("Email khong khop voi booking nay");
+            throw new IllegalArgumentException("Email không khớp với booking này");
         }
     }
 

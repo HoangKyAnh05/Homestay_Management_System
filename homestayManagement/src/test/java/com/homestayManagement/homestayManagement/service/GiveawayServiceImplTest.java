@@ -127,7 +127,7 @@ class GiveawayServiceImplTest {
 
         when(giveawayLeadRepository.findBySpinToken(token)).thenReturn(Optional.of(lead));
         when(giveawayLeadRepository.save(any(GiveawayLead.class))).thenAnswer(inv -> inv.getArgument(0));
-        when(voucherRepository.save(any(Voucher.class))).thenAnswer(inv -> inv.getArgument(0));
+        org.mockito.Mockito.lenient().when(voucherRepository.save(any(Voucher.class))).thenAnswer(inv -> inv.getArgument(0));
 
         GiveawaySpinResponse response = giveawayService.spin(new GiveawaySpinRequest(token));
 

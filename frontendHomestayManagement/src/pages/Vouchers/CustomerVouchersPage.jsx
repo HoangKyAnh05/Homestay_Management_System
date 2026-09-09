@@ -30,20 +30,30 @@ function authHeaders() {
 
 const REWARD_PACKAGES = [
   {
+    id: 'PACKAGE_20K',
+    title: 'Voucher Lá Đỏ 20.000đ',
+    points: 5,
+    discountDisplay: '20.000đ',
+    desc: 'Áp dụng cho đơn đặt phòng từ 200.000đ. Hạn dùng 30 ngày.',
+    badge: 'Cần 5 Điểm',
+    icon: '☕',
+  },
+  {
     id: 'PACKAGE_50K',
     title: 'Voucher Lá Đỏ 50.000đ',
     points: 10,
     discountDisplay: '50.000đ',
-    desc: 'Áp dụng cho đơn đặt phòng từ 300.000đ. Hạn dùng 30 ngày.',
+    desc: 'Áp dụng cho đơn đặt phòng từ 400.000đ. Hạn dùng 30 ngày.',
     badge: 'Cần 10 Điểm',
-    icon: '☕',
+    icon: '🎫',
+    popular: true,
   },
   {
     id: 'PACKAGE_100K',
     title: 'Voucher Lá Đỏ 100.000đ',
     points: 20,
     discountDisplay: '100.000đ',
-    desc: 'Áp dụng cho đơn đặt phòng từ 500.000đ. Hạn dùng 30 ngày.',
+    desc: 'Áp dụng cho đơn đặt phòng từ 800.000đ. Hạn dùng 30 ngày.',
     badge: 'Cần 20 Điểm',
     icon: '🏷️',
     popular: true,
@@ -53,7 +63,7 @@ const REWARD_PACKAGES = [
     title: 'Voucher Giảm 10% Tối Đa 150K',
     points: 30,
     discountDisplay: 'Giảm 10%',
-    desc: 'Áp dụng cho đơn đặt phòng từ 500.000đ. Tối đa 150.000đ.',
+    desc: 'Áp dụng cho đơn đặt phòng từ 600.000đ. Tối đa 150.000đ. Hạn dùng 30 ngày.',
     badge: 'Cần 30 Điểm',
     icon: '✨',
   },
@@ -62,8 +72,17 @@ const REWARD_PACKAGES = [
     title: 'Voucher Tri Ân 200.000đ',
     points: 50,
     discountDisplay: '200.000đ',
-    desc: 'Áp dụng cho đơn đặt phòng từ 1.000.000đ. Hạn dùng 45 ngày.',
+    desc: 'Áp dụng cho đơn đặt phòng từ 1.500.000đ. Hạn dùng 45 ngày.',
     badge: 'Cần 50 Điểm',
+    icon: '💎',
+  },
+  {
+    id: 'PACKAGE_500K',
+    title: 'Voucher VIP Lá Đỏ 500.000đ',
+    points: 100,
+    discountDisplay: '500.000đ',
+    desc: 'Áp dụng cho đơn đặt phòng từ 3.000.000đ. Hạn dùng 60 ngày.',
+    badge: 'Cần 100 Điểm',
     icon: '👑',
   },
 ]
@@ -425,6 +444,49 @@ function getUsedVouchers() {
               <div>
                 <h3>Đổi Điểm Thưởng Lấy Mã Giảm Giá Độc Quyền</h3>
                 <p>Bạn đang có: <strong style={{ color: '#166534', fontSize: '1.1rem' }}>{currentPoints} điểm</strong>. Chọn gói ưu đãi bạn muốn quy đổi:</p>
+              </div>
+            </div>
+
+            {/* Bảng quy tắc cộng điểm theo hóa đơn */}
+            <div style={{
+              background: 'linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)',
+              border: '1px solid #bbf7d0',
+              borderRadius: '12px',
+              padding: '16px 20px',
+              marginBottom: '24px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '10px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 700, color: '#166534', fontSize: '14.5px' }}>
+                <span>🎯 Quy tắc tích lũy điểm thưởng khi đặt phòng:</span>
+              </div>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+                gap: '10px',
+                fontSize: '13px'
+              }}>
+                <div style={{ background: '#ffffff', padding: '8px 12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                  <div style={{ color: '#64748b' }}>Đơn 400K - 799K</div>
+                  <strong style={{ color: '#166534', fontSize: '14px' }}>+5 điểm thưởng</strong>
+                </div>
+                <div style={{ background: '#ffffff', padding: '8px 12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                  <div style={{ color: '#64748b' }}>Đơn 800K - 1.49M</div>
+                  <strong style={{ color: '#166534', fontSize: '14px' }}>+12 điểm thưởng</strong>
+                </div>
+                <div style={{ background: '#ffffff', padding: '8px 12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                  <div style={{ color: '#64748b' }}>Đơn 1.5M - 2.99M</div>
+                  <strong style={{ color: '#166534', fontSize: '14px' }}>+25 điểm thưởng</strong>
+                </div>
+                <div style={{ background: '#ffffff', padding: '8px 12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                  <div style={{ color: '#64748b' }}>Đơn 3.0M - 4.99M</div>
+                  <strong style={{ color: '#166534', fontSize: '14px' }}>+50 điểm thưởng</strong>
+                </div>
+                <div style={{ background: '#ffffff', padding: '8px 12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                  <div style={{ color: '#64748b' }}>Đơn từ 5.0M trở lên</div>
+                  <strong style={{ color: '#b45309', fontSize: '14px' }}>+100 điểm thưởng 👑</strong>
+                </div>
               </div>
             </div>
 

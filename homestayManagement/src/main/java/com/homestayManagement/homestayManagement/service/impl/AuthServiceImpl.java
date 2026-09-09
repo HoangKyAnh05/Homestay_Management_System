@@ -104,7 +104,7 @@ public class AuthServiceImpl implements AuthService {
         Account account = authenticate(request);
 
         if (!isCustomer(account)) {
-            throw new IllegalArgumentException("Tai khoan nhan vien vui long dang nhap tai trang danh cho nhan vien");
+            throw new IllegalArgumentException("Tài khoản nhân viên vui lòng đăng nhập tại trang dành cho nhân viên");
         }
 
         String token = jwtService.generateToken(account);
