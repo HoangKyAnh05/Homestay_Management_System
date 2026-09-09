@@ -18,8 +18,9 @@ public class PublicVoucherController {
     }
 
     @GetMapping("/active")
-    public List<VoucherResponse> listActiveVouchers() {
-        return publicVoucherService.listActiveVouchers();
+    public List<VoucherResponse> listActiveVouchers(org.springframework.security.core.Authentication authentication) {
+        String email = authentication != null ? authentication.getName() : null;
+        return publicVoucherService.listActiveVouchers(email);
     }
 
     @GetMapping("/check/{code}")

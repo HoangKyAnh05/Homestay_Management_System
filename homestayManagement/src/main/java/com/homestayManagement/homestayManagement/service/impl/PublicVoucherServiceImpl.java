@@ -1,7 +1,11 @@
 package com.homestayManagement.homestayManagement.service.impl;
 
 import com.homestayManagement.homestayManagement.dto.response.VoucherResponse;
+import com.homestayManagement.homestayManagement.entity.Account;
+import com.homestayManagement.homestayManagement.entity.Customer;
 import com.homestayManagement.homestayManagement.entity.Voucher;
+import com.homestayManagement.homestayManagement.repository.AccountRepository;
+import com.homestayManagement.homestayManagement.repository.CustomerRepository;
 import com.homestayManagement.homestayManagement.repository.VoucherRepository;
 import com.homestayManagement.homestayManagement.service.PublicVoucherService;
 import org.springframework.stereotype.Service;
@@ -12,16 +16,45 @@ import java.util.List;
 @Service
 public class PublicVoucherServiceImpl implements PublicVoucherService {
     private final VoucherRepository voucherRepository;
+    private final AccountRepository accountRepository;
+    private final CustomerRepository customerRepository;
 
-    public PublicVoucherServiceImpl(VoucherRepository voucherRepository) {
+    public PublicVoucherServiceImpl(VoucherRepository voucherRepository,
+                                    AccountRepository accountRepository,
+                                    CustomerRepository customerRepository) {
         this.voucherRepository = voucherRepository;
+        this.accountRepository = accountRepository;
+        this.customerRepository = customerRepository;
     }
 
     @Override
     public List<VoucherResponse> listActiveVouchers() {
+        return listActiveVouchers(null);
+    }
+
+    @Override
+    public List<VoucherResponse> listActiveVouchers(String userEmail) {
         LocalDateTime now = LocalDateTime.now();
+        Long currentCustomerId = null;
+        if (userEmail != null && !userEmail.isBlank()) {
+            Account account = accountRepository.findByEmail(userEmail).orElse(null);
+            if (account != null) {
+                Customer customer = customerRepository.findByAccountId(account.getId()).orElse(null);
+                if (customer != null) {
+                    currentCustomerId = customer.getId();
+                }
+            }
+        }
+
+        final Long customerId = currentCustomerId;
         return voucherRepository.findAllByOrderByEndDateAscIdDesc().stream()
                 .filter(voucher -> isActive(voucher, now))
+                .filter(voucher -> {
+                    if (voucher.getCustomer() == null) {
+                        return true;
+                    }
+                    return customerId != null && voucher.getCustomer().getId().equals(customerId);
+                })
                 .map(this::toResponse)
                 .toList();
     }

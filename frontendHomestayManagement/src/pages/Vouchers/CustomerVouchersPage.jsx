@@ -137,7 +137,7 @@ export default function CustomerVouchersPage() {
     setLoading(true)
     setError('')
     try {
-      const res = await fetch(`${API_BASE_URL}/vouchers/active`)
+      const res = await fetch(`${API_BASE_URL}/vouchers/active`, { headers: authHeaders() })
       if (!res.ok) throw new Error('Không thể tải danh sách voucher')
       const data = await res.json()
       setVouchers(Array.isArray(data) ? data : [])
