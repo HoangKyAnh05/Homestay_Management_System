@@ -542,16 +542,6 @@ export default function AdminIncidentsPage() {
                     </td>
                     <td>
                       <div className="action-btns">
-                        {isAdmin && item.status !== 'RESOLVED' && item.status !== 'DISMISSED' && (
-                          <button
-                            type="button"
-                            className="btn-action-resolve"
-                            onClick={() => handleQuickResolve(item)}
-                            title="Hoàn tất xử lý sự cố và mở lại phòng đón khách"
-                          >
-                            ✓ Xử lý xong
-                          </button>
-                        )}
                         <button
                           type="button"
                           className="btn-action-view"
@@ -638,16 +628,6 @@ export default function AdminIncidentsPage() {
                   >
                     {isAdmin ? (item.status === 'RESOLVED' ? '👁️ Xem chi tiết' : '⚡ Xử lý / Chi tiết') : '👁️ Xem chi tiết'}
                   </button>
-                  {isAdmin && item.status !== 'RESOLVED' && item.status !== 'DISMISSED' && (
-                    <button
-                      type="button"
-                      className="btn-action-resolve incident-card-btn-resolve"
-                      onClick={() => handleQuickResolve(item)}
-                      title="Hoàn tất xử lý sự cố"
-                    >
-                      ✓ Xử lý xong
-                    </button>
-                  )}
                   {isAdmin && (
                     <button
                       type="button"
