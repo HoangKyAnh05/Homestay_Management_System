@@ -327,7 +327,8 @@ function StepRegister({ onNext }) {
 
 // Bước 2: Nhập OTP xác minh email
 function StepVerifyEmail({ email, onSuccess }) {
-  const [otp, setOtp] = useState('')
+  const [otpValues, setOtpValues] = useState(['', '', '', '', '', ''])
+  const otp = otpValues.join('')
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [isLocked, setIsLocked] = useState(false)
@@ -348,27 +349,113 @@ function StepVerifyEmail({ email, onSuccess }) {
 
   const handleInput = (index, value) => {
     if (isLocked) return
-    if (!/^\d?$/.test(value)) return
-    const digits = otp.split('')
-    digits[index] = value
-    const newOtp = digits.join('').slice(0, 6)
-    setOtp(newOtp)
-    if (value && index < 5) inputsRef.current[index + 1]?.focus()
+    const cleaned = value.replace(/\D/g, '')
+
+    // Trường hợp xóa
+    if (!cleaned) {
+      setOtpValues((prev) => {
+        const next = [...prev]
+        next[index] = ''
+        return next
+      })
+      return
+    }
+
+    // Trường hợp nhập đè hoặc dán nhiều số
+    if (cleaned.length > 1) {
+      if (cleaned.length === 2 && otpValues[index]) {
+        // Người dùng gõ đè 1 số mới vào ô đã có số
+        const newDigit = cleaned.slice(-1)
+        setOtpValues((prev) => {
+          const next = [...prev]
+          next[index] = newDigit
+          return next
+        })
+        if (index < 5) {
+          inputsRef.current[index + 1]?.focus()
+          inputsRef.current[index + 1]?.select?.()
+        }
+        return
+      }
+
+      const digits = cleaned.slice(0, 6).split('')
+      setOtpValues((prev) => {
+        const next = [...prev]
+        digits.forEach((d, i) => {
+          if (index + i < 6) {
+            next[index + i] = d
+          }
+        })
+        return next
+      })
+      const targetIndex = Math.min(index + digits.length, 5)
+      inputsRef.current[targetIndex]?.focus()
+      inputsRef.current[targetIndex]?.select?.()
+      return
+    }
+
+    // Nhập 1 số
+    setOtpValues((prev) => {
+      const next = [...prev]
+      next[index] = cleaned
+      return next
+    })
+    if (index < 5) {
+      inputsRef.current[index + 1]?.focus()
+      inputsRef.current[index + 1]?.select?.()
+    }
   }
 
   const handleKeyDown = (index, event) => {
     if (isLocked) return
-    if (event.key === 'Backspace' && !otp[index] && index > 0) {
+    if (event.key === 'Backspace') {
+      if (!otpValues[index]) {
+        if (index > 0) {
+          setOtpValues((prev) => {
+            const next = [...prev]
+            next[index - 1] = ''
+            return next
+          })
+          inputsRef.current[index - 1]?.focus()
+        }
+      } else {
+        setOtpValues((prev) => {
+          const next = [...prev]
+          next[index] = ''
+          return next
+        })
+      }
+    } else if (event.key === 'Delete') {
+      setOtpValues((prev) => {
+        const next = [...prev]
+        next[index] = ''
+        return next
+      })
+    } else if (event.key === 'ArrowLeft' && index > 0) {
       inputsRef.current[index - 1]?.focus()
+      inputsRef.current[index - 1]?.select?.()
+    } else if (event.key === 'ArrowRight' && index < 5) {
+      inputsRef.current[index + 1]?.focus()
+      inputsRef.current[index + 1]?.select?.()
     }
   }
 
   const handlePaste = (event) => {
     if (isLocked) return
-    const pasted = event.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6)
-    setOtp(pasted)
-    inputsRef.current[Math.min(pasted.length, 5)]?.focus()
     event.preventDefault()
+    const pasted = event.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6)
+    if (!pasted) return
+    const digits = pasted.split('')
+    setOtpValues((prev) => {
+      const next = [...prev]
+      digits.forEach((d, i) => {
+        if (i < 6) next[i] = d
+      })
+      return next
+    })
+    const focusIndex = Math.min(digits.length, 5)
+    inputsRef.current[focusIndex]?.focus()
+    inputsRef.current[focusIndex]?.select?.()
   }
 
   const handleSubmit = async (event) => {
@@ -401,7 +488,7 @@ function StepVerifyEmail({ email, onSuccess }) {
       await resendVerifyEmail(email)
       setIsLocked(false)
       setSecondsLeft(OTP_SECONDS)
-      setOtp('')
+      setOtpValues(['', '', '', '', '', ''])
       setTimeout(() => inputsRef.current[0]?.focus(), 150)
     } catch (err) {
       setError(err.message)
@@ -441,10 +528,11 @@ function StepVerifyEmail({ email, onSuccess }) {
               className="otp-box"
               type="text"
               inputMode="numeric"
-              maxLength={1}
-              value={otp[i] || ''}
+              autoComplete={i === 0 ? 'one-time-code' : 'off'}
+              value={otpValues[i]}
               onChange={(e) => handleInput(i, e.target.value)}
               onKeyDown={(e) => handleKeyDown(i, e)}
+              onFocus={(e) => e.target.select()}
               aria-label={`Chữ số OTP thứ ${i + 1}`}
               disabled={isLocked || isLoading}
             />
