@@ -81,12 +81,12 @@ function rentTypeLabel(rentType) {
     OVERNIGHT: '2 ngày 1 đêm',
     NIGHTLY: '2 ngày 1 đêm',
     BY_NIGHT: '2 ngày 1 đêm',
-    DAILY: 'Theo ngày',
-    BY_DAY: 'Theo ngày',
+    DAILY: '2 ngày 1 đêm',
+    BY_DAY: '2 ngày 1 đêm',
     HOURLY: 'Theo giờ',
     COMBO: 'Combo',
   }
-  return labels[String(rentType || '').toUpperCase()] || rentType || 'Gói thuê'
+  return labels[String(rentType || '').toUpperCase()] || '2 ngày 1 đêm'
 }
 
 function dayTypeLabel(dayType) {
@@ -842,39 +842,41 @@ function RoomDetailPage({ roomId }) {
   const [isWishlisted, setIsWishlisted] = useState(false)
   const token = getStoredToken()
 
-  const roomTargetId = room?.roomTypeId || room?.roomId || room?.id || roomId
+  const targetRoomTypeId = room?.roomTypeId || room?.id || roomId
 
   useEffect(() => {
-    if (!roomTargetId) return
+    if (!targetRoomTypeId) return
     // Fetch public reviews
-    fetch(`${API_BASE_URL}/public/reviews/room-type/${roomTargetId}`)
+    fetch(`${API_BASE_URL}/public/reviews/room-type/${targetRoomTypeId}`)
       .then((res) => (res.ok ? res.json() : []))
       .then((data) => setReviews(Array.isArray(data) ? data.filter((r) => (r.status || 'APPROVED').toUpperCase() !== 'HIDDEN') : []))
       .catch(() => setReviews([]))
 
     // Check wishlist status
     if (token) {
-      fetch(`${API_BASE_URL}/customer/wishlist/check/${roomTargetId}`, {
+      fetch(`${API_BASE_URL}/customer/wishlist/check/${targetRoomTypeId}`, {
         headers: { Authorization: `Bearer ${token}` },
       })
         .then((res) => (res.ok ? res.json() : false))
-        .then(setIsWishlisted)
+        .then((resData) => setIsWishlisted(Boolean(resData)))
         .catch(() => {})
     }
-  }, [roomTargetId, token])
+  }, [targetRoomTypeId, token])
 
   const toggleWishlist = async (e) => {
     e?.preventDefault?.()
     e?.stopPropagation?.()
     if (!token) {
+      alert('Vui lòng đăng nhập để lưu loại phòng này vào danh sách yêu thích.')
       window.location.assign('/login')
       return
     }
-    if (!roomTargetId) return
+    const finalRoomTypeId = room?.roomTypeId || room?.id || targetRoomTypeId
+    if (!finalRoomTypeId) return
     const nextState = !isWishlisted
     setIsWishlisted(nextState)
     try {
-      const res = await fetch(`${API_BASE_URL}/customer/wishlist/toggle/${roomTargetId}`, {
+      const res = await fetch(`${API_BASE_URL}/customer/wishlist/toggle/${finalRoomTypeId}`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       })

@@ -115,8 +115,8 @@ function rentTypeLabel(rentType) {
     OVERNIGHT: '2 ngày 1 đêm',
     NIGHTLY: '2 ngày 1 đêm',
     BY_NIGHT: '2 ngày 1 đêm',
-    DAILY: 'ngày',
-    BY_DAY: 'ngày',
+    DAILY: '2 ngày 1 đêm',
+    BY_DAY: '2 ngày 1 đêm',
     HOURLY: 'giờ',
     COMBO: 'lượt',
   }
