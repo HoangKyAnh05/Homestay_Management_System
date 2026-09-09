@@ -1483,6 +1483,36 @@ function CheckOutModal({ bookingDetailId, onClose, onCompleted }) {
   )
 }
 
+function normalizeName(name) {
+  if (!name) return ''
+  return name
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/đ/g, 'd')
+    .replace(/[^a-z0-9]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function isNameMatch(nameA, nameB) {
+  const normA = normalizeName(nameA)
+  const normB = normalizeName(nameB)
+  if (!normA || !normB) return false
+  if (normA === normB) return true
+  // Check if words match in order or all words are contained
+  const wordsA = normA.split(' ').filter(Boolean)
+  const wordsB = normB.split(' ').filter(Boolean)
+  if (wordsA.length >= 2 && wordsB.length >= 2) {
+    const lastA = wordsA[wordsA.length - 1]
+    const lastB = wordsB[wordsB.length - 1]
+    const firstA = wordsA[0]
+    const firstB = wordsB[0]
+    if (lastA === lastB && firstA === firstB) return true
+  }
+  return normA.includes(normB) || normB.includes(normA)
+}
+
 function CheckInModal({ bookingDetailId, onClose, onCompleted }) {
   const [preparation, setPreparation] = useState(null)
   const [roomId, setRoomId] = useState('')
@@ -1494,6 +1524,7 @@ function CheckInModal({ bookingDetailId, onClose, onCompleted }) {
   const [cameraTarget, setCameraTarget] = useState(null)
   const [ocrNotice, setOcrNotice] = useState('')
   const [error, setError] = useState('')
+  const [repVerified, setRepVerified] = useState(false)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -1521,14 +1552,14 @@ function CheckInModal({ bookingDetailId, onClose, onCompleted }) {
   }, [bookingDetailId])
 
   const updateGuest = (index, field, value) => {
-    if (index === 0) return // Khách đặt phòng cố định thông tin, không cho sửa
+    if (index === 0) return // Khách đặt phòng cố định thông tin, không cho sửa thủ công
     setGuests(current => current.map((guest, guestIndex) => (
       guestIndex === index ? { ...guest, [field]: value } : guest
     )))
   }
 
   const selectIdentityImage = (index, side, file) => {
-    if (!file || index === 0) return
+    if (!file) return
     const currentImages = identityImages[index] || {}
     const nextImages = { ...currentImages, [side]: file }
     setIdentityImages(current => ({ ...current, [index]: nextImages }))
@@ -1543,13 +1574,12 @@ function CheckInModal({ bookingDetailId, onClose, onCompleted }) {
   }
 
   const openIdentityCamera = (index, side) => {
-    if (index === 0) return
     setError('')
     setCameraTarget({ index, side })
   }
 
   const scanIdentityDocument = async (index, imageFront, imageBack) => {
-    if (!imageFront || !imageBack || index === 0) return
+    if (!imageFront || !imageBack) return
     setOcrLoadingIndex(index)
     setOcrNotice('')
     setError('')
@@ -1565,28 +1595,76 @@ function CheckInModal({ bookingDetailId, onClose, onCompleted }) {
       const data = await response.json().catch(() => ({}))
       if (!response.ok) throw new Error(data.message || 'Không thể đọc thông tin căn cước')
       if (!data.identityDocumentNumber && !data.fullName) {
-        throw new Error('Ảnh tải lên không đúng nhận dạng (form CCCD) hoặc hình ảnh không rõ nét. Vui lòng kiểm tra lại ảnh chụp rõ mặt trước và mặt sau thẻ Căn cước công dân!')
+        throw new Error('Ảnh tải lên không đúng nhận dạng thẻ CCCD hoặc hình ảnh bị mờ. Vui lòng kiểm tra lại ảnh chụp rõ 2 mặt thẻ Căn cước công dân!')
       }
-      setGuests(current => current.map((guest, guestIndex) => {
-        if (guestIndex !== index || guestIndex === 0) return guest
-        return {
-          ...guest,
-          fullName: data.fullName || guest.fullName,
-          identityDocumentNumber: data.identityDocumentNumber || guest.identityDocumentNumber,
-          dateOfBirth: toIsoDateString(data.dateOfBirth) || guest.dateOfBirth,
-          gender: data.gender || guest.gender,
-          nationality: data.nationality || guest.nationality || 'VIETNAM',
-          address: data.address || guest.address,
+
+      // ── Kiểm tra tự động cho Người đại diện (Người lưu trú 1) ──
+      if (index === 0) {
+        const expectedName = preparation?.customer?.fullName || guests[0]?.fullName || ''
+        const expectedCccd = (preparation?.customerIdentityDocumentNumber || guests[0]?.identityDocumentNumber || '').replace(/\D/g, '')
+        const scannedCccd = (data.identityDocumentNumber || '').replace(/\D/g, '')
+
+        // 1. Kiểm tra Họ và tên
+        if (expectedName && data.fullName && !isNameMatch(data.fullName, expectedName)) {
+          throw new Error(
+            `⚠️ Tên trên CCCD không trùng khớp với khách đặt phòng!\n` +
+            `• Tên trên CCCD: "${data.fullName}"\n` +
+            `• Tên khách đặt phòng: "${expectedName}"\n` +
+            `Vui lòng sử dụng đúng thẻ CCCD của người đặt phòng.`
+          )
         }
-      }))
+
+        // 2. Kiểm tra Số CCCD (nếu đơn đặt phòng đã có CCCD)
+        if (expectedCccd && scannedCccd && expectedCccd !== scannedCccd) {
+          throw new Error(
+            `⚠️ Số CCCD trên ảnh không trùng khớp với thông tin đã đăng ký!\n` +
+            `• Số CCCD trên ảnh: ${scannedCccd}\n` +
+            `• Số CCCD đã đăng ký: ${expectedCccd}\n` +
+            `Vui lòng kiểm tra lại thẻ CCCD.`
+          )
+        }
+
+        // 3. Khớp thành công: Cập nhật các trường còn thiếu (ngày sinh, giới tính, địa chỉ, số CCCD nếu chưa có)
+        setGuests(current => current.map((guest, guestIndex) => {
+          if (guestIndex !== 0) return guest
+          return {
+            ...guest,
+            identityDocumentNumber: guest.identityDocumentNumber || data.identityDocumentNumber || '',
+            dateOfBirth: guest.dateOfBirth || toIsoDateString(data.dateOfBirth) || '',
+            gender: guest.gender || data.gender || '',
+            address: guest.address || data.address || '',
+            nationality: guest.nationality || data.nationality || 'VIETNAM',
+          }
+        }))
+
+        setRepVerified(true)
+        setOcrNotice(
+          `✓ Đã xác minh CCCD chính chủ trùng khớp thành công với khách đặt phòng "${expectedName}" (CCCD: ${scannedCccd || expectedCccd})!`
+        )
+      } else {
+        // ── Cập nhật cho các khách đi cùng (Người lưu trú 2, 3...) ──
+        setGuests(current => current.map((guest, guestIndex) => {
+          if (guestIndex !== index) return guest
+          return {
+            ...guest,
+            fullName: data.fullName || guest.fullName,
+            identityDocumentNumber: data.identityDocumentNumber || guest.identityDocumentNumber,
+            dateOfBirth: toIsoDateString(data.dateOfBirth) || guest.dateOfBirth,
+            gender: data.gender || guest.gender,
+            nationality: data.nationality || guest.nationality || 'VIETNAM',
+            address: data.address || guest.address,
+          }
+        }))
+        setOcrNotice(`✓ Đã đọc CCCD cho người lưu trú ${index + 1}. Vui lòng kiểm tra lại trước khi xác nhận.`)
+      }
+
       setIdentityImages(current => {
         const next = { ...current }
         delete next[index]
         return next
       })
-      setOcrNotice(`✓ Đã đọc căn cước cho người lưu trú ${index + 1}. Vui lòng kiểm tra lại trước khi xác nhận.`)
     } catch (err) {
-      setError(`⚠️ Lỗi quét CCCD: ${err.message}`)
+      setError(err.message)
     } finally {
       setOcrLoadingIndex(null)
     }
@@ -1692,66 +1770,69 @@ function CheckInModal({ bookingDetailId, onClose, onCompleted }) {
                   return (
                     <article className={`acl-guest-form ${isRepresentative ? 'acl-guest-form--rep' : ''}`} key={index}>
                       <div className="acl-guest-form-title">
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                           <strong>Người lưu trú {index + 1}</strong>
                           {isRepresentative ? (
-                            <span className="acl-rep-locked-badge">🔒 Người đại diện (Khách đặt phòng - Cố định)</span>
+                            <>
+                              <span className="acl-rep-locked-badge">🔒 Người đại diện (Khách đặt phòng - Cố định)</span>
+                              {repVerified && (
+                                <span className="acl-rep-verified-badge">✓ Đã khớp CCCD chính chủ</span>
+                              )}
+                            </>
                           ) : (
                             <span>{isUnder10 ? 'Trẻ em (<10 tuổi)' : isAdult ? 'Người lớn' : 'Trẻ em'}</span>
                           )}
                         </div>
-                        {!isRepresentative && (
-                          <div className="acl-guest-form-actions">
-                            <div className="acl-identity-side">
-                              <span>{selectedIdentityImages.front ? 'Đã có mặt trước' : 'Mặt trước'}</span>
-                              <label className={`acl-identity-scan${ocrLoadingIndex === index ? ' is-loading' : ''}`}>
-                                <input
-                                  type="file"
-                                  accept="image/*"
-                                  disabled={ocrLoadingIndex !== null}
-                                  onChange={event => {
-                                    const file = event.target.files?.[0]
-                                    event.target.value = ''
-                                    selectIdentityImage(index, 'front', file)
-                                  }}
-                                />
-                                Upload
-                              </label>
-                              <button
-                                type="button"
-                                className="acl-identity-camera-btn"
+                        <div className="acl-guest-form-actions">
+                          <div className="acl-identity-side">
+                            <span>{selectedIdentityImages.front ? 'Đã có mặt trước' : 'Mặt trước'}</span>
+                            <label className={`acl-identity-scan${ocrLoadingIndex === index ? ' is-loading' : ''}`}>
+                              <input
+                                type="file"
+                                accept="image/*"
                                 disabled={ocrLoadingIndex !== null}
-                                onClick={() => openIdentityCamera(index, 'front')}
-                              >
-                                Chụp
-                              </button>
-                            </div>
-                            <div className="acl-identity-side">
-                              <span>{selectedIdentityImages.back ? 'Đã có mặt sau' : 'Mặt sau'}</span>
-                              <label className={`acl-identity-scan${ocrLoadingIndex === index ? ' is-loading' : ''}`}>
-                                <input
-                                  type="file"
-                                  accept="image/*"
-                                  disabled={ocrLoadingIndex !== null}
-                                  onChange={event => {
-                                    const file = event.target.files?.[0]
-                                    event.target.value = ''
-                                    selectIdentityImage(index, 'back', file)
-                                  }}
-                                />
-                                Upload
-                              </label>
-                              <button
-                                type="button"
-                                className="acl-identity-camera-btn"
-                                disabled={ocrLoadingIndex !== null}
-                                onClick={() => openIdentityCamera(index, 'back')}
-                              >
-                                Chụp
-                              </button>
-                            </div>
+                                onChange={event => {
+                                  const file = event.target.files?.[0]
+                                  event.target.value = ''
+                                  selectIdentityImage(index, 'front', file)
+                                }}
+                              />
+                              Upload
+                            </label>
+                            <button
+                              type="button"
+                              className="acl-identity-camera-btn"
+                              disabled={ocrLoadingIndex !== null}
+                              onClick={() => openIdentityCamera(index, 'front')}
+                            >
+                              Chụp
+                            </button>
                           </div>
-                        )}
+                          <div className="acl-identity-side">
+                            <span>{selectedIdentityImages.back ? 'Đã có mặt sau' : 'Mặt sau'}</span>
+                            <label className={`acl-identity-scan${ocrLoadingIndex === index ? ' is-loading' : ''}`}>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                disabled={ocrLoadingIndex !== null}
+                                onChange={event => {
+                                  const file = event.target.files?.[0]
+                                  event.target.value = ''
+                                  selectIdentityImage(index, 'back', file)
+                                }}
+                              />
+                              Upload
+                            </label>
+                            <button
+                              type="button"
+                              className="acl-identity-camera-btn"
+                              disabled={ocrLoadingIndex !== null}
+                              onClick={() => openIdentityCamera(index, 'back')}
+                            >
+                              Chụp
+                            </button>
+                          </div>
+                        </div>
                       </div>
                       <div className="acl-guest-fields">
                         <label>

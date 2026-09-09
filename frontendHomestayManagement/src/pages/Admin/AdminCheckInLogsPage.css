@@ -968,6 +968,19 @@
   border: 1px solid #cbd5e1;
 }
 
+.acl-rep-verified-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #dcfce7;
+  color: #15803d;
+  font-size: 11px;
+  font-weight: 800;
+  border: 1px solid #86efac;
+}
+
 .acl-guest-fields input.acl-field-readonly,
 .acl-guest-fields select.acl-field-readonly,
 .acl-guest-fields input:read-only,
