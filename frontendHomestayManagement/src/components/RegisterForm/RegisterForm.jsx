@@ -17,12 +17,12 @@ const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
 const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};:,.<>?])[^\s]{8,64}$/
 
 // Bước 1: Form đăng ký
-function StepRegister({ onNext }) {
-  const [fullName, setFullName] = useState('')
-  const [email, setEmail] = useState('')
-  const [phone, setPhone] = useState('')
-  const [password, setPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
+function StepRegister({ onNext, initialValues = {} }) {
+  const [fullName, setFullName] = useState(initialValues.fullName || '')
+  const [email, setEmail] = useState(initialValues.email || '')
+  const [phone, setPhone] = useState(initialValues.phone || '')
+  const [password, setPassword] = useState(initialValues.password || '')
+  const [confirmPassword, setConfirmPassword] = useState(initialValues.confirmPassword || '')
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [fieldErrors, setFieldErrors] = useState({})
@@ -103,7 +103,13 @@ function StepRegister({ onNext }) {
     setIsLoading(true)
     try {
       await register(trimmedName, trimmedEmail, trimmedPhone, password)
-      onNext(trimmedEmail)
+      onNext(trimmedEmail, {
+        fullName: trimmedName,
+        email: trimmedEmail,
+        phone: trimmedPhone,
+        password,
+        confirmPassword,
+      })
     } catch (err) {
       const newFieldErrors = {}
       if (err.fieldErrors && typeof err.fieldErrors === 'object') {
@@ -326,7 +332,7 @@ function StepRegister({ onNext }) {
 }
 
 // Bước 2: Nhập OTP xác minh email
-function StepVerifyEmail({ email, onSuccess }) {
+function StepVerifyEmail({ email, onSuccess, onBack }) {
   const [otpValues, setOtpValues] = useState(['', '', '', '', '', ''])
   const otp = otpValues.join('')
   const [error, setError] = useState('')
@@ -589,7 +595,29 @@ function StepVerifyEmail({ email, onSuccess }) {
       </form>
 
       <p className="signup-text register-login-text">
-        <a href="/register">← Nhập lại thông tin đăng ký</a>
+        <button
+          type="button"
+          onClick={onBack}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: '#b87900',
+            cursor: 'pointer',
+            fontSize: '13.5px',
+            fontFamily: 'inherit',
+            fontWeight: 700,
+            padding: 0,
+            textDecoration: 'none',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '4px'
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.textDecoration = 'underline')}
+          onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
+        >
+          ← Nhập lại thông tin đăng ký
+        </button>
       </p>
     </div>
   )
@@ -597,10 +625,18 @@ function StepVerifyEmail({ email, onSuccess }) {
 
 function RegisterForm() {
   const [step, setStep] = useState(1)
-  const [email, setEmail] = useState('')
+  const [formData, setFormData] = useState({
+    fullName: '',
+    email: '',
+    phone: '',
+    password: '',
+    confirmPassword: '',
+  })
 
-  const handleRegisterNext = (submittedEmail) => {
-    setEmail(submittedEmail)
+  const handleRegisterNext = (submittedEmail, currentFormData) => {
+    if (currentFormData) {
+      setFormData(currentFormData)
+    }
     setStep(2)
   }
 
@@ -608,9 +644,22 @@ function RegisterForm() {
     window.location.assign('/home')
   }
 
-  return step === 1
-    ? <StepRegister onNext={handleRegisterNext} />
-    : <StepVerifyEmail email={email} onSuccess={handleVerifySuccess} />
+  const handleBackToRegister = () => {
+    setStep(1)
+  }
+
+  return step === 1 ? (
+    <StepRegister
+      onNext={handleRegisterNext}
+      initialValues={formData}
+    />
+  ) : (
+    <StepVerifyEmail
+      email={formData.email}
+      onSuccess={handleVerifySuccess}
+      onBack={handleBackToRegister}
+    />
+  )
 }
 
 export default RegisterForm
