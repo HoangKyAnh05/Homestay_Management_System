@@ -116,7 +116,7 @@ public class AuthServiceImpl implements AuthService {
         Account account = authenticate(request);
 
         if (isCustomer(account)) {
-            throw new IllegalArgumentException("Tai khoan khach hang khong duoc dang nhap vao he thong nhan vien");
+            throw new IllegalArgumentException("Tài khoản khách hàng không được phép đăng nhập vào hệ thống nhân viên");
         }
 
         String token = jwtService.generateToken(account);
@@ -125,10 +125,10 @@ public class AuthServiceImpl implements AuthService {
 
     private Account authenticate(LoginRequest request) {
         Account account = accountRepository.findByEmail(request.email())
-                .orElseThrow(() -> new IllegalArgumentException("Email hoac mat khau khong dung"));
+                .orElseThrow(() -> new IllegalArgumentException("Email hoặc mật khẩu không đúng"));
 
         if (!account.isActive()) {
-            throw new IllegalArgumentException("Tai khoan chua duoc xac minh hoac da bi khoa");
+            throw new IllegalArgumentException("Tài khoản chưa được xác minh hoặc đã bị khóa");
         }
 
         try {
@@ -136,7 +136,7 @@ public class AuthServiceImpl implements AuthService {
                     new UsernamePasswordAuthenticationToken(request.email(), request.password())
             );
         } catch (AuthenticationException exception) {
-            throw new IllegalArgumentException("Email hoac mat khau khong dung");
+            throw new IllegalArgumentException("Email hoặc mật khẩu không đúng");
         }
 
         return account;
@@ -150,7 +150,7 @@ public class AuthServiceImpl implements AuthService {
         }
 
         Role customerRole = roleRepository.findByName(CUSTOMER_ROLE)
-                .orElseThrow(() -> new IllegalArgumentException("Khong tim thay role mac dinh"));
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy vai trò mặc định"));
 
         Account account = Account.builder()
                 .email(request.email())
@@ -203,7 +203,7 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public void resendVerifyEmail(String email) {
         if (!accountRepository.existsByEmail(email)) {
-            throw new IllegalArgumentException("Khong tim thay tai khoan");
+            throw new IllegalArgumentException("Không tìm thấy tài khoản");
         }
         sendEmailOtp(email);
     }
@@ -298,14 +298,14 @@ public class AuthServiceImpl implements AuthService {
         GoogleTokenInfo googleUser = getGoogleUser(request);
 
         if (!Boolean.TRUE.equals(googleUser.emailVerified())) {
-            throw new IllegalArgumentException("Email Google chua duoc xac thuc");
+            throw new IllegalArgumentException("Email Google chưa được xác thực");
         }
 
         Account account = accountRepository.findByEmail(googleUser.email())
                 .orElseGet(() -> createGoogleCustomer(googleUser));
 
         if (!account.isActive()) {
-            throw new IllegalArgumentException("Tai khoan da bi khoa");
+            throw new IllegalArgumentException("Tài khoản đã bị khóa");
         }
 
         syncGoogleProfile(account, googleUser);
@@ -323,12 +323,12 @@ public class AuthServiceImpl implements AuthService {
             return verifyGoogleCredential(request.credential());
         }
 
-        throw new IllegalArgumentException("Google token khong duoc de trong");
+        throw new IllegalArgumentException("Google token không được để trống");
     }
 
     private GoogleTokenInfo verifyGoogleCredential(String credential) {
         if (googleClientId == null || googleClientId.isBlank() || googleClientId.contains("YOUR_GOOGLE_CLIENT_ID")) {
-            throw new IllegalArgumentException("Chua cau hinh Google Client ID");
+            throw new IllegalArgumentException("Chưa cấu hình Google Client ID");
         }
 
         try {
@@ -340,28 +340,28 @@ public class AuthServiceImpl implements AuthService {
             HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
 
             if (response.statusCode() != 200) {
-                throw new IllegalArgumentException("Dang nhap Google khong hop le");
+                throw new IllegalArgumentException("Đăng nhập Google không hợp lệ");
             }
 
             GoogleTokenInfo tokenInfo = objectMapper.readValue(response.body(), GoogleTokenInfo.class);
             if (!googleClientId.equals(tokenInfo.aud())) {
-                throw new IllegalArgumentException("Google Client ID khong khop");
+                throw new IllegalArgumentException("Google Client ID không khớp");
             }
 
             return tokenInfo;
         } catch (JsonProcessingException exception) {
-            throw new IllegalArgumentException("Khong doc duoc thong tin Google tra ve");
+            throw new IllegalArgumentException("Không đọc được thông tin Google trả về");
         } catch (IOException exception) {
-            throw new IllegalArgumentException("Backend khong ket noi duoc Google de xac thuc token");
+            throw new IllegalArgumentException("Hệ thống không kết nối được với Google để xác thực");
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
-            throw new IllegalArgumentException("Qua trinh xac thuc Google bi gian doan");
+            throw new IllegalArgumentException("Quá trình xác thực Google bị gián đoạn");
         }
     }
 
     private GoogleTokenInfo verifyGoogleAccessToken(String accessToken) {
         if (googleClientId == null || googleClientId.isBlank() || googleClientId.contains("YOUR_GOOGLE_CLIENT_ID")) {
-            throw new IllegalArgumentException("Chua cau hinh Google Client ID");
+            throw new IllegalArgumentException("Chưa cấu hình Google Client ID");
         }
 
         try {
@@ -373,12 +373,12 @@ public class AuthServiceImpl implements AuthService {
             HttpResponse<String> tokenInfoResponse = HTTP_CLIENT.send(tokenInfoRequest, HttpResponse.BodyHandlers.ofString());
 
             if (tokenInfoResponse.statusCode() != 200) {
-                throw new IllegalArgumentException("Dang nhap Google khong hop le");
+                throw new IllegalArgumentException("Đăng nhập Google không hợp lệ");
             }
 
             GoogleAccessTokenInfo tokenInfo = objectMapper.readValue(tokenInfoResponse.body(), GoogleAccessTokenInfo.class);
             if (!googleClientId.equals(tokenInfo.clientId())) {
-                throw new IllegalArgumentException("Google Client ID khong khop");
+                throw new IllegalArgumentException("Google Client ID không khớp");
             }
 
             HttpRequest userInfoRequest = HttpRequest.newBuilder()
@@ -389,17 +389,17 @@ public class AuthServiceImpl implements AuthService {
             HttpResponse<String> userInfoResponse = HTTP_CLIENT.send(userInfoRequest, HttpResponse.BodyHandlers.ofString());
 
             if (userInfoResponse.statusCode() != 200) {
-                throw new IllegalArgumentException("Khong the lay thong tin tai khoan Google");
+                throw new IllegalArgumentException("Không thể lấy thông tin tài khoản Google");
             }
 
             return objectMapper.readValue(userInfoResponse.body(), GoogleTokenInfo.class);
         } catch (JsonProcessingException exception) {
-            throw new IllegalArgumentException("Khong doc duoc thong tin Google tra ve");
+            throw new IllegalArgumentException("Không đọc được thông tin Google trả về");
         } catch (IOException exception) {
-            throw new IllegalArgumentException("Backend khong ket noi duoc Google de xac thuc token");
+            throw new IllegalArgumentException("Hệ thống không kết nối được với Google để xác thực");
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
-            throw new IllegalArgumentException("Qua trinh xac thuc Google bi gian doan");
+            throw new IllegalArgumentException("Quá trình xác thực Google bị gián đoạn");
         }
     }
 

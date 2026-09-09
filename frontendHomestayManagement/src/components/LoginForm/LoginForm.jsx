@@ -159,7 +159,7 @@ function LoginForm() {
   }
 
   const handleMissingGoogleClientId = () => {
-    setErrorMessage('Chua cau hinh Google Client ID trong file .env cua frontend')
+    setErrorMessage('Chưa cấu hình Google Client ID trong file .env của frontend')
   }
 
   const handleGoogleLogin = async () => {

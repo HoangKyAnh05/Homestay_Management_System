@@ -80,7 +80,7 @@ public class AuthController {
 
     @PostMapping("/logout")
     public ResponseEntity<Map<String, String>> logout() {
-        return ResponseEntity.ok(Map.of("message", "Dang xuat thanh cong"));
+        return ResponseEntity.ok(Map.of("message", "Đăng xuất thành công"));
     }
 
     @PostMapping("/forgot-password")

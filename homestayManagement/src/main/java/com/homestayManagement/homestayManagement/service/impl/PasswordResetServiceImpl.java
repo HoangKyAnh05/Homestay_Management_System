@@ -75,7 +75,7 @@ public class PasswordResetServiceImpl implements PasswordResetService {
         OtpToken token = getValidToken(request.email(), request.otp());
 
         if (token == null) {
-            throw new IllegalArgumentException("Ma OTP khong dung hoac da het han");
+            throw new IllegalArgumentException("Mã OTP không đúng hoặc đã hết hạn");
         }
     }
 
@@ -85,11 +85,11 @@ public class PasswordResetServiceImpl implements PasswordResetService {
         OtpToken token = getValidToken(request.email(), request.otp());
 
         if (token == null) {
-            throw new IllegalArgumentException("Ma OTP khong dung hoac da het han");
+            throw new IllegalArgumentException("Mã OTP không đúng hoặc đã hết hạn");
         }
 
         Account account = accountRepository.findByEmail(request.email())
-                .orElseThrow(() -> new IllegalArgumentException("Khong tim thay tai khoan"));
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy tài khoản"));
 
         account.setPassword(passwordEncoder.encode(request.newPassword()));
         accountRepository.save(account);
