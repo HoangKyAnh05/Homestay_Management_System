@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useRef } from 'react'
 import { getStoredToken, getStoredUser, logout } from '../../services/authService'
 import SePayQrPayment from '../../components/SePayQrPayment/SePayQrPayment'
+import RoomScheduleCalendarModal from '../../components/RoomScheduleCalendar/RoomScheduleCalendarModal'
 import { clearBookingCart, readBookingCart, writeBookingCart } from '../../utils/bookingCart'
 import { formatDateTime as formatAppDateTime } from '../../utils/dateTimeFormat'
 import { houseTypeName } from '../../utils/houseType'
@@ -1975,42 +1976,16 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
         </div>
 
         {viewingScheduleRoom && (
-          <div className="public-booking-overlay" style={{ zIndex: 1200 }} onClick={() => setViewingScheduleRoom(null)}>
-            <div className="public-booking-modal" style={{ maxWidth: '480px' }} onClick={(e) => e.stopPropagation()}>
-              <div className="public-booking-head">
-                <div>
-                  <h3>Lịch đặt phòng - {houseTypeName(viewingScheduleRoom.room)}</h3>
-                  <p>Các khung giờ đã có khách đặt trước trong khoảng thời gian này</p>
-                </div>
-                <button type="button" onClick={() => setViewingScheduleRoom(null)}>×</button>
-              </div>
-              <div style={{ padding: '20px', maxHeight: '350px', overflowY: 'auto' }}>
-                {viewingScheduleRoom.busySlots?.length > 0 ? (
-                  <div>
-                    <p style={{ margin: '0 0 12px 0', fontSize: 13, color: '#64748b' }}>
-                      Các khung giờ sau đã được đặt, bạn vui lòng chọn giờ nhận/trả phòng khác để không bị trùng:
-                    </p>
-                    <ul style={{ paddingLeft: 18, margin: 0, lineHeight: 1.8 }}>
-                      {viewingScheduleRoom.busySlots.map((slot, idx) => (
-                        <li key={idx} style={{ color: '#b91c1c', fontSize: 13, marginBottom: 8 }}>
-                          <strong>Từ:</strong> {formatNoticeTime(slot.checkInTarget)}<br />
-                          <strong>Đến:</strong> {formatNoticeTime(slot.checkOutTarget)}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ) : (
-                  <div style={{ textAlign: 'center', color: '#16a34a', padding: '20px 0' }}>
-                    <p style={{ fontSize: 20, margin: '0 0 6px 0' }}>✓ Phòng hoàn toàn trống</p>
-                    <p style={{ fontSize: 13, color: '#64748b', margin: 0 }}>Chưa có lượt đặt nào trong thời gian này, bạn có thể yên tâm chọn giờ!</p>
-                  </div>
-                )}
-              </div>
-              <div className="public-booking-actions" style={{ padding: '12px 20px', borderTop: '1px solid #e2e8f0' }}>
-                <button type="button" onClick={() => setViewingScheduleRoom(null)}>Đóng</button>
-              </div>
-            </div>
-          </div>
+          <RoomScheduleCalendarModal
+            room={viewingScheduleRoom.room}
+            initialBusySlots={viewingScheduleRoom.busySlots}
+            currentCheckIn={form.checkInTarget}
+            currentCheckOut={form.checkOutTarget}
+            onSelectCheckIn={(dayKey) => {
+              updateCheckInTarget(`${dayKey}T13:00`)
+            }}
+            onClose={() => setViewingScheduleRoom(null)}
+          />
         )}
       </form>
     </div>
