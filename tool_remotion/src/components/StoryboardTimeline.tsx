@@ -1560,34 +1560,65 @@ export const StoryboardTimeline: React.FC<StoryboardTimelineProps> = ({
           </button>
         </div>
 
-        {/* Toolbar công cụ phụ: Đồng bộ style tối giản tinh gọn */}
-        <div className="flex flex-wrap items-center justify-end gap-1.5 pt-2 border-t border-zinc-800/80">
-          {/* Thêm phân cảnh thông thường */}
-          <button
-            onClick={handleAddScene}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition-all active:scale-95 shadow-md shadow-indigo-600/20"
-            title="Thêm phân cảnh mới vào cuối kịch bản"
-          >
-            <Plus className="w-3.5 h-3.5 text-white" />
-            <span>+ Thêm cảnh</span>
-          </button>
+        {/* Toolbar công cụ: Đồng bộ style tối giản tinh gọn */}
+        <div className="flex flex-wrap items-center justify-between gap-1.5 pt-2 border-t border-zinc-800/80">
+          <div>
+            {workflowMode === 'split_long_video' && (
+              <div className="flex items-center gap-1.5 text-xs text-rose-300 font-bold">
+                <SparkleBadge step={2} label="Chỉnh sửa câu thoại/lồng tiếng cho các đoạn đã cắt" />
+                <span className="text-[11px]">Các phân cảnh sau khi chia:</span>
+              </div>
+            )}
+          </div>
 
-          {/* Nút tự động đổi ảnh cho các cảnh đang dùng ảnh mặc định */}
-          {project.scenes.some((sc) => !sc.mediaUrl || sc.mediaUrl.includes('photo-1451187580459-43490279c0fa')) && (
+          <div className="flex items-center gap-1.5">
+            {/* Nút Chia Video Dài */}
+            {onOpenVideoSplitter && (
+              <button
+                type="button"
+                onClick={onOpenVideoSplitter}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-sm ${
+                  workflowMode === 'split_long_video'
+                    ? 'bg-rose-600 hover:bg-rose-500 text-white shadow-md shadow-rose-600/30'
+                    : 'bg-zinc-800 hover:bg-zinc-700 text-rose-300 hover:text-white border border-rose-500/30'
+                }`}
+                title="Tải video dài lên & tự động chia 5s, 10s, 15s"
+              >
+                {workflowMode === 'split_long_video' && (
+                  <SparkleBadge step={1} label="Tải video dài & chia đoạn" />
+                )}
+                <Scissors className="w-3.5 h-3.5" />
+                <span>Chia Video Dài</span>
+              </button>
+            )}
+
+            {/* Thêm phân cảnh thông thường */}
             <button
-              onClick={handleAutoFixDefaultMedia}
-              disabled={isAutoFixingDefaultMedia}
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-amber-300 hover:text-amber-200 border border-amber-500/30 text-xs font-medium transition-all active:scale-95"
-              title="Tự động vẽ/tìm ảnh mới phù hợp với câu thoại cho các cảnh đang dùng ảnh mặc định"
+              onClick={handleAddScene}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition-all active:scale-95 shadow-md shadow-indigo-600/20"
+              title="Thêm phân cảnh mới vào cuối kịch bản"
             >
-              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-              <span>
-                {isAutoFixingDefaultMedia
-                  ? 'Đang đổi ảnh AI...'
-                  : `Đổi ảnh AI (${project.scenes.filter((sc) => !sc.mediaUrl || sc.mediaUrl.includes('photo-1451187580459-43490279c0fa')).length})`}
-              </span>
+              <Plus className="w-3.5 h-3.5 text-white" />
+              <span>+ Thêm cảnh</span>
             </button>
-          )}
+
+            {/* Nút tự động đổi ảnh cho các cảnh đang dùng ảnh mặc định */}
+            {project.scenes.some((sc) => !sc.mediaUrl || sc.mediaUrl.includes('photo-1451187580459-43490279c0fa')) && (
+              <button
+                onClick={handleAutoFixDefaultMedia}
+                disabled={isAutoFixingDefaultMedia}
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-amber-300 hover:text-amber-200 border border-amber-500/30 text-xs font-medium transition-all active:scale-95"
+                title="Tự động vẽ/tìm ảnh mới phù hợp với câu thoại cho các cảnh đang dùng ảnh mặc định"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                <span>
+                  {isAutoFixingDefaultMedia
+                    ? 'Đang đổi ảnh AI...'
+                    : `Đổi ảnh AI (${project.scenes.filter((sc) => !sc.mediaUrl || sc.mediaUrl.includes('photo-1451187580459-43490279c0fa')).length})`}
+                </span>
+              </button>
+            )}
+          </div>
         </div>
       </div>
 

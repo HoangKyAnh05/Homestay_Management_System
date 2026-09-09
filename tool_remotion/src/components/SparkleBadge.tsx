@@ -1,6 +1,6 @@
 import React from 'react';
 
-export type WorkflowMode = 'fast' | 'quality' | 'script_voice';
+export type WorkflowMode = 'fast' | 'quality' | 'script_voice' | 'split_long_video';
 
 interface SparkleBadgeProps {
   step: number | string;
