@@ -470,7 +470,7 @@ export default function CustomDateTimePicker({
                       <span className="custom-datetime-day-number">{day.dayNum}</span>
                       {!day.isOutside && (
                         <span className={`custom-datetime-day-status-badge ${busy ? 'status-busy' : 'status-available'}`}>
-                          {busy ? '🔴 Đã đặt' : '✓ Trống'}
+                          {busy ? 'Đã đặt' : 'Trống'}
                         </span>
                       )}
                     </button>
@@ -482,45 +482,54 @@ export default function CustomDateTimePicker({
             {/* Time Selector Pane (12h format matching native picker) */}
             <div className="custom-datetime-time-pane">
               {/* Hours 01-12 */}
-              <div className="custom-datetime-time-column" title="Chọn Giờ">
-                {HOURS_12.map((h) => (
-                  <button
-                    key={h}
-                    type="button"
-                    className={`custom-datetime-time-item${h === currentHour12 ? ' is-active' : ''}`}
-                    onClick={() => handleSelectHour(h)}
-                  >
-                    {h}
-                  </button>
-                ))}
+              <div className="custom-datetime-time-group">
+                <span className="custom-datetime-time-header-label">Giờ</span>
+                <div className="custom-datetime-time-column" title="Chọn Giờ">
+                  {HOURS_12.map((h) => (
+                    <button
+                      key={h}
+                      type="button"
+                      className={`custom-datetime-time-item${h === currentHour12 ? ' is-active' : ''}`}
+                      onClick={() => handleSelectHour(h)}
+                    >
+                      {h}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {/* Minutes 00, 15, 30, 45 */}
-              <div className="custom-datetime-time-column" title="Chọn Phút">
-                {MINUTES.map((m) => (
-                  <button
-                    key={m}
-                    type="button"
-                    className={`custom-datetime-time-item${m === currentMinute ? ' is-active' : ''}`}
-                    onClick={() => handleSelectMinute(m)}
-                  >
-                    {m}
-                  </button>
-                ))}
+              <div className="custom-datetime-time-group">
+                <span className="custom-datetime-time-header-label">Phút</span>
+                <div className="custom-datetime-time-column" title="Chọn Phút">
+                  {MINUTES.map((m) => (
+                    <button
+                      key={m}
+                      type="button"
+                      className={`custom-datetime-time-item${m === currentMinute ? ' is-active' : ''}`}
+                      onClick={() => handleSelectMinute(m)}
+                    >
+                      {m}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {/* AM / PM */}
-              <div className="custom-datetime-time-column" title="Buổi">
-                {PERIODS.map((p) => (
-                  <button
-                    key={p}
-                    type="button"
-                    className={`custom-datetime-time-item${p === currentPeriod ? ' is-active' : ''}`}
-                    onClick={() => handleSelectPeriod(p)}
-                  >
-                    {p}
-                  </button>
-                ))}
+              <div className="custom-datetime-time-group">
+                <span className="custom-datetime-time-header-label">Buổi</span>
+                <div className="custom-datetime-time-column" title="Buổi">
+                  {PERIODS.map((p) => (
+                    <button
+                      key={p}
+                      type="button"
+                      className={`custom-datetime-time-item${p === currentPeriod ? ' is-active' : ''}`}
+                      onClick={() => handleSelectPeriod(p)}
+                    >
+                      {p}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
