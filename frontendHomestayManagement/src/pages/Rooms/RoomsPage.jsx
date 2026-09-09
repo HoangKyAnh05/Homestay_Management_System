@@ -2100,9 +2100,6 @@ function BookingCart({ selectedRooms, requestedRooms, onRemove, onOpenBooking, c
   const validSelectedRooms = selectedRooms.filter(isRoomSelectable)
   const selectedCount = validSelectedRooms.reduce((sum, room) => sum + selectedQuantity(room), 0)
   const isEnough = selectedCount >= requestedRooms
-  const totalEstimatedPrice = validSelectedRooms.reduce((sum, room) => {
-    return sum + (roomPrice(room, criteria?.checkInDate) * selectedQuantity(room))
-  }, 0)
 
   return (
     <aside className="rooms-booking-cart" aria-label="Booking của bạn">
@@ -2110,30 +2107,54 @@ function BookingCart({ selectedRooms, requestedRooms, onRemove, onOpenBooking, c
         <div>
           <h2>Booking của bạn</h2>
           <p>
-            Đã chọn {validSelectedRooms.length} loại · {selectedCount}/{requestedRooms} loại phòng
+            Đã chọn {validSelectedRooms.length} loại · {selectedCount}/{requestedRooms} phòng
           </p>
         </div>
         <span className={isEnough ? 'is-ready' : ''}>{isEnough ? 'Đủ phòng' : 'Chưa đủ'}</span>
       </div>
       <div className="rooms-booking-cart-list">
         {validSelectedRooms.length ? validSelectedRooms.map((room) => {
-          const itemPrice = roomPrice(room, criteria?.checkInDate) * selectedQuantity(room)
+          const adults = room.maxAdults || 2
+          const children = room.maxChildren || 0
+          const bedInfo = room.bedType || room.bed || '1 giường đôi'
+          const areaInfo = room.area ? `${room.area}m²` : ''
+          const viewInfo = room.view ? room.view : ''
+
           return (
-            <div key={roomKey(room)}>
-              <span>{houseTypeName(room)} × {selectedQuantity(room)}</span>
-              {itemPrice > 0 && <strong>{formatPrice(itemPrice)}</strong>}
-              <button type="button" onClick={() => onRemove(roomKey(room))} aria-label="Bỏ loại phòng">×</button>
+            <div key={roomKey(room)} className="rooms-booking-cart-item">
+              <div className="rooms-booking-cart-item-top">
+                <strong className="rooms-booking-cart-item-title">{houseTypeName(room)}</strong>
+                <button
+                  type="button"
+                  className="rooms-booking-cart-item-remove"
+                  onClick={() => onRemove(roomKey(room))}
+                  aria-label="Bỏ loại phòng"
+                  title="Bỏ loại phòng này"
+                >
+                  ×
+                </button>
+              </div>
+
+              <div className="rooms-booking-cart-item-specs">
+                <span className="cart-spec-badge">
+                  Số lượng: <strong>{selectedQuantity(room)} phòng</strong>
+                </span>
+                <span className="cart-spec-item">
+                  👥 Tối đa {adults} người lớn{children > 0 ? ` · ${children} trẻ em` : ''}
+                </span>
+                <span className="cart-spec-item">
+                  🛏️ {bedInfo}{areaInfo ? ` · ${areaInfo}` : ''}{viewInfo ? ` · ${viewInfo}` : ''}
+                </span>
+              </div>
             </div>
           )
-        }) : <p>Chọn loại phòng từ danh sách để tạo booking.</p>}
+        }) : (
+          <p className="rooms-booking-cart-empty">Chọn loại phòng từ danh sách để tạo booking.</p>
+        )}
       </div>
-      {totalEstimatedPrice > 0 && (
-        <div className="rooms-booking-cart-total" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 14px', borderTop: '1px solid #f1f5f9', marginTop: 8 }}>
-          <span style={{ fontSize: 13, color: '#64748b', fontWeight: 500 }}>Tạm tính</span>
-          <strong style={{ fontSize: 16, color: '#0f172a', fontWeight: 700 }}>{formatPrice(totalEstimatedPrice)}</strong>
-        </div>
-      )}
-      <button type="button" disabled={!validSelectedRooms.length} onClick={onOpenBooking}>Tiếp tục đặt phòng</button>
+      <button type="button" disabled={!validSelectedRooms.length} onClick={onOpenBooking}>
+        Tiếp tục đặt phòng
+      </button>
     </aside>
   )
 }
