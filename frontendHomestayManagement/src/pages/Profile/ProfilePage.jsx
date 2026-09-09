@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   getCurrentProfile,
   getStoredUser,
@@ -58,9 +58,17 @@ function ProfilePage() {
 
   const handleChange = (event) => {
     const { name, value } = event.target
+    let sanitized = value
+    if (name === 'identityDocumentNumber') {
+      sanitized = String(value || '').replace(/\D/g, '').slice(0, 12)
+    } else if (name === 'phone') {
+      sanitized = String(value || '').replace(/\D/g, '').slice(0, 10)
+    } else if (name === 'fullName') {
+      sanitized = String(value || '').replace(/[^a-zA-ZÀ-ỹ\s]/g, '')
+    }
     setFormData((current) => ({
       ...current,
-      [name]: value,
+      [name]: sanitized,
     }))
   }
 

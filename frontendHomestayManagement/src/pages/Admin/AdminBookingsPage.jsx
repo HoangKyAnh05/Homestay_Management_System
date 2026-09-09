@@ -1349,7 +1349,25 @@ function DirectBookingModal({ onClose, onCreated }) {
     return () => controller.abort()
   }, [form.checkInTarget, form.checkOutTarget])
 
-  const updateForm = (field, value) => setForm(f => ({ ...f, [field]: value }))
+  const updateForm = (field, value) => {
+    setError('')
+    if (field === 'identityDocumentNumber') {
+      const sanitized = String(value || '').replace(/\D/g, '').slice(0, 12)
+      setForm(f => ({ ...f, [field]: sanitized }))
+      return
+    }
+    if (field === 'phone') {
+      const sanitized = String(value || '').replace(/\D/g, '').slice(0, 10)
+      setForm(f => ({ ...f, [field]: sanitized }))
+      return
+    }
+    if (field === 'fullName') {
+      const sanitized = String(value || '').replace(/[^a-zA-ZÀ-ỹ\s]/g, '')
+      setForm(f => ({ ...f, [field]: sanitized }))
+      return
+    }
+    setForm(f => ({ ...f, [field]: value }))
+  }
 
   const updateCheckIn = (value) => {
     setForm(f => ({
@@ -1468,9 +1486,19 @@ function DirectBookingModal({ onClose, onCreated }) {
   }
 
   const updateGuest = (roomId, guestIndex, field, value) => {
+    setError('')
+    let sanitized = value
+    if (field === 'identityDocumentNumber') {
+      sanitized = String(value || '').replace(/\D/g, '').slice(0, 12)
+    } else if (field === 'phone') {
+      sanitized = String(value || '').replace(/\D/g, '').slice(0, 10)
+    } else if (field === 'fullName') {
+      sanitized = String(value || '').replace(/[^a-zA-ZÀ-ỹ\s]/g, '')
+    }
     setForm(f => {
       const room = f.selectedRooms[String(roomId)]
-      const guests = room.guests.map((guest, index) => index === guestIndex ? { ...guest, [field]: value } : guest)
+      if (!room) return f
+      const guests = room.guests.map((guest, index) => index === guestIndex ? { ...guest, [field]: sanitized } : guest)
       return { ...f, selectedRooms: { ...f.selectedRooms, [String(roomId)]: { ...room, guests } } }
     })
   }
@@ -1558,18 +1586,53 @@ function DirectBookingModal({ onClose, onCreated }) {
 
   const submit = (e) => {
     e.preventDefault()
+    if (!form.fullName?.trim() || form.fullName.trim().length < 2) {
+      setError('Vui lòng nhập họ và tên khách hàng.')
+      return
+    }
+    const phoneDigits = (form.phone || '').trim().replace(/\D/g, '')
+    if (phoneDigits.length !== 10 || !phoneDigits.startsWith('0')) {
+      setError('Số điện thoại không hợp lệ (phải gồm 10 chữ số bắt đầu bằng 0, ví dụ: 0912345678).')
+      return
+    }
+    if (!form.email?.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
+      setError('Email không đúng định dạng (ví dụ: khachhang@gmail.com).')
+      return
+    }
+    const cccdDigits = (form.identityDocumentNumber || '').trim().replace(/\D/g, '')
+    if (cccdDigits.length !== 12) {
+      setError('Số Căn cước công dân (CCCD) phải bao gồm đúng 12 chữ số.')
+      return
+    }
     if (!form.pricePolicyId) { setError('Vui lòng chọn gói thuê'); return }
+    if (!selectedRoomEntries.length) { setError('Vui lòng chọn ít nhất một phòng'); return }
+
+    for (const room of selectedRoomEntries) {
+      for (let i = 0; i < room.guests.length; i++) {
+        const g = room.guests[i]
+        if (!g.fullName?.trim()) {
+          setError(`Vui lòng nhập họ tên người lưu trú ${i + 1} tại phòng ${room.roomNumber || ''}`)
+          return
+        }
+        const gCccd = (g.identityDocumentNumber || '').trim().replace(/\D/g, '')
+        if (gCccd && gCccd.length !== 12) {
+          setError(`Số CCCD người lưu trú ${i + 1} tại phòng ${room.roomNumber || ''} phải gồm đúng 12 chữ số.`)
+          return
+        }
+      }
+    }
+
     setSubmitLoading(true); setError('')
     fetch(`${API_BASE}/direct`, {
       method: 'POST',
       headers: authHeaders(),
       body: JSON.stringify({
-        fullName:       form.fullName,
-        phone:          form.phone,
-        email:          form.email,
-        address:        form.address,
+        fullName:       form.fullName.trim(),
+        phone:          phoneDigits,
+        email:          form.email.trim(),
+        address:        form.address?.trim() || null,
         dateOfBirth:    form.dateOfBirth || null,
-        identityDocumentNumber: form.identityDocumentNumber,
+        identityDocumentNumber: cccdDigits,
         checkInTarget:  form.checkInTarget,
         checkOutTarget: form.checkOutTarget,
         rentType:       selectedPolicy?.rentType || 'OVERNIGHT',
@@ -1697,22 +1760,22 @@ function DirectBookingModal({ onClose, onCreated }) {
 
               <div className="abk-form-grid">
                 <label><span>Họ tên *</span>
-                  <input required value={form.fullName} onChange={e => updateForm('fullName', e.target.value)} />
+                  <input required placeholder="VD: Nguyễn Văn An" value={form.fullName} onChange={e => updateForm('fullName', e.target.value)} />
                 </label>
                 <label><span>Số điện thoại *</span>
-                  <input required maxLength="10" value={form.phone} onChange={e => updateForm('phone', e.target.value)} />
+                  <input required inputMode="numeric" maxLength="10" placeholder="VD: 0912345678" value={form.phone} onChange={e => updateForm('phone', e.target.value)} />
                 </label>
                 <label><span>Email *</span>
-                  <input required type="email" value={form.email} onChange={e => updateForm('email', e.target.value)} />
+                  <input required type="email" placeholder="VD: khachhang@gmail.com" value={form.email} onChange={e => updateForm('email', e.target.value)} />
                 </label>
                 <label><span>Ngày sinh</span>
                   <input type="date" value={form.dateOfBirth} onChange={e => updateForm('dateOfBirth', e.target.value)} />
                 </label>
                 <label><span>CCCD người đại diện *</span>
-                  <input required maxLength="30" value={form.identityDocumentNumber} onChange={e => updateForm('identityDocumentNumber', e.target.value)} />
+                  <input required inputMode="numeric" maxLength="12" placeholder="Đủ 12 chữ số CCCD" value={form.identityDocumentNumber} onChange={e => updateForm('identityDocumentNumber', e.target.value)} />
                 </label>
                 <label className="abk-form-wide"><span>Địa chỉ</span>
-                  <input value={form.address} onChange={e => updateForm('address', e.target.value)} />
+                  <input placeholder="Địa chỉ thường trú" value={form.address} onChange={e => updateForm('address', e.target.value)} />
                 </label>
               </div>
 
@@ -1887,12 +1950,12 @@ function DirectBookingModal({ onClose, onCreated }) {
                         </div>
                         {room.guests.map((guest, guestIndex) => (
                           <div className="abk-room-guest" key={guestIndex}>
-                            <label><span>Họ tên *</span><input required maxLength="100" value={guest.fullName} onChange={e => updateGuest(room.roomId, guestIndex, 'fullName', e.target.value)} /></label>
-                            <label><span>CCCD *</span><input required maxLength="30" value={guest.identityDocumentNumber} onChange={e => updateGuest(room.roomId, guestIndex, 'identityDocumentNumber', e.target.value)} /></label>
-                            <label><span>Điện thoại *</span><input required maxLength="15" value={guest.phone} onChange={e => updateGuest(room.roomId, guestIndex, 'phone', e.target.value)} /></label>
+                            <label><span>Họ tên *</span><input required maxLength="100" placeholder="VD: Nguyễn Văn An" value={guest.fullName} onChange={e => updateGuest(room.roomId, guestIndex, 'fullName', e.target.value)} /></label>
+                            <label><span>CCCD *</span><input required inputMode="numeric" maxLength="12" placeholder="12 chữ số CCCD" value={guest.identityDocumentNumber} onChange={e => updateGuest(room.roomId, guestIndex, 'identityDocumentNumber', e.target.value)} /></label>
+                            <label><span>Điện thoại *</span><input required inputMode="numeric" maxLength="10" placeholder="10 số điện thoại" value={guest.phone} onChange={e => updateGuest(room.roomId, guestIndex, 'phone', e.target.value)} /></label>
                             <label><span>Ngày sinh</span><input type="date" value={guest.dateOfBirth} onChange={e => updateGuest(room.roomId, guestIndex, 'dateOfBirth', e.target.value)} /></label>
-                            <label><span>Email</span><input type="email" maxLength="100" value={guest.email} onChange={e => updateGuest(room.roomId, guestIndex, 'email', e.target.value)} /></label>
-                            <label><span>Địa chỉ</span><input maxLength="255" value={guest.address} onChange={e => updateGuest(room.roomId, guestIndex, 'address', e.target.value)} /></label>
+                            <label><span>Email</span><input type="email" maxLength="100" placeholder="email@example.com" value={guest.email} onChange={e => updateGuest(room.roomId, guestIndex, 'email', e.target.value)} /></label>
+                            <label><span>Địa chỉ</span><input maxLength="255" placeholder="Địa chỉ thường trú" value={guest.address} onChange={e => updateGuest(room.roomId, guestIndex, 'address', e.target.value)} /></label>
                             {room.guests.length > 1 && <button type="button" className="abk-remove-guest-btn" onClick={() => removeGuest(room.roomId, guestIndex)}>Xóa</button>}
                           </div>
                         ))}
