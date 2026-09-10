@@ -907,31 +907,18 @@ export default function AdminIncidentsPage() {
                         </div>
 
                         {actionForm.liability === 'CUSTOMER' && (
-                          <>
-                            <div className="form-group">
-                              <label>Số tiền bồi thường (VND)</label>
-                              <input
-                                type="number"
-                                min="0"
-                                step="10000"
-                                className="form-input"
-                                placeholder="Nhập số tiền đền bù..."
-                                value={actionForm.compensationAmount}
-                                onChange={(e) => setActionForm({ ...actionForm, compensationAmount: e.target.value })}
-                              />
-                            </div>
-
-                            <div className="form-group" style={{ display: 'flex', alignItems: 'center', paddingTop: 24 }}>
-                              <label className="checkbox-label">
-                                <input
-                                  type="checkbox"
-                                  checked={actionForm.chargeToInvoice}
-                                  onChange={(e) => setActionForm({ ...actionForm, chargeToInvoice: e.target.checked })}
-                                />
-                                <span>Cộng vào hóa đơn booking của khách</span>
-                              </label>
-                            </div>
-                          </>
+                          <div className="form-group full-width">
+                            <label>Số tiền bồi thường (VND)</label>
+                            <input
+                              type="number"
+                              min="0"
+                              step="10000"
+                              className="form-input"
+                              placeholder="Nhập số tiền đền bù..."
+                              value={actionForm.compensationAmount}
+                              onChange={(e) => setActionForm({ ...actionForm, compensationAmount: e.target.value })}
+                            />
+                          </div>
                         )}
 
                         <div className="form-group full-width">
