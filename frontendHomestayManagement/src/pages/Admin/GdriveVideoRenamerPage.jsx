@@ -1130,20 +1130,6 @@ QUY TẮC BẮT BUỘC:
             >
               🔑 Cấu Hình API Key
             </button>
-            <button
-              className="gvr-btn gvr-btn-indigo"
-              onClick={handleAnalyzeAll}
-              disabled={videos.length === 0 || isProcessing}
-            >
-              {isProcessing ? <span className="gvr-spinner"></span> : '✦'} Phân Tích AI Tất Cả
-            </button>
-            <button
-              className="gvr-btn gvr-btn-primary"
-              onClick={handleApplyAllRenames}
-              disabled={statProposed === 0 || isProcessing}
-            >
-              ✓ Áp Dụng Tên Mới ({statProposed})
-            </button>
           </div>
         </div>
 
@@ -1272,23 +1258,44 @@ QUY TẮC BẮT BUỘC:
                     {isScanning ? <span className="gvr-spinner"></span> : '🔍'} Quét Thư Mục Drive
                   </button>
                 </div>
-                <div style={{ marginTop: '8px', fontSize: '12.5px', color: '#64748b', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span>💡 Gợi ý: Hỗ trợ link thư mục Google Drive công khai hoặc thư mục có quyền chia sẻ liên kết.</span>
+
+                {/* 2 Nút Hành Động Ngay Dưới Nút Quét Thư Mục */}
+                <div style={{ marginTop: '14px', display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <button
+                    className="gvr-btn gvr-btn-indigo"
+                    onClick={handleAnalyzeAll}
+                    disabled={videos.length === 0 || isProcessing}
+                    style={{ padding: '9px 20px', fontSize: '14px', fontWeight: 700 }}
+                  >
+                    {isProcessing ? <span className="gvr-spinner"></span> : '✦'} Phân Tích AI Tất Cả
+                  </button>
+                  <button
+                    className="gvr-btn gvr-btn-primary"
+                    onClick={handleApplyAllRenames}
+                    disabled={statProposed === 0 || isProcessing}
+                    style={{ padding: '9px 20px', fontSize: '14px', fontWeight: 700 }}
+                  >
+                    ✓ Áp Dụng Tên Mới ({statProposed})
+                  </button>
+
                   {!driveAccessToken && (
-                    <button
-                      type="button"
-                      onClick={handleGoogleLogin}
-                      style={{
-                        background: 'none',
-                        border: 'none',
-                        color: '#059669',
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                        textDecoration: 'underline',
-                      }}
-                    >
-                      Đăng nhập Google để quét và đổi tên trực tiếp trên Drive ➔
-                    </button>
+                    <div style={{ marginLeft: 'auto' }}>
+                      <button
+                        type="button"
+                        onClick={handleGoogleLogin}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: '#059669',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          textDecoration: 'underline',
+                          fontSize: '12.5px',
+                        }}
+                      >
+                        Đăng nhập Google để quét và đổi tên trực tiếp trên Drive ➔
+                      </button>
+                    </div>
                   )}
                 </div>
               </div>
@@ -1348,6 +1355,26 @@ QUY TẮC BẮT BUỘC:
                       Chọn Cả Thư Mục Video
                     </button>
                   </div>
+                </div>
+
+                {/* 2 Nút Hành Động Cho Tệp Cục Bộ */}
+                <div style={{ marginTop: '14px', display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <button
+                    className="gvr-btn gvr-btn-indigo"
+                    onClick={handleAnalyzeAll}
+                    disabled={videos.length === 0 || isProcessing}
+                    style={{ padding: '9px 20px', fontSize: '14px', fontWeight: 700 }}
+                  >
+                    {isProcessing ? <span className="gvr-spinner"></span> : '✦'} Phân Tích AI Tất Cả
+                  </button>
+                  <button
+                    className="gvr-btn gvr-btn-primary"
+                    onClick={handleApplyAllRenames}
+                    disabled={statProposed === 0 || isProcessing}
+                    style={{ padding: '9px 20px', fontSize: '14px', fontWeight: 700 }}
+                  >
+                    ✓ Áp Dụng Tên Mới ({statProposed})
+                  </button>
                 </div>
               </div>
             )}
