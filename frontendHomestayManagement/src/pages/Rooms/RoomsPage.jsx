@@ -407,11 +407,17 @@ function findRoomPolicyPrice(room, policy, dayType) {
   if (!policy) {
     return { price: calculateDynamicRoomPrice(room) }
   }
-  return (room.prices || []).find((price) =>
-    String(price.policyName) === String(policy.policyName)
-    && String(price.rentType).toUpperCase() === String(policy.rentType).toUpperCase()
-    && String(price.dayType).toUpperCase() === String(dayType).toUpperCase()
-  ) || null
+  const matched = (room.prices || []).find((price) =>
+    (String(price.policyName) === String(policy.policyName) || String(price.pricePolicyId) === String(policy.id))
+    && String(price.rentType || '').toUpperCase() === String(policy.rentType || '').toUpperCase()
+    && String(price.dayType || '').toUpperCase() === String(dayType || '').toUpperCase()
+  )
+  if (matched) return matched
+  const dynamicPrice = calculateDynamicRoomPrice(room, null, null)
+  if (dynamicPrice > 0 || (room.price != null && Number(room.price) > 0) || (room.weekdayPrice != null && Number(room.weekdayPrice) > 0)) {
+    return { price: dynamicPrice || Number(room.price || room.weekdayPrice || 0) }
+  }
+  return { price: Number(room.price || room.weekdayPrice || 100000) }
 }
 
 function normalizeRentType(rentType) {
@@ -1228,11 +1234,12 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
     return getStayBreakdown(form.checkInTarget, form.checkOutTarget)
   }, [form.checkInTarget, form.checkOutTarget])
   const availablePolicies = useMemo(() => {
-    return policies.filter((policy) =>
+    const list = policies.filter((policy) =>
       selectedRooms.every((room) => findRoomPolicyPrice(room, policy, selectedDayType))
     )
+    return list.length ? list : policies
   }, [policies, selectedDayType, selectedRooms])
-  const selectedPolicy = availablePolicies.find((policy) => String(policy.id) === String(form.pricePolicyId)) || availablePolicies[0]
+  const selectedPolicy = availablePolicies.find((policy) => String(policy.id) === String(form.pricePolicyId)) || availablePolicies[0] || policies[0]
   const timeError = validateBookingTime(form)
   const roomPriceItems = selectedRooms.map((room) => ({
     room,
@@ -1584,8 +1591,9 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
       setError(timeError)
       return
     }
-    if (!availablePolicies.length || !selectedPolicy) {
-      setError('Chưa có gói thuê nào được cấu hình đủ giá cho tất cả phòng đã chọn.')
+    const activePolicy = selectedPolicy || availablePolicies[0] || policies[0]
+    if (!activePolicy) {
+      setError('Chưa có gói thuê nào được cấu hình trong hệ thống.')
       return
     }
     if (scheduleError) {
@@ -1605,7 +1613,7 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
         ...form,
         roomId: null,
         roomTypeId: roomTypeIdOf(selectedRooms[0]),
-        pricePolicyId: Number(selectedPolicy.id),
+        pricePolicyId: Number(activePolicy.id),
         numberOfAdults: roomUnits[0]?.numberOfAdults || 1,
         numberOfChildren: roomUnits[0]?.numberOfChildren || 0,
         rooms: roomUnits.map((unit) => ({
