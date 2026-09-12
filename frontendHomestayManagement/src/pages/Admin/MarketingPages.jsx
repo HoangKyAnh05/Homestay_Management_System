@@ -2334,41 +2334,6 @@ BẮT BUỘC trả về đúng 1 JSON duy nhất:
           action={
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
               <button
-                className="mkt-btn"
-                type="button"
-                onClick={() => setGiveawayPostModal((c) => ({
-                  ...c,
-                  open: true,
-                  giveawayUrl: window.location.origin + '/giveaway',
-                  selectedAccountId: socialAccounts.find(a => a.platform === 'FACEBOOK')?.id || '',
-                  successMsg: '',
-                  errorMsg: '',
-                }))}
-                style={{
-                  padding: '9px 18px',
-                  fontSize: '13px',
-                  background: 'linear-gradient(135deg, #e11d48 0%, #f59e0b 100%)',
-                  color: '#ffffff',
-                  border: 'none',
-                  fontWeight: 700,
-                  boxShadow: '0 4px 12px rgba(225, 29, 72, 0.35)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  cursor: 'pointer',
-                }}
-              >
-                <span> Tạo & Đăng Bài Giveaway Vòng Quay</span>
-              </button>
-              <button
-                className="mkt-btn mkt-btn--secondary"
-                type="button"
-                onClick={() => navigate('/admin/marketing/giveaway-leads')}
-                style={{ padding: '9px 14px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}
-              >
-                <span> Xem Kết Quả Leads</span>
-              </button>
-              <button
                 className="mkt-btn mkt-btn--primary"
                 type="button"
                 onClick={() => setMultiPostModal((c) => ({ ...c, open: true }))}
