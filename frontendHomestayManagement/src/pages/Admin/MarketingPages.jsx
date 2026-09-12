@@ -929,18 +929,24 @@ export function MarketingAIAgentPage() {
 
       const mappedVideos = files.map((file) => {
         const sizeBytes = Number(file.size) || 0
-        const isVideo = file.mimeType?.startsWith('video/') || /\.(mp4|mov|webm|mkv)$/i.test(file.name)
+        const isVideo = file.mimeType?.startsWith('video/') || /\.(mp4|mov|webm|mkv|avi|m4v)$/i.test(file.name)
+        const ext = isVideo ? (file.name.split('.').pop()?.toLowerCase() || 'mp4') : (file.name.split('.').pop()?.toLowerCase() || 'jpg')
+        const rawTitle = file.name ? file.name.replace(/\.[^/.]+$/, '') : `video_${file.id}`
+        const fullFileName = `${rawTitle}.${ext}`
+
         return {
           id: `gdrive_${file.id}`,
           gdriveFileId: file.id,
-          title: file.name.replace(/\.[^/.]+$/, ''),
-          type: isVideo ? (file.name.split('.').pop() || 'MP4').toUpperCase() : 'ẢNH',
+          title: rawTitle,
+          fileName: fullFileName,
+          type: isVideo ? 'MP4' : 'ẢNH',
+          mediaType: isVideo ? 'VIDEO' : 'IMAGE',
           source: 'Google Drive Cloud',
           date: new Date(file.createdTime || Date.now()).toLocaleDateString('vi-VN'),
           sizeBytes,
           sizeMb: Number((sizeBytes / (1024 * 1024)).toFixed(2)),
           thumbnailUrl: file.thumbnailLink ? file.thumbnailLink.replace(/=s\d+$/, '=s400') : `https://lh3.googleusercontent.com/d/${file.id}=s400`,
-          downloadUrl: file.webContentLink || `https://drive.google.com/uc?export=download&id=${file.id}`,
+          downloadUrl: `https://drive.google.com/uc?export=download&id=${file.id}`,
           directDriveUrl: `https://www.googleapis.com/drive/v3/files/${file.id}?alt=media&key=${effectiveKey}`,
           caption: `Khám phá vẻ đẹp Sa Pa tại Lá Đỏ Homestay.`,
           hashtags: '#shorts #reels #LaDoHomestay #SaPa #DuLichSaPa',
@@ -2209,21 +2215,28 @@ export function MarketingAIAgentPage() {
   }
 
   const handleOpenScheduleForVideo = (video) => {
+    const isVideo = video.mediaType === 'VIDEO' || video.type === 'MP4' || video.type === 'VIDEO' || /\.(mp4|mov|avi|webm|mkv|m4v)(\?|#|$)/i.test(video.fileName || video.title || '')
+    const displayFileName = video.fileName || (isVideo ? `${video.title}.mp4` : `${video.title}.jpg`)
+
     setMultiPostModal({
       open: true,
-      mediaUrl: video.uploadedUrl || video.gdriveUrl || video.title,
+      mediaUrl: displayFileName,
+      actualMediaUrl: video.downloadUrl || video.directDriveUrl || video.uploadedUrl || video.gdriveUrl || '',
+      gdriveFileId: video.gdriveFileId || null,
+      mediaType: isVideo ? 'VIDEO' : 'IMAGE',
       rawFile: video.rawFile || null,
       title: video.title,
       caption: video.caption || `Một sớm mai thức dậy giữa biển mây bồng bềnh tại Lá Đỏ Homestay Sa Pa, thưởng thức tách trà nóng và ngắm trọn thung lũng Mường Hoa.`,
       hashtags: video.hashtags || '#shorts #reels #tiktok #fyp #LaDoHomestay #SaPa #DuLichSaPa',
       thumbnailUrl: video.thumbnailUrl || 'https://images.unsplash.com/photo-1506744038136-46273834b3fb',
       platforms: {
-        YOUTUBE: false,
+        YOUTUBE: isVideo,
         FACEBOOK: true,
       },
       selectedFacebookAccountId: socialAccounts.find(a => a.platform === 'FACEBOOK')?.id || '',
       selectedYoutubeAccountId: socialAccounts.find(a => a.platform === 'YOUTUBE')?.id || '',
       publishing: false,
+      errorMsg: '',
       successMsg: '',
     })
   }
@@ -2297,108 +2310,144 @@ BẮT BUỘC trả về đúng 1 JSON duy nhất:
 
   const handleMultiPlatformPublish = async (e, instantPublish = false) => {
     e?.preventDefault()
+    setMultiPostModal((c) => ({ ...c, errorMsg: '', successMsg: '' }))
 
     const selectedList = []
     if (multiPostModal.platforms.FACEBOOK) {
       const fbAccId = multiPostModal.selectedFacebookAccountId || socialAccounts.find(a => a.platform === 'FACEBOOK')?.id
       const fbAcc = socialAccounts.find(a => a.id === Number(fbAccId)) || socialAccounts.find(a => a.platform === 'FACEBOOK')
+
+      if (!fbAcc || !fbAcc.accessTokenEncrypted) {
+        setMultiPostModal((c) => ({
+          ...c,
+          errorMsg: '❌ Chưa có Fanpage Facebook nào được kết nối hợp lệ hoặc Access Token đã hết hạn. Vui lòng bấm "Thêm API / Token Kênh" để cấu hình trước!',
+        }))
+        return
+      }
+
       selectedList.push({
         platform: 'FACEBOOK',
-        name: fbAcc?.accountName || 'Lá Đỏ Homestay Sa Pa',
-        id: fbAcc?.id ? Number(fbAcc.id) : null,
-        pageUrl: fbAcc?.pageUrl || 'https://facebook.com',
+        name: fbAcc.accountName || 'Lá Đỏ Homestay Sa Pa',
+        id: Number(fbAcc.id),
+        pageUrl: fbAcc.pageUrl || 'https://facebook.com',
       })
     }
+
     if (multiPostModal.platforms.YOUTUBE) {
       const ytAccId = multiPostModal.selectedYoutubeAccountId || socialAccounts.find(a => a.platform === 'YOUTUBE')?.id
       const ytAcc = socialAccounts.find(a => a.id === Number(ytAccId)) || socialAccounts.find(a => a.platform === 'YOUTUBE')
+
+      if (!ytAcc || !ytAcc.accessTokenEncrypted) {
+        setMultiPostModal((c) => ({
+          ...c,
+          errorMsg: '❌ Chưa có Kênh YouTube nào được kết nối hợp lệ. Vui lòng bấm "Thêm API / Token Kênh" để kết nối Kênh YouTube trước!',
+        }))
+        return
+      }
+
       selectedList.push({
         platform: 'YOUTUBE',
-        name: ytAcc?.accountName || 'Kênh YouTube Lá Đỏ Homestay',
-        id: ytAcc?.id ? Number(ytAcc.id) : null,
-        pageUrl: ytAcc?.pageUrl || 'https://youtube.com',
+        name: ytAcc.accountName || 'Kênh YouTube Lá Đỏ Homestay',
+        id: Number(ytAcc.id),
+        pageUrl: ytAcc.pageUrl || 'https://youtube.com',
       })
     }
 
     if (!selectedList.length) {
-      alert('Vui lòng chọn ít nhất 1 nền tảng (Facebook hoặc YouTube) để đăng tải.')
+      setMultiPostModal((c) => ({
+        ...c,
+        errorMsg: '⚠️ Vui lòng chọn ít nhất 1 nền tảng (Facebook hoặc YouTube) để đăng tải.',
+      }))
       return
     }
 
-    const checkUrl = multiPostModal.mediaUrl || multiPostModal.rawFile?.name || ''
-    const isVideoFile = Boolean(
-      multiPostModal.rawFile?.type?.startsWith('video/') ||
-      checkUrl.match(/\.(mp4|mov|avi|webm|mkv|m4v)(\?|#|$)/i)
-    )
+    const isVideoFile = multiPostModal.mediaType === 'VIDEO' ||
+      Boolean(multiPostModal.rawFile?.type?.startsWith('video/')) ||
+      Boolean(multiPostModal.mediaUrl?.match(/\.(mp4|mov|avi|webm|mkv|m4v)(\?|#|$)/i)) ||
+      Boolean(multiPostModal.actualMediaUrl?.match(/\.(mp4|mov|avi|webm|mkv|m4v)(\?|#|$)/i))
 
     if (multiPostModal.platforms.YOUTUBE && !isVideoFile) {
-      alert('️ Kênh YouTube chỉ hỗ trợ xuất bản tệp Video (.mp4, .mov, .webm,...).\n\nTệp bạn đang chọn là định dạng ảnh (.webp/.jpg/.png). Vui lòng chọn tệp Video (.mp4) hoặc bỏ tích YouTube để chỉ đăng lên Facebook.')
+      setMultiPostModal((c) => ({
+        ...c,
+        errorMsg: '⚠️ Kênh YouTube chỉ hỗ trợ xuất bản tệp Video (.mp4, .mov, .webm,...). Vui lòng chọn tệp Video (.mp4) hoặc bỏ tích YouTube để chỉ đăng lên Facebook.',
+      }))
       return
     }
 
-    // Upload rawFile or convert blob URL to backend so Facebook Graph API receives the actual photo/video
-    let finalMediaUrl = multiPostModal.mediaUrl || multiPostModal.thumbnailUrl || ''
-    if (multiPostModal.rawFile) {
-      try {
+    setMultiPostModal((c) => ({ ...c, publishing: true, errorMsg: '', successMsg: '' }))
+
+    try {
+      // 1. Resolve actual media upload to server
+      let finalMediaUrl = ''
+
+      if (multiPostModal.rawFile) {
         const uploaded = await uploadRequest('/media/upload', multiPostModal.rawFile)
         if (uploaded?.mediaUrl) {
           finalMediaUrl = uploaded.mediaUrl
         }
-      } catch (uploadErr) {
-        console.warn('Could not upload rawFile to server:', uploadErr)
-      }
-    } else if (finalMediaUrl.startsWith('blob:')) {
-      try {
-        const blobResp = await fetch(finalMediaUrl)
+      } else if (multiPostModal.actualMediaUrl?.startsWith('blob:')) {
+        const blobResp = await fetch(multiPostModal.actualMediaUrl)
         const blobData = await blobResp.blob()
-        const isVideo = blobData.type.startsWith('video/')
-        const ext = isVideo ? 'mp4' : 'jpg'
-        const dummyFile = new File([blobData], `media_${Date.now()}.${ext}`, { type: blobData.type || (isVideo ? 'video/mp4' : 'image/jpeg') })
+        const isVid = blobData.type.startsWith('video/')
+        const ext = isVid ? 'mp4' : 'jpg'
+        const dummyFile = new File([blobData], `${multiPostModal.title || 'media'}.${ext}`, { type: blobData.type || (isVid ? 'video/mp4' : 'image/jpeg') })
         const uploaded = await uploadRequest('/media/upload', dummyFile)
         if (uploaded?.mediaUrl) {
           finalMediaUrl = uploaded.mediaUrl
         }
-      } catch (blobErr) {
-        console.warn('Could not convert and upload blob to server:', blobErr)
+      } else if (multiPostModal.gdriveFileId || (multiPostModal.actualMediaUrl && multiPostModal.actualMediaUrl.includes('drive.google.com'))) {
+        const driveDownloadUrl = multiPostModal.actualMediaUrl || `https://drive.google.com/uc?export=download&id=${multiPostModal.gdriveFileId}`
+        try {
+          const resp = await fetch(driveDownloadUrl)
+          if (resp.ok) {
+            const blob = await resp.blob()
+            const ext = isVideoFile ? 'mp4' : 'jpg'
+            const driveFile = new File([blob], `${multiPostModal.title || 'gdrive_video'}.${ext}`, { type: isVideoFile ? 'video/mp4' : 'image/jpeg' })
+            const uploaded = await uploadRequest('/media/upload', driveFile)
+            if (uploaded?.mediaUrl) {
+              finalMediaUrl = uploaded.mediaUrl
+            }
+          }
+        } catch (driveErr) {
+          console.warn('Direct drive fetch failed:', driveErr)
+        }
+      } else if (multiPostModal.actualMediaUrl && (multiPostModal.actualMediaUrl.startsWith('http://') || multiPostModal.actualMediaUrl.startsWith('https://') || multiPostModal.actualMediaUrl.startsWith('/uploads/'))) {
+        finalMediaUrl = multiPostModal.actualMediaUrl
       }
-    }
 
-    const fullContent = `${multiPostModal.caption}\n\n${multiPostModal.hashtags}`
-    const pad = (n) => String(n).padStart(2, '0')
-    const targetDate = instantPublish || !multiPostModal.scheduledDateTime ? new Date() : new Date(multiPostModal.scheduledDateTime)
-    const isPastOrNow = instantPublish || targetDate <= new Date()
-    const formattedDateTime = `${targetDate.getFullYear()}-${pad(targetDate.getMonth() + 1)}-${pad(targetDate.getDate())}T${pad(targetDate.getHours())}:${pad(targetDate.getMinutes())}:${pad(targetDate.getSeconds())}`
+      // If still no finalMediaUrl, use thumbnailUrl or placeholder
+      if (!finalMediaUrl) {
+        finalMediaUrl = multiPostModal.thumbnailUrl || ''
+      }
 
-    const postPayload = {
-      title: multiPostModal.title || 'Bài đăng Lá Đỏ Homestay',
-      goal: 'Tăng nhận diện thương hiệu',
-      tone: 'Ấm áp & truyền cảm hứng',
-      targetAudience: 'Khách du lịch yêu thích nghỉ dưỡng và trải nghiệm Sa Pa',
-      brief: fullContent,
-      channels: selectedList.map((item) => ({
-        socialAccountId: item.id || null,
-        platform: item.platform,
-        pageName: item.name,
-        pageUrl: item.pageUrl,
-      })),
-      media: finalMediaUrl ? [{
-        mediaUrl: finalMediaUrl,
-        mediaType: finalMediaUrl.match(/\.(mp4|mov|avi|webm)$/i) ? 'VIDEO' : 'IMAGE',
-        displayOrder: 1,
-        altText: multiPostModal.title || 'Media bài đăng',
-        source: 'UPLOADED',
-      }] : [],
-    }
+      const fullContent = `${multiPostModal.caption}\n\n${multiPostModal.hashtags}`
+      const pad = (n) => String(n).padStart(2, '0')
+      const targetDate = instantPublish || !multiPostModal.scheduledDateTime ? new Date() : new Date(multiPostModal.scheduledDateTime)
+      const isPastOrNow = instantPublish || targetDate <= new Date()
+      const formattedDateTime = `${targetDate.getFullYear()}-${pad(targetDate.getMonth() + 1)}-${pad(targetDate.getDate())}T${pad(targetDate.getHours())}:${pad(targetDate.getMinutes())}:${pad(targetDate.getSeconds())}`
 
-    // Close modal immediately and jump to Queue
-    setMultiPostModal((c) => ({ ...c, open: false, publishing: false }))
-    setTimeout(() => {
-      const queueElem = document.querySelector('.mkt-queue-section')
-      if (queueElem) queueElem.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }, 50)
+      const postPayload = {
+        title: multiPostModal.title || 'Bài đăng Lá Đỏ Homestay',
+        goal: 'Tăng nhận diện thương hiệu',
+        tone: 'Ấm áp & truyền cảm hứng',
+        targetAudience: 'Khách du lịch yêu thích nghỉ dưỡng và trải nghiệm Sa Pa',
+        brief: fullContent,
+        channels: selectedList.map((item) => ({
+          socialAccountId: item.id || null,
+          platform: item.platform,
+          pageName: item.name,
+          pageUrl: item.pageUrl,
+        })),
+        media: finalMediaUrl ? [{
+          mediaUrl: finalMediaUrl,
+          mediaType: isVideoFile ? 'VIDEO' : 'IMAGE',
+          displayOrder: 1,
+          altText: multiPostModal.title || 'Media bài đăng',
+          source: 'UPLOADED',
+        }] : [],
+      }
 
-    try {
-      // 1. Create post on backend
+      // 2. Create post on backend
       const created = await request('/posts/generate', {
         method: 'POST',
         body: JSON.stringify(postPayload),
@@ -2410,31 +2459,44 @@ BẮT BUỘC trả về đúng 1 JSON duy nhất:
       if (instantPublish || isPastOrNow) {
         if (created?.channels && created.channels.length > 0) {
           for (const ch of created.channels) {
-            publish(ch.id)
+            await publish(ch.id)
           }
         }
-        return
-      }
-
-      // Schedule for future
-      if (created?.channels && created.channels.length > 0) {
-        for (const ch of created.channels) {
-          try {
-            await request(`/channels/${ch.id}/schedule`, {
-              method: 'POST',
-              body: JSON.stringify({
-                scheduledAt: formattedDateTime,
-              }),
-            })
-          } catch (sErr) {
-            console.warn('Schedule channel error:', sErr)
+      } else {
+        if (created?.channels && created.channels.length > 0) {
+          for (const ch of created.channels) {
+            try {
+              await request(`/channels/${ch.id}/schedule`, {
+                method: 'POST',
+                body: JSON.stringify({
+                  scheduledAt: formattedDateTime,
+                }),
+              })
+            } catch (sErr) {
+              console.warn('Schedule channel error:', sErr)
+            }
           }
         }
       }
 
       await refreshDashboard()
+      setMultiPostModal((c) => ({
+        ...c,
+        publishing: false,
+        successMsg: instantPublish ? '🎉 Đã xuất bản bài viết thành công lên các kênh đã chọn!' : ' Đã lên lịch hẹn xuất bản bài viết thành công!',
+      }))
+
+      setTimeout(() => {
+        setMultiPostModal((c) => ({ ...c, open: false, successMsg: '' }))
+        const queueElem = document.querySelector('.mkt-queue-section')
+        if (queueElem) queueElem.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }, 1500)
     } catch (err) {
-      alert(`Lỗi đăng bài: ${err.message}`)
+      setMultiPostModal((c) => ({
+        ...c,
+        publishing: false,
+        errorMsg: err.message || 'Lỗi khi xuất bản bài viết. Vui lòng kiểm tra lại kết nối Kênh hoặc tệp video.',
+      }))
     }
   }
 
@@ -3540,6 +3602,11 @@ BẮT BUỘC trả về đúng 1 JSON duy nhất:
                     minHeight: 0,
                   }}
                 >
+                  {multiPostModal.errorMsg && (
+                    <p className="mkt-alert" style={{ background: '#fef2f2', color: '#991b1b', borderColor: '#fecaca', fontWeight: 600 }}>
+                      {multiPostModal.errorMsg}
+                    </p>
+                  )}
                   {multiPostModal.successMsg && (
                     <p className="mkt-alert" style={{ background: '#ecfdf5', color: '#065f46', borderColor: '#a7f3d0' }}>
                       {multiPostModal.successMsg}
@@ -3566,12 +3633,15 @@ BẮT BUỘC trả về đúng 1 JSON duy nhất:
                           onChange={async (e) => {
                             const file = e.target.files?.[0]
                             if (file) {
+                              const isVid = file.type.startsWith('video/')
                               try {
                                 const uploaded = await uploadRequest('/media/upload', file)
                                 setMultiPostModal((c) => ({
                                   ...c,
                                   mediaUrl: uploaded.mediaUrl,
-                                  thumbnailUrl: uploaded.mediaType === 'IMAGE' ? uploaded.mediaUrl : c.thumbnailUrl,
+                                  actualMediaUrl: uploaded.mediaUrl,
+                                  mediaType: isVid ? 'VIDEO' : 'IMAGE',
+                                  thumbnailUrl: !isVid ? uploaded.mediaUrl : c.thumbnailUrl,
                                   rawFile: file,
                                   title: file.name.replace(/\.[^/.]+$/, ''),
                                 }))
@@ -3579,6 +3649,8 @@ BẮT BUỘC trả về đúng 1 JSON duy nhất:
                                 setMultiPostModal((c) => ({
                                   ...c,
                                   mediaUrl: URL.createObjectURL(file),
+                                  actualMediaUrl: URL.createObjectURL(file),
+                                  mediaType: isVid ? 'VIDEO' : 'IMAGE',
                                   rawFile: file,
                                   title: file.name.replace(/\.[^/.]+$/, ''),
                                 }))
@@ -3591,13 +3663,16 @@ BẮT BUỘC trả về đúng 1 JSON duy nhất:
 
                     {multiPostModal.mediaUrl && (
                       <div style={{ marginTop: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        {multiPostModal.mediaUrl.match(/\.(mp4|mov|avi|webm|mkv|m4v)(\?|#|$)/i) ? (
+                        {multiPostModal.mediaType === 'VIDEO' ||
+                         multiPostModal.rawFile?.type?.startsWith('video/') ||
+                         multiPostModal.mediaUrl?.match(/\.(mp4|mov|avi|webm|mkv|m4v)(\?|#|$)/i) ||
+                         multiPostModal.actualMediaUrl?.match(/\.(mp4|mov|avi|webm|mkv|m4v)(\?|#|$)/i) ? (
                           <span style={{ fontSize: '12px', padding: '2px 8px', borderRadius: '6px', background: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0', fontWeight: 600 }}>
-                             Định dạng Video (.mp4) — Đủ điều kiện đăng YouTube Shorts & Facebook
+                            🎥 Định dạng Video (.mp4) — Đủ điều kiện đăng YouTube Shorts & Facebook
                           </span>
                         ) : (
                           <span style={{ fontSize: '12px', padding: '2px 8px', borderRadius: '6px', background: '#fffbeb', color: '#b45309', border: '1px solid #fde68a', fontWeight: 600 }}>
-                            ️ Định dạng Ảnh ({multiPostModal.mediaUrl.split('.').pop()?.split('?')[0]}) — Phù hợp đăng Facebook (YouTube yêu cầu .mp4)
+                            🖼️ Định dạng Ảnh ({multiPostModal.mediaUrl.split('.').pop()?.split('?')[0] || 'Image'}) — Phù hợp đăng Facebook (YouTube yêu cầu .mp4)
                           </span>
                         )}
                       </div>
