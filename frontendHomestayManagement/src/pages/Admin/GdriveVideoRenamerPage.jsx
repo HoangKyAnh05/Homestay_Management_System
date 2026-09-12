@@ -598,6 +598,44 @@ export default function GdriveVideoRenamerPage() {
     return `${indexStr}${userPrefix}${title}${dateStr}${extension}`
   }
 
+  // Helper: Extract clean descriptive title from original filename by stripping unwanted leading hashes/UUIDs/numbers/prefixes
+  const extractCleanTitleFromFilename = (rawName, hint = '', index = 0) => {
+    if (!rawName) return getSmartThematicTitle(hint, index)
+
+    // 1. Remove file extension
+    let clean = rawName.replace(/\.[0-9a-z]+$/i, '').trim()
+
+    // 2. Remove leading number prefixes like "1.", "01.", "1 -", "[1]", "#1 "
+    clean = clean.replace(/^\s*(\d+[\.\-\s\]\)]+|\#\d+\s*)/, '').trim()
+
+    // 3. Remove standard UUIDs (e.g. 184c455a-6319-43e6-b719-ccd19aa2eab9)
+    clean = clean.replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, '').trim()
+
+    // 4. Remove space-separated hex UUID chunks (e.g. "184c455a 6319 43e6 b719 ccd19aa2eab9" or "bf288a47 d02f 4ba3 a31e 86e9d4c22e7d")
+    clean = clean.replace(/\b[0-9a-f]{8}\s+[0-9a-f]{4}\s+[0-9a-f]{4}\s+[0-9a-f]{4}\s+[0-9a-f]{12}\b/gi, '').trim()
+    clean = clean.replace(/^([0-9a-f]{4,}\s+){2,}[0-9a-f]{4,}\s*/gi, '').trim()
+    clean = clean.replace(/^[0-9a-f]{6,}\s*/gi, '').trim()
+
+    // 5. Remove leading camera prefix (e.g. VID_20260912_084512_, DSC_9942_, PXL_...)
+    clean = clean.replace(/^(vid|dsc|pxl|img|mov|mp4|video|clip|rec|screen|file)[_0-9\-\s]*/gi, '').trim()
+
+    // 6. Replace underscores, hyphens, and multi-spaces with single space
+    clean = clean.replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim()
+
+    // 7. Re-strip any remaining leading index or hex codes if any
+    clean = clean.replace(/^\s*(\d+[\.\-\s\]\)]+|\#\d+\s*)/, '').trim()
+    clean = clean.replace(/^[0-9a-f]{4,}\s*/gi, '').trim()
+
+    // If the extracted description is meaningful, use it!
+    const lettersOnly = clean.replace(/[^a-zA-Zàáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ]/gi, '')
+    if (clean && clean.length >= 3 && lettersOnly.length >= 3) {
+      return clean
+    }
+
+    // Otherwise, use smart thematic title
+    return getSmartThematicTitle(hint, index)
+  }
+
   // Helper: Detect meaningless filenames (UUIDs, camera codes, hashes)
   const isMeaninglessCode = (str) => {
     if (!str) return true
@@ -667,33 +705,34 @@ export default function GdriveVideoRenamerPage() {
     try {
       const apiKey = apiConfig.geminiApiKey || DEFAULT_API_CONFIG.geminiApiKey
       const model = apiConfig.geminiModel || 'gemini-2.5-flash'
+      const cleanContentName = extractCleanTitleFromFilename(video.originalName, renameConfig.contextHint, index)
 
       const contextInstruction = renameConfig.contextHint
-        ? `CHỦ ĐỀ YÊU CẦU: "${renameConfig.contextHint}".`
+        ? `CHỦ ĐỀ GỢI Ý: "${renameConfig.contextHint}".`
         : ''
 
       const languageDesc =
         renameConfig.language === 'vi'
           ? 'Tiếng Việt có dấu tự nhiên, hấp dẫn, dễ hiểu'
           : renameConfig.language === 'vi_no_accent'
-          ? 'Tiếng Việt KHÔNG DẤU (ví dụ: homestay sa pa san may view dep)'
+          ? 'Tiếng Việt KHÔNG DẤU'
           : 'English'
 
       const promptText = `
-Bạn là một chuyên gia sáng tạo nội dung du lịch & marketing video chuyên nghiệp cho Homestay & Khách sạn Sa Pa.
-Nhiệm vụ: Hãy quan sát khung hình và chủ đề để đặt lại một TÊN FILE VIDEO MỚI thật chuyên nghiệp, cuốn hút, mô tả đúng nội dung cốt lõi và tối ưu tìm kiếm SEO (khoảng 4 đến ${renameConfig.maxWords || 8} từ).
-
+Bạn là chuyên gia biên tập video và tối ưu tên tệp chuẩn SEO cho Homestay & Khách sạn Sa Pa.
+Nội dung video gốc: "${cleanContentName}".
 ${contextInstruction}
 Ngôn ngữ: ${languageDesc}.
 
+Nhiệm vụ: Giữ đúng nội dung thực tế của video ("${cleanContentName}"), tinh chỉnh lại thành TÊN TỆP MỚI thật mượt mà, hấp dẫn và chuẩn SEO (khoảng 4 đến ${renameConfig.maxWords || 8} từ).
+
 QUY TẮC BẮT BUỘC:
-1. TUYỆT ĐỐI KHÔNG đưa mã tệp cũ, mã camera (như DSC, VID, PXL, MOV, MP4) hay các chuỗi UUID / ký tự ngẫu nhiên (như "${video.originalName}") vào tên mới.
-2. Tên mới phải hoàn toàn bằng câu từ tự nhiên mô tả vẻ đẹp, trải nghiệm, góc quay (ví dụ: "review homestay sa pa view may fansipan", "room tour bungalow go am cung", "thuong thuc lau ca hoi tay bac").
-3. Không thêm số thứ tự và không thêm đuôi file trong trường rawTitle (hệ thống sẽ tự ghép).
-4. Trả về DUY NHẤT định dạng JSON chuẩn:
+1. TUYỆT ĐỐI KHÔNG đưa mã tệp rác, mã camera (DSC, VID, PXL) hay chuỗi UUID vào tên.
+2. Không thêm số thứ tự và không thêm đuôi file trong trường rawTitle (hệ thống sẽ tự ghép).
+3. Trả về DUY NHẤT JSON:
 {
-  "rawTitle": "tên gợi ý tự nhiên không chứa mã UUID hay đuôi file",
-  "summary": "Tóm tắt ngắn gọn 1-2 câu về những gì xuất hiện trong video"
+  "rawTitle": "tên chuẩn hóa dựa trên nội dung video",
+  "summary": "Mô tả 1-2 câu về nội dung thực tế của video"
 }
 `
 
@@ -736,7 +775,7 @@ QUY TẮC BẮT BUỘC:
                 contents: [{ parts }],
                 generationConfig: {
                   response_mime_type: 'application/json',
-                  temperature: 0.3,
+                  temperature: 0.2,
                 },
               }),
             })
@@ -747,9 +786,8 @@ QUY TẮC BẮT BUỘC:
               const cleanJson = textContent.replace(/^```json\s*/, '').replace(/\s*```$/, '').trim()
               parsed = JSON.parse(cleanJson)
               if (parsed && (parsed.rawTitle || parsed.proposedName)) {
-                // Verify clean raw title (no UUIDs)
                 let title = parsed.rawTitle || parsed.proposedName
-                title = title.replace(/[0-9a-f]{6,}[0-9a-f-]*/gi, '').trim()
+                title = extractCleanTitleFromFilename(title, renameConfig.contextHint, index)
                 if (title.length >= 3) {
                   parsed.rawTitle = title
                   success = true
@@ -761,7 +799,7 @@ QUY TẮC BẮT BUỘC:
         }
 
         if (success && parsed) {
-          const rawTitle = parsed.rawTitle || getSmartThematicTitle(renameConfig.contextHint, index)
+          const rawTitle = parsed.rawTitle || cleanContentName
           const proposedName = formatNameWithRules(rawTitle, ext, index)
           const summary = parsed.summary || `Video trải nghiệm ${rawTitle}, góc quay sắc nét.`
 
@@ -781,9 +819,9 @@ QUY TẮC BẮT BUỘC:
           return
         }
 
-        // Graceful intelligent fallback
-        const smartTitle = getSmartThematicTitle(renameConfig.contextHint, index)
-        const proposedName = formatNameWithRules(smartTitle, ext, index)
+        // Fallback when API returns no title
+        const rawTitle = cleanContentName
+        const proposedName = formatNameWithRules(rawTitle, ext, index)
 
         setVideos((prev) =>
           prev.map((v) =>
@@ -792,7 +830,7 @@ QUY TẮC BẮT BUỘC:
                   ...v,
                   status: 'proposed',
                   proposedName,
-                  summary: `Video trải nghiệm ${smartTitle}, góc quay sắc nét chuẩn Homestay Sa Pa.`,
+                  summary: `Video trải nghiệm ${rawTitle}, góc quay sắc nét.`,
                 }
               : v
           )
@@ -800,9 +838,9 @@ QUY TẮC BẮT BUỘC:
         addLog('info', `[AI Đã tạo tên] "${video.originalName}" -> "${proposedName}"`)
       } else {
         // Fallback intelligent simulation
-        await new Promise((r) => setTimeout(r, 400))
-        const smartTitle = getSmartThematicTitle(renameConfig.contextHint, index)
-        const proposedName = formatNameWithRules(smartTitle, ext, index)
+        await new Promise((r) => setTimeout(r, 200))
+        const rawTitle = cleanContentName
+        const proposedName = formatNameWithRules(rawTitle, ext, index)
 
         setVideos((prev) =>
           prev.map((v) =>
@@ -811,11 +849,12 @@ QUY TẮC BẮT BUỘC:
                   ...v,
                   status: 'proposed',
                   proposedName,
-                  summary: `Video trải nghiệm ${smartTitle}, chất lượng cao.`,
+                  summary: `Video trải nghiệm ${rawTitle}, góc quay sắc nét.`,
                 }
               : v
           )
         )
+        addLog('info', `[AI Đã tạo tên] "${video.originalName}" -> "${proposedName}"`)
       }
     } catch (err) {
       addLog('error', `[Lỗi phân tích] ${video.originalName}: ${err.message}`)
