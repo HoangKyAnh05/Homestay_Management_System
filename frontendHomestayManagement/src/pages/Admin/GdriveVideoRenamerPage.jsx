@@ -1351,26 +1351,6 @@ QUY TẮC BẮT BUỘC:
                 </div>
               </div>
             )}
-
-            {/* Topic Presets */}
-            <div className="gvr-preset-row">
-              <span className="gvr-preset-label">Gợi ý chủ đề nhanh cho AI:</span>
-              {CONTEXT_PRESETS.map((p, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  className={`gvr-preset-pill ${renameConfig.contextHint === p.hint ? 'active' : ''}`}
-                  onClick={() => {
-                    const next = { ...renameConfig, contextHint: p.hint }
-                    setRenameConfig(next)
-                    localStorage.setItem('homestay_gdrive_ai_rename_config', JSON.stringify(next))
-                    showToast(`Đã áp dụng chủ đề: ${p.label}`)
-                  }}
-                >
-                  {p.label}
-                </button>
-              ))}
-            </div>
           </div>
         </div>
 
@@ -1626,7 +1606,7 @@ QUY TẮC BẮT BUỘC:
                 </div>
               </div>
 
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              <div>
                 <button
                   className="gvr-btn gvr-btn-primary"
                   onClick={() => {
@@ -1635,40 +1615,6 @@ QUY TẮC BẮT BUỘC:
                   }}
                 >
                   📋 Sao Chép Toàn Bộ (1..., 2...)
-                </button>
-                <button
-                  className="gvr-btn gvr-btn-secondary"
-                  onClick={() => {
-                    const onlyNames = namedVideos
-                      .map((v) => (v.proposedName || v.name).replace(/^\d+[.\-\]]\s*/, ''))
-                      .join('\n')
-                    navigator.clipboard.writeText(onlyNames)
-                    showToast('Đã sao chép danh sách chỉ gồm tên (không số thứ tự)!')
-                  }}
-                >
-                  📋 Sao Chép Chỉ Tên (Không Số)
-                </button>
-                <button
-                  className="gvr-btn gvr-btn-secondary"
-                  onClick={() => {
-                    const blob = new Blob([currentFormattedList], { type: 'text/plain;charset=utf-8' })
-                    const url = URL.createObjectURL(blob)
-                    const a = document.createElement('a')
-                    a.href = url
-                    a.download = `danh_sach_ten_video_${new Date().toISOString().split('T')[0]}.txt`
-                    a.click()
-                    URL.revokeObjectURL(url)
-                    showToast('Đã tải xuống file .txt danh sách tên!')
-                  }}
-                >
-                  💾 Tải File .TXT
-                </button>
-                <button
-                  className="gvr-btn gvr-btn-secondary"
-                  onClick={() => setIsRepoModalOpen(true)}
-                  style={{ color: '#059669', borderColor: '#a7f3d0' }}
-                >
-                  📂 Xem Toàn Bộ Lịch Sử Lưu ➔
                 </button>
               </div>
             </div>
@@ -1680,43 +1626,6 @@ QUY TẮC BẮT BUỘC:
             </div>
           </div>
         )}
-
-        {/* Real-time Logs Panel */}
-        <div className="gvr-logs-panel">
-          <div className="gvr-logs-header" onClick={() => setShowLogs(!showLogs)}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 700, fontSize: '13.5px' }}>
-              <span>📋</span> Nhật Ký Hoạt Động Thời Gian Thực ({logs.length} sự kiện)
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <button
-                className="gvr-btn gvr-btn-subtle"
-                style={{ padding: '4px 10px', fontSize: '12px' }}
-                onClick={(e) => {
-                  e.stopPropagation()
-                  setLogs([])
-                }}
-              >
-                Xóa Log
-              </button>
-              <span>{showLogs ? '▲ Ẩn' : '▼ Mở'}</span>
-            </div>
-          </div>
-
-          {showLogs && (
-            <div className="gvr-logs-content">
-              {logs.length === 0 ? (
-                <div style={{ color: '#94a3b8', fontStyle: 'italic' }}>Chưa có nhật ký nào...</div>
-              ) : (
-                logs.map((item) => (
-                  <div key={item.id} className="gvr-log-item">
-                    <span className="gvr-log-time">[{item.time}]</span>
-                    <span className={`gvr-log-msg-${item.type}`}>{item.message}</span>
-                  </div>
-                ))
-              )}
-            </div>
-          )}
-        </div>
 
         {/* API Config Modal */}
         {isApiModalOpen && (
