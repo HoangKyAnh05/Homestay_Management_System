@@ -134,8 +134,8 @@ export const SceneItem: React.FC<SceneItemProps> = ({
           />
         );
       default:
-        // Kích hoạt engine GreenScreenDepthMotion khi và chỉ khi bật cờ isGreenScreenMotion
-        if (scene.isGreenScreenMotion) {
+        // Kích hoạt engine xếp chữ Motion Typography khi chọn 100 Kiểu Xếp Chữ hoặc bật Phông Xanh
+        if (scene.isGreenScreenMotion || Boolean(scene.motionTypographyLayout)) {
           return (
             <GreenScreenDepthMotion
               scene={scene}
@@ -369,8 +369,11 @@ export const SceneItem: React.FC<SceneItemProps> = ({
         </div>
       )}
 
-      {/* Synchronized Word-Level Subtitles: Chạy phụ đề theo từ với Text Template, Text Effect hoặc Mix Effects */}
-      {scene.visualType !== 'chat_bubble' && !scene.isGreenScreenMotion && !scene.hideSubtitles && (
+      {/* Synchronized Word-Level Subtitles: Chạy phụ đề khi không dùng 100 Kiểu Xếp Chữ Motion Typography */}
+      {scene.visualType !== 'chat_bubble' &&
+        !scene.isGreenScreenMotion &&
+        !scene.motionTypographyLayout &&
+        !scene.hideSubtitles && (
         <SubtitlesRenderer
           words={scene.words}
           subtitleStyle={subtitleStyle}

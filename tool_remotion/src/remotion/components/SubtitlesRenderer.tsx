@@ -160,11 +160,7 @@ export const SubtitlesRenderer: React.FC<SubtitlesRendererProps> = ({
         transform: finalTransform
       }}
     >
-      <div
-        className={`flex flex-wrap justify-center items-center gap-2 md:gap-3 text-center px-5 py-3 rounded-3xl ${
-          subtitleStyle.backgroundColor ? 'bg-black/70 backdrop-blur-md border border-white/10 shadow-2xl' : ''
-        }`}
-      >
+      <div className="flex flex-wrap justify-center items-center gap-2 md:gap-3 text-center px-4 py-2">
         {activeChunk.words.map((item, index) => {
           const isSpoken = effectiveTime >= item.start && effectiveTime <= item.end + 0.05;
           const hasPassed = effectiveTime > item.end + 0.05;

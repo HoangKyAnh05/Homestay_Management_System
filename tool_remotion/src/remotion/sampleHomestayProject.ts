@@ -19,8 +19,7 @@ export const sampleHomestayProject: VideoProject = {
     textColor: '#FFFFFF',
     strokeWidth: 3,
     strokeColor: '#000000',
-    positionY: 80,
-    backgroundColor: 'rgba(0, 0, 0, 0.45)'
+    positionY: 80
   },
   watermark: {
     enabled: false,

@@ -195,16 +195,7 @@ export const GreenScreenDepthMotion: React.FC<GreenScreenDepthMotionProps> = ({
                   );
                 }
 
-                return stylePreset.hasBox ? (
-                  <div className={stylePreset.boxClass}>
-                    <span
-                      className={`${pos.sizeClass} uppercase block whitespace-nowrap`}
-                      style={stylePreset.textStyle(baseColor)}
-                    >
-                      {item.text}
-                    </span>
-                  </div>
-                ) : (
+                return (
                   <span
                     className={`${pos.sizeClass} uppercase block whitespace-nowrap`}
                     style={stylePreset.textStyle(baseColor)}
@@ -328,16 +319,7 @@ export const GreenScreenDepthMotion: React.FC<GreenScreenDepthMotionProps> = ({
                   );
                 }
 
-                return stylePreset.hasBox ? (
-                  <div className={stylePreset.boxClass}>
-                    <span
-                      className={`${pos.sizeClass} uppercase block whitespace-nowrap`}
-                      style={stylePreset.textStyle(baseColor)}
-                    >
-                      {item.text}
-                    </span>
-                  </div>
-                ) : (
+                return (
                   <span
                     className={`${pos.sizeClass} uppercase block whitespace-nowrap`}
                     style={stylePreset.textStyle(baseColor)}
