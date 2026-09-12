@@ -843,6 +843,144 @@ export function MarketingAIAgentPage() {
   const [videoLibrary, setVideoLibrary] = useState([])
   const [videoSearchPath, setVideoSearchPath] = useState('')
 
+  const [gdriveModal, setGdriveModal] = useState({
+    open: false,
+    folderInput: localStorage.getItem('remotion_last_drive_folder_url') || '',
+    apiKey: localStorage.getItem('remotion_google_drive_api_key') || '',
+    showApiKey: !localStorage.getItem('remotion_google_drive_api_key'),
+    isScanning: false,
+    results: [],
+    error: '',
+    successMsg: '',
+    downloadingId: null,
+    downloadProgress: 0,
+  })
+
+  const extractDriveFolderId = (input) => {
+    if (!input || !input.trim()) return null
+    const clean = input.trim()
+    const folderMatch = clean.match(/\/folders\/([a-zA-Z0-9_-]+)/)
+    if (folderMatch && folderMatch[1]) return folderMatch[1]
+    const idParamMatch = clean.match(/[?&]id=([a-zA-Z0-9_-]+)/)
+    if (idParamMatch && idParamMatch[1]) return idParamMatch[1]
+    if (/^[a-zA-Z0-9_-]{15,60}$/.test(clean)) return clean
+    return null
+  }
+
+  const handleOpenGdriveModal = (initialUrl) => {
+    const url = initialUrl || videoSearchPath || gdriveModal.folderInput || localStorage.getItem('remotion_last_drive_folder_url') || ''
+    setGdriveModal((prev) => ({
+      ...prev,
+      open: true,
+      folderInput: url,
+      error: '',
+      successMsg: '',
+    }))
+    if (url && (url.includes('drive.google.com') || /^[a-zA-Z0-9_-]{20,}$/.test(url.trim()))) {
+      setTimeout(() => {
+        scanGdriveWithParams(url, gdriveModal.apiKey)
+      }, 100)
+    }
+  }
+
+  const scanGdriveWithParams = async (folderInput, apiKeyInput) => {
+    const folderId = extractDriveFolderId(folderInput)
+    if (!folderId) {
+      setGdriveModal((prev) => ({
+        ...prev,
+        error: 'Vui lòng nhập link hoặc ID thư mục Google Drive hợp lệ (Ví dụ: https://drive.google.com/drive/folders/...)',
+      }))
+      return
+    }
+
+    const effectiveKey = (apiKeyInput || gdriveModal.apiKey || localStorage.getItem('remotion_google_drive_api_key') || '').trim()
+
+    setGdriveModal((prev) => ({ ...prev, isScanning: true, error: '', successMsg: '', results: [] }))
+    try {
+      localStorage.setItem('remotion_last_drive_folder_url', folderInput.trim())
+      if (effectiveKey) {
+        localStorage.setItem('remotion_google_drive_api_key', effectiveKey)
+      }
+
+      // 1. Thử gọi Google Drive API v3 nếu có API Key
+      let files = []
+      if (effectiveKey) {
+        const query = encodeURIComponent(
+          `'${folderId}' in parents and (mimeType contains 'video/' or mimeType contains 'image/' or fileExtension = 'mp4' or fileExtension = 'mov' or fileExtension = 'webm' or fileExtension = 'mkv' or fileExtension = 'jpg' or fileExtension = 'png' or fileExtension = 'jpeg') and trashed = false`
+        )
+        const fields = encodeURIComponent('files(id,name,mimeType,size,thumbnailLink,webContentLink,createdTime)')
+        const url = `https://www.googleapis.com/drive/v3/files?q=${query}&fields=${fields}&key=${effectiveKey}&pageSize=100`
+
+        const res = await fetch(url)
+        if (!res.ok) {
+          const errBody = await res.json().catch(() => ({}))
+          throw new Error(errBody?.error?.message || `Lỗi Google API (HTTP ${res.status}): Không thể đọc thư mục Drive. Vui lòng kiểm tra quyền chia sẻ công khai hoặc API Key.`)
+        }
+        const data = await res.json()
+        files = data.files || []
+      } else {
+        // Fallback: Nếu chưa có API Key, hướng dẫn nhập key
+        throw new Error('Vui lòng nhập Google Drive API Key để quét thư mục. Bấm nút "Cấu hình Google API Key" bên dưới để dán API Key miễn phí.')
+      }
+
+      if (!files.length) {
+        throw new Error('Không tìm thấy file video hoặc ảnh nào trong thư mục Google Drive này. Hãy đảm bảo thư mục chứa file .mp4, .mov, .jpg, .png.')
+      }
+
+      const mappedVideos = files.map((file) => {
+        const sizeBytes = Number(file.size) || 0
+        const isVideo = file.mimeType?.startsWith('video/') || /\.(mp4|mov|webm|mkv)$/i.test(file.name)
+        return {
+          id: `gdrive_${file.id}`,
+          gdriveFileId: file.id,
+          title: file.name.replace(/\.[^/.]+$/, ''),
+          type: isVideo ? (file.name.split('.').pop() || 'MP4').toUpperCase() : 'ẢNH',
+          source: 'Google Drive Cloud',
+          date: new Date(file.createdTime || Date.now()).toLocaleDateString('vi-VN'),
+          sizeBytes,
+          sizeMb: Number((sizeBytes / (1024 * 1024)).toFixed(2)),
+          thumbnailUrl: file.thumbnailLink ? file.thumbnailLink.replace(/=s\d+$/, '=s400') : `https://lh3.googleusercontent.com/d/${file.id}=s400`,
+          downloadUrl: file.webContentLink || `https://drive.google.com/uc?export=download&id=${file.id}`,
+          directDriveUrl: `https://www.googleapis.com/drive/v3/files/${file.id}?alt=media&key=${effectiveKey}`,
+          caption: `Khám phá vẻ đẹp Sa Pa tại Lá Đỏ Homestay.`,
+          hashtags: '#shorts #reels #LaDoHomestay #SaPa #DuLichSaPa',
+        }
+      })
+
+      setGdriveModal((prev) => ({
+        ...prev,
+        isScanning: false,
+        results: mappedVideos,
+        successMsg: ` Quét thành công! Đã tìm thấy ${mappedVideos.length} video & hình ảnh.`,
+      }))
+    } catch (err) {
+      setGdriveModal((prev) => ({
+        ...prev,
+        isScanning: false,
+        error: err.message || 'Lỗi khi quét thư mục Google Drive',
+      }))
+    }
+  }
+
+  const handleAddAllGdriveToLibrary = () => {
+    if (!gdriveModal.results.length) return
+    setVideoLibrary((prev) => {
+      const existingIds = new Set(prev.map((p) => p.id))
+      const newItems = gdriveModal.results.filter((r) => !existingIds.has(r.id))
+      return [...newItems, ...prev]
+    })
+    setVideoSearchPath(gdriveModal.folderInput)
+    setGdriveModal((prev) => ({ ...prev, open: false }))
+  }
+
+  const handleAddSingleGdriveToLibrary = (item) => {
+    setVideoLibrary((prev) => {
+      if (prev.some((p) => p.id === item.id)) return prev
+      return [item, ...prev]
+    })
+    setGdriveModal((prev) => ({ ...prev, open: false }))
+  }
+
   const handleDirectoryScan = (e) => {
     const files = Array.from(e.target.files || [])
     if (!files.length) return
@@ -2869,7 +3007,8 @@ BẮT BUỘC trả về đúng 1 JSON duy nhất:
               <button
                 type="button"
                 className="mkt-btn--gdrive"
-                onClick={() => alert('Đã kết nối Google Drive Cloud! Đang đồng bộ video mới...')}
+                onClick={() => handleOpenGdriveModal()}
+                title="Mở bảng quét video từ thư mục Google Drive Cloud"
               >
                 <span>Google Drive Cloud</span>
               </button>
@@ -2882,13 +3021,28 @@ BẮT BUỘC trả về đúng 1 JSON duy nhất:
               <input
                 value={videoSearchPath}
                 onChange={(e) => setVideoSearchPath(e.target.value)}
-                placeholder="Đường dẫn thư mục video trên máy hoặc Google Drive..."
+                placeholder="Dán link thư mục Google Drive hoặc đường dẫn máy tính..."
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    if (videoSearchPath.includes('drive.google.com') || /^[a-zA-Z0-9_-]{20,}$/.test(videoSearchPath.trim())) {
+                      handleOpenGdriveModal(videoSearchPath)
+                    } else if (videoSearchPath.trim()) {
+                      handleOpenGdriveModal(videoSearchPath)
+                    }
+                  }
+                }}
               />
             </div>
             <button
               type="button"
               className="mkt-btn mkt-btn--secondary"
-              onClick={() => alert(`Đang quét lại đường dẫn: ${videoSearchPath || 'Thư mục máy tính'}`)}
+              onClick={() => {
+                if (videoSearchPath.includes('drive.google.com') || /^[a-zA-Z0-9_-]{20,}$/.test(videoSearchPath.trim())) {
+                  handleOpenGdriveModal(videoSearchPath)
+                } else {
+                  handleOpenGdriveModal(videoSearchPath)
+                }
+              }}
             >
               <Icon name="refresh" size={14} />
               <span>Quét lại</span>
@@ -2904,7 +3058,7 @@ BẮT BUỘC trả về đúng 1 JSON duy nhất:
               type="button"
               className="mkt-btn mkt-btn--secondary"
               style={{ background: '#ffffff', borderColor: '#a7f3d0', color: '#065f46', fontWeight: 600 }}
-              onClick={() => alert('Đang quét Google Drive: Đồng bộ video thành công!')}
+              onClick={() => handleOpenGdriveModal()}
             >
               <Icon name="refresh" size={14} />
               <span>Quét Google Drive Ngay</span>
@@ -3805,6 +3959,196 @@ BẮT BUỘC trả về đúng 1 JSON duy nhất:
                     </button>
                   </div>
                 </div>
+              </div>
+            </section>
+          </div>
+        )}
+
+        {/* Modal Quét Google Drive Cloud */}
+        {gdriveModal.open && (
+          <div className="mkt-modal-backdrop" role="presentation" onMouseDown={() => !gdriveModal.isScanning && setGdriveModal((c) => ({ ...c, open: false }))}>
+            <section className="mkt-modal mkt-api-modal" role="dialog" aria-modal="true" aria-label="Quét Google Drive Cloud" onMouseDown={(e) => e.stopPropagation()} style={{ maxWidth: '780px', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+              <div className="mkt-modal-head" style={{ borderBottom: '1px solid #f1f5f9', paddingBottom: '14px', flexShrink: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{ width: 44, height: 44, borderRadius: 12, background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px' }}>
+                    <Icon name="folder" size={22} />
+                  </div>
+                  <div>
+                    <h2 style={{ fontSize: '1.25rem', color: '#0f172a', margin: 0, fontWeight: 800 }}>Quét Thư Mục Google Drive Cloud</h2>
+                    <p style={{ color: '#64748b', margin: '2px 0 0 0', fontSize: '0.85rem' }}>Quét tự động video & hình ảnh cảnh đẹp Homestay để nạp vào kho nội dung và lên lịch đăng 24/7.</p>
+                  </div>
+                </div>
+                <button className="mkt-icon-btn" type="button" onClick={() => setGdriveModal((c) => ({ ...c, open: false }))} disabled={gdriveModal.isScanning}><Icon name="close" /></button>
+              </div>
+
+              <div className="mkt-modal-body" style={{ padding: '16px 0', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                {/* API Key configuration toggle bar */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc', padding: '10px 14px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', color: '#334155' }}>
+                    <Icon name="wand" size={16} />
+                    <span>Google Drive API Key: {gdriveModal.apiKey ? <b style={{ color: '#059669' }}> Đã cấu hình</b> : <span style={{ color: '#d97706' }}>️ Chưa có key</span>}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setGdriveModal((c) => ({ ...c, showApiKey: !c.showApiKey }))}
+                    style={{ background: 'transparent', border: 'none', color: '#0284c7', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    {gdriveModal.showApiKey ? 'Ẩn cấu hình' : 'Cấu hình Google API Key'}
+                  </button>
+                </div>
+
+                {gdriveModal.showApiKey && (
+                  <div style={{ background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: '10px', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <label style={{ fontSize: '0.8rem', fontWeight: 700, color: '#0369a1' }}>Nhập Google Drive API Key (Google Cloud Console):</label>
+                      <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noreferrer" style={{ fontSize: '0.75rem', color: '#0284c7', textDecoration: 'underline' }}>
+                        Lấy API Key miễn phí ↗
+                      </a>
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <input
+                        type="text"
+                        placeholder="AIzaSy..."
+                        value={gdriveModal.apiKey}
+                        onChange={(e) => setGdriveModal((c) => ({ ...c, apiKey: e.target.value }))}
+                        style={{ flex: 1, padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }}
+                      />
+                      <button
+                        type="button"
+                        className="mkt-btn mkt-btn--primary"
+                        style={{ padding: '8px 14px', fontSize: '0.8rem' }}
+                        onClick={() => {
+                          localStorage.setItem('remotion_google_drive_api_key', gdriveModal.apiKey.trim())
+                          setGdriveModal((c) => ({ ...c, successMsg: 'Đã lưu Google Drive API Key thành công!' }))
+                          setTimeout(() => setGdriveModal((c) => ({ ...c, successMsg: '' })), 2500)
+                        }}
+                      >
+                        Lưu Key
+                      </button>
+                    </div>
+                    <p style={{ margin: 0, fontSize: '0.75rem', color: '#64748b' }}>
+                      * Mẹo: Thư mục Google Drive nên được chia sẻ ở chế độ <b>"Bất kỳ ai có đường liên kết đều có thể xem"</b>.
+                    </p>
+                  </div>
+                )}
+
+                {/* Input Folder URL / ID */}
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+                    Dán đường dẫn thư mục Google Drive:
+                  </label>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <input
+                      type="text"
+                      placeholder="https://drive.google.com/drive/folders/1aBcDeFgHiJkLmNoPqRsTuVwXyZ..."
+                      value={gdriveModal.folderInput}
+                      onChange={(e) => setGdriveModal((c) => ({ ...c, folderInput: e.target.value }))}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') scanGdriveWithParams(gdriveModal.folderInput, gdriveModal.apiKey)
+                      }}
+                      style={{ flex: 1, padding: '10px 14px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '0.9rem' }}
+                    />
+                    <button
+                      type="button"
+                      className="mkt-btn mkt-btn--primary"
+                      onClick={() => scanGdriveWithParams(gdriveModal.folderInput, gdriveModal.apiKey)}
+                      disabled={gdriveModal.isScanning || !gdriveModal.folderInput.trim()}
+                      style={{ background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)', minWidth: '130px' }}
+                    >
+                      {gdriveModal.isScanning ? <span className="mkt-spinner" /> : <Icon name="refresh" size={15} />}
+                      <span>{gdriveModal.isScanning ? 'Đang quét...' : 'Quét Video'}</span>
+                    </button>
+                  </div>
+                </div>
+
+                {gdriveModal.error && <p className="mkt-alert" style={{ background: '#fef2f2', color: '#991b1b', borderColor: '#fecaca', margin: 0 }}>{gdriveModal.error}</p>}
+                {gdriveModal.successMsg && <p className="mkt-alert" style={{ background: '#ecfdf5', color: '#065f46', borderColor: '#a7f3d0', margin: 0 }}>{gdriveModal.successMsg}</p>}
+
+                {/* Scanned Results */}
+                {gdriveModal.results.length > 0 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '4px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0f172a' }}>
+                        Danh sách video & hình ảnh tìm thấy ({gdriveModal.results.length}):
+                      </span>
+                      <button
+                        type="button"
+                        className="mkt-btn mkt-btn--primary"
+                        onClick={handleAddAllGdriveToLibrary}
+                        style={{ padding: '6px 14px', fontSize: '0.8rem', background: '#059669' }}
+                      >
+                         Nạp Toàn Bộ Vào Kho Video ({gdriveModal.results.length})
+                      </button>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px', maxHeight: '280px', overflowY: 'auto', padding: '4px' }}>
+                      {gdriveModal.results.map((item) => (
+                        <div
+                          key={item.id}
+                          style={{
+                            background: '#f8fafc',
+                            border: '1px solid #e2e8f0',
+                            borderRadius: '12px',
+                            padding: '10px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            justifyContent: 'space-between',
+                            gap: '8px',
+                          }}
+                        >
+                          <div style={{ position: 'relative', width: '100%', height: '100px', borderRadius: '8px', overflow: 'hidden', background: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <img
+                              src={item.thumbnailUrl}
+                              alt={item.title}
+                              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none'
+                              }}
+                            />
+                            <span style={{ position: 'absolute', bottom: 4, right: 4, background: 'rgba(0,0,0,0.7)', color: '#fff', fontSize: '10px', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>
+                              {item.sizeMb ? `${item.sizeMb} MB` : item.type}
+                            </span>
+                          </div>
+                          <div>
+                            <p style={{ margin: 0, fontSize: '0.8rem', fontWeight: 700, color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={item.title}>
+                              {item.title}
+                            </p>
+                            <span style={{ fontSize: '0.7rem', color: '#64748b' }}>{item.date}</span>
+                          </div>
+                          <button
+                            type="button"
+                            className="mkt-btn mkt-btn--secondary"
+                            onClick={() => handleAddSingleGdriveToLibrary(item)}
+                            style={{ width: '100%', padding: '6px', fontSize: '0.75rem', fontWeight: 600, justifyContent: 'center' }}
+                          >
+                             Chọn File Này
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', borderTop: '1px solid #f1f5f9', paddingTop: '14px', flexShrink: 0 }}>
+                <button
+                  type="button"
+                  className="mkt-btn mkt-btn--secondary"
+                  onClick={() => setGdriveModal((c) => ({ ...c, open: false }))}
+                  disabled={gdriveModal.isScanning}
+                >
+                  Đóng
+                </button>
+                {gdriveModal.results.length > 0 && (
+                  <button
+                    type="button"
+                    className="mkt-btn mkt-btn--primary"
+                    style={{ background: '#059669' }}
+                    onClick={handleAddAllGdriveToLibrary}
+                  >
+                     Nạp Vào Kho & Bắt Đầu Đăng Bài
+                  </button>
+                )}
               </div>
             </section>
           </div>
