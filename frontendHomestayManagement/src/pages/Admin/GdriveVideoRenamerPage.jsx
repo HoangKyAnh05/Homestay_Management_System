@@ -1084,9 +1084,9 @@ Trả về DUY NHẤT định dạng JSON:
         <div className="gvr-header">
           <div>
             <div className="gvr-badge-tag">
-              <span>✦</span> AI Marketing Studio
+              <span>📁</span> Marketing Video Studio
             </div>
-            <h1 className="gvr-title">Đổi Tên Video AI (Google Drive & Tệp Máy)</h1>
+            <h1 className="gvr-title">Đổi Tên Video Hàng Loạt (Google Drive & Tệp Máy)</h1>
             <p className="gvr-subtitle">
               Tự động quan sát khung hình video, nhận diện bối cảnh Homestay & Sa Pa để đặt lại tên tệp chuẩn SEO, chuyên nghiệp và có thứ tự tự động.
             </p>
@@ -1170,10 +1170,10 @@ Trả về DUY NHẤT định dạng JSON:
 
           <div className="gvr-stat-card">
             <div className="gvr-stat-icon" style={{ backgroundColor: '#eff6ff', color: '#2563eb' }}>
-              ✨
+              📝
             </div>
             <div className="gvr-stat-info">
-              <span className="gvr-stat-label">AI Đã Đề Xuất</span>
+              <span className="gvr-stat-label">Đã Có Tên Mới</span>
               <span className="gvr-stat-value">{statProposed}</span>
             </div>
           </div>
@@ -1290,7 +1290,7 @@ Trả về DUY NHẤT định dạng JSON:
                     disabled={videos.length === 0 || isProcessing}
                     style={{ padding: '9px 20px', fontSize: '14px', fontWeight: 700 }}
                   >
-                    {isProcessing ? <span className="gvr-spinner"></span> : '✦'} Phân Tích AI Tất Cả
+                    {isProcessing ? <span className="gvr-spinner"></span> : '▶'} Phân Tích Tất Cả Video
                   </button>
                   <button
                     className="gvr-btn gvr-btn-primary"
@@ -1354,7 +1354,7 @@ Trả về DUY NHẤT định dạng JSON:
                   <div className="gvr-dropzone-icon">🎬</div>
                   <h4 className="gvr-dropzone-text">Nhấp để chọn tệp Video hoặc Kéo thả video vào đây</h4>
                   <p className="gvr-dropzone-hint">
-                    Hỗ trợ .mp4, .mov, .webm, .mkv. Hệ thống sẽ tự động trích xuất các khung hình để AI nhận diện.
+                    Hỗ trợ .mp4, .mov, .webm, .mkv. Hệ thống sẽ tự động trích xuất các khung hình để nhận diện nội dung.
                   </p>
                   <div style={{ marginTop: '14px', display: 'flex', justifyContent: 'center', gap: '10px' }}>
                     <button
@@ -1388,7 +1388,7 @@ Trả về DUY NHẤT định dạng JSON:
                     disabled={videos.length === 0 || isProcessing}
                     style={{ padding: '9px 20px', fontSize: '14px', fontWeight: 700 }}
                   >
-                    {isProcessing ? <span className="gvr-spinner"></span> : '✦'} Phân Tích AI Tất Cả
+                    {isProcessing ? <span className="gvr-spinner"></span> : '▶'} Phân Tích Tất Cả Video
                   </button>
                   <button
                     className="gvr-btn gvr-btn-primary"
@@ -1446,7 +1446,7 @@ Trả về DUY NHẤT định dạng JSON:
                 <div className="gvr-empty-icon">📁</div>
                 <h4 className="gvr-empty-title">Chưa có video nào trong danh sách</h4>
                 <p className="gvr-empty-desc">
-                  Hãy nhập link Google Drive hoặc chọn tệp video từ máy tính của bạn ở khung phía trên để bắt đầu phân tích và đổi tên bằng AI.
+                  Hãy nhập link Google Drive hoặc chọn tệp video từ máy tính của bạn ở khung phía trên để bắt đầu phân tích và đổi tên.
                 </p>
               </div>
             ) : (
@@ -1462,7 +1462,7 @@ Trả về DUY NHẤT định dạng JSON:
                     </th>
                     <th style={{ width: '60px' }}>STT</th>
                     <th style={{ minWidth: '240px' }}>Video Gốc</th>
-                    <th style={{ minWidth: '340px' }}>Tên Mới Do AI Đề Xuất (Có thể chỉnh sửa)</th>
+                    <th style={{ minWidth: '340px' }}>Tên Mới Đề Xuất (Có thể chỉnh sửa)</th>
                     <th style={{ width: '130px' }}>Trạng Thái</th>
                     <th style={{ width: '150px', textAlign: 'right' }}>Thao Tác</th>
                   </tr>
@@ -1518,7 +1518,7 @@ Trả về DUY NHẤT định dạng JSON:
                               <input
                                 type="text"
                                 className={`gvr-rename-input ${hasProposed ? 'has-value' : ''}`}
-                                placeholder="Chưa có tên mới (Bấm Phân tích AI)"
+                                placeholder="Chưa có tên mới (Bấm Phân tích)"
                                 value={video.proposedName || ''}
                                 onChange={(e) => {
                                   const val = e.target.value
@@ -1545,7 +1545,7 @@ Trả về DUY NHẤT định dạng JSON:
 
                             {video.summary && (
                               <div className="gvr-summary-text" title={video.summary}>
-                                💡 <strong>Nhận diện AI:</strong> {video.summary}
+                                <strong>Nội dung:</strong> {video.summary}
                               </div>
                             )}
 
@@ -1567,7 +1567,7 @@ Trả về DUY NHẤT định dạng JSON:
                           )}
                           {video.status === 'proposed' && (
                             <span className="gvr-badge gvr-badge-proposed">
-                              ✨ Đã có tên mới
+                              Đã có tên mới
                             </span>
                           )}
                           {video.status === 'success' && (
@@ -1588,9 +1588,9 @@ Trả về DUY NHẤT định dạng JSON:
                               style={{ padding: '6px 10px', fontSize: '12.5px' }}
                               onClick={() => analyzeVideoWithGemini(video, idx)}
                               disabled={isRowAnalyzing}
-                              title="Phân tích lại video này bằng AI"
+                              title="Phân tích lại video này"
                             >
-                              {isRowAnalyzing ? <span className="gvr-spinner"></span> : '✦ AI'}
+                              {isRowAnalyzing ? <span className="gvr-spinner"></span> : 'Phân Tích'}
                             </button>
 
                             {hasProposed && (
