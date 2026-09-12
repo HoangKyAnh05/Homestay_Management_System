@@ -399,9 +399,6 @@ export default function GdriveVideoRenamerPage() {
       return
     }
 
-    setIsScanning(true)
-    addLog('info', `Bắt đầu quét dữ liệu từ Google Drive: ${rawInput.substring(0, 50)}...`)
-
     // Extract Folder ID if URL
     let folderId = rawInput
     const folderMatch = rawInput.match(/folders\/([a-zA-Z0-9_-]+)/)
@@ -414,23 +411,41 @@ export default function GdriveVideoRenamerPage() {
       }
     }
 
+    if (!driveAccessToken && !apiConfig.googleApiKey) {
+      addLog('info', 'Bạn chưa đăng nhập Google Drive. Đang mở hộp thoại đăng nhập để kết nối...')
+      showToast('Vui lòng bấm Đăng Nhập Google Drive để tải video thật từ tài khoản của bạn!', 'info')
+      handleGoogleLogin()
+      return
+    }
+
+    setIsScanning(true)
+    addLog('info', `Bắt đầu quét toàn bộ dữ liệu từ Google Drive (Thư mục: ${folderId})...`)
+
     try {
-      // 1. If we have active Google OAuth Access Token (Direct Google Drive API)
       if (driveAccessToken) {
-        let query = `'${folderId}' in parents and trashed = false and (mimeType contains 'video/' or name contains '.mp4' or name contains '.mov' or name contains '.webm')`
+        let query = `'${folderId}' in parents and trashed = false`
         if (folderId === 'root') {
-          query = `'root' in parents and trashed = false and (mimeType contains 'video/' or name contains '.mp4' or name contains '.mov')`
+          query = `'root' in parents and trashed = false`
         }
 
-        const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id,name,mimeType,size,thumbnailLink,webContentLink,videoMediaMetadata)&pageSize=100`
+        const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id,name,mimeType,size,thumbnailLink,webContentLink,videoMediaMetadata)&pageSize=1000&supportsAllDrives=true&includeItemsFromAllDrives=true`
         const res = await fetch(url, {
           headers: { Authorization: `Bearer ${driveAccessToken}` },
         })
 
         if (res.ok) {
           const data = await res.json()
-          if (data.files && data.files.length > 0) {
-            const driveItems = data.files.map((f) => {
+          const allFiles = data.files || []
+
+          const videoFiles = allFiles.filter((f) => {
+            const isVideoType = f.mimeType && (f.mimeType.startsWith('video/') || f.mimeType.includes('quicktime') || f.mimeType.includes('octet-stream'))
+            const isVideoExt = /\.(mp4|mov|avi|webm|mkv|m4v|3gp|flv|wmv|ts|mpg|mpeg)$/i.test(f.name)
+            const isNonVideo = /\.(jpg|jpeg|png|gif|webp|svg|pdf|docx|xlsx|txt|zip|rar)$/i.test(f.name) || f.mimeType === 'application/vnd.google-apps.folder'
+            return (isVideoType || isVideoExt) && !isNonVideo
+          })
+
+          if (videoFiles.length > 0) {
+            const driveItems = videoFiles.map((f) => {
               const durMs = f.videoMediaMetadata?.durationMillis || 0
               const totalSec = Math.round(durMs / 1000)
               const mins = Math.floor(totalSec / 60)
@@ -453,29 +468,42 @@ export default function GdriveVideoRenamerPage() {
               }
             })
 
-            setVideos((prev) => [...prev, ...driveItems])
-            showToast(`Tìm thấy ${driveItems.length} video từ Google Drive!`)
-            addLog('success', `Đã tải ${driveItems.length} video từ Google Drive Folder ID: ${folderId}.`)
+            setVideos(driveItems)
+            showToast(`Đã quét thành công ${driveItems.length} video từ Google Drive!`)
+            addLog('success', `Đã tải toàn bộ ${driveItems.length} video từ Google Drive Folder ID: ${folderId}.`)
             setIsScanning(false)
             return
           } else {
-            showToast('Không tìm thấy video nào trong thư mục Google Drive này.', 'info')
-            addLog('warning', `Thư mục ${folderId} không có video nào.`)
+            showToast(`Thư mục này có ${allFiles.length} tệp nhưng không tìm thấy video nào.`, 'info')
+            addLog('warning', `Thư mục ${folderId} không có tệp video nào.`)
             setIsScanning(false)
             return
           }
+        } else {
+          const errData = await res.json().catch(() => ({}))
+          if (res.status === 401) {
+            addLog('warning', 'Phiên đăng nhập Google Drive đã hết hạn. Đang mở đăng nhập lại...')
+            setDriveAccessToken('')
+            sessionStorage.removeItem('homestay_gdrive_access_token')
+            handleGoogleLogin()
+          } else {
+            throw new Error(errData.error?.message || `Lỗi Google Drive HTTP ${res.status}`)
+          }
         }
-      }
-
-      // 2. Fallback: Google Cloud API Key
-      if (apiConfig.googleApiKey) {
-        const query = `'${folderId}' in parents and trashed=false and (mimeType contains 'video/' or name contains '.mp4' or name contains '.mov')`
-        const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id,name,mimeType,size,thumbnailLink,webContentLink,videoMediaMetadata)&key=${apiConfig.googleApiKey}`
+      } else if (apiConfig.googleApiKey) {
+        const query = `'${folderId}' in parents and trashed=false`
+        const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id,name,mimeType,size,thumbnailLink,webContentLink,videoMediaMetadata)&pageSize=1000&key=${apiConfig.googleApiKey}`
         const res = await fetch(url)
         const data = await res.json()
 
         if (data.files && data.files.length > 0) {
-          const driveItems = data.files.map((f) => {
+          const videoFiles = data.files.filter((f) => {
+            const isVideoType = f.mimeType && (f.mimeType.startsWith('video/') || f.mimeType.includes('quicktime'))
+            const isVideoExt = /\.(mp4|mov|avi|webm|mkv|m4v|3gp|flv|wmv|ts|mpg|mpeg)$/i.test(f.name)
+            return isVideoType || isVideoExt
+          })
+
+          const driveItems = videoFiles.map((f) => {
             const durMs = f.videoMediaMetadata?.durationMillis || 0
             const totalSec = Math.round(durMs / 1000)
             const mins = Math.floor(totalSec / 60)
@@ -498,63 +526,13 @@ export default function GdriveVideoRenamerPage() {
             }
           })
 
-          setVideos((prev) => [...prev, ...driveItems])
+          setVideos(driveItems)
           showToast(`Tìm thấy ${driveItems.length} video trên Google Drive!`)
           addLog('success', `Đã tải ${driveItems.length} video từ Google Drive Folder ID: ${folderId}.`)
           setIsScanning(false)
           return
         }
       }
-
-      // 3. Simulated Mock fallback
-      const simulatedItems = [
-        {
-          id: `gdrive_${folderId}_1`,
-          name: 'VID_20260912_084512_SaPa_Fansipan_View.mp4',
-          originalName: 'VID_20260912_084512_SaPa_Fansipan_View.mp4',
-          proposedName: '',
-          mimeType: 'video/mp4',
-          size: 48500000,
-          duration: '01:24',
-          thumbnailLink: null,
-          frames: [],
-          isDriveFile: true,
-          status: 'idle',
-          summary: '',
-        },
-        {
-          id: `gdrive_${folderId}_2`,
-          name: 'DSC_9942_Homestay_Bungalow_Room_Review.mov',
-          originalName: 'DSC_9942_Homestay_Bungalow_Room_Review.mov',
-          proposedName: '',
-          mimeType: 'video/quicktime',
-          size: 72100000,
-          duration: '02:10',
-          thumbnailLink: null,
-          frames: [],
-          isDriveFile: true,
-          status: 'idle',
-          summary: '',
-        },
-        {
-          id: `gdrive_${folderId}_3`,
-          name: 'PXL_20260910_SanMay_LauCaHoi_TayBac.mp4',
-          originalName: 'PXL_20260910_SanMay_LauCaHoi_TayBac.mp4',
-          proposedName: '',
-          mimeType: 'video/mp4',
-          size: 38900000,
-          duration: '00:58',
-          thumbnailLink: null,
-          frames: [],
-          isDriveFile: true,
-          status: 'idle',
-          summary: '',
-        },
-      ]
-
-      setVideos((prev) => [...prev, ...simulatedItems])
-      showToast(`Đã nhận diện ${simulatedItems.length} video từ Google Drive!`)
-      addLog('info', `Đã nạp danh sách video từ Google Drive: ${folderId}. (Bấm "🔗 Đăng nhập Google Drive" để truy cập file thật 100%).`)
     } catch (err) {
       addLog('error', `Lỗi khi quét Google Drive: ${err.message}`)
       showToast(`Lỗi quét Drive: ${err.message}`, 'error')
