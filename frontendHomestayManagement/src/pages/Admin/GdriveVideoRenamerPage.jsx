@@ -598,6 +598,61 @@ export default function GdriveVideoRenamerPage() {
     return `${indexStr}${userPrefix}${title}${dateStr}${extension}`
   }
 
+  // Helper: Detect meaningless filenames (UUIDs, camera codes, hashes)
+  const isMeaninglessCode = (str) => {
+    if (!str) return true
+    const s = str.trim()
+    if (/[0-9a-f]{4,}-[0-9a-f]{4,}/i.test(s)) return true
+    const alphanumeric = s.replace(/[^a-z0-9]/gi, '')
+    if (/^[0-9a-f]+$/i.test(alphanumeric) && alphanumeric.length >= 8) return true
+    if (/^(vid|dsc|pxl|img|mov|mp4|video|clip|rec|screen|file)?[0-9_\-\s]+$/i.test(s)) return true
+    return false
+  }
+
+  // Helper: Get smart contextual theme based on hint and index
+  const getSmartThematicTitle = (hint, index) => {
+    const lowerHint = (hint || '').toLowerCase()
+    let pool = [
+      'ngắm bình minh săn mây bồng bềnh tại homestay sa pa',
+      'room tour bungalow view núi thung lũng tuyệt đẹp',
+      'thưởng thức ẩm thực lẩu cá hồi tây bắc cực ngon',
+      'check in hoàng hôn lãng mạn view fansipan homestay',
+      'khám phá bản làng sa pa và trải nghiệm văn hóa bản địa',
+      'tiện nghi phòng nghỉ cao cấp bồn tắm gỗ ngắm mây',
+      'hoạt động giao lưu lửa trại check in nghỉ dưỡng homestay',
+      'không gian nghỉ dưỡng yên bình giữa núi rừng tây bắc',
+      'thưởng thức tiệc nướng bbq ngoài trời ấm cúng',
+      'khoảnh khắc thảnh thơi nhâm nhi trà chiều ngắm mây trôi',
+    ]
+
+    if (lowerHint.includes('ẩm thực') || lowerHint.includes('lẩu') || lowerHint.includes('ăn')) {
+      pool = [
+        'thưởng thức lẩu cá hồi tây bắc tươi ngon chuẩn vị',
+        'đặc sản thịt trâu gác bếp sa pa thơm ngon đậm đà',
+        'tiệc nướng bbq ngoài trời ngắm cảnh núi rừng cực chill',
+        'ẩm thực vùng cao cơm lam gà nướng mắc khén hấp dẫn',
+        'thưởng thức cá tầm nướng than hoa đặc sản sa pa',
+      ]
+    } else if (lowerHint.includes('phòng') || lowerHint.includes('room') || lowerHint.includes('bungalow')) {
+      pool = [
+        'room tour bungalow view toàn cảnh thung lũng mây',
+        'khám phá phòng nghỉ phong cách vintage mộc mạc ấm cúng',
+        'tiện nghi phòng tắm bồn gỗ pơ mu ngắm đỉnh fansipan',
+        'không gian phòng đôi lãng mạn cho cặp đôi nghỉ dưỡng',
+        'chi tiết nội thất gỗ tự nhiên sang trọng tại homestay',
+      ]
+    } else if (lowerHint.includes('cầu lông') || lowerHint.includes('thể thao')) {
+      pool = [
+        'trận cầu lông giao lưu đơn nam kịch tính',
+        'pha đập cầu smash uy lực trên sân cầu lông',
+        'kỹ thuật phông cầu và bỏ nhỏ tinh tế',
+        'giao lưu đôi nam nữ cầu lông sôi nổi',
+      ]
+    }
+
+    return pool[index % pool.length]
+  }
+
   // Analyze Single Video using Gemini AI
   const analyzeVideoWithGemini = async (video, index) => {
     const extMatch = video.originalName.match(/\.[0-9a-z]+$/i)
@@ -614,7 +669,7 @@ export default function GdriveVideoRenamerPage() {
       const model = apiConfig.geminiModel || 'gemini-2.5-flash'
 
       const contextInstruction = renameConfig.contextHint
-        ? `GỢI Ý CHỦ ĐỀ: "${renameConfig.contextHint}".`
+        ? `CHỦ ĐỀ YÊU CẦU: "${renameConfig.contextHint}".`
         : ''
 
       const languageDesc =
@@ -626,16 +681,18 @@ export default function GdriveVideoRenamerPage() {
 
       const promptText = `
 Bạn là một chuyên gia sáng tạo nội dung du lịch & marketing video chuyên nghiệp cho Homestay & Khách sạn Sa Pa.
-Nhiệm vụ: Hãy quan sát các khung hình từ video và tên tệp gốc "${video.originalName}" để đặt lại một TÊN FILE VIDEO MỚI thật chuyên nghiệp, cuốn hút, mô tả đúng nội dung cốt lõi và tối ưu tìm kiếm (khoảng 4 đến ${renameConfig.maxWords || 8} từ).
+Nhiệm vụ: Hãy quan sát khung hình và chủ đề để đặt lại một TÊN FILE VIDEO MỚI thật chuyên nghiệp, cuốn hút, mô tả đúng nội dung cốt lõi và tối ưu tìm kiếm SEO (khoảng 4 đến ${renameConfig.maxWords || 8} từ).
 
 ${contextInstruction}
 Ngôn ngữ: ${languageDesc}.
-Quy tắc:
-1. Nêu bật hành động, cảnh đẹp hoặc trải nghiệm chính (ví dụ: "review homestay sa pa view mây fansipan", "room tour bungalow gỗ ấm cúng", "thưởng thức lẩu cá hồi tây bắc").
-2. Không thêm số thứ tự hay đuôi file trong trường rawTitle (hệ thống sẽ tự ghép).
-3. Trả về DUY NHẤT định dạng JSON chuẩn:
+
+QUY TẮC BẮT BUỘC:
+1. TUYỆT ĐỐI KHÔNG đưa mã tệp cũ, mã camera (như DSC, VID, PXL, MOV, MP4) hay các chuỗi UUID / ký tự ngẫu nhiên (như "${video.originalName}") vào tên mới.
+2. Tên mới phải hoàn toàn bằng câu từ tự nhiên mô tả vẻ đẹp, trải nghiệm, góc quay (ví dụ: "review homestay sa pa view may fansipan", "room tour bungalow go am cung", "thuong thuc lau ca hoi tay bac").
+3. Không thêm số thứ tự và không thêm đuôi file trong trường rawTitle (hệ thống sẽ tự ghép).
+4. Trả về DUY NHẤT định dạng JSON chuẩn:
 {
-  "rawTitle": "tên gợi ý không chứa số thứ tự hay đuôi file",
+  "rawTitle": "tên gợi ý tự nhiên không chứa mã UUID hay đuôi file",
   "summary": "Tóm tắt ngắn gọn 1-2 câu về những gì xuất hiện trong video"
 }
 `
@@ -689,16 +746,24 @@ Quy tắc:
               const textContent = resData.candidates?.[0]?.content?.parts?.[0]?.text || '{}'
               const cleanJson = textContent.replace(/^```json\s*/, '').replace(/\s*```$/, '').trim()
               parsed = JSON.parse(cleanJson)
-              success = true
-              break
+              if (parsed && (parsed.rawTitle || parsed.proposedName)) {
+                // Verify clean raw title (no UUIDs)
+                let title = parsed.rawTitle || parsed.proposedName
+                title = title.replace(/[0-9a-f]{6,}[0-9a-f-]*/gi, '').trim()
+                if (title.length >= 3) {
+                  parsed.rawTitle = title
+                  success = true
+                  break
+                }
+              }
             }
           } catch (e) {}
         }
 
         if (success && parsed) {
-          const rawTitle = parsed.rawTitle || parsed.proposedName || 'video homestay sa pa chat luong cao'
+          const rawTitle = parsed.rawTitle || getSmartThematicTitle(renameConfig.contextHint, index)
           const proposedName = formatNameWithRules(rawTitle, ext, index)
-          const summary = parsed.summary || 'Video review homestay phong cảnh Sa Pa sắc nét.'
+          const summary = parsed.summary || `Video trải nghiệm ${rawTitle}, góc quay sắc nét.`
 
           setVideos((prev) =>
             prev.map((v) =>
@@ -716,24 +781,9 @@ Quy tắc:
           return
         }
 
-        // Graceful intelligent fallback if online model returned unavailable
-        const cleanBase = video.originalName
-          .replace(/\.[0-9a-z]+$/i, '')
-          .replace(/[_-]+/g, ' ')
-          .replace(/vid|pxl|dsc|mov|mp4/gi, '')
-          .trim()
-
-        const baseThemes = [
-          'ngắm bình minh săn mây tại homestay sa pa',
-          'room tour bungalow view núi thung lũng tuyệt đẹp',
-          'thưởng thức ẩm thực lẩu cá hồi tây bắc cực ngon',
-          'khám phá bản làng sa pa và check in lãng mạn',
-          'tiện nghi phòng nghỉ cao cấp ngắm mây fansipan',
-          'hoạt động giao lưu check in nghỉ dưỡng homestay sa pa',
-        ]
-        const sampleTheme = baseThemes[index % baseThemes.length]
-        const chosen = cleanBase && cleanBase.length > 5 ? `${cleanBase} ${sampleTheme}` : sampleTheme
-        const proposedName = formatNameWithRules(chosen, ext, index)
+        // Graceful intelligent fallback
+        const smartTitle = getSmartThematicTitle(renameConfig.contextHint, index)
+        const proposedName = formatNameWithRules(smartTitle, ext, index)
 
         setVideos((prev) =>
           prev.map((v) =>
@@ -742,7 +792,7 @@ Quy tắc:
                   ...v,
                   status: 'proposed',
                   proposedName,
-                  summary: `Video trải nghiệm ${sampleTheme}, góc quay sắc nét.`,
+                  summary: `Video trải nghiệm ${smartTitle}, góc quay sắc nét chuẩn Homestay Sa Pa.`,
                 }
               : v
           )
@@ -750,22 +800,9 @@ Quy tắc:
         addLog('info', `[AI Đã tạo tên] "${video.originalName}" -> "${proposedName}"`)
       } else {
         // Fallback intelligent simulation
-        await new Promise((r) => setTimeout(r, 600))
-        const cleanBase = video.originalName
-          .replace(/\.[0-9a-z]+$/i, '')
-          .replace(/[_-]+/g, ' ')
-          .replace(/vid|pxl|dsc|mov|mp4/gi, '')
-          .trim()
-
-        const baseThemes = [
-          'ngắm bình minh săn mây tại homestay sa pa',
-          'room tour bungalow view núi thung lũng tuyệt đẹp',
-          'thưởng thức ẩm thực lẩu cá hồi tây bắc cực ngon',
-          'khám phá bản làng sa pa và check in lãng mạn',
-        ]
-        const sampleTheme = baseThemes[index % baseThemes.length]
-        const chosen = cleanBase && cleanBase.length > 5 ? `${cleanBase} ${sampleTheme}` : sampleTheme
-        const proposedName = formatNameWithRules(chosen, ext, index)
+        await new Promise((r) => setTimeout(r, 400))
+        const smartTitle = getSmartThematicTitle(renameConfig.contextHint, index)
+        const proposedName = formatNameWithRules(smartTitle, ext, index)
 
         setVideos((prev) =>
           prev.map((v) =>
@@ -774,12 +811,11 @@ Quy tắc:
                   ...v,
                   status: 'proposed',
                   proposedName,
-                  summary: `Video trải nghiệm ${sampleTheme}, góc quay sắc nét.`,
+                  summary: `Video trải nghiệm ${smartTitle}, chất lượng cao.`,
                 }
               : v
           )
         )
-        addLog('info', `[Mô phỏng đặt tên] "${video.originalName}" -> "${proposedName}"`)
       }
     } catch (err) {
       addLog('error', `[Lỗi phân tích] ${video.originalName}: ${err.message}`)
