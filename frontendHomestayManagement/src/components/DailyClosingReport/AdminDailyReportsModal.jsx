@@ -72,17 +72,17 @@ export default function AdminDailyReportsModal({ isOpen, onClose }) {
         {/* Header */}
         <div className="dcm-header">
           <div className="dcm-header-left">
-            <h2>📋 Quản Trị: Danh Sách Báo Cáo Cuối Ngày Của Lễ Tân</h2>
+            <h2> Quản Trị: Danh Sách Báo Cáo Cuối Ngày Của Lễ Tân</h2>
             <p>Kiểm tra doanh thu, danh sách phòng có khách và xác nhận báo cáo từ nhân viên</p>
           </div>
           <button type="button" className="dcm-close-btn" onClick={onClose} title="Đóng">
-            ✕
+            
           </button>
         </div>
 
         {/* Body */}
         <div className="dcm-body">
-          {msg && <div className="dcm-alert-success">✅ {msg}</div>}
+          {msg && <div className="dcm-alert-success"> {msg}</div>}
 
           {selectedReport ? (
             /* Chi tiết 1 báo cáo */
@@ -120,7 +120,7 @@ export default function AdminDailyReportsModal({ isOpen, onClose }) {
               {/* Stats */}
               <div className="dcm-stats-grid" style={{ marginBottom: 16 }}>
                 <div className="dcm-stat-card dcm-stat-card--occupied">
-                  <div className="dcm-stat-icon">🛏️</div>
+                  <div className="dcm-stat-icon">️</div>
                   <div className="dcm-stat-info">
                     <span className="dcm-stat-label">Phòng đang có khách</span>
                     <span className="dcm-stat-value">{selectedReport.occupiedRoomsCount} phòng</span>
@@ -128,7 +128,7 @@ export default function AdminDailyReportsModal({ isOpen, onClose }) {
                 </div>
 
                 <div className="dcm-stat-card dcm-stat-card--checkin">
-                  <div className="dcm-stat-icon">📥</div>
+                  <div className="dcm-stat-icon"></div>
                   <div className="dcm-stat-info">
                     <span className="dcm-stat-label">Check-in trong ngày</span>
                     <span className="dcm-stat-value">{selectedReport.checkInTodayCount} lượt</span>
@@ -136,7 +136,7 @@ export default function AdminDailyReportsModal({ isOpen, onClose }) {
                 </div>
 
                 <div className="dcm-stat-card dcm-stat-card--checkout">
-                  <div className="dcm-stat-icon">📤</div>
+                  <div className="dcm-stat-icon"></div>
                   <div className="dcm-stat-info">
                     <span className="dcm-stat-label">Check-out trong ngày</span>
                     <span className="dcm-stat-value">{selectedReport.checkOutTodayCount} lượt</span>
@@ -148,13 +148,13 @@ export default function AdminDailyReportsModal({ isOpen, onClose }) {
               <div className="dcm-section" style={{ marginBottom: 16 }}>
                 <div className="dcm-revenue-grid">
                   <div className="dcm-rev-box">
-                    <span className="dcm-rev-label">💵 Tiền mặt tại quầy:</span>
+                    <span className="dcm-rev-label"> Tiền mặt tại quầy:</span>
                     <span className="dcm-rev-amount" style={{ color: '#059669' }}>
                       {formatMoney(selectedReport.cashRevenue)}
                     </span>
                   </div>
                   <div className="dcm-rev-box">
-                    <span className="dcm-rev-label">💳 Chuyển khoản ngân hàng:</span>
+                    <span className="dcm-rev-label"> Chuyển khoản ngân hàng:</span>
                     <span className="dcm-rev-amount" style={{ color: '#2563eb' }}>
                       {formatMoney(selectedReport.transferRevenue)}
                     </span>
@@ -176,7 +176,7 @@ export default function AdminDailyReportsModal({ isOpen, onClose }) {
               {snapshot?.occupiedRooms && snapshot.occupiedRooms.length > 0 && (
                 <div className="dcm-section" style={{ marginBottom: 16 }}>
                   <h3 className="dcm-section-title">
-                    <span>🏠 Danh sách phòng lưu trú lúc gửi báo cáo ({snapshot.occupiedRooms.length})</span>
+                    <span> Danh sách phòng lưu trú lúc gửi báo cáo ({snapshot.occupiedRooms.length})</span>
                   </h3>
                   <div className="dcm-table-wrapper">
                     <table className="dcm-table">
@@ -215,7 +215,7 @@ export default function AdminDailyReportsModal({ isOpen, onClose }) {
               {selectedReport.notes && (
                 <div className="dcm-section" style={{ marginBottom: 16 }}>
                   <h3 className="dcm-section-title">
-                    <span>📝 Ghi chú dặn dò của Lễ tân</span>
+                    <span> Ghi chú dặn dò của Lễ tân</span>
                   </h3>
                   <div style={{ background: '#ffffff', padding: 14, borderRadius: 8, border: '1px solid #e2e8f0', color: '#334155', fontStyle: 'italic' }}>
                     {selectedReport.notes}
@@ -232,7 +232,7 @@ export default function AdminDailyReportsModal({ isOpen, onClose }) {
                     disabled={acknowledging}
                     onClick={() => handleAcknowledge(selectedReport.id)}
                   >
-                    <span>{acknowledging ? 'Đang xác nhận...' : '✅ Xác Nhận Đã Xem & Kiểm Tra Báo Cáo'}</span>
+                    <span>{acknowledging ? 'Đang xác nhận...' : ' Xác Nhận Đã Xem & Kiểm Tra Báo Cáo'}</span>
                   </button>
                 )}
               </div>

@@ -52,6 +52,14 @@ public interface HousekeepingTaskRepository extends JpaRepository<HousekeepingTa
             select ht from HousekeepingTask ht
             join fetch ht.checkInRecord cr
             join fetch cr.bookingDetail bd
+            where bd.id in :bookingDetailIds
+            """)
+    List<HousekeepingTask> findByBookingDetailIdIn(@Param("bookingDetailIds") java.util.Collection<Long> bookingDetailIds);
+
+    @Query("""
+            select ht from HousekeepingTask ht
+            join fetch ht.checkInRecord cr
+            join fetch cr.bookingDetail bd
             join fetch bd.booking b
             join fetch b.customer
             join fetch ht.room r
@@ -60,6 +68,13 @@ public interface HousekeepingTaskRepository extends JpaRepository<HousekeepingTa
             where bd.id = :bookingDetailId
             """)
     Optional<HousekeepingTask> findByBookingDetailIdForDetail(@Param("bookingDetailId") Long bookingDetailId);
+
+    @Query("""
+            select ht from HousekeepingTask ht
+            join fetch ht.checkInRecord cr
+            where cr.bookingDetail.id = :bookingDetailId
+            """)
+    Optional<HousekeepingTask> findByBookingDetailId(@Param("bookingDetailId") Long bookingDetailId);
 
     void deleteByRoomId(Long roomId);
 }

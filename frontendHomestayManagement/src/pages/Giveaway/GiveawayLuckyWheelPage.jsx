@@ -244,6 +244,11 @@ export default function GiveawayLuckyWheelPage() {
 
   useEffect(() => {
     drawWheel()
+    if (document.fonts) {
+      document.fonts.ready.then(() => {
+        drawWheel()
+      })
+    }
   }, [])
 
   // Handle Form Submit -> Register Spin
@@ -456,12 +461,12 @@ export default function GiveawayLuckyWheelPage() {
 
           {!spinToken && (
             <p style={{ color: '#fbbf24', fontSize: '0.95rem', fontWeight: 600, marginTop: '10px' }}>
-              👉 Vui lòng điền thông tin bên cạnh để nhận 1 lượt quay miễn phí!
+               Vui lòng điền thông tin bên cạnh để nhận 1 lượt quay miễn phí!
             </p>
           )}
           {spinToken && !hasSpun && (
             <p style={{ color: '#34d399', fontSize: '1rem', fontWeight: 700, marginTop: '10px' }}>
-              ✨ Đã cấp lượt quay! Bạn hãy bấm nút &quot;QUAY&quot; ở tâm vòng quay!
+               Đã cấp lượt quay! Bạn hãy bấm nút &quot;QUAY&quot; ở tâm vòng quay!
             </p>
           )}
         </section>
@@ -470,14 +475,14 @@ export default function GiveawayLuckyWheelPage() {
         <section className="gw-card">
           {errorMsg && (
             <div style={{ background: '#f43f5e22', border: '1px solid #f43f5e', color: '#fda4af', padding: '12px 16px', borderRadius: '12px', marginBottom: '18px', fontSize: '0.92rem' }}>
-              ⚠️ {errorMsg}
+              ️ {errorMsg}
             </div>
           )}
 
           {!hasSpun ? (
             <div>
               <div className="gw-card-header">
-                <h2 className="gw-card-title">🎁 Thông Tin Nhận Lượt Quay</h2>
+                <h2 className="gw-card-title"> Thông Tin Nhận Lượt Quay</h2>
                 <p className="gw-card-desc">Thông tin của bạn được bảo mật tuyệt đối và chỉ dùng để trao mã ưu đãi đặt phòng trực tiếp.</p>
               </div>
 
@@ -549,18 +554,18 @@ export default function GiveawayLuckyWheelPage() {
 
                 {!spinToken ? (
                   <button type="submit" className="gw-btn-submit">
-                    🎯 NHẬN LƯỢT QUAY MIỄN PHÍ NGAY
+                     NHẬN LƯỢT QUAY MIỄN PHÍ NGAY
                   </button>
                 ) : (
                   <button type="button" className="gw-btn-submit" style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)' }} onClick={handleSpinWheel} disabled={spinning}>
-                    {spinning ? 'ĐANG QUAY VÒNG SỐ...' : '🎰 BẤM QUAY VÒNG MAY MẮN NGAY!'}
+                    {spinning ? 'ĐANG QUAY VÒNG SỐ...' : ' BẤM QUAY VÒNG MAY MẮN NGAY!'}
                   </button>
                 )}
               </form>
             </div>
           ) : (
             <div className="gw-winner-box">
-              <span className="gw-winner-badge">🏆 CHÚC MỪNG BẠN ĐÃ TRÚNG THƯỞNG</span>
+              <span className="gw-winner-badge"> CHÚC MỪNG BẠN ĐÃ TRÚNG THƯỞNG</span>
               <h3 className="gw-winner-title">{wonResult?.prizeName}</h3>
               <p style={{ color: '#e7e5e4', fontSize: '0.96rem', lineHeight: 1.5 }}>
                 {wonResult?.congratulationsMessage}
@@ -574,7 +579,7 @@ export default function GiveawayLuckyWheelPage() {
               </div>
 
               <p style={{ color: '#a8a29e', fontSize: '0.85rem' }}>
-                ⏳ {wonResult?.voucherExpiry || 'Hạn dùng: 30 ngày kể từ ngày nhận'}.
+                 {wonResult?.voucherExpiry || 'Hạn dùng: 30 ngày kể từ ngày nhận'}.
               </p>
 
               {/* Contact Button */}
@@ -583,7 +588,7 @@ export default function GiveawayLuckyWheelPage() {
                 className="gw-btn-contact-now"
                 onClick={() => setShowContactModal(true)}
               >
-                📞 BẤM LIÊN HỆ ĐẶT PHÒNG & NHẬN GIẢI NGAY
+                 BẤM LIÊN HỆ ĐẶT PHÒNG & NHẬN GIẢI NGAY
               </button>
             </div>
           )}
@@ -606,7 +611,7 @@ export default function GiveawayLuckyWheelPage() {
 
             <a href={`tel:${config?.hotline || '0981123456'}`} className="gw-contact-item">
               <div className="gw-contact-icon" style={{ background: '#ef444422', color: '#f87171' }}>
-                📞
+                
               </div>
               <div className="gw-contact-info">
                 <h4>Hotline / Gọi Trực Tiếp</h4>
@@ -616,7 +621,7 @@ export default function GiveawayLuckyWheelPage() {
 
             <a href={`https://zalo.me/${config?.zaloNumber || '0981123456'}`} target="_blank" rel="noreferrer" className="gw-contact-item">
               <div className="gw-contact-icon" style={{ background: '#0284c722', color: '#38bdf8' }}>
-                💬
+                
               </div>
               <div className="gw-contact-info">
                 <h4>Chat Zalo Nhận Tư Vấn</h4>
@@ -626,7 +631,7 @@ export default function GiveawayLuckyWheelPage() {
 
             <a href={config?.facebookMessengerUrl || 'https://m.me/ladohomestaysapa'} target="_blank" rel="noreferrer" className="gw-contact-item">
               <div className="gw-contact-icon" style={{ background: '#3b82f622', color: '#60a5fa' }}>
-                🌐
+                
               </div>
               <div className="gw-contact-info">
                 <h4>Facebook Messenger</h4>
@@ -654,7 +659,7 @@ export default function GiveawayLuckyWheelPage() {
                   transition: 'all 0.2s ease',
                 }}
               >
-                <span>🌐 Vào Trang Chủ Website Khách Hàng</span>
+                <span> Vào Trang Chủ Website Khách Hàng</span>
               </a>
 
               <a
@@ -674,7 +679,7 @@ export default function GiveawayLuckyWheelPage() {
                   border: '1px solid rgba(56, 189, 248, 0.3)',
                 }}
               >
-                <span>🏡 Xem Danh Sách Phòng & Giá Ưu Đãi &rarr;</span>
+                <span> Xem Danh Sách Phòng & Giá Ưu Đãi &rarr;</span>
               </a>
             </div>
           </div>

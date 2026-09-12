@@ -18,7 +18,7 @@ function authHeaders() {
 
 function renderStars(count = 5) {
   const num = Math.max(1, Math.min(5, Math.round(Number(count) || 5)))
-  return '★'.repeat(num) + '☆'.repeat(5 - num)
+  return '★'.repeat(num) + ''.repeat(5 - num)
 }
 
 function ReviewDetailModal({ review, onClose, onUpdateStatus, actionLoadingId }) {
@@ -103,7 +103,7 @@ function ReviewDetailModal({ review, onClose, onUpdateStatus, actionLoadingId })
               disabled={isUpdating}
               onClick={() => onUpdateStatus(review.reviewId, 'APPROVED')}
             >
-              {isUpdating ? 'Đang duyệt...' : '✅ Duyệt & Cho phép hiển thị'}
+              {isUpdating ? 'Đang duyệt...' : ' Duyệt & Cho phép hiển thị'}
             </button>
           ) : (
             <button
@@ -112,7 +112,7 @@ function ReviewDetailModal({ review, onClose, onUpdateStatus, actionLoadingId })
               disabled={isUpdating}
               onClick={() => onUpdateStatus(review.reviewId, 'HIDDEN')}
             >
-              {isUpdating ? 'Đang ẩn...' : '👁️ Tạm ẩn bài đánh giá'}
+              {isUpdating ? 'Đang ẩn...' : '️ Tạm ẩn bài đánh giá'}
             </button>
           )}
           <button type="button" className="arv-btn arv-btn--detail" onClick={onClose}>
@@ -321,7 +321,7 @@ export default function AdminReviewsPage() {
             onClick={handleSyncGoogle}
             disabled={syncing || loading}
           >
-            {syncing ? 'Đang đồng bộ...' : '🌐 Đồng bộ Google Reviews'}
+            {syncing ? 'Đang đồng bộ...' : ' Đồng bộ Google Reviews'}
           </button>
           <button type="button" className="arv-refresh-btn" onClick={fetchReviews} disabled={loading}>
             {loading ? 'Đang tải...' : '↻ Làm mới'}
@@ -337,7 +337,7 @@ export default function AdminReviewsPage() {
         </div>
         <div>
           <span>Điểm trung bình</span>
-          <strong style={{ color: '#d97706' }}>⭐ {stats.average} / 5.0</strong>
+          <strong style={{ color: '#d97706' }}> {stats.average} / 5.0</strong>
         </div>
         <div>
           <span>Đã duyệt (Hiển thị)</span>
@@ -365,10 +365,10 @@ export default function AdminReviewsPage() {
 
         <select className="arv-select" value={ratingFilter} onChange={handleRatingChange}>
           <option value="">Tất cả số sao</option>
-          <option value="5">5 sao (Tuyệt vời ⭐⭐⭐⭐⭐)</option>
-          <option value="4">4 sao (Rất tốt ⭐⭐⭐⭐)</option>
-          <option value="3">3 sao (Bình thường ⭐⭐⭐)</option>
-          <option value="LOW">1 - 2 sao (Cần lưu ý ⭐)</option>
+          <option value="5">5 sao (Tuyệt vời )</option>
+          <option value="4">4 sao (Rất tốt )</option>
+          <option value="3">3 sao (Bình thường )</option>
+          <option value="LOW">1 - 2 sao (Cần lưu ý )</option>
         </select>
 
         <select className="arv-select" value={statusFilter} onChange={handleStatusChange}>

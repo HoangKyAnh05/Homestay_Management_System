@@ -39,6 +39,67 @@ function formatDateTimeDisplay(value) {
   return `${day}/${month}/${year} ${displayHour}:${minute} ${period}`
 }
 
+export function getRoomShortLabel(room, index) {
+  if (!room) return `Phòng ${index + 1}`
+  if (room.roomNumber) return `P.${room.roomNumber}`
+  if (room.roomTypeName) {
+    const clean = room.roomTypeName.replace(/^(phòng|loại phòng)\s*/i, '').trim()
+    return clean.length > 10 ? clean.slice(0, 9) + '…' : clean
+  }
+  if (room.name) {
+    const clean = room.name.replace(/^(phòng|loại phòng)\s*/i, '').trim()
+    return clean.length > 10 ? clean.slice(0, 9) + '…' : clean
+  }
+  return `P.${index + 1}`
+}
+
+export function getRoomFullLabel(room, index) {
+  if (!room) return `Phòng ${index + 1}`
+  const num = room.roomNumber ? `P.${room.roomNumber}` : ''
+  const name = room.roomTypeName || room.name || room.houseTypeName || ''
+  if (num && name) return `${num} - ${name}`
+  if (num) return num
+  if (name) return name
+  return `Phòng ${index + 1}`
+}
+
+/**
+ * Checks if a busy slot conflicts with checking in or checking out on a specific dateKey.
+ * Homestay standard check-in: 14:00 (02:00 PM)
+ * Homestay standard check-out: 12:00 (12:00 PM)
+ */
+export function isSlotBusyOnDate(slot, dateKey, isCheckIn, checkInValue) {
+  if (!slot || !slot.checkInTarget || !slot.checkOutTarget) return false
+  const slotStart = new Date(slot.checkInTarget)
+  const slotEnd = new Date(slot.checkOutTarget)
+  if (Number.isNaN(slotStart.getTime()) || Number.isNaN(slotEnd.getTime())) return false
+
+  const [y, m, d] = dateKey.split('-').map(Number)
+
+  if (isCheckIn) {
+    // Check-in mode: Guest checks in on dateKey at 14:00
+    // Slot blocks check-in if it is active at 14:00
+    // (slotStart <= 14:00 and slotEnd > 14:00)
+    const checkInMoment = new Date(y, m - 1, d, 14, 0, 0, 0)
+    return slotStart <= checkInMoment && slotEnd > checkInMoment
+  } else {
+    // Check-out mode: Guest checks out on dateKey at 12:00
+    const checkOutMoment = new Date(y, m - 1, d, 12, 0, 0, 0)
+
+    if (checkInValue) {
+      const userCheckIn = new Date(checkInValue)
+      if (!Number.isNaN(userCheckIn.getTime())) {
+        // Must strictly overlap the stay range [userCheckIn, checkOutMoment]
+        // If checkOutMoment <= slotStart (e.g. 12:00 <= 14:00 start of new booking), no overlap!
+        return userCheckIn < slotEnd && checkOutMoment > slotStart
+      }
+    }
+
+    // Default: slot blocks check-out if room was occupied the night leading up to 12:00
+    return slotStart < checkOutMoment && slotEnd >= checkOutMoment
+  }
+}
+
 export default function CustomDateTimePicker({
   value,
   onChange,
@@ -88,14 +149,24 @@ export default function CustomDateTimePicker({
     }
   }, [value])
 
+  // Normalized list of rooms to check
+  const activeRooms = useMemo(() => {
+    if (rooms && rooms.length > 0) return rooms
+    if (roomTargetId) return [{ id: roomTargetId, roomId: roomTargetId }]
+    return []
+  }, [rooms, roomTargetId])
+
   // Fetch busy slots for viewed month if rooms or roomTargetId provided
   useEffect(() => {
     const targets = []
-    if (roomTargetId) targets.push(roomTargetId)
-    else if (rooms && rooms.length) {
-      rooms.forEach((r) => {
+    if (roomTargetId) {
+      targets.push({ id: roomTargetId, room: null })
+    } else if (rooms && rooms.length) {
+      rooms.forEach((r, idx) => {
         const id = r.roomId || r.roomTypeId || r.id
-        if (id && !targets.includes(id)) targets.push(id)
+        if (id && !targets.some((t) => String(t.id) === String(id))) {
+          targets.push({ id, room: r, index: idx })
+        }
       })
     }
 
@@ -109,16 +180,26 @@ export default function CustomDateTimePicker({
     const toDate = `${viewYear}-${formatTwoDigits(viewMonth + 1)}-${formatTwoDigits(lastDay)}`
 
     let cancelled = false
-    Promise.all(targets.map((targetId) =>
-      fetch(`${API_BASE_URL}/rooms/${targetId}?fromDate=${fromDate}&toDate=${toDate}`)
-        .then((res) => (res.ok ? res.json() : null))
-        .then((data) => data?.busySlots || [])
-        .catch(() => [])
-    ))
+    Promise.all(
+      targets.map(({ id, room, index }) =>
+        fetch(`${API_BASE_URL}/rooms/${id}?fromDate=${fromDate}&toDate=${toDate}`)
+          .then((res) => (res.ok ? res.json() : null))
+          .then((data) =>
+            (data?.busySlots || []).map((slot) => ({
+              ...slot,
+              roomId: id,
+              room: slot.room || room,
+              roomNumber: slot.roomNumber || room?.roomNumber,
+              roomName: slot.roomName || room?.name || room?.roomTypeName,
+              roomIndex: index,
+            }))
+          )
+          .catch(() => [])
+      )
+    )
       .then((slotLists) => {
         if (!cancelled) {
-          const combined = slotLists.flat()
-          setFetchedBusySlots(combined)
+          setFetchedBusySlots(slotLists.flat())
         }
       })
       .catch(() => {})
@@ -128,13 +209,14 @@ export default function CustomDateTimePicker({
     }
   }, [viewYear, viewMonth, roomTargetId, rooms])
 
-  // Combined busy slots
+  // Combined busy slots with room tagging
   const allBusySlots = useMemo(() => {
     const map = new Map()
     const combine = [...(busySlots || []), ...(fetchedBusySlots || [])]
     combine.forEach((slot) => {
       if (slot && slot.checkInTarget && slot.checkOutTarget) {
-        const key = `${slot.checkInTarget}_${slot.checkOutTarget}_${slot.status || ''}`
+        const roomId = slot.roomId || slot.room?.roomId || slot.room?.roomTypeId || slot.room?.id || ''
+        const key = `${roomId}_${slot.checkInTarget}_${slot.checkOutTarget}_${slot.status || ''}`
         map.set(key, slot)
       }
     })
@@ -208,17 +290,66 @@ export default function CustomDateTimePicker({
     return days
   }, [viewYear, viewMonth])
 
-  // Check if a day has busy slots
-  const isDayBusy = (dateKey) => {
-    if (!allBusySlots || !allBusySlots.length) return false
-    const dayStart = `${dateKey}T00:00:00`
-    const dayEnd = `${dateKey}T23:59:59`
-    return allBusySlots.some((slot) => {
-      const slotStart = slot.checkInTarget
-      const slotEnd = slot.checkOutTarget
-      if (!slotStart || !slotEnd) return false
-      return slotStart < dayEnd && slotEnd > dayStart
+  // Detailed occupancy calculation per day for active rooms
+  const getDayRoomOccupancy = (dateKey) => {
+    if (!activeRooms || activeRooms.length <= 1) {
+      const isBusy = allBusySlots.some((slot) =>
+        isSlotBusyOnDate(slot, dateKey, isCheckIn, checkInValue)
+      )
+      return {
+        isMulti: false,
+        totalRooms: 1,
+        busyRooms: isBusy ? [{ label: 'Phòng này', fullLabel: 'Phòng này' }] : [],
+        freeRooms: !isBusy ? [{ label: 'Phòng này', fullLabel: 'Phòng này' }] : [],
+        isAllBusy: isBusy,
+        isPartiallyBusy: false,
+        isAllFree: !isBusy,
+      }
+    }
+
+    const busyRooms = []
+    const freeRooms = []
+
+    activeRooms.forEach((room, idx) => {
+      const roomId = room.roomId || room.roomTypeId || room.id
+      const roomLabel = getRoomShortLabel(room, idx)
+      const roomFull = getRoomFullLabel(room, idx)
+
+      // Find busy slots for this specific room
+      const roomSlots = allBusySlots.filter((slot) => {
+        const slotRoomId = slot.roomId || slot.room?.roomId || slot.room?.roomTypeId || slot.room?.id
+        if (slotRoomId && roomId) return String(slotRoomId) === String(roomId)
+        if (slot.roomNumber && room.roomNumber) return String(slot.roomNumber) === String(room.roomNumber)
+        return true
+      })
+
+      const isRoomBusy = roomSlots.some((slot) =>
+        isSlotBusyOnDate(slot, dateKey, isCheckIn, checkInValue)
+      )
+
+      const info = {
+        ...room,
+        id: roomId,
+        label: roomLabel,
+        fullLabel: roomFull,
+      }
+
+      if (isRoomBusy) {
+        busyRooms.push(info)
+      } else {
+        freeRooms.push(info)
+      }
     })
+
+    return {
+      isMulti: true,
+      totalRooms: activeRooms.length,
+      busyRooms,
+      freeRooms,
+      isAllBusy: busyRooms.length === activeRooms.length,
+      isPartiallyBusy: busyRooms.length > 0 && busyRooms.length < activeRooms.length,
+      isAllFree: busyRooms.length === 0,
+    }
   }
 
   // Today key
@@ -250,13 +381,21 @@ export default function CustomDateTimePicker({
     }
   }
 
+  const minDateKey = min ? min.split('T')[0] : ''
+  const isTodayDisabled = (!isCheckIn && checkInDateKey && todayKey <= checkInDateKey) ||
+    (!allowBeforeMin && minDateKey && todayKey < minDateKey)
+
   // Time / Date builder with fixed homestay policy (14:00 checkin, 12:00 checkout)
   const commitNewDateTime = (newDateKey) => {
     const targetDateKey = newDateKey || selectedDateKey || todayKey
     const hour24 = isCheckIn ? 14 : 12
     const formatted = `${targetDateKey}T${formatTwoDigits(hour24)}:00`
 
-    if (!allowBeforeMin && min && formatted < min) {
+    if (!allowBeforeMin) {
+      if (minDateKey && targetDateKey < minDateKey) return
+      if (targetDateKey < todayKey) return
+    }
+    if (!isCheckIn && checkInDateKey && targetDateKey <= checkInDateKey) {
       return
     }
 
@@ -266,8 +405,11 @@ export default function CustomDateTimePicker({
   // Select day
   const handleSelectDay = (day) => {
     if (day.isOutside) return
-    const isPast = day.dateKey < todayKey && !allowBeforeMin
-    if (isPast) return
+    if (!allowBeforeMin) {
+      if (day.dateKey < todayKey) return
+      if (minDateKey && day.dateKey < minDateKey) return
+    }
+    if (!isCheckIn && checkInDateKey && day.dateKey <= checkInDateKey) return
     commitNewDateTime(day.dateKey)
     setIsOpen(false)
   }
@@ -275,6 +417,7 @@ export default function CustomDateTimePicker({
   // Select Today
   const handleSelectToday = (e) => {
     e.stopPropagation()
+    if (isTodayDisabled) return
     const now = new Date()
     commitNewDateTime(todayKey)
     setViewYear(now.getFullYear())
@@ -327,6 +470,22 @@ export default function CustomDateTimePicker({
               Chính sách Homestay: <strong>{isCheckIn ? 'Nhận phòng từ 14:00 (02:00 PM)' : 'Trả phòng trước 12:00 (12:00 PM)'}</strong>
             </span>
           </div>
+
+          {/* Multi-Room Header if >= 2 rooms */}
+          {activeRooms && activeRooms.length >= 2 && (
+            <div className="custom-datetime-rooms-header">
+              <div className="rooms-header-title">
+                <span>Lịch đặt {activeRooms.length} phòng đang chọn:</span>
+              </div>
+              <div className="rooms-tags-list">
+                {activeRooms.map((r, i) => (
+                  <span key={i} className="room-item-tag">
+                    {getRoomFullLabel(r, i)}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Header Navigation */}
           <div className="custom-datetime-header">
@@ -388,33 +547,85 @@ export default function CustomDateTimePicker({
               <div className="custom-datetime-days-grid">
                 {calendarDays.map((day, idx) => {
                   const isPast = day.dateKey < todayKey && !allowBeforeMin
+                  const isBeforeMin = Boolean(minDateKey) && day.dateKey < minDateKey && !allowBeforeMin
+                  const isBeforeCheckIn = !isCheckIn && Boolean(checkInDateKey) && day.dateKey <= checkInDateKey
+                  const isDisabled = day.isOutside || isPast || isBeforeMin || isBeforeCheckIn
+
                   const isToday = day.dateKey === todayKey
                   const isSelected = day.dateKey === selectedDateKey
-                  const busy = isDayBusy(day.dateKey)
                   const isInRange = checkInDateKey && checkOutDateKey
                     && day.dateKey > checkInDateKey && day.dateKey < checkOutDateKey
 
+                  const occupancy = getDayRoomOccupancy(day.dateKey)
+
+                  let badgeText = 'Trống'
+                  let badgeClass = 'status-available'
+                  let cellTitle = 'Ngày còn trống'
+
+                  if (isDisabled) {
+                    badgeText = isBeforeCheckIn ? 'Khóa' : (isPast ? 'Đã qua' : 'Khóa')
+                    badgeClass = 'status-disabled'
+                    cellTitle = isBeforeCheckIn
+                      ? 'Không thể trả phòng trước hoặc cùng ngày nhận phòng'
+                      : (isPast ? 'Ngày đã qua trong quá khứ' : 'Ngày không khả dụng')
+                  } else if (!occupancy.isMulti) {
+                    if (occupancy.isAllBusy) {
+                      badgeText = 'Đã đặt'
+                      badgeClass = 'status-busy'
+                      cellTitle = isCheckIn
+                        ? 'Ngày này đã có khách ở (kín phòng từ 14:00)'
+                        : 'Ngày này đã kín phòng trước 12:00'
+                    } else {
+                      badgeText = 'Trống'
+                      badgeClass = 'status-available'
+                      cellTitle = isCheckIn
+                        ? 'Có thể nhận phòng từ 14:00'
+                        : 'Có thể trả phòng lúc 12:00'
+                    }
+                  } else {
+                    if (occupancy.isAllBusy) {
+                      badgeText = `Kín cả ${occupancy.totalRooms}P`
+                      badgeClass = 'status-busy'
+                      cellTitle = `Đã kín tất cả ${occupancy.totalRooms} phòng (${occupancy.busyRooms.map((r) => r.fullLabel).join(', ')})`
+                    } else if (occupancy.isPartiallyBusy) {
+                      if (occupancy.busyRooms.length === 1) {
+                        badgeText = `Kín ${occupancy.busyRooms[0].label}`
+                      } else {
+                        badgeText = `Kín ${occupancy.busyRooms.length}/${occupancy.totalRooms}P`
+                      }
+                      badgeClass = 'status-partial'
+                      cellTitle = `️ Đã đặt: ${occupancy.busyRooms.map((r) => r.fullLabel).join(', ')} • Còn trống: ${occupancy.freeRooms.map((r) => r.fullLabel).join(', ')}`
+                    } else {
+                      badgeText = `Trống ${occupancy.totalRooms}P`
+                      badgeClass = 'status-available'
+                      cellTitle = `Còn trống tất cả ${occupancy.totalRooms} phòng (${occupancy.freeRooms.map((r) => r.fullLabel).join(', ')})`
+                    }
+                  }
+
                   let cellClass = 'custom-datetime-day-cell'
                   if (day.isOutside) cellClass += ' is-outside-month'
+                  if (isDisabled) cellClass += ' is-disabled'
                   if (isPast) cellClass += ' is-past'
+                  if (isBeforeCheckIn) cellClass += ' is-before-checkin'
                   if (isToday) cellClass += ' is-today'
                   if (isSelected) cellClass += ' is-selected'
-                  if (busy) cellClass += ' is-busy'
+                  if (!isDisabled && occupancy.isAllBusy) cellClass += ' is-busy'
+                  if (!isDisabled && occupancy.isPartiallyBusy) cellClass += ' is-busy-partial'
                   if (isInRange) cellClass += ' is-in-range'
 
                   return (
                     <button
                       key={idx}
                       type="button"
-                      disabled={isPast || day.isOutside}
+                      disabled={isDisabled}
                       className={cellClass}
                       onClick={() => handleSelectDay(day)}
-                      title={busy ? 'Ngày này đã có khách đặt' : 'Ngày còn trống'}
+                      title={cellTitle}
                     >
                       <span className="custom-datetime-day-number">{day.dayNum}</span>
                       {!day.isOutside && (
-                        <span className={`custom-datetime-day-status-badge ${busy ? 'status-busy' : 'status-available'}`}>
-                          {busy ? 'Đã đặt' : 'Trống'}
+                        <span className={`custom-datetime-day-status-badge ${badgeClass}`}>
+                          {badgeText}
                         </span>
                       )}
                     </button>
@@ -429,15 +640,17 @@ export default function CustomDateTimePicker({
             <div className="custom-datetime-legend">
               <div className="custom-datetime-legend-item">
                 <span className="custom-datetime-legend-dot dot-busy" />
-                <span>Đã đặt</span>
+                <span>Kín phòng</span>
               </div>
+              {activeRooms && activeRooms.length >= 2 && (
+                <div className="custom-datetime-legend-item">
+                  <span className="custom-datetime-legend-dot dot-partial" />
+                  <span>Kín 1 phần</span>
+                </div>
+              )}
               <div className="custom-datetime-legend-item">
                 <span className="custom-datetime-legend-dot dot-available" />
                 <span>Trống</span>
-              </div>
-              <div className="custom-datetime-legend-item">
-                <span className="custom-datetime-legend-dot dot-selected" />
-                <span>Đang chọn</span>
               </div>
             </div>
 
@@ -445,6 +658,7 @@ export default function CustomDateTimePicker({
               <button
                 type="button"
                 className="custom-datetime-action-btn btn-today"
+                disabled={isTodayDisabled}
                 onClick={handleSelectToday}
               >
                 Hôm nay

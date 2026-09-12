@@ -40,4 +40,6 @@ public interface AdminBookingService {
     List<com.homestayManagement.homestayManagement.dto.response.AdminBookingCancellationResponse> getCancellations();
     AdminBookingDetailResponse confirmRefund(Long bookingId, String employeeEmail);
     AdminBookingDetailResponse confirmDirectCashPayment(Long bookingId);
+    com.homestayManagement.homestayManagement.dto.response.AdminAvailableChangeRoomsResponse getAvailableRoomsForChange(Long bookingDetailId, LocalDateTime newCheckOutTarget);
+    AdminBookingDetailResponse changeRoom(Long bookingDetailId, com.homestayManagement.homestayManagement.dto.request.AdminChangeRoomRequest request);
 }

@@ -5,6 +5,7 @@ import { formatClockTime, formatDateTime as formatAppDateTime } from '../../util
 import { houseTypeName } from '../../utils/houseType'
 import SePayQrPayment from '../../components/SePayQrPayment/SePayQrPayment'
 import AdminLayout from './AdminLayout'
+import AdminChangeRoomModal from '../../components/AdminChangeRoom/AdminChangeRoomModal'
 import './AdminCheckInLogsPage.css'
 
 const API_BASE = (import.meta.env.VITE_API_URL || '') + '/api/admin/bookings'
@@ -38,6 +39,14 @@ function toDateInputValue(date) {
   const month = String(value.getMonth() + 1).padStart(2, '0')
   const day = String(value.getDate()).padStart(2, '0')
   return `${year}-${month}-${day}`
+}
+
+function getDayRange(refDate = new Date()) {
+  const date = new Date(refDate)
+  return {
+    from: toDateInputValue(date),
+    to: toDateInputValue(date),
+  }
 }
 
 function getWeekRange(refDate = new Date()) {
@@ -267,223 +276,368 @@ function DetailCard({ detail, actionLoading, housekeepingRequested, onAction }) 
   const loading = actionLoading === detail.bookingDetailId
   const extHours = Number(detail.extensionHours || 0)
 
-  const [expanded, setExpanded] = useState(isCompleted)
-  const [detailData, setDetailData] = useState(null)
-  const [detailLoading, setDetailLoading] = useState(false)
-  const [previewImage, setPreviewImage] = useState(null)
-
-  useEffect(() => {
-    if (isCompleted && expanded && !detailData && !detailLoading) {
-      setDetailLoading(true)
-      fetch(`${API_BASE}/details/${detail.bookingDetailId}`, {
-        headers: authHeaders(),
-      })
-        .then(res => res.json())
-        .then(data => {
-          if (data && data.bookingDetailId) {
-            setDetailData(data)
-          }
-        })
-        .catch(() => {})
-        .finally(() => setDetailLoading(false))
-    }
-  }, [isCompleted, expanded, detail.bookingDetailId, detailData, detailLoading])
+  const [showDetailModal, setShowDetailModal] = useState(false)
 
   return (
-    <article className={`acl-detail acl-detail--${stage}`}>
-      <div className="acl-detail-main">
-        <div className="acl-room-badge">
-          <strong>{detail.roomNumber || '—'}</strong>
-          <span>{houseTypeName(detail, 'Chưa phân loại')}</span>
+    <article className={`acl-detail acl-detail--${stage} acl-detail-compact`}>
+      <div className="acl-detail-compact-top">
+        <div className="acl-room-badge-compact">
+          <span className="acl-room-num">{detail.roomNumber ? `P.${detail.roomNumber}` : 'Chưa gán'}</span>
+          <span className="acl-room-type">{houseTypeName(detail, 'Phòng')}</span>
         </div>
-        <div>
-          <div className="acl-detail-title">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-              <h3>{detail.roomNumber ? `Phòng ${detail.roomNumber}` : 'Chưa gán phòng'}</h3>
-              {extHours > 0 && (
-                <span className="acl-extension-badge">
-                  ⏰ Khách thuê thêm +{extHours} giờ
-                </span>
-              )}
-            </div>
-            <span className={`acl-stage acl-stage--${stage}`}>{stageLabel(stage)}</span>
-          </div>
-          <div className="acl-detail-grid">
-            <div><span>Nhận phòng dự kiến</span><strong>{formatAppDateTime(detail.checkInTarget)}</strong></div>
-            <div>
-              <span>Trả phòng dự kiến</span>
-              <strong style={extHours > 0 ? { color: '#c2410c' } : {}}>
-                {formatAppDateTime(detail.checkOutTarget)}
-                {extHours > 0 && <span className="acl-extend-tag"> (+{extHours}h thuê thêm)</span>}
-              </strong>
-            </div>
-            <div><span>Check-in thực tế</span><strong>{formatAppDateTime(detail.checkInRecord?.actualCheckIn)}</strong></div>
-            <div><span>Check-out thực tế</span><strong>{formatAppDateTime(detail.checkInRecord?.actualCheckOut)}</strong></div>
-          </div>
+        <div className="acl-compact-status-group">
+          <span className={`acl-stage acl-stage--${stage}`}>{stageLabel(stage)}</span>
+          <span className="acl-tag-rent">{rentTypeLabel(detail.rentType)}</span>
+          <span className="acl-tag-price">{formatMoney(detail.priceAtBooking)}</span>
         </div>
       </div>
 
-      <div className="acl-detail-bottom">
-        <div className="acl-detail-tags">
-          <span>{detail.numberOfAdults || 0} người lớn</span>
-          <span>{detail.numberOfChildren || 0} trẻ em</span>
-          <span>{rentTypeLabel(detail.rentType)}</span>
-          {extHours > 0 && (
-            <span className="acl-tag-extend">⏰ Thuê thêm: +{extHours} giờ</span>
-          )}
-          <span>{formatMoney(detail.priceAtBooking)}</span>
+      <div className="acl-detail-compact-body">
+        <div className="acl-compact-schedule-row">
+          <div className="acl-schedule-item">
+            <span className="acl-schedule-lbl"> Nhận:</span>
+            <strong>{formatAppDateTime(detail.checkInTarget)}</strong>
+          </div>
+          <span className="acl-schedule-arrow">→</span>
+          <div className="acl-schedule-item">
+            <span className="acl-schedule-lbl">Trả:</span>
+            <strong style={extHours > 0 ? { color: '#ea580c' } : {}}>
+              {formatAppDateTime(detail.checkOutTarget)}
+              {extHours > 0 && <span className="acl-extend-pill">+{extHours}h</span>}
+            </strong>
+          </div>
         </div>
 
-        {isCompleted ? (
-          <div className="acl-detail-actions acl-detail-actions--completed">
-            <div className="acl-completed-time-tag">
-              ✓ Đã trả phòng lúc {formatAppDateTime(detail.checkInRecord?.actualCheckOut || detail.checkOutTarget)}
-            </div>
-            <button
-              type="button"
-              className="acl-btn-toggle-detail"
-              onClick={() => setExpanded(prev => !prev)}
-            >
-              {expanded ? '▲ Thu gọn' : '▼ Xem chi tiết hoá đơn & sự cố'}
-            </button>
-          </div>
-        ) : (
-          <div className="acl-detail-actions">
-            <button type="button" disabled={!canCheckIn || loading} onClick={() => onAction(detail.bookingDetailId, 'check-in')}>
-              {loading && canCheckIn ? 'Đang xử lý...' : 'Check-in'}
-            </button>
-            <button
-              type="button"
-              disabled={!canCheckOut || loading}
-              style={{ background: '#ecfdf5', color: '#047857', borderColor: '#a7f3d0', fontWeight: 600 }}
-              title="Ghi thêm nước uống hoặc dịch vụ phát sinh vào hóa đơn"
-              onClick={() => onAction(detail.bookingDetailId, 'add-service')}
-            >
-              + Thêm nước / DV
-            </button>
-            <button type="button" disabled={!canCheckOut || loading || housekeepingRequested} onClick={() => onAction(detail.bookingDetailId, 'housekeeping-request')}>
-              {loading && canCheckOut ? 'Đang gửi...' : housekeepingRequested ? 'Đã yêu cầu kiểm tra' : 'Yêu cầu kiểm tra'}
-            </button>
-            <button
-              type="button"
-              disabled={!canCheckOut || loading || !detail.housekeepingInspectionCompleted}
-              title={canCheckOut && !detail.housekeepingInspectionCompleted ? 'Chờ housekeeping gửi chi phí kiểm tra phòng' : undefined}
-              onClick={() => onAction(detail.bookingDetailId, 'check-out')}
-            >
-              {loading && canCheckOut ? 'Đang xử lý...' : 'Check-out'}
-            </button>
-          </div>
-        )}
+        <div className="acl-compact-meta-row">
+          <span> {detail.numberOfAdults || 1} người lớn{detail.numberOfChildren ? ` · ${detail.numberOfChildren} trẻ em` : ''}</span>
+          {detail.checkInRecord?.actualCheckIn && (
+            <span className="acl-meta-check-time">✓ Check-in: {formatAppDateTime(detail.checkInRecord.actualCheckIn)}</span>
+          )}
+          {detail.checkInRecord?.actualCheckOut && (
+            <span className="acl-meta-check-time">✓ Check-out: {formatAppDateTime(detail.checkInRecord.actualCheckOut)}</span>
+          )}
+        </div>
       </div>
 
-      {isCompleted && expanded && (
-        <div className="acl-completed-expanded-section">
-          {detailLoading && (
-            <div className="acl-detail-expand-loading">Đang tải thông tin lưu trú, sự cố & quyết toán hoá đơn...</div>
+      <div className="acl-detail-compact-actions">
+        <button
+          type="button"
+          className="acl-btn-open-modal"
+          onClick={() => setShowDetailModal(true)}
+        >
+           Xem chi tiết lưu trú
+        </button>
+
+        <div className="acl-compact-action-btns">
+          {(canCheckIn || canCheckOut) && (
+            <button
+              type="button"
+              className="acl-btn-changeroom"
+              disabled={loading}
+              title="Đổi sang phòng cùng loại hoặc loại khác"
+              style={{ borderColor: '#0284c7', color: '#0284c7', background: '#f0f9ff', padding: '6px 10px', borderRadius: '6px', border: '1px solid #bae6fd', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
+              onClick={() => onAction(detail.bookingDetailId, 'change-room')}
+            >
+              Đổi phòng
+            </button>
           )}
-          {detailData && (
+
+          {canCheckIn && (
+            <button
+              type="button"
+              className="acl-btn-checkin"
+              disabled={loading}
+              onClick={() => onAction(detail.bookingDetailId, 'check-in')}
+            >
+              {loading ? 'Đang xử lý...' : 'Check-in'}
+            </button>
+          )}
+
+          {canCheckOut && (
             <>
-              {/* Báo cáo sự cố & Hỏng hóc (nếu có) */}
-              {((detailData.incidents && detailData.incidents.length > 0) || (detailData.penaltyItems && detailData.penaltyItems.some(p => p.description?.includes('Bồi thường sự cố') || p.title?.includes('Bồi thường')))) && (
-                <div className="acl-completed-block acl-incidents-block">
-                  <div className="acl-block-header">
-                    <span>🛡️ Báo Cáo Sự Cố & Đồ Hỏng / Mất Trong Kỳ Lưu Trú</span>
-                  </div>
-                  <div className="acl-incident-cards-grid">
-                    {(detailData.incidents && detailData.incidents.length > 0 ? detailData.incidents : detailData.penaltyItems.filter(p => p.description?.includes('Bồi thường sự cố') || p.title?.includes('Bồi thường')).map(p => ({
-                      id: p.id,
-                      itemName: p.description?.replace(/^Bồi thường sự cố\s*#\d+:\s*/, '') || p.title,
-                      compensationAmount: p.amount,
-                      status: 'RESOLVED',
-                    }))).map((inc, idx) => (
-                      <div key={idx} className="acl-incident-item-card">
-                        <div className="acl-incident-item-info">
-                          <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>
-                            {inc.itemName || 'Đồ vật sự cố'}
-                            {inc.quantity && <span style={{ color: '#64748b', fontWeight: 400 }}> × {inc.quantity}</span>}
-                          </div>
-                          {inc.description && <p style={{ fontSize: 12, color: '#475569', margin: '4px 0' }}>{inc.description}</p>}
-                          <div className="acl-incident-item-sub">
-                            <span className="acl-liability-tag">Bồi thường: <strong>{formatMoney(inc.compensationAmount)}</strong></span>
-                            <span className="acl-status-tag">{inc.status === 'RESOLVED' ? 'Đã giải quyết' : 'Đang xử lý'}</span>
-                          </div>
-                        </div>
-                        {inc.evidenceImageUrl && (
-                          <div className="acl-incident-thumb" onClick={() => setPreviewImage(resolveEvidenceUrl(inc.evidenceImageUrl))} title="Bấm để xem ảnh phóng to">
-                            <img src={resolveEvidenceUrl(inc.evidenceImageUrl)} alt={inc.itemName} />
-                            <span>🔍 Phóng to</span>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Tóm tắt thanh quyết toán (Billing summary) */}
-              <div className="acl-completed-block acl-billing-block">
-                <div className="acl-block-header">
-                  <span>📑 Quyết Toán Hoá Đơn Trả Phòng</span>
-                  <span className="acl-paid-badge">ĐÃ THANH TOÁN 100%</span>
-                </div>
-                <div className="acl-billing-rows">
-                  <div className="acl-billing-row">
-                    <span>Tiền phòng lưu trú:</span>
-                    <strong>{formatMoney(detailData.invoice?.roomCharge || detail.priceAtBooking)}</strong>
-                  </div>
-                  {detailData.serviceItems && detailData.serviceItems.length > 0 && (
-                    <div className="acl-billing-row">
-                      <span>Phí dịch vụ & tiện ích ({detailData.serviceItems.length} mục):</span>
-                      <strong>+{formatMoney(detailData.invoice?.serviceCharge || 0)}</strong>
-                    </div>
-                  )}
-                  {Number(detailData.extensionAmount || 0) > 0 && (
-                    <div className="acl-billing-row">
-                      <span>Thuê thêm (+{detailData.extensionHours}h):</span>
-                      <strong>+{formatMoney(detailData.extensionAmount)}</strong>
-                    </div>
-                  )}
-                  {Number(detailData.invoice?.penaltyCharge || 0) > 0 && (
-                    <div className="acl-billing-row" style={{ color: '#dc2626' }}>
-                      <span>Bồi thường đồ hỏng/mất & phụ thu:</span>
-                      <strong>+{formatMoney(detailData.invoice?.penaltyCharge)}</strong>
-                    </div>
-                  )}
-                  <div className="acl-billing-row acl-billing-row--total">
-                    <span>Tổng quyết toán hoá đơn:</span>
-                    <strong>{formatMoney(detailData.invoice?.totalAmount || detail.priceAtBooking)}</strong>
-                  </div>
-                  <div className="acl-billing-row acl-billing-row--paid">
-                    <span>Đã thanh toán:</span>
-                    <strong>{formatMoney(detailData.paidAmount || detailData.invoice?.totalAmount || detail.priceAtBooking)}</strong>
-                  </div>
-                  {detailData.payments && detailData.payments.length > 0 && (
-                    <div className="acl-billing-payments">
-                      <small>Phương thức thanh toán:</small>
-                      {detailData.payments.map((p, pi) => (
-                        <span key={pi} className="acl-payment-pill">
-                          {p.paymentMethod === 'BANK_TRANSFER' ? '🏦 Chuyển khoản' : p.paymentMethod === 'CASH' ? '💵 Tiền mặt' : p.paymentMethod || 'Thanh toán'} ({formatMoney(p.amount)})
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
+              <button
+                type="button"
+                className="acl-btn-add-service"
+                disabled={loading}
+                title="Ghi thêm nước uống hoặc dịch vụ phát sinh vào hóa đơn"
+                onClick={() => onAction(detail.bookingDetailId, 'add-service')}
+              >
+                + Thêm nước / DV
+              </button>
+              <button
+                type="button"
+                className="acl-btn-housekeeping"
+                disabled={loading || housekeepingRequested}
+                onClick={() => onAction(detail.bookingDetailId, 'housekeeping-request')}
+              >
+                {loading ? 'Đang gửi...' : housekeepingRequested ? 'Đã yêu cầu KT' : 'Yêu cầu KT'}
+              </button>
+              <button
+                type="button"
+                className={`acl-btn-checkout ${detail.housekeepingInspectionCompleted ? 'is-ready' : 'is-disabled'}`}
+                disabled={loading || !detail.housekeepingInspectionCompleted}
+                title={!detail.housekeepingInspectionCompleted ? 'Chờ housekeeping gửi chi phí kiểm tra phòng' : 'Phòng đã kiểm tra xong, sẵn sàng check-out'}
+                onClick={() => onAction(detail.bookingDetailId, 'check-out')}
+              >
+                {loading ? 'Đang xử lý...' : detail.housekeepingInspectionCompleted ? ' Check-out' : 'Check-out'}
+              </button>
             </>
           )}
-        </div>
-      )}
 
-      {/* Modal phóng to ảnh bằng chứng hiện trường */}
+          {isCompleted && (
+            <span className="acl-completed-badge-text">
+              ✓ Đã hoàn tất trả phòng
+            </span>
+          )}
+        </div>
+      </div>
+
+      {showDetailModal && (
+        <StayDetailModal
+          detail={detail}
+          stage={stage}
+          onClose={() => setShowDetailModal(false)}
+        />
+      )}
+    </article>
+  )
+}
+
+function StayDetailModal({ detail, stage, onClose }) {
+  const [detailData, setDetailData] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [previewImage, setPreviewImage] = useState(null)
+  const extHours = Number(detail.extensionHours || 0)
+
+  useEffect(() => {
+    setLoading(true)
+    fetch(`${API_BASE}/details/${detail.bookingDetailId}`, {
+      headers: authHeaders(),
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.bookingDetailId) {
+          setDetailData(data)
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [detail.bookingDetailId])
+
+  return (
+    <div className="acl-modal-overlay" onClick={onClose}>
+      <div className="acl-stay-modal-box" onClick={e => e.stopPropagation()}>
+        <div className="acl-stay-modal-header">
+          <div className="acl-stay-modal-title">
+            <span className="acl-stay-modal-badge">
+              {detail.roomNumber ? `Phòng ${detail.roomNumber}` : 'Chưa gán phòng'}
+            </span>
+            <h3>Chi tiết Lưu trú & Đơn Booking #{detail.bookingDetailId}</h3>
+            <span className={`acl-stage acl-stage--${stage}`}>{stageLabel(stage)}</span>
+          </div>
+          <button type="button" className="acl-stay-modal-close" onClick={onClose}></button>
+        </div>
+
+        <div className="acl-stay-modal-body">
+          {loading && (
+            <div className="acl-detail-expand-loading">
+              <div className="acl-spinner" /> Đang tải dữ liệu chi tiết lưu trú & hoá đơn...
+            </div>
+          )}
+
+          {/* Block 1: Thông tin phòng & khách */}
+          <div className="acl-modal-section">
+            <h4 className="acl-modal-sec-title"> Thông tin Phòng & Đặt phòng</h4>
+            <div className="acl-modal-grid-3">
+              <div className="acl-modal-cell">
+                <span>Loại phòng:</span>
+                <strong>{houseTypeName(detail, 'Chưa phân loại')}</strong>
+              </div>
+              <div className="acl-modal-cell">
+                <span>Gói thuê:</span>
+                <strong>{rentTypeLabel(detail.rentType)}</strong>
+              </div>
+              <div className="acl-modal-cell">
+                <span>Số lượng khách:</span>
+                <strong>{detail.numberOfAdults || 1} người lớn · {detail.numberOfChildren || 0} trẻ em</strong>
+              </div>
+              <div className="acl-modal-cell">
+                <span>Giá phòng tại lúc đặt:</span>
+                <strong>{formatMoney(detail.priceAtBooking)}</strong>
+              </div>
+              {detailData?.customer && (
+                <>
+                  <div className="acl-modal-cell">
+                    <span>Khách đại diện:</span>
+                    <strong>{detailData.customer.fullName || '—'}</strong>
+                  </div>
+                  <div className="acl-modal-cell">
+                    <span>Số điện thoại:</span>
+                    <strong>{detailData.customer.phone || '—'}</strong>
+                  </div>
+                  <div className="acl-modal-cell">
+                    <span>CCCD/Hộ chiếu:</span>
+                    <strong>{detailData.customer.identityDocumentNumber || '—'}</strong>
+                  </div>
+                  <div className="acl-modal-cell">
+                    <span>Email:</span>
+                    <strong>{detailData.customer.email || '—'}</strong>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Block 2: Quá trình Lưu trú Timeline */}
+          <div className="acl-modal-section">
+            <h4 className="acl-modal-sec-title">️ Quá trình & Thời gian Lưu trú</h4>
+            <div className="acl-modal-grid-4">
+              <div className="acl-modal-cell">
+                <span>Nhận phòng dự kiến</span>
+                <strong>{formatAppDateTime(detail.checkInTarget)}</strong>
+              </div>
+              <div className="acl-modal-cell">
+                <span>Trả phòng dự kiến</span>
+                <strong style={extHours > 0 ? { color: '#c2410c' } : {}}>
+                  {formatAppDateTime(detail.checkOutTarget)}
+                  {extHours > 0 && <span className="acl-extend-tag"> (+{extHours}h thuê thêm)</span>}
+                </strong>
+              </div>
+              <div className="acl-modal-cell acl-modal-cell--actual">
+                <span>Check-in thực tế</span>
+                <strong style={{ color: '#16a34a' }}>
+                  {formatAppDateTime(detail.checkInRecord?.actualCheckIn) || 'Chưa thực hiện'}
+                </strong>
+              </div>
+              <div className="acl-modal-cell acl-modal-cell--actual">
+                <span>Check-out thực tế</span>
+                <strong style={{ color: '#0284c7' }}>
+                  {formatAppDateTime(detail.checkInRecord?.actualCheckOut) || 'Chưa thực hiện'}
+                </strong>
+              </div>
+            </div>
+          </div>
+
+          {/* Block 3: Dịch vụ & Nước uống phát sinh */}
+          {detailData?.serviceItems && detailData.serviceItems.length > 0 && (
+            <div className="acl-modal-section">
+              <h4 className="acl-modal-sec-title"> Dịch vụ & Đồ uống phát sinh</h4>
+              <div className="acl-modal-table-box">
+                <table className="acl-modal-table">
+                  <thead>
+                    <tr>
+                      <th>Dịch vụ / Sản phẩm</th>
+                      <th style={{ textAlign: 'center' }}>Số lượng</th>
+                      <th style={{ textAlign: 'right' }}>Đơn giá</th>
+                      <th style={{ textAlign: 'right' }}>Thành tiền</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {detailData.serviceItems.map((s, idx) => (
+                      <tr key={idx}>
+                        <td>{s.serviceName || s.name}</td>
+                        <td style={{ textAlign: 'center' }}>×{s.quantity || 1}</td>
+                        <td style={{ textAlign: 'right' }}>{formatMoney(s.unitPrice || s.price)}</td>
+                        <td style={{ textAlign: 'right', fontWeight: 700 }}>{formatMoney((s.quantity || 1) * (s.unitPrice || s.price))}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Block 4: Báo cáo sự cố & Hỏng hóc */}
+          {((detailData?.incidents && detailData.incidents.length > 0) || (detailData?.penaltyItems && detailData.penaltyItems.some(p => p.description?.includes('Bồi thường sự cố') || p.title?.includes('Bồi thường')))) && (
+            <div className="acl-modal-section acl-incidents-modal-sec">
+              <h4 className="acl-modal-sec-title" style={{ color: '#dc2626' }}>️ Báo Cáo Sự Cố & Đồ Hỏng / Mất Trong Phòng</h4>
+              <div className="acl-incident-cards-grid">
+                {(detailData.incidents && detailData.incidents.length > 0 ? detailData.incidents : detailData.penaltyItems.filter(p => p.description?.includes('Bồi thường sự cố') || p.title?.includes('Bồi thường')).map(p => ({
+                  id: p.id,
+                  itemName: p.description?.replace(/^Bồi thường sự cố\s*#\d+:\s*/, '') || p.title,
+                  compensationAmount: p.amount,
+                  status: 'RESOLVED',
+                }))).map((inc, idx) => (
+                  <div key={idx} className="acl-incident-item-card">
+                    <div className="acl-incident-item-info">
+                      <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>
+                        {inc.itemName || 'Đồ vật sự cố'}
+                        {inc.quantity && <span style={{ color: '#64748b', fontWeight: 400 }}> × {inc.quantity}</span>}
+                      </div>
+                      {inc.description && <p style={{ fontSize: 12, color: '#475569', margin: '4px 0' }}>{inc.description}</p>}
+                      <div className="acl-incident-item-sub">
+                        <span className="acl-liability-tag">Bồi thường: <strong>{formatMoney(inc.compensationAmount)}</strong></span>
+                        <span className="acl-status-tag">{inc.status === 'RESOLVED' ? 'Đã giải quyết' : 'Đang xử lý'}</span>
+                      </div>
+                    </div>
+                    {inc.evidenceImageUrl && (
+                      <div className="acl-incident-thumb" onClick={() => setPreviewImage(resolveEvidenceUrl(inc.evidenceImageUrl))} title="Bấm để xem ảnh phóng to">
+                        <img src={resolveEvidenceUrl(inc.evidenceImageUrl)} alt={inc.itemName} />
+                        <span> Phóng to</span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Block 5: Quyết toán hoá đơn */}
+          {detailData?.invoice && (
+            <div className="acl-modal-section acl-billing-modal-sec">
+              <h4 className="acl-modal-sec-title"> Quyết Toán Hoá Đơn</h4>
+              <div className="acl-billing-rows">
+                <div className="acl-billing-row">
+                  <span>Tiền phòng lưu trú:</span>
+                  <strong>{formatMoney(detailData.invoice?.roomCharge || detail.priceAtBooking)}</strong>
+                </div>
+                {detailData.serviceItems && detailData.serviceItems.length > 0 && (
+                  <div className="acl-billing-row">
+                    <span>Phí dịch vụ & đồ uống phát sinh ({detailData.serviceItems.length} mục):</span>
+                    <strong>+{formatMoney(detailData.invoice?.serviceCharge || 0)}</strong>
+                  </div>
+                )}
+                {Number(detailData.extensionAmount || 0) > 0 && (
+                  <div className="acl-billing-row">
+                    <span>Phí thuê thêm giờ (+{detailData.extensionHours}h):</span>
+                    <strong>+{formatMoney(detailData.extensionAmount)}</strong>
+                  </div>
+                )}
+                {Number(detailData.invoice?.penaltyCharge || 0) > 0 && (
+                  <div className="acl-billing-row" style={{ color: '#dc2626' }}>
+                    <span>Bồi thường đồ hỏng/mất & phụ thu:</span>
+                    <strong>+{formatMoney(detailData.invoice?.penaltyCharge)}</strong>
+                  </div>
+                )}
+                <div className="acl-billing-row acl-billing-row--total">
+                  <span>Tổng quyết toán hoá đơn:</span>
+                  <strong>{formatMoney(detailData.invoice?.totalAmount || detail.priceAtBooking)}</strong>
+                </div>
+                <div className="acl-billing-row acl-billing-row--paid">
+                  <span>Đã thanh toán:</span>
+                  <strong>{formatMoney(detailData.paidAmount || detailData.invoice?.totalAmount || detail.priceAtBooking)}</strong>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="acl-stay-modal-footer">
+          <button type="button" className="acl-btn-modal-close" onClick={onClose}>
+            Đóng cửa sổ
+          </button>
+        </div>
+      </div>
+
       {previewImage && (
         <div className="acl-image-preview-overlay" onClick={() => setPreviewImage(null)}>
           <div className="acl-image-preview-box" onClick={e => e.stopPropagation()}>
             <img src={previewImage} alt="Ảnh bằng chứng sự cố" />
-            <button type="button" className="acl-btn-close-preview" onClick={() => setPreviewImage(null)}>✕ Đóng</button>
+            <button type="button" className="acl-btn-close-preview" onClick={() => setPreviewImage(null)}> Đóng</button>
           </div>
         </div>
       )}
-    </article>
+    </div>
   )
 }
 
@@ -706,14 +860,14 @@ function QuickAddServiceModal({ bookingDetailId, onClose, onCompleted }) {
                 style={{ flex: 1, padding: '8px', borderRadius: 6, border: '1px solid', borderColor: itemType === 'MINI_BAR' ? '#166534' : '#cbd5e1', background: itemType === 'MINI_BAR' ? '#ecfdf5' : '#fff', color: itemType === 'MINI_BAR' ? '#166534' : '#64748b', fontWeight: 700, cursor: 'pointer' }}
                 onClick={() => { setItemType('MINI_BAR'); setSelectedItemId('') }}
               >
-                🥤 Nước & Minibar
+                 Nước & Minibar
               </button>
               <button
                 type="button"
                 style={{ flex: 1, padding: '8px', borderRadius: 6, border: '1px solid', borderColor: itemType === 'FACILITY' ? '#166534' : '#cbd5e1', background: itemType === 'FACILITY' ? '#ecfdf5' : '#fff', color: itemType === 'FACILITY' ? '#166534' : '#64748b', fontWeight: 700, cursor: 'pointer' }}
                 onClick={() => { setItemType('FACILITY'); setSelectedItemId('') }}
               >
-                🛎️ Dịch Vụ Tiện Ích
+                ️ Dịch Vụ Tiện Ích
               </button>
             </div>
 
@@ -770,7 +924,7 @@ function QuickAddServiceModal({ bookingDetailId, onClose, onCompleted }) {
                           title="Xóa mục này"
                           onClick={() => handleRemove(it)}
                         >
-                          ✕
+                          
                         </button>
                       )}
                     </div>
@@ -975,14 +1129,14 @@ function CheckOutModal({ bookingDetailId, onClose, onCompleted }) {
                       Thông tin đặt phòng
                       {extHours > 0 && (
                         <span className="aco-badge aco-badge--extend" style={{ background: '#e0f2fe', color: '#0369a1' }}>
-                          ⏰ Thuê thêm +{extHours}h
+                           Thuê thêm +{extHours}h
                         </span>
                       )}
                     </div>
 
                     {extHours > 0 && (
                       <div className="aco-extension-alert">
-                        <div className="aco-extension-alert-icon">⏰</div>
+                        <div className="aco-extension-alert-icon"></div>
                         <div>
                           <strong>Khách đã thuê thêm {extHours} giờ lưu trú</strong>
                           <p>
@@ -1138,7 +1292,7 @@ function CheckOutModal({ bookingDetailId, onClose, onCompleted }) {
                                 disabled={savingService}
                                 onClick={() => handleRemoveServiceItem(item)}
                               >
-                                ✕
+                                
                               </button>
                             )}
                           </div>
@@ -1155,7 +1309,7 @@ function CheckOutModal({ bookingDetailId, onClose, onCompleted }) {
                               {damageItems.length > 0 && (
                                 <div style={{ marginTop: 8 }}>
                                   <div style={{ fontSize: 12, fontWeight: 700, color: '#dc2626', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
-                                    🛡️ Bồi thường đồ hỏng / mất tài sản ({damageItems.length})
+                                    ️ Bồi thường đồ hỏng / mất tài sản ({damageItems.length})
                                   </div>
                                   {damageItems.map((item, i) => {
                                     const cleanName = item.description?.startsWith('Bồi thường sự cố')
@@ -1178,7 +1332,7 @@ function CheckOutModal({ bookingDetailId, onClose, onCompleted }) {
                               {fineItems.length > 0 && (
                                 <div style={{ marginTop: 8 }}>
                                   <div style={{ fontSize: 12, fontWeight: 700, color: '#b45309', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
-                                    ⚠️ Phạt vi phạm nội quy ({fineItems.length})
+                                    ️ Phạt vi phạm nội quy ({fineItems.length})
                                   </div>
                                   {fineItems.map((item, i) => (
                                     <div key={`fine-${i}`} className="aco-item aco-item--penalty">
@@ -1202,7 +1356,7 @@ function CheckOutModal({ bookingDetailId, onClose, onCompleted }) {
                     <div style={{ margin: '12px 0', padding: '10px 12px', background: '#f0fdf4', borderRadius: 8, border: '1px dashed #86efac' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <strong style={{ fontSize: 13, color: '#166534', display: 'flex', alignItems: 'center', gap: 5 }}>
-                          🥤 Thêm nước uống / dịch vụ vào hóa đơn
+                           Thêm nước uống / dịch vụ vào hóa đơn
                         </strong>
                         <button
                           type="button"
@@ -1354,7 +1508,7 @@ function CheckOutModal({ bookingDetailId, onClose, onCompleted }) {
                               <strong>{selectedPaymentMethod.label}</strong>
                               <small>{selectedPaymentMethod.description}</small>
                             </span>
-                            <b aria-hidden="true">⌄</b>
+                            <b aria-hidden="true"></b>
                           </button>
                           {paymentMethodOpen && (
                             <div className="aco-payment-menu" role="listbox" aria-label="Chọn phương thức thanh toán">
@@ -1607,7 +1761,7 @@ function CheckInModal({ bookingDetailId, onClose, onCompleted }) {
         // 1. Kiểm tra Họ và tên
         if (expectedName && data.fullName && !isNameMatch(data.fullName, expectedName)) {
           throw new Error(
-            `⚠️ Tên trên CCCD không trùng khớp với khách đặt phòng!\n` +
+            `️ Tên trên CCCD không trùng khớp với khách đặt phòng!\n` +
             `• Tên trên CCCD: "${data.fullName}"\n` +
             `• Tên khách đặt phòng: "${expectedName}"\n` +
             `Vui lòng sử dụng đúng thẻ CCCD của người đặt phòng.`
@@ -1617,7 +1771,7 @@ function CheckInModal({ bookingDetailId, onClose, onCompleted }) {
         // 2. Kiểm tra Số CCCD (nếu đơn đặt phòng đã có CCCD)
         if (expectedCccd && scannedCccd && expectedCccd !== scannedCccd) {
           throw new Error(
-            `⚠️ Số CCCD trên ảnh không trùng khớp với thông tin đã đăng ký!\n` +
+            `️ Số CCCD trên ảnh không trùng khớp với thông tin đã đăng ký!\n` +
             `• Số CCCD trên ảnh: ${scannedCccd}\n` +
             `• Số CCCD đã đăng ký: ${expectedCccd}\n` +
             `Vui lòng kiểm tra lại thẻ CCCD.`
@@ -1774,7 +1928,7 @@ function CheckInModal({ bookingDetailId, onClose, onCompleted }) {
                           <strong>Người lưu trú {index + 1}</strong>
                           {isRepresentative ? (
                             <>
-                              <span className="acl-rep-locked-badge">🔒 Người đại diện (Khách đặt phòng - Cố định)</span>
+                              <span className="acl-rep-locked-badge"> Người đại diện (Khách đặt phòng - Cố định)</span>
                               {repVerified && (
                                 <span className="acl-rep-verified-badge">✓ Đã khớp CCCD chính chủ</span>
                               )}
@@ -1966,7 +2120,11 @@ function AdminCheckInLogsPage() {
   const handlePeriodChange = (event) => {
     const nextPeriod = event.target.value
     setPeriodFilter(nextPeriod)
-    if (nextPeriod === 'week') {
+    if (nextPeriod === 'day') {
+      const range = getDayRange()
+      setFromDate(range.from)
+      setToDate(range.to)
+    } else if (nextPeriod === 'week') {
       const range = getWeekRange()
       setFromDate(range.from)
       setToDate(range.to)
@@ -1999,6 +2157,7 @@ function AdminCheckInLogsPage() {
     return value && /^\d+$/.test(value) ? Number(value) : null
   })
   const [checkOutTargetId, setCheckOutTargetId] = useState(null)
+  const [changeRoomTargetId, setChangeRoomTargetId] = useState(null)
   const [quickAddTargetId, setQuickAddTargetId] = useState(null)
   const [housekeepingRequestedIds, setHousekeepingRequestedIds] = useState(() => new Set())
 
@@ -2015,12 +2174,28 @@ function AdminCheckInLogsPage() {
         response.json().catch(() => ({})),
         housekeepingResponse.json().catch(() => ([])),
       ])
-      if (!response.ok) throw new Error(data.message || 'Không thể tải nhật ký lưu trú')
-      setHousekeepingRequestedIds(new Set(
-        (housekeepingResponse.ok && Array.isArray(housekeepingData) ? housekeepingData : [])
-          .map(task => task.bookingDetailId),
-      ))
-      const nextBookings = Array.isArray(data) ? data : []
+      const hkList = housekeepingResponse.ok && Array.isArray(housekeepingData) ? housekeepingData : []
+      const hkCompletedDetailIds = new Set(
+        hkList
+          .filter(task => String(task.inspectionStatus || '').toUpperCase() === 'COMPLETED')
+          .map(task => Number(task.bookingDetailId))
+          .filter(Boolean)
+      )
+      const hkRequestedDetailIds = new Set(
+        hkList.map(task => Number(task.bookingDetailId)).filter(Boolean)
+      )
+      setHousekeepingRequestedIds(hkRequestedDetailIds)
+
+      const rawBookings = Array.isArray(data) ? data : []
+      const nextBookings = rawBookings.map(booking => ({
+        ...booking,
+        details: (booking.details || []).map(detail => ({
+          ...detail,
+          housekeepingInspectionCompleted: Boolean(
+            detail.housekeepingInspectionCompleted || hkCompletedDetailIds.has(Number(detail.bookingDetailId))
+          ),
+        })),
+      }))
       setBookings(nextBookings)
       setSelectedBookingId(current => {
         if (current && nextBookings.some(booking => booking.bookingId === current)) return current
@@ -2078,6 +2253,10 @@ function AdminCheckInLogsPage() {
       setCheckOutTargetId(bookingDetailId)
       return
     }
+    if (action === 'change-room') {
+      setChangeRoomTargetId(bookingDetailId)
+      return
+    }
     if (action === 'add-service') {
       setQuickAddTargetId(bookingDetailId)
       return
@@ -2129,6 +2308,7 @@ function AdminCheckInLogsPage() {
           onChange={handlePeriodChange}
           aria-label="Lọc theo khoảng thời gian"
         >
+          <option value="day">Theo ngày</option>
           <option value="week">Theo tuần</option>
           <option value="month">Theo tháng</option>
           <option value="year">Theo năm</option>
@@ -2223,6 +2403,16 @@ function AdminCheckInLogsPage() {
           onClose={() => setCheckOutTargetId(null)}
           onCompleted={async () => {
             setCheckOutTargetId(null)
+            await loadLogs()
+          }}
+        />
+      )}
+      {changeRoomTargetId && (
+        <AdminChangeRoomModal
+          bookingDetailId={changeRoomTargetId}
+          onClose={() => setChangeRoomTargetId(null)}
+          onSuccess={async () => {
+            setChangeRoomTargetId(null)
             await loadLogs()
           }}
         />

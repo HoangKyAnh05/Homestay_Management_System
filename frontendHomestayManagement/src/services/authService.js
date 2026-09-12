@@ -262,7 +262,12 @@ export async function verifyOtp(email, otp) {
   }
 
   const data = await parseJson(response)
-  if (!response.ok) throw new Error(data.message || 'Mã OTP không hợp lệ')
+  if (!response.ok) {
+    const error = new Error(data.message || 'Mã OTP không hợp lệ')
+    error.code = data.code
+    error.status = response.status
+    throw error
+  }
   return data
 }
 
@@ -280,7 +285,12 @@ export async function resetPassword(email, otp, newPassword) {
   }
 
   const data = await parseJson(response)
-  if (!response.ok) throw new Error(data.message || 'Đặt lại mật khẩu thất bại')
+  if (!response.ok) {
+    const error = new Error(data.message || 'Đặt lại mật khẩu thất bại')
+    error.code = data.code
+    error.status = response.status
+    throw error
+  }
   return data
 }
 

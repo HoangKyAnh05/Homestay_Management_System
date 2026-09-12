@@ -300,36 +300,7 @@ function RoomCard({ room, criteria }) {
             }}
           />
         )}
-        {room.videoUrl && (
-          <span
-            className="room-video-preview-badge"
-            style={{
-              position: 'absolute',
-              bottom: 12,
-              left: 12,
-              zIndex: 3,
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 5,
-              padding: '4px 9px',
-              borderRadius: 999,
-              background: isVideoPlaying ? 'rgba(225, 29, 72, 0.9)' : 'rgba(15, 23, 42, 0.75)',
-              backdropFilter: 'blur(6px)',
-              color: '#ffffff',
-              fontSize: '11px',
-              fontWeight: 600,
-              letterSpacing: '0.02em',
-              transition: 'all 0.25s ease',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
-              pointerEvents: 'none',
-            }}
-          >
-            <span style={{ display: 'inline-block', transform: isVideoPlaying ? 'scale(1.2)' : 'scale(1)', transition: 'transform 0.2s ease' }}>
-              {isVideoPlaying ? '▶' : '🎬'}
-            </span>
-            <span>{isVideoPlaying ? 'Đang phát video' : 'Hold xem video'}</span>
-          </span>
-        )}
+
         <span className="room-card-badge">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
           4.9
@@ -341,7 +312,7 @@ function RoomCard({ room, criteria }) {
           title={isLiked ? 'Bỏ yêu thích' : 'Thêm vào yêu thích'}
           onClick={toggleHeart}
         >
-          {isLiked ? '❤️' : '♡'}
+          {isLiked ? '️' : '♡'}
         </button>
       </div>
       <div className="room-card-body">
@@ -453,6 +424,7 @@ function SearchResultsSection({ criteria, rooms, loading, error, maxPrice, onMax
 
 function RoomsSection({ rooms, loading }) {
   const [currentIndex, setCurrentIndex] = useState(0)
+  const [isPaused, setIsPaused] = useState(false)
   const [visibleCount, setVisibleCount] = useState(() => {
     if (typeof window === 'undefined') return 3
     if (window.innerWidth >= 1024) return 3
@@ -474,11 +446,14 @@ function RoomsSection({ rooms, loading }) {
     return () => window.removeEventListener('resize', handleResize)
   }, [])
 
-  const safeRooms = (Array.isArray(rooms) ? rooms : []).filter((room) => {
-    if (String(room.status || '').toUpperCase() === 'MAINTENANCE') return false
-    if (room.availableRooms != null && Number(room.availableRooms) <= 0) return false
-    return true
-  })
+  const safeRooms = useMemo(() => {
+    return (Array.isArray(rooms) ? rooms : []).filter((room) => {
+      if (String(room.status || '').toUpperCase() === 'MAINTENANCE') return false
+      if (room.availableRooms != null && Number(room.availableRooms) <= 0) return false
+      return true
+    })
+  }, [rooms])
+
   const maxIndex = Math.max(0, safeRooms.length - visibleCount)
 
   useEffect(() => {
@@ -487,12 +462,21 @@ function RoomsSection({ rooms, loading }) {
     }
   }, [maxIndex, currentIndex])
 
+  // Tự động lướt sang phòng tiếp theo chậm rãi và siêu mượt (1.25s glide)
+  useEffect(() => {
+    if (isPaused || maxIndex <= 0) return undefined
+    const timer = setInterval(() => {
+      setCurrentIndex((prev) => (prev >= maxIndex ? 0 : prev + 1))
+    }, 4500)
+    return () => clearInterval(timer)
+  }, [isPaused, maxIndex])
+
   const handlePrev = () => {
-    setCurrentIndex((prev) => Math.max(0, prev - 1))
+    setCurrentIndex((prev) => (prev <= 0 ? maxIndex : prev - 1))
   }
 
   const handleNext = () => {
-    setCurrentIndex((prev) => Math.min(maxIndex, prev + 1))
+    setCurrentIndex((prev) => (prev >= maxIndex ? 0 : prev + 1))
   }
 
   return (
@@ -511,13 +495,18 @@ function RoomsSection({ rooms, loading }) {
         ) : safeRooms.length === 0 ? (
           <div className="rooms-loading">Chưa có phòng để hiển thị.</div>
         ) : (
-          <div className="rooms-slider-shell">
+          <div
+            className="rooms-slider-shell"
+            onMouseEnter={() => setIsPaused(true)}
+            onMouseLeave={() => setIsPaused(false)}
+            onTouchStart={() => setIsPaused(true)}
+            onTouchEnd={() => setIsPaused(false)}
+          >
             {safeRooms.length > visibleCount && (
               <button
                 type="button"
                 className="rooms-slider-btn rooms-slider-btn--prev"
                 onClick={handlePrev}
-                disabled={currentIndex === 0}
                 aria-label="Xem phòng trước"
               >
                 <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -547,7 +536,6 @@ function RoomsSection({ rooms, loading }) {
                 type="button"
                 className="rooms-slider-btn rooms-slider-btn--next"
                 onClick={handleNext}
-                disabled={currentIndex >= maxIndex}
                 aria-label="Xem phòng tiếp theo"
               >
                 <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -850,14 +838,14 @@ function HomeFooter() {
           </div>
           <div className="footer-location-stats">
             <div className="footer-stat-item">
-              <span className="stat-emoji">📍</span>
+              <span className="stat-emoji"></span>
               <div className="stat-info">
                 <strong>1.2 km</strong>
                 <span>Cách Nhà thờ đá Sa Pa</span>
               </div>
             </div>
             <div className="footer-stat-item">
-              <span className="stat-emoji">⏱️</span>
+              <span className="stat-emoji">️</span>
               <div className="stat-info">
                 <strong>5 phút</strong>
                 <span>Thời gian lái xe / taxi</span>
@@ -999,13 +987,46 @@ function HomePage() {
   const [maxPrice, setMaxPrice] = useState(10000000)
   const { rooms, loading } = useRoomTypes()
 
+  const [activeNav, setActiveNav] = useState(() => (
+    typeof window !== 'undefined' && ['#about', '#footpage', '#contact'].includes(window.location.hash) ? 'about' : 'home'
+  ))
+
   useEffect(() => {
-    const hash = window.location.hash
-    if (hash === '#about' || hash === '#footpage' || hash === '#contact') {
-      setTimeout(() => {
-        const target = document.getElementById('about') || document.getElementById('footpage')
-        target?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-      }, 150)
+    const checkHash = () => {
+      const hash = window.location.hash
+      if (['#about', '#footpage', '#contact'].includes(hash)) {
+        setActiveNav('about')
+        setTimeout(() => {
+          const target = document.getElementById('about') || document.getElementById('footpage')
+          target?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        }, 150)
+      } else if (!hash || hash === '#' || hash === '#home') {
+        setActiveNav('home')
+      }
+    }
+
+    checkHash()
+    window.addEventListener('hashchange', checkHash)
+
+    const handleScroll = () => {
+      const aboutEl = document.getElementById('about')
+      if (aboutEl) {
+        const rect = aboutEl.getBoundingClientRect()
+        if (rect.top <= window.innerHeight * 0.65) {
+          setActiveNav('about')
+          return
+        }
+      }
+      if (window.scrollY < 350) {
+        setActiveNav('home')
+      }
+    }
+
+    window.addEventListener('scroll', handleScroll, { passive: true })
+
+    return () => {
+      window.removeEventListener('hashchange', checkHash)
+      window.removeEventListener('scroll', handleScroll)
     }
   }, [])
 
@@ -1049,8 +1070,19 @@ function HomePage() {
       <header className="home-header">
         <a className="home-logo" href="/home">Lá Đỏ Homestay</a>
         <nav className="home-nav" aria-label="Điều hướng chính">
-          <a href="/home" className="home-nav-active">Trang chủ</a>
-          <a href="/landing" className="home-nav-landing-link" title="Khám phá không gian 3D Komorebi Sanctuary">✨ Komorebi 3D</a>
+          <a
+            href="/home"
+            className={activeNav === 'home' ? 'home-nav-active' : ''}
+            onClick={(e) => {
+              e.preventDefault()
+              setActiveNav('home')
+              window.history.replaceState(null, '', '/home')
+              window.scrollTo({ top: 0, behavior: 'smooth' })
+            }}
+          >
+            Trang chủ
+          </a>
+          <a href="/landing" className="home-nav-landing-link" title="Khám phá không gian 3D Lá Đỏ Sanctuary">🍁 Lá Đỏ 3D</a>
           <a href="/rooms">Phòng</a>
           <a href="/wishlist">Yêu thích</a>
           <a href="/amenities">Tiện nghi</a>
@@ -1070,9 +1102,11 @@ function HomePage() {
           </a>
           <a
             href="#about"
+            className={activeNav === 'about' ? 'home-nav-active' : ''}
             title="Giới thiệu Lá Đỏ Homestay"
             onClick={(e) => {
               e.preventDefault()
+              setActiveNav('about')
               const target = document.getElementById('about') || document.getElementById('footpage')
               if (target) {
                 target.scrollIntoView({ behavior: 'smooth', block: 'start' })

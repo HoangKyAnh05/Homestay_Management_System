@@ -112,7 +112,7 @@ function ReceptionistOverviewPage() {
       <div className="rcp-page">
         <div className="rcp-hello">
           <div>
-            <h1>{greeting}, {user?.fullName?.split(' ').pop() || 'Lễ tân'} 👋</h1>
+            <h1>{greeting}, {user?.fullName?.split(' ').pop() || 'Lễ tân'} </h1>
             <p>
               Hôm nay {new Date().toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' })}.
               Dưới đây là tổng quan lưu trú trong ngày.

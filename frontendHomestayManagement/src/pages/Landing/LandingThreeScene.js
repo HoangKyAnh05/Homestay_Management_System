@@ -37,6 +37,9 @@ export class KomorebiScene {
       }
     };
 
+    this.lastFrameTime = 0;
+    this.maxFps = 30; // Solid smooth 30 FPS for background ambient 3D scene (prevents GPU throttle)
+
     this.init();
     this.createAtmosphere();
     this.createTerrain();
@@ -47,43 +50,51 @@ export class KomorebiScene {
 
   init() {
     const THREE = window.THREE;
-    // High-performance WebGL Renderer with capped pixelRatio
+    const isLowSpec = (typeof navigator !== 'undefined' && navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4) ||
+      (typeof navigator !== 'undefined' && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent));
+
+    this.isLowSpec = isLowSpec;
+
+    // High-performance WebGL Renderer with strict capped pixelRatio (no lag on low-end)
     this.renderer = new THREE.WebGLRenderer({
       canvas: this.canvas,
-      antialias: false, // Turned off for massive FPS boost
+      antialias: false,
       alpha: true,
-      powerPreference: 'high-performance',
-      precision: 'mediump',
+      powerPreference: 'low-power',
+      precision: isLowSpec ? 'lowp' : 'mediump',
+      depth: true,
+      stencil: false,
     });
     this.renderer.setSize(this.width, this.height);
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.25));
+    this.renderer.setPixelRatio(isLowSpec ? 0.85 : Math.min(window.devicePixelRatio || 1, 1.0));
 
     // Scene & Fog
     this.scene = new THREE.Scene();
     this.scene.fog = new THREE.FogExp2(0x070b09, 0.025);
 
     // Camera
-    this.camera = new THREE.PerspectiveCamera(48, this.width / this.height, 0.1, 50);
+    this.camera = new THREE.PerspectiveCamera(48, this.width / this.height, 0.1, 40);
     this.camera.position.set(0, 1.8, 8);
 
     // Lighting
     this.ambientLight = new THREE.AmbientLight(0x22362b, 2.2);
     this.scene.add(this.ambientLight);
 
-    this.dirLight = new THREE.DirectionalLight(0xaad0f0, 2.2);
+    this.dirLight = new THREE.DirectionalLight(0xaad0f0, 2.0);
     this.dirLight.position.set(6, 12, 6);
     this.scene.add(this.dirLight);
 
     // Warm Center Lantern Light
-    this.lanternLight = new THREE.PointLight(0xf5cf9e, 3.0, 16, 1.5);
+    this.lanternLight = new THREE.PointLight(0xf5cf9e, 2.8, 14, 1.5);
     this.lanternLight.position.set(0, 1.6, 3.2);
     this.scene.add(this.lanternLight);
   }
 
   createTerrain() {
     const THREE = window.THREE;
-    // Optimized 32x32 resolution
-    const geometry = new THREE.PlaneGeometry(36, 36, 32, 32);
+    // Ultra-optimized grid resolution for weak GPUs (18x18 or 12x12)
+    const segments = this.isLowSpec ? 14 : 20;
+    const geometry = new THREE.PlaneGeometry(36, 36, segments, segments);
     geometry.rotateX(-Math.PI / 2.15);
 
     const pos = geometry.attributes.position;
@@ -114,7 +125,7 @@ export class KomorebiScene {
       color: 0x3e6852,
       wireframe: true,
       transparent: true,
-      opacity: 0.3,
+      opacity: 0.25,
     });
     this.terrainWire = new THREE.Mesh(geometry, wireMat);
     this.terrainWire.position.set(0, -1.18, -5);
@@ -127,13 +138,14 @@ export class KomorebiScene {
     const mistMat = new THREE.MeshBasicMaterial({
       color: 0x1d362a,
       transparent: true,
-      opacity: 0.2,
+      opacity: 0.18,
       side: THREE.DoubleSide,
       depthWrite: false,
     });
 
     this.mistPlanes = [];
-    for (let i = 0; i < 3; i++) {
+    const count = this.isLowSpec ? 2 : 3;
+    for (let i = 0; i < count; i++) {
       const mist = new THREE.Mesh(mistGeo, mistMat);
       mist.position.set(
         (i - 1) * 6,
@@ -147,7 +159,7 @@ export class KomorebiScene {
 
   createFireflies() {
     const THREE = window.THREE;
-    const particleCount = 100; // Optimized particle count
+    const particleCount = this.isLowSpec ? 25 : 45; // Super lightweight particle count
     const geometry = new THREE.BufferGeometry();
     const positions = new Float32Array(particleCount * 3);
 
@@ -159,23 +171,23 @@ export class KomorebiScene {
 
     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
 
-    // Glow canvas texture
+    // Glow canvas texture (16x16 for low memory)
     const canvas = document.createElement('canvas');
-    canvas.width = 32;
-    canvas.height = 32;
+    canvas.width = 16;
+    canvas.height = 16;
     const ctx = canvas.getContext('2d');
-    const gradient = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
+    const gradient = ctx.createRadialGradient(8, 8, 0, 8, 8, 8);
     gradient.addColorStop(0, 'rgba(255, 245, 210, 1)');
-    gradient.addColorStop(0.3, 'rgba(245, 207, 158, 0.8)');
+    gradient.addColorStop(0.35, 'rgba(245, 207, 158, 0.8)');
     gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
     ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, 32, 32);
+    ctx.fillRect(0, 0, 16, 16);
 
     const texture = new THREE.CanvasTexture(canvas);
 
     const material = new THREE.PointsMaterial({
       color: 0xf5cf9e,
-      size: 0.45,
+      size: 0.42,
       map: texture,
       transparent: true,
       blending: THREE.AdditiveBlending,
@@ -240,8 +252,13 @@ export class KomorebiScene {
 
     if (this.isPaused) return;
 
-    // Pause rendering when scrolled far down the page to save 100% GPU
-    if (window.scrollY > window.innerHeight * 2.2) return;
+    // Immediately stop rendering when scrolled past hero section (0% GPU usage when reading page below)
+    if (window.scrollY > window.innerHeight * 0.75) return;
+
+    // Strict FPS Limiter: don't render more than maxFps per second
+    const now = performance.now();
+    if (now - this.lastFrameTime < 1000 / this.maxFps) return;
+    this.lastFrameTime = now;
 
     const time = this.clock.getElapsedTime();
 
@@ -250,8 +267,8 @@ export class KomorebiScene {
 
     // Camera 3D Scroll
     if (this.camera) {
-      this.camera.position.x = this.mouse.x * 0.7;
-      this.camera.position.y = 1.8 - this.scrollProgress * 1.8 + this.mouse.y * 0.4;
+      this.camera.position.x = this.mouse.x * 0.6;
+      this.camera.position.y = 1.8 - this.scrollProgress * 1.8 + this.mouse.y * 0.3;
       this.camera.position.z = 8.0 - this.scrollProgress * 2.5;
       this.camera.lookAt(0, 0.5 - this.scrollProgress * 0.5, 0);
     }
@@ -265,13 +282,13 @@ export class KomorebiScene {
 
     // Particle Group Gentle Float (GPU friendly: no array updates per frame)
     if (this.particles) {
-      this.particles.rotation.y = time * 0.03 + this.mouse.x * 0.05;
-      this.particles.position.y = Math.sin(time * 0.5) * 0.2;
+      this.particles.rotation.y = time * 0.03 + this.mouse.x * 0.04;
+      this.particles.position.y = Math.sin(time * 0.5) * 0.15;
     }
 
     // Lantern warm flicker
     if (this.lanternLight) {
-      this.lanternLight.intensity = 3.0 + Math.sin(time * 3.0) * 0.3;
+      this.lanternLight.intensity = 2.8 + Math.sin(time * 2.5) * 0.25;
     }
 
     if (this.renderer && this.scene && this.camera) {

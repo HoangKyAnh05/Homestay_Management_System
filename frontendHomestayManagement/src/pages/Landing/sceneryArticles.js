@@ -1,84 +1,86 @@
-// Bộ dữ liệu bài báo review chi tiết các địa điểm ăn chơi, thắng cảnh tại Sa Pa
+// Bộ dữ liệu bài báo review chi tiết các địa điểm ăn chơi, thắng cảnh thực tế 100% tại Sa Pa & Lá Đỏ Homestay
 export const SCENERY_ARTICLES = [
   {
-    id: 'bien-may-hoang-lien',
-    title: 'Săn Biển Mây Hoàng Liên Sơn & Đỉnh Đèo Ô Quy Hồ: Tọa Độ Ngắm Hoàng Hôn Đỉnh Cao Sa Pa',
-    subtitle: 'Hành trình vượt ngàn mây trắng, chiêm ngưỡng khoảnh khắc bình minh và hoàng hôn kỳ vĩ bậc nhất vùng Tây Bắc.',
-    tag: 'Bình Minh • 05:45 AM',
-    category: 'Săn Mây & Check-in',
-    readTime: '5 phút đọc',
+    id: 'la-do-muong-hoa-tau-hoa',
+    title: 'Săn Tàu Hỏa Leo Núi Mường Hoa & Biển Mây Tại Lá Đỏ Homestay: Góc Check-in Triệu View Sa Pa',
+    subtitle: 'Chiêm ngưỡng đoàn tàu đỏ uốn lượn qua thung lũng Mường Hoa giữa biển mây Hoàng Liên Sơn ngay từ bờ kè đá Lá Đỏ Homestay.',
+    tag: 'Tàu Hỏa Mường Hoa • Check-in',
+    category: 'Lá Đỏ Homestay & Cafe',
+    readTime: '4 phút đọc',
     author: 'Lá Đỏ Travel Editorial',
     date: 'Mùa Săn Mây 2026',
-    coverImage: '/landing/images/check-in-canh-dep/8-dia-diem-check-in-dep-quen-sau-o-hoa-binh-image-exa0-1720971802-683-width780height439.jpg',
-    rating: '4.9 ★ (1,280+ đánh giá)',
-    location: 'Đỉnh Đèo Ô Quy Hồ & Cổng Trời Sa Pa, ranh giới Lào Cai - Lai Châu',
-    distance: 'Cách Lá Đỏ Homestay khoảng 14km (khoảng 25 phút đi xe máy/taxi)',
-    bestTime: '05:30 - 07:00 (Bình minh mây tràn) và 16:45 - 18:00 (Hoàng hôn nhuộm vàng)',
-    cost: 'Vé tham quan Cổng Trời: 80.000đ - 100.000đ/người (Tự do ngắm đèo miễn phí)',
+    coverImage: '/landing/images/sapa_real/la_do_homestay_real.jpg',
+    rating: '5.0 ★ (1,850+ đánh giá)',
+    location: '31 Hoàng Liên, Thị xã Sa Pa, Lào Cai (Lá Đỏ Homestay & Coffee)',
+    distance: 'Ngay tại khuôn viên ban công & bờ kè đá của Lá Đỏ Homestay',
+    bestTime: '06:00 - 08:30 sáng (Bình minh săn mây) & 15:30 - 17:30 chiều (Tàu hỏa chạy ngang đón hoàng hôn)',
+    cost: 'Miễn phí cho khách lưu trú / Khách cafe thưởng thức đồ uống từ 35.000đ - 65.000đ',
     highlights: [
-      'Top 4 con đèo hùng vĩ và hiểm trở bậc nhất Việt Nam',
-      'Tầm nhìn panorama 360 độ ôm trọn thung lũng mây Hoàng Liên',
-      'Quán cà phê săn mây trên đỉnh núi với xích đu vô cực sống ảo',
-      'Thưởng thức thịt xiên nướng than hồng, cơm lam nướng và trà gừng ấm nóng'
+      'Góc ngắm trực diện đoàn tàu hỏa leo núi Mường Hoa đỏ rực chạy qua vách núi đẹp nhất Sa Pa',
+      'Bờ kè đá view triệu đô ôm trọn thung lũng Mường Hoa và dãy núi Hoàng Liên Sơn hùng vĩ',
+      'Quán cà phê mộc mạc với xích đu gỗ, ghế võng săn mây lơ lửng giữa trời',
+      'Thưởng thức cà phê trứng nóng hổi, trà táo mèo quế ấm bụng giữa tiết trời se lạnh'
     ],
-    intro: `Nếu hỏi đâu là khoảnh khắc làm xiêu lòng bất kỳ kẻ lữ hành nào khi đến Sa Pa, câu trả lời chắc chắn là giây phút đứng trên đỉnh đèo Ô Quy Hồ nhìn từng đợt sóng mây trắng muốt cuộn trào qua những khe núi đá vôi hùng vĩ. Được mệnh danh là "Vua của tứ đại đỉnh đèo" miền Bắc, nơi đây không chỉ mang vẻ đẹp hoang sơ kỳ bí mà còn là tọa độ săn hoàng hôn tráng lệ nhất xứ sở sương mù.`,
+    intro: `Nằm tại số 31 đường Hoàng Liên, Lá Đỏ Homestay & Coffee là một trong những tọa độ ngắm cảnh và săn mây nổi tiếng nhất Sa Pa. Điểm đặc biệt khiến du khách mê mẩn chính là góc view "độc nhất vô nhị": vừa nhâm nhi tách cà phê nóng trên ban công gỗ, vừa thu trọn vào tầm mắt đoàn tàu hỏa leo núi Mường Hoa màu đỏ tươi thong dong lướt qua thung lũng giữa bồng bềnh mây trắng.`,
     sections: [
       {
-        heading: '1. Thời Điểm Vàng Săn Biển Mây Trong Ngày',
-        content: `Khoảng thời gian từ tháng 9 đến tháng 3 năm sau là "mùa vàng săn mây" tại Sa Pa. Vào lúc 5:45 sáng, khi nhiệt độ thung lũng còn đẫm hơi sương và mặt trời bắt đầu nhô lên sau dãy Hoàng Liên Sơn, biển mây dày đặc bắt đầu dâng cao như thác lũ, tràn qua từng sườn dốc quanh co.
+        heading: '1. Thời Điểm Đẹp Nhất Để Chụp Ảnh Tàu Hỏa & Săn Mây',
+        content: `Tàu hỏa leo núi Mường Hoa khởi hành từ ga Sun Plaza đi ga cáp treo Fansipan chạy liên tục các khung giờ trong ngày (cứ 15 - 20 phút một chuyến).
         
-Vào buổi chiều tà (khoảng 17:15 - 17:45), bầu trời chuyển từ sắc cam rực sang tím thẫm lãng mạn. Toàn bộ thung lũng phía dưới biến thành đại dương mây bồng bềnh, phản chiếu những vạt nắng cuối ngày đẹp đến ngỡ ngàng.`,
-        tip: 'Mẹo săn mây: Hãy theo dõi dự báo thời tiết từ hôm trước. Những ngày có độ ẩm cao ban đêm và nắng nhẹ vào ban ngày sẽ có tỷ lệ mây dày đặc lên đến 95%.'
+Khung giờ lý tưởng nhất để có những bức ảnh sống ảo tuyệt mỹ:
+• Sáng sớm (06:30 - 08:00): Mặt trời vừa ló rạng qua dãy Hoàng Liên Sơn, biển mây dâng cao lưng chừng đồi, tàu hỏa màu đỏ nổi bật giữa làn mây trắng bồng bềnh.
+• Chiều tà (16:00 - 17:30): Toàn bộ thung lũng Mường Hoa nhuộm màu vàng cam rực rỡ của hoàng hôn Sa Pa.`,
+        tip: 'Khi nghe tiếng còi tàu từ xa vọng lại, bạn hãy chuẩn bị sẵn máy ảnh hoặc điện thoại ở chế độ quay 4K/60fps để bắt trọn khoảnh khắc đoàn tàu rực đỏ lướt qua sườn núi.'
       },
       {
-        heading: '2. Trải Nghiệm Ăn Chơi & Check-in Không Thể Bỏ Lỡ',
-        content: `Dọc theo sườn đèo có rất nhiều điểm dừng chân độc đáo với các góc chụp "triệu view":
+        heading: '2. Không Gian Sống Ảo & Thư Giãn Tại Lá Đỏ Cafe',
+        content: `Quán cà phê tại Lá Đỏ Homestay được thiết kế mộc mạc hoàn toàn bằng gỗ thông và đá tự nhiên:
         
-• Cổng Trời Sa Pa & Quán Cà Phê Mây: Nơi sở hữu các tiểu cảnh như xích đu vô cực, cầu kính ngắm biển mây, bậc thang lên thiên đường.
-• Các lán nướng ven đèo mộc mạc: Ngồi quây quần bên bếp than củi rực hồng, hít hà mùi thơm của ngô nếp nướng mỡ hành, trứng nướng lòng đào và những xiên thịt lợn bản cuốn cải mèo cay nồng chấm muối ớt Mường Khương.
-• Thưởng thức tách trà gừng sả quế ấm lòng giữa cơn gió se lạnh của vùng cao Tây Bắc.`,
-        tip: 'Nhiệt độ trên đèo Ô Quy Hồ luôn thấp hơn trung tâm Sa Pa từ 3 - 5°C và gió khá mạnh, bạn nhớ mang theo áo khoác ấm, khăn quàng cổ và găng tay.'
+• Bờ kè đá huyền thoại: Nơi cho ra đời hàng ngàn bức ảnh check-in Sa Pa gây sốt trên Instagram và TikTok.
+• Xích đu vô cực hướng thẳng ra thung lũng mây.
+• Menu đồ uống phong phú: Cà phê trứng béo ngậy, trà Shan Tuyết cổ thụ, cacao nóng và trà đào cam sả thanh mát.`,
+        tip: 'Khách lưu trú tại Lá Đỏ Homestay được ưu đãi giảm 10% đồ uống tại quầy cafe và phục vụ bữa sáng tận ban công phòng.'
       },
       {
-        heading: '3. Ẩm Thực Đặc Sản Quanh Khu Vực Đèo Ô Quy Hồ',
-        content: `Sau chuyến săn mây, trên đường trở về, bạn nhất định phải ghé các quán ven đường để thưởng thức:
+        heading: '3. Tiệc Nướng BBQ & Lẩu Cá Tầm Buổi Tối',
+        content: `Khi hoàng hôn buông xuống, không gian ban công Lá Đỏ biến thành bữa tiệc ngoài trời ấm áp:
         
-• Gà nướng mắc khén than hoa chấm chẩm chéo thơm phức.
-• Cơm lam ngũ sắc ống tre dẻo ngọt chấm muối lạc vừng.
-• Trâu gác bếp xé sợi nhắm cùng ly rượu ngô Bản Phố ủ men lá.`,
-        tip: 'Giá các món nướng tại đây rất bình dân: xiên nướng từ 15.000đ - 25.000đ, cơm lam 15.000đ/ống.'
+• Nồi lẩu cá tầm hoặc cá hồi Sa Pa tươi roi rói với nước dùng chua cay đậm đà, ăn kèm rau mầm đá và ngọn su su giòn ngọt.
+• Thịt xiên nướng bản địa tẩm ướp hạt dổi, mắc khén thơm nức mũi trên than hồng.
+• Nhâm nhi ly rượu táo mèo thơm nồng ngắm thung lũng Mường Hoa lung linh ánh đèn về đêm.`,
+        tip: 'Bạn có thể đặt trước set lẩu hoặc BBQ với lễ tân Lá Đỏ từ chiều để homestay chuẩn bị nguyên liệu tươi ngon nhất.'
       }
     ],
-    homestayAdvice: 'Từ Lá Đỏ Homestay, bạn có thể thuê xe máy ngay tại quầy lễ tân (chỉ 120.000đ - 150.000đ/ngày) hoặc nhờ homestay gọi taxi trọn gói khứ hồi với mức giá ưu đãi dành riêng cho khách lưu trú. Nhân viên Lá Đỏ sẽ chuẩn bị sẵn nước ấm và bình giữ nhiệt để bạn mang theo trên đường săn mây sáng sớm.'
+    homestayAdvice: 'Bạn không cần đi đâu xa, trải nghiệm ngắm tàu hỏa và săn biển mây đỉnh cao nằm ngay tại hiên phòng và ban công quán cafe của Lá Đỏ Homestay. Hãy dậy sớm một chút, hít hà bầu không khí trong lành của sớm mai Sa Pa.'
   },
   {
     id: 'cau-go-suoi-mo',
-    title: 'Khám Phá Cầu Gỗ Bên Suối Mơ Bản Cát Cát: Bản Làng Cổ Đẹp Như Tranh Vẽ',
-    subtitle: 'Dạo bước trên cây cầu gỗ mộc mạc bắc qua dòng suối Tiên Sa trong vắt, lắng nghe khúc ca róc rách của đại ngàn.',
-    tag: 'Suối Ngầm Tự Nhiên',
+    title: 'Khám Phá Cầu Gỗ Bên Suối Mơ Bản Cát Cát: Bản Làng Cổ Người H\'Mông Đẹp Như Tranh Vẽ',
+    subtitle: 'Dạo bước trên cây cầu gỗ mộc mạc bắc qua dòng suối Tiên Sa trong vắt, lắng nghe khúc ca róc rách của đại ngàn Sa Pa.',
+    tag: 'Bản Làng Cổ • Suối Tiên Sa',
     category: 'Văn Hóa Bản Làng',
     readTime: '4 phút đọc',
     author: 'Lá Đỏ Travel Editorial',
     date: 'Cập nhật 2026',
-    coverImage: '/landing/images/check-in-canh-dep/images-1.jpg',
+    coverImage: '/landing/images/sapa_real/cat_cat_village.jpg',
     rating: '4.8 ★ (950+ đánh giá)',
     location: 'Bản Cát Cát, xã San Sả Hồ, Sa Pa, Lào Cai',
-    distance: 'Cách Lá Đỏ Homestay chỉ 2.8km (khoảng 8 phút đi xe máy)',
+    distance: 'Cách Lá Đỏ Homestay chỉ 2.2km (khoảng 6 - 8 phút đi xe máy)',
     bestTime: '08:30 - 11:00 sáng hoặc 14:00 - 16:30 chiều (ánh sáng rực rỡ len qua suối)',
     cost: 'Vé vào cổng Bản Cát Cát: 150.000đ/người lớn, 70.000đ/trẻ em',
     highlights: [
-      'Bản làng cổ của người H\'Mông với kiến trúc nhà gỗ lợp ván pơ-mu',
-      'Cầu gỗ mộc mạc vắt ngang dòng suối Tiên Sa và thác nước trắng xóa',
-      'Hệ thống cối xay nước khổng lồ bằng tre quay đều theo dòng chảy',
-      'Thuê váy thổ cẩm truyền thống hóa thân thành cô gái chàng trai miền sơn cước'
+      'Bản làng cổ của người H\'Mông với kiến trúc nhà gỗ lợp ván pơ-mu rêu phong',
+      'Cầu gỗ mộc mạc vắt ngang dòng suối Tiên Sa và thác nước Cát Cát trắng xóa',
+      'Hệ thống cối xay nước khổng lồ bằng tre quay đều theo dòng chảy tự nhiên',
+      'Thuê váy thổ cẩm truyền thống hóa thân thành cô gái, chàng trai miền sơn cước'
     ],
-    intro: `Nằm nép mình dưới chân dãy Hoàng Liên Sơn, bản Cát Cát từ lâu đã trở thành biểu tượng văn hóa của Sa Pa. Giữa thung lũng xanh mướt, cây cầu gỗ bắc ngang suối Mơ và dòng thác Cát Cát rì rào như một nét chấm phá thơ mộng, đưa du khách lạc bước vào không gian cổ tích của những câu chuyện tình người H'Mông xưa cũ.`,
+    intro: `Nằm nép mình dưới chân dãy Hoàng Liên Sơn, bản Cát Cát từ lâu đã trở thành biểu tượng văn hóa của Sa Pa. Giữa thung lũng xanh mướt, cây cầu gỗ bắc ngang suối Tiên Sa và dòng thác Cát Cát rì rào như một nét chấm phá thơ mộng, đưa du khách lạc bước vào không gian cổ tích của những câu chuyện tình người H'Mông xưa cũ.`,
     sections: [
       {
         heading: '1. Cung Đường Dạo Bộ Lãng Mạn Ven Suối Tiên Sa',
         content: `Bước chân qua cổng bản, bạn sẽ men theo những bậc đá bậc thang dẫn xuống thung lũng. Càng đi sâu, tiếng suối reo càng rõ rệt. Cây cầu gỗ nối hai bờ suối được ghép từ những thân cây cổ thụ mộc mạc, hai bên bờ hoa cúc họa mi và hoa tam giác mạch khoe sắc quanh năm.
         
-Đứng trên cầu, bạn có thể ngắm nhìn đàn cá bơi lội dưới làn nước trong vắt nhìn thấy đáy, cảm nhận từng làn gió mát lạnh từ đỉnh Fansipan thổi tràn về thung lũng.`,
+Đứng trên cầu, bạn có thể ngắm nhìn làn nước suối trong vắt nhìn thấy từng viên sỏi cuội, cảm nhận từng làn gió mát lạnh từ đỉnh núi thổi tràn về thung lũng.`,
         tip: 'Nên mang giày thể thao hoặc giày bệt có độ ma sát tốt vì đường đá dốc thoai thoải có thể hơi trơn sau những cơn mưa sương.'
       },
       {
@@ -86,7 +88,7 @@ Vào buổi chiều tà (khoảng 17:15 - 17:45), bầu trời chuyển từ s�
         content: `Một trong những trải nghiệm được du khách yêu thích nhất tại Cát Cát là thuê trang phục dân tộc:
         
 • Hàng chục tiệm cho thuê trang phục H'Mông, Dao đỏ, Thái với phụ kiện vòng bạc, dù che, gùi hoa lộng lẫy (giá chỉ 50.000đ - 100.000đ/bộ).
-• Điểm chụp ảnh đẹp nhất: Cầu gỗ suối Mơ, guồng nước tre khổng lồ, võng mây tổ chim ven suối và trước những gian nhà dệt thổ cẩm cổ truyền.
+• Điểm chụp ảnh đẹp nhất: Cầu gỗ suối Tiên Sa, guồng nước tre khổng lồ, võng mây tổ chim ven suối và trước những gian nhà dệt thổ cẩm cổ truyền.
 • Thưởng thức tiết mục múa khèn, nhảy sạp rộn rã tại nhà văn hóa trung tâm bản Cát Cát.`,
         tip: 'Nên thuê trang phục có tông màu đỏ, cam hoặc vàng đồng để nổi bật giữa nền xanh của rừng cây và suối đá.'
       },
@@ -100,108 +102,105 @@ Vào buổi chiều tà (khoảng 17:15 - 17:45), bầu trời chuyển từ s�
         tip: 'Bạn có thể ghé quán Cà phê Nhà Của Mị hoặc Haven Camp Site ngay gần lối ra của bản để ngắm trọn thung lũng từ trên cao.'
       }
     ],
-    homestayAdvice: 'Sau một buổi sáng đi bộ khám phá bản làng Cát Cát, hãy quay trở về Lá Đỏ Homestay thưởng thức bữa trưa nóng hổi và trải nghiệm bồn ngâm khoáng nóng thảo dược người Dao Đỏ ngay tại homestay để thư giãn cơ bắp tuyệt đối.'
+    homestayAdvice: 'Từ Lá Đỏ Homestay đi Bản Cát Cát rất gần, chỉ mất 6 phút chạy xe máy. Bạn có thể thuê xe máy ngay tại quầy lễ tân Lá Đỏ với giá 120.000đ - 150.000đ/ngày kèm mũ bảo hiểm và áo mưa tiện lợi.'
   },
   {
-    id: 'tra-quan-rung-truc',
-    title: 'Thưởng Trà Shan Tuyết Giữa Rừng Trúc Bạt Ngàn: Chốn Thiền Định Thanh Tịnh',
-    subtitle: 'Tách biệt hoàn toàn khỏi phố thị ồn ào, tìm về sự an yên tĩnh lặng bên tách trà Shan Tuyết cổ thụ 300 năm.',
-    tag: 'Không Gian Thiền Định',
-    category: 'Thư Giãn & Trà Đạo',
-    readTime: '4 phút đọc',
-    author: 'Lá Đỏ Travel Editorial',
-    date: 'Mùa Thu Đông 2026',
-    coverImage: '/landing/images/check-in-canh-dep/images-2.jpg',
-    rating: '5.0 ★ (620+ đánh giá)',
-    location: 'Rừng Trúc & Đồi Chè Ô Long, đường đèo hướng Tả Van - Mường Hoa',
-    distance: 'Cách Lá Đỏ Homestay 4.5km (khoảng 12 phút di chuyển)',
-    bestTime: '09:00 - 11:30 sáng hoặc 15:00 - 17:00 chiều lúc hoàng hôn buông',
-    cost: 'Thưởng trà & ngắm cảnh: 45.000đ - 90.000đ/người',
-    highlights: [
-      'Không gian trà quán gỗ mộc nằm lọt thỏm giữa rừng trúc xanh mướt ngút ngàn',
-      'Trà Shan Tuyết cổ thụ ngàn năm được pha bằng nguồn nước suối nguồn thanh khiết',
-      'Tiếng gió vi vu qua tán trúc hòa cùng thanh âm chuông gió thiền định',
-      'Trải nghiệm văn hóa trà đạo Wabi-sabi tương đồng với triết lý của Lá Đỏ Homestay'
-    ],
-    intro: `Giữa nhịp sống hối hả, có một nơi tại Sa Pa mà thời gian dường như ngưng đọng: quán trà nhỏ ẩn mình giữa bạt ngàn rừng trúc xanh rợp bóng. Được thiết kế theo phong cách Wabi-sabi tối giản với vật liệu tre nứa và gỗ thông tự nhiên, nơi đây là thiên đường cho những ai mong muốn tìm kiếm một nốt lặng cho tâm hồn, hít thở bầu không khí ngát hương thảo mộc.`,
-    sections: [
-      {
-        heading: '1. Hương Vị Trà Shan Tuyết Cổ Thụ Đệ Nhất Tây Bắc',
-        content: `Đến đây, bạn sẽ được thưởng thức những búp trà Shan Tuyết cổ thụ được đồng bào thu hái từ những cây chè hàng trăm năm tuổi mọc tự nhiên trên vách đá mù sương Hoàng Liên Sơn.
-        
-Trà được ủ và pha bằng nước suối nguồn đun trên bếp than củi thơm mùi gỗ thông. Nước trà vàng óng như mật ong rừng, nhấp một ngụm đầu thấy chan chát nhẹ nơi đầu lưỡi, nhưng ngay sau đó là vị ngọt hậu thanh tao đọng lại sâu trong cuống họng suốt cả giờ đồng hồ.`,
-        tip: 'Hãy thử dùng kèm trà với bánh hạt dẻ Sa Pa hoặc ô mai mận tam hoa để hương vị trà được tôn lên trọn vẹn nhất.'
-      },
-      {
-        heading: '2. Chữa Lành Thân Tâm Trong Không Gian Tĩnh Mịch',
-        content: `Ngồi trên sàn gỗ mộc, hướng mắt qua ô cửa sổ kính rộng mở nhìn ra rừng trúc đu đưa theo gió:
-        
-• Đọc một cuốn sách yêu thích trong tiếng nước suối róc rách và tiếng chim hót lảnh lót.
-• Hít thở sâu làn không khí chứa đầy ion âm thanh khiết giúp giải tỏa mọi căng thẳng mệt mỏi.
-• Chụp những bức ảnh mang phong cách hoài niệm, cổ phong cực kỳ nghệ thuật.`,
-        tip: 'Khung giờ chiều từ 15:30 trở đi có ánh nắng xiên qua kẽ trúc tạo thành những luồng sáng "Tyndall effect" vô cùng ảo diệu.'
-      },
-      {
-        heading: '3. Đặc Sản & Món Ăn Nhẹ Nên Thử',
-        content: `Ngoài trà đạo, quán còn phục vụ các món ăn nhẹ dân dã:
-        
-• Bánh dày nướng mè đen dẻo quánh chấm mật ong rừng nguyên chất.
-• Hạt dẻ rừng Sa Pa rang bơ bùi ngậy, thơm nức mũi.
-• Trà táo mèo quế hồi ấm bụng, xua tan cái lạnh mùa đông.`,
-        tip: 'Bạn có thể mua những túi trà Shan Tuyết búp tôm đóng gói thủ công về làm quà biếu người thân đầy ý nghĩa.'
-      }
-    ],
-    homestayAdvice: 'Tại Lá Đỏ Homestay, chúng tôi cũng dành riêng một gian trà đạo view thung lũng phục vụ miễn phí cho khách lưu trú. Bạn có thể nhờ lễ tân chỉ đường tắt đi qua bản Tả Van đến thẳng rừng trúc này mà không cần đi vòng đường lớn.'
-  },
-  {
-    id: 'anh-nang-rung-thong',
-    title: 'Săn Ánh Nắng Komorebi Rừng Thông Sa Pa: Tọa Độ Nhiếp Ảnh Mê Hoặc Lòng Người',
-    subtitle: 'Hiện tượng ánh sáng mặt trời huyền ảo xuyên qua kẽ lá thông già trong buổi hoàng hôn tĩnh mịch nơi núi rừng.',
-    tag: 'Hoàng Hôn • 17:30 PM',
-    category: 'Nhiếp Ảnh & Sống Ảo',
+    id: 'fansipan-legend-dinh-cao',
+    title: 'Chinh Phục Đỉnh Fansipan 3.143m - Nóc Nhà Đông Dương & Quần Thể Tâm Linh Đại Tượng Phật',
+    subtitle: 'Trải nghiệm tuyến cáp treo kỷ lục thế giới, chạm tay vào cột mốc nóc nhà Đông Dương giữa đại dương mây bồng bềnh.',
+    tag: 'Đỉnh Fansipan • 3.143m',
+    category: 'Chinh Phục & Tâm Linh',
     readTime: '5 phút đọc',
     author: 'Lá Đỏ Travel Editorial',
-    date: 'Mùa Săn Nắng 2026',
-    coverImage: '/landing/images/check-in-canh-dep/images.jpg',
-    rating: '4.9 ★ (1,150+ đánh giá)',
-    location: 'Đồi thông ven triền núi Hàm Rồng & Thung lũng Mường Hoa, Sa Pa',
-    distance: 'Cách Lá Đỏ Homestay chỉ 1.2km (có thể đi bộ dạo mát 10 phút)',
-    bestTime: '16:30 - 18:00 chiều (Ánh hoàng hôn xiên góc vàng óng rực rỡ nhất)',
-    cost: 'Miễn phí tham quan & chụp ảnh tự do',
+    date: 'Mùa Mây 2026',
+    coverImage: '/landing/images/sapa_real/fansipan_peak.jpg',
+    rating: '5.0 ★ (2,500+ đánh giá)',
+    location: 'Khu du lịch Sun World Fansipan Legend, Đường Nguyễn Chí Thanh, Sa Pa',
+    distance: 'Cách Lá Đỏ Homestay khoảng 3.2km (khoảng 8 phút đi taxi/xe máy)',
+    bestTime: '08:00 - 11:30 sáng (Nắng trong vắt, mây cuộn quanh đỉnh núi)',
+    cost: 'Vé cáp treo: 850.000đ/người lớn, vé tàu hỏa leo núi đỉnh: 150.000đ/lượt',
     highlights: [
-      'Rừng thông cổ thụ xanh ngát trải dài thoai thoải theo triền dốc',
-      'Hiện tượng quang học Komorebi: tia nắng vàng xuyên qua sương chiều mờ ảo',
-      'Con đường mòn gỗ mộc và thảm cỏ kim thông lãng mạn tựa trời Âu',
-      'Điểm ngắm hoàng hôn buông xuống thung lũng Mường Hoa lộng lẫy'
+      'Tuyến cáp treo 3 dây hiện đại nhất thế giới vượt qua thung lũng Mường Hoa',
+      'Cột cờ Fansipan tung bay kiêu hãnh tại độ cao 3.143m - Nóc nhà Đông Dương',
+      'Đại Tượng Phật A Di Đà bằng đồng lớn nhất Việt Nam ngự trên biển mây',
+      'Con đường La Hán uốn lượn bên sườn núi và rừng hoa đỗ quyên cổ thụ rực rỡ'
     ],
-    intro: `Trong tiếng Nhật, "Komorebi" là từ tuyệt đẹp dùng để miêu tả khoảnh khắc những vạt nắng mặt trời lọc qua kẽ lá cây rừng, nhảy múa trên nền đất ẩm. Tại Sa Pa, không nơi nào thể hiện rõ nét vẻ đẹp diệu kỳ này bằng những đồi thông cổ thụ ôm trọn lấy sườn đồi Lá Đỏ Homestay khi ánh tà dương buông xuống.`,
+    intro: `Được mệnh danh là "Nóc nhà Đông Dương", đỉnh Fansipan cao 3.143m là ước mơ chinh phục của biết bao thế hệ du khách. Nhờ hệ thống cáp treo Sun World Fansipan Legend hiện đại, hành trình chạm tay vào đỉnh mây huyền thoại giờ đây chỉ mất 15 phút, mở ra một khung cảnh tráng lệ tựa chốn bồng lai tiên cảnh.`,
     sections: [
       {
-        heading: '1. Khoảnh Khắc Nhiếp Ảnh Triệu View Mùa Hoàng Hôn',
-        content: `Vào mỗi buổi chiều tà, mặt trời hạ thấp dần về phía rặng Fansipan, chiếu những luồng sáng vàng óng như mật xuyên qua tán lá thông kim và lớp sương mây lơ lửng.
+        heading: '1. Hành Trình Bay Trên Ngàn Mây Bằng Cáp Treo',
+        content: `Cabin cáp treo bằng kính trong suốt đưa bạn lướt qua toàn bộ thung lũng Mường Hoa, ngắm nhìn những thửa ruộng bậc thang kỳ vĩ, những bản làng ẩn hiện trong sương và rừng nguyên sinh Hoàng Liên Sơn bạt ngàn.
         
-Toàn bộ không gian được nhuộm một màu vàng ấm áp, tạo nên chiều sâu không gian huyền ảo. Chỉ cần giơ máy lên ở bất kỳ góc nào, bạn cũng sẽ bắt trọn được những bức ảnh chân dung thơ mộng, lãng mạn như những thước phim điện ảnh Hong Kong hay phim tài liệu nghệ thuật.`,
-        tip: 'Khuyên chụp: Sử dụng chế độ chụp ngược sáng hoặc chụp chân dung với khẩu độ lớn (f/1.8 - f/2.8) để bắt trọn hiệu ứng bokeh lấp lánh của tia nắng.'
+Khi cáp treo xuyên qua tầng mây mù, bầu trời trong xanh ngắt và biển mây trắng xóa bỗng hiện ra choáng ngợp trước mắt.`,
+        tip: 'Nhiệt độ trên đỉnh Fansipan thường thấp hơn thị xã Sa Pa từ 8 - 10°C, gió mạnh. Bạn nên mặc áo ấm dày, mang mũ len và găng tay.'
       },
       {
-        heading: '2. Trải Nghiệm Đi Dạo & Cắm Trại Dã Ngoại (Picnic)',
-        content: `Rừng thông có địa hình dốc thoải, thảm cỏ sạch sẽ với mùi hương tinh dầu thông tự nhiên dễ chịu:
+        heading: '2. Quần Thể Tâm Linh Kỳ Vĩ Trên Đỉnh Mây',
+        content: `Dọc theo bậc thang đá dẫn lên đỉnh là quần thể tâm linh tráng lệ mang đậm phong cách kiến trúc chùa cổ thời Trần:
         
-• Mang theo thảm trải dã ngoại, một giỏ trái cây, bánh ngọt và bình trà nóng để thưởng thức cùng bạn bè, người thương.
-• Tận hưởng cảm giác bình yên khi nghe tiếng lá thông reo trong gió chiều se lạnh.
-• Ngắm đoàn tàu hỏa leo núi Mường Hoa màu đỏ tươi thong dong chạy ngang sườn thung lũng phía xa xa.`,
-        tip: 'Hãy giữ gìn vệ sinh chung, không xả rác và không đốt lửa trại tự phát để bảo vệ rừng thông xanh.'
+• Đại Tượng Phật A Di Đà sừng sững uy nghiêm giữa mây ngàn.
+• Con đường La Hán rợp bóng hoa đỗ quyên hàng trăm năm tuổi.
+• Kim Sơn Bảo Thắng Tự, tượng Quan Thế Âm Bồ Tát và Bích Vân Thiền Tự linh thiêng.`,
+        tip: 'Bạn có thể chọn đi bộ 600 bậc đá để vừa chiêm bái cảnh chùa vừa rèn luyện sức khỏe, hoặc đi tàu hỏa leo núi Đỗ Quyên lên thẳng đỉnh.'
       },
       {
-        heading: '3. Thiên Đường Ẩm Thực Đêm Quanh Khu Vực',
-        content: `Khi màn đêm buông xuống và rừng thông chìm vào tĩnh mịch, bạn có thể dạo bước về trung tâm thị xã:
+        heading: '3. Chạm Tay Vào Cột Mốc 3.143m & Check-in Cột Cờ Tổ Quốc',
+        content: `Khoảnh khắc đứng trên chóp tháp inox 3.143m, nhìn lá cờ đỏ sao vàng tung bay phần phật giữa mây trời Tổ quốc là niềm xúc động và tự hào khôn xiết của mỗi người con đất Việt.
         
-• Ghé chợ đêm Sa Pa thưởng thức dạ dày nướng cay, nấm đông cô nướng phô mai, bánh tráng nướng trứng giòn rụm.
-• Nhâm nhi nồi lẩu gà đen hầm sâm dây hoặc thắng cố truyền thống xua tan cái rét ban đêm.
-• Tạt vào một quán pub acoustic mộc mạc làm một ly cocktail ngâm rượu táo mèo thơm lừng.`,
-        tip: 'Đừng quên thử món hạt dẻ nướng mật ong béo ngậy được bán nóng hổi dọc đường phố Sa Pa.'
+Xung quanh là đại dương mây bồng bềnh trải dài tít tắp đến tận chân trời, tạo nên những bức ảnh kỷ niệm để đời.`,
+        tip: 'Thời điểm chụp ảnh đẹp nhất trên chóp đỉnh là khoảng 10:00 - 11:30 sáng khi nắng vàng rọi thẳng xuống biển mây.'
       }
     ],
-    homestayAdvice: 'Khu vực rừng thông này nằm ngay sát vách Lá Đỏ Homestay! Bạn chỉ cần bước ra khỏi cổng homestay khoảng vài bước chân là đã chạm vào không gian rừng thông bạt ngàn. Homestay có sẵn giỏ mây picnic và đạo cụ chụp ảnh xinh xắn để khách mượn chụp ảnh hoàn toàn miễn phí.'
+    homestayAdvice: 'Lá Đỏ Homestay hỗ trợ đặt trước vé cáp treo Fansipan Legend không cần xếp hàng, giao vé tận tay cho quý khách tại homestay. Sau chuyến đi Fansipan về, homestay đã sẵn sàng bồn ngâm lá thuốc người Dao Đỏ để quý khách phục hồi thể lực.'
+  },
+  {
+    id: 'o-quy-ho-sunset-dinh-deo',
+    title: 'Săn Hoàng Hôn Rực Lửa Đỉnh Đèo Ô Quy Hồ & Cổng Trời Sa Pa: Tuyệt Tác Đại Ngàn',
+    subtitle: 'Chiêm ngưỡng khoảnh khắc hoàng hôn nhuộm đỏ biển mây trên đỉnh con đèo hùng vĩ nhất trong "Tứ Đại Đỉnh Đèo" Việt Nam.',
+    tag: 'Hoàng Hôn • 17:30 PM',
+    category: 'Săn Mây & Hoàng Hôn',
+    readTime: '5 phút đọc',
+    author: 'Lá Đỏ Travel Editorial',
+    date: 'Mùa Săn Mây 2026',
+    coverImage: '/landing/images/sapa_real/o_quy_ho_pass.jpg',
+    rating: '4.9 ★ (1,620+ đánh giá)',
+    location: 'Đỉnh Đèo Ô Quy Hồ & Cổng Trời Sa Pa, Quốc lộ 4D, ranh giới Lào Cai - Lai Châu',
+    distance: 'Cách Lá Đỏ Homestay khoảng 14km (khoảng 25 phút đi xe máy/taxi)',
+    bestTime: '16:30 - 18:00 chiều (Khoảnh khắc hoàng hôn rực lửa và biển mây chuyển sắc tím cam)',
+    cost: 'Miễn phí ngắm cảnh ven đèo / Vé Cổng Trời & Cầu Kính: 80.000đ - 100.000đ/người',
+    highlights: [
+      'Top 4 con đèo hùng vĩ và hiểm trở bậc nhất Việt Nam uốn lượn quanh vách núi Hoàng Liên',
+      'Góc ngắm hoàng hôn đỉnh cao nhất Sa Pa với tầm nhìn bao quát biển mây 360 độ',
+      'Quán cà phê Cây Cô Đơn ven đèo với xích đu vô cực và bàn ghế gỗ mộc hướng vực sâu',
+      'Thưởng thức thịt lợn bản cuốn cải mèo nướng than hồng, ngô nếp nướng và trà gừng ấm nóng'
+    ],
+    intro: `Được mệnh danh là "Vua của tứ đại đỉnh đèo" miền Bắc, đèo Ô Quy Hồ dài gần 50km vắt qua dãy núi Hoàng Liên Sơn. Khi hoàng hôn buông xuống, toàn bộ thung lũng biến thành một chảo mây sôi sục, phản chiếu ánh mặt trời đỏ rực như quả cầu lửa khổng lồ từ từ chìm vào đại ngàn Tây Bắc.`,
+    sections: [
+      {
+        heading: '1. Khoảnh Khắc Hoàng Hôn Rực Lửa Biển Mây',
+        content: `Khoảng 17:15 - 17:45 là lúc hoàng hôn Ô Quy Hồ đạt đỉnh cao sắc đẹp:
+        
+Bầu trời chuyển từ sắc vàng óng sang đỏ cam rực lửa rồi tím biếc lãng mạn. Từng cuộn mây trắng tràn qua con đường đèo quanh co uốn lượn như dải lụa mềm mại vắt ngang lưng trời.`,
+        tip: 'Hãy chuẩn bị áo khoác dày vì khi mặt trời vừa khuất bóng, nhiệt độ trên đỉnh đèo giảm rất nhanh kèm theo gió lộng.'
+      },
+      {
+        heading: '2. Check-in Cổng Trời Sa Pa & Quán Cafe Cây Cô Đơn',
+        content: `Dọc theo sống đèo có những điểm dừng chân check-in nổi tiếng:
+        
+• Cổng Trời Sa Pa & Cầu Kính Rồng Mây: Trải nghiệm cảm giác đứng lơ lửng giữa không trung ngắm trọn vực thẳm và mây ngàn.
+• Quán cafe mộc mạc ven đèo: Ngồi trên chiếc ghế gỗ mộc nhâm nhi tách trà gừng nóng hổi, ngắm nhìn mặt trời lặn từ từ sau rặng núi xa xôi.`,
+        tip: 'Nếu tự lái xe máy, hãy kiểm tra kỹ phanh xe, đèn xe và chạy chậm vì sương mù buổi tối ven đèo có thể làm giảm tầm nhìn.'
+      },
+      {
+        heading: '3. Thưởng Thức Ẩm Thực Xiên Nướng Ven Đèo',
+        content: `Sau khi ngắm hoàng hôn, ghé vào những lán củi ven đường:
+        
+• Quây quần bên bếp than củi rực hồng sưởi ấm bàn tay buốt lạnh.
+• Thưởng thức xiên thịt lợn bản cuốn rau cải mèo cay nồng chấm muối ớt chẩm chéo.
+• Trứng gà nướng lòng đào béo ngậy, ngô nếp nướng mỡ hành và cơm lam dẻo thơm.`,
+        tip: 'Giá xiên nướng chỉ từ 15.000đ - 25.000đ/xiên, cơm lam 15.000đ/ống rất bình dân và ấm bụng.'
+      }
+    ],
+    homestayAdvice: 'Từ Lá Đỏ Homestay, bạn nên xuất phát lúc 15:30 chiều để thong thả ngắm cảnh đường đèo qua Thác Bạc, Thác Tình Yêu trước khi đến đỉnh đèo săn hoàng hôn. Lễ tân Lá Đỏ luôn sẵn sàng hỗ trợ gọi xe taxi khứ hồi trọn gói với giá tốt nhất.'
   }
 ];

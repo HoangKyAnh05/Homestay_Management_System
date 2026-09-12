@@ -171,13 +171,13 @@ export default function AdminGiveawayLeadsPage() {
   const renderStatusBadge = (status) => {
     switch (status) {
       case 'NEW':
-        return <span className="gw-badge gw-badge--new">🔴 Mới - Chưa liên hệ</span>
+        return <span className="gw-badge gw-badge--new"> Mới - Chưa liên hệ</span>
       case 'CONTACTED':
-        return <span className="gw-badge gw-badge--contacted">🟡 Đang tư vấn</span>
+        return <span className="gw-badge gw-badge--contacted"> Đang tư vấn</span>
       case 'BOOKED':
-        return <span className="gw-badge gw-badge--booked">🟢 Đã chốt phòng</span>
+        return <span className="gw-badge gw-badge--booked"> Đã chốt phòng</span>
       case 'CANCELLED':
-        return <span className="gw-badge gw-badge--cancelled">⚪ Hủy / Không nghe</span>
+        return <span className="gw-badge gw-badge--cancelled"> Hủy / Không nghe</span>
       default:
         return <span className="gw-badge">{status}</span>
     }
@@ -189,7 +189,7 @@ export default function AdminGiveawayLeadsPage() {
         {/* Header */}
         <div className="gw-leads-header">
           <div className="gw-leads-title-wrap">
-            <h1>🎁 Khách Hàng Tiềm Năng & MiniGame Giveaway</h1>
+            <h1> Khách Hàng Tiềm Năng & MiniGame Giveaway</h1>
             <p>Dữ liệu cào tương tác, khách hàng tham gia Vòng quay may mắn từ Fanpage & Mạng xã hội</p>
           </div>
           <div className="gw-leads-actions">
@@ -199,7 +199,7 @@ export default function AdminGiveawayLeadsPage() {
               style={{ display: 'flex', alignItems: 'center', gap: 6 }}
               onClick={handleExportExcel}
             >
-              📥 Xuất File Excel (.xlsx)
+               Xuất File Excel (.xlsx)
             </button>
             <button
               type="button"
@@ -207,7 +207,7 @@ export default function AdminGiveawayLeadsPage() {
               style={{ display: 'flex', alignItems: 'center', gap: 6 }}
               onClick={() => navigate('/admin/marketing/ai-agent')}
             >
-              🚀 Đăng Bài Giveaway Mới
+               Đăng Bài Giveaway Mới
             </button>
           </div>
         </div>
@@ -216,7 +216,7 @@ export default function AdminGiveawayLeadsPage() {
         <div className="gw-stats-grid">
           <div className="gw-stat-card">
             <div className="gw-stat-icon" style={{ background: '#eff6ff', color: '#2563eb' }}>
-              👥
+              
             </div>
             <div className="gw-stat-info">
               <h3>{stats?.totalInteractions || 0}</h3>
@@ -226,7 +226,7 @@ export default function AdminGiveawayLeadsPage() {
 
           <div className="gw-stat-card">
             <div className="gw-stat-icon" style={{ background: '#fef2f2', color: '#dc2626' }}>
-              🔥
+              
             </div>
             <div className="gw-stat-info">
               <h3>{stats?.newLeadsCount || 0}</h3>
@@ -236,7 +236,7 @@ export default function AdminGiveawayLeadsPage() {
 
           <div className="gw-stat-card">
             <div className="gw-stat-icon" style={{ background: '#fefce8', color: '#ca8a04' }}>
-              💬
+              
             </div>
             <div className="gw-stat-info">
               <h3>{stats?.contactedCount || 0}</h3>
@@ -246,7 +246,7 @@ export default function AdminGiveawayLeadsPage() {
 
           <div className="gw-stat-card">
             <div className="gw-stat-icon" style={{ background: '#ecfdf5', color: '#059669' }}>
-              🎉
+              
             </div>
             <div className="gw-stat-info">
               <h3>{stats?.bookedCount || 0}</h3>
@@ -256,7 +256,7 @@ export default function AdminGiveawayLeadsPage() {
 
           <div className="gw-stat-card">
             <div className="gw-stat-icon" style={{ background: '#fdf4ff', color: '#c026d3' }}>
-              👑
+              
             </div>
             <div className="gw-stat-info">
               <h3>{stats?.topPrizesWon || 0}</h3>
@@ -268,7 +268,7 @@ export default function AdminGiveawayLeadsPage() {
         {/* Toolbar & Filter */}
         <div className="gw-toolbar">
           <form onSubmit={handleSearchSubmit} className="gw-search-box">
-            <span>🔍</span>
+            
             <input
               type="text"
               placeholder="Tìm kiếm Họ tên, Số điện thoại..."
@@ -338,7 +338,7 @@ export default function AdminGiveawayLeadsPage() {
                         </td>
                         <td>
                           <div style={{ fontSize: '0.875rem', fontWeight: 600, color: '#475569' }}>
-                            📅 {cust.travelPlan || 'Chưa rõ'}
+                             {cust.travelPlan || 'Chưa rõ'}
                           </div>
                           {cust.notes && (
                             <div style={{ fontSize: '0.8rem', color: '#64748b', fontStyle: 'italic', maxWidth: '240px' }}>
@@ -365,7 +365,7 @@ export default function AdminGiveawayLeadsPage() {
                               }}
                               title="Bấm để xem danh sách tất cả voucher"
                             >
-                              🎁 {cust.allPrizes.length} giải thưởng trúng
+                               {cust.allPrizes.length} giải thưởng trúng
                             </span>
                           ) : topPrize ? (
                             <div>
@@ -395,7 +395,7 @@ export default function AdminGiveawayLeadsPage() {
                               onClick={() => setDetailCustomer(cust)}
                               title="Xem chi tiết khách hàng và lịch sử giải thưởng"
                             >
-                              🔍 Chi tiết
+                               Chi tiết
                             </button>
                             <a
                               href={`https://zalo.me/${cust.phone}`}
@@ -404,14 +404,14 @@ export default function AdminGiveawayLeadsPage() {
                               className="gw-action-btn gw-action-btn--zalo"
                               title="Nhắn tin Zalo"
                             >
-                              💬 Zalo
+                               Zalo
                             </a>
                             <a
                               href={`tel:${cust.phone}`}
                               className="gw-action-btn gw-action-btn--call"
                               title="Gọi điện"
                             >
-                              📞 Gọi
+                               Gọi
                             </a>
                             <button
                               type="button"
@@ -419,7 +419,7 @@ export default function AdminGiveawayLeadsPage() {
                               onClick={() => handleOpenStatusModal(cust)}
                               title="Cập nhật trạng thái"
                             >
-                              ✏️ Cập nhật
+                              ️ Cập nhật
                             </button>
                           </div>
                         </td>
@@ -475,7 +475,7 @@ export default function AdminGiveawayLeadsPage() {
                   style={{ border: 'none', background: '#f1f5f9', width: 32, height: 32, borderRadius: '50%', cursor: 'pointer', fontSize: 16, fontWeight: 700, color: '#64748b' }}
                   onClick={() => setDetailCustomer(null)}
                 >
-                  ✕
+                  
                 </button>
               </div>
 
@@ -491,7 +491,7 @@ export default function AdminGiveawayLeadsPage() {
                 </div>
                 <div>
                   <span style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Kế hoạch lưu trú</span>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: '#166534', marginTop: 2 }}>📅 {detailCustomer.travelPlan || 'Chưa rõ'}</div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: '#166534', marginTop: 2 }}> {detailCustomer.travelPlan || 'Chưa rõ'}</div>
                 </div>
                 <div>
                   <span style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Trạng thái chăm sóc</span>
@@ -519,7 +519,7 @@ export default function AdminGiveawayLeadsPage() {
               <div style={{ marginBottom: 16 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                   <h4 style={{ margin: 0, fontSize: '0.95rem', color: '#0f172a' }}>
-                    🎁 Danh Sách Giải Thưởng & Voucher Đã Trúng ({detailCustomer.allPrizes.length})
+                     Danh Sách Giải Thưởng & Voucher Đã Trúng ({detailCustomer.allPrizes.length})
                   </h4>
                 </div>
                 {detailCustomer.allPrizes.length === 0 ? (
@@ -561,7 +561,7 @@ export default function AdminGiveawayLeadsPage() {
                                   }}
                                   title="Bấm để sao chép mã"
                                 >
-                                  {p.prizeCode} 📋
+                                  {p.prizeCode} 
                                 </span>
                               ) : '—'}
                             </td>
@@ -589,14 +589,14 @@ export default function AdminGiveawayLeadsPage() {
                     className="mkt-btn"
                     style={{ background: '#0284c7', color: '#fff', padding: '8px 14px', borderRadius: 6, fontSize: 13, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}
                   >
-                    💬 Chat Zalo
+                     Chat Zalo
                   </a>
                   <a
                     href={`tel:${detailCustomer.phone}`}
                     className="mkt-btn"
                     style={{ background: '#166534', color: '#fff', padding: '8px 14px', borderRadius: 6, fontSize: 13, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}
                   >
-                    📞 Gọi Ngay
+                     Gọi Ngay
                   </a>
                 </div>
                 <button
@@ -606,7 +606,7 @@ export default function AdminGiveawayLeadsPage() {
                     handleOpenStatusModal(detailCustomer)
                   }}
                 >
-                  ✏️ Cập Nhật Trạng Thái
+                  ️ Cập Nhật Trạng Thái
                 </button>
               </div>
             </div>

@@ -36,7 +36,7 @@ const REWARD_PACKAGES = [
     discountDisplay: '20.000đ',
     desc: 'Áp dụng cho đơn đặt phòng từ 200.000đ. Hạn dùng 30 ngày.',
     badge: 'Cần 5 Điểm',
-    icon: '☕',
+    icon: '',
   },
   {
     id: 'PACKAGE_50K',
@@ -45,7 +45,7 @@ const REWARD_PACKAGES = [
     discountDisplay: '50.000đ',
     desc: 'Áp dụng cho đơn đặt phòng từ 400.000đ. Hạn dùng 30 ngày.',
     badge: 'Cần 10 Điểm',
-    icon: '🎫',
+    icon: '',
     popular: true,
   },
   {
@@ -55,7 +55,7 @@ const REWARD_PACKAGES = [
     discountDisplay: '100.000đ',
     desc: 'Áp dụng cho đơn đặt phòng từ 800.000đ. Hạn dùng 30 ngày.',
     badge: 'Cần 20 Điểm',
-    icon: '🏷️',
+    icon: '️',
     popular: true,
   },
   {
@@ -65,7 +65,7 @@ const REWARD_PACKAGES = [
     discountDisplay: 'Giảm 10%',
     desc: 'Áp dụng cho đơn đặt phòng từ 600.000đ. Tối đa 150.000đ. Hạn dùng 30 ngày.',
     badge: 'Cần 30 Điểm',
-    icon: '✨',
+    icon: '',
   },
   {
     id: 'PACKAGE_200K',
@@ -74,7 +74,7 @@ const REWARD_PACKAGES = [
     discountDisplay: '200.000đ',
     desc: 'Áp dụng cho đơn đặt phòng từ 1.500.000đ. Hạn dùng 45 ngày.',
     badge: 'Cần 50 Điểm',
-    icon: '💎',
+    icon: '',
   },
   {
     id: 'PACKAGE_500K',
@@ -83,7 +83,7 @@ const REWARD_PACKAGES = [
     discountDisplay: '500.000đ',
     desc: 'Áp dụng cho đơn đặt phòng từ 3.000.000đ. Hạn dùng 60 ngày.',
     badge: 'Cần 100 Điểm',
-    icon: '👑',
+    icon: '',
   },
 ]
 
@@ -269,7 +269,7 @@ function getUsedVouchers() {
               </div>
             </div>
             <p className="cvp-loyalty-tip">
-              💡 Mỗi 1.000.000đ khi đặt phòng bạn sẽ tích được 1 điểm thưởng. Dùng điểm để đổi mã voucher bên dưới!
+               Mỗi 1.000.000đ khi đặt phòng bạn sẽ tích được 1 điểm thưởng. Dùng điểm để đổi mã voucher bên dưới!
             </p>
           </div>
           <div className="cvp-loyalty-right">
@@ -278,7 +278,7 @@ function getUsedVouchers() {
               className="cvp-loyalty-btn"
               onClick={() => setActiveTab('REDEEM_POINTS')}
             >
-              🎁 Đổi Voucher Bằng Điểm
+               Đổi Voucher Bằng Điểm
             </button>
             {getStoredToken() ? (
               <button
@@ -311,7 +311,7 @@ function getUsedVouchers() {
               className={`cvp-tab-btn cvp-tab-btn--highlight ${activeTab === 'REDEEM_POINTS' ? 'is-active' : ''}`}
               onClick={() => setActiveTab('REDEEM_POINTS')}
             >
-              ✨ Đổi Điểm Thưởng ({REWARD_PACKAGES.length} gói)
+               Đổi Điểm Thưởng ({REWARD_PACKAGES.length} gói)
             </button>
             {getStoredToken() && (
               <button
@@ -319,7 +319,7 @@ function getUsedVouchers() {
                 className={`cvp-tab-btn ${activeTab === 'MY_REDEEMED' ? 'is-active' : ''}`}
                 onClick={() => setActiveTab('MY_REDEEMED')}
               >
-                🎟️ Voucher Tôi Đã Đổi ({myRedeemedVouchers.length})
+                ️ Voucher Tôi Đã Đổi ({myRedeemedVouchers.length})
               </button>
             )}
             <button
@@ -351,7 +351,7 @@ function getUsedVouchers() {
 
             {error && !loading && (
               <div className="cvp-error-box">
-                <p>⚠️ {error}</p>
+                <p>️ {error}</p>
                 <button type="button" onClick={fetchVouchers} className="cvp-retry-btn">
                   Thử lại
                 </button>
@@ -426,11 +426,11 @@ function getUsedVouchers() {
 
             {!loading && !error && filteredVouchers.length === 0 && (
               <div className="cvp-empty-box">
-                <div className="cvp-empty-icon">🎟️</div>
+                <div className="cvp-empty-icon">️</div>
                 <h3>Chưa có mã giảm giá nào trong mục này</h3>
                 <p>Hãy quay lại sau hoặc theo dõi các sự kiện khuyến mãi của Lá Đỏ Homestay để nhận ưu đãi mới nhất!</p>
                 <a href="/giveaway" className="cvp-giveaway-link">
-                  🎯 Thử vận may tại Vòng quay may mắn
+                   Thử vận may tại Vòng quay may mắn
                 </a>
               </div>
             )}
@@ -459,7 +459,7 @@ function getUsedVouchers() {
               gap: '10px'
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 700, color: '#166534', fontSize: '14.5px' }}>
-                <span>🎯 Quy tắc tích lũy điểm thưởng khi đặt phòng:</span>
+                <span> Quy tắc tích lũy điểm thưởng khi đặt phòng:</span>
               </div>
               <div style={{
                 display: 'grid',
@@ -485,7 +485,7 @@ function getUsedVouchers() {
                 </div>
                 <div style={{ background: '#ffffff', padding: '8px 12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
                   <div style={{ color: '#64748b' }}>Đơn từ 5.0M trở lên</div>
-                  <strong style={{ color: '#b45309', fontSize: '14px' }}>+100 điểm thưởng 👑</strong>
+                  <strong style={{ color: '#b45309', fontSize: '14px' }}>+100 điểm thưởng </strong>
                 </div>
               </div>
             </div>
@@ -537,7 +537,7 @@ function getUsedVouchers() {
 
             {myRedeemedVouchers.length === 0 ? (
               <div className="cvp-empty-box">
-                <div className="cvp-empty-icon">🎁</div>
+                <div className="cvp-empty-icon"></div>
                 <h3>Bạn chưa đổi voucher nào bằng điểm</h3>
                 <p>Hãy tích lũy điểm khi đặt phòng và quy đổi các voucher hấp dẫn tại mục &ldquo;Đổi Điểm Thưởng&rdquo; nhé!</p>
                 <button
@@ -630,7 +630,7 @@ function getUsedVouchers() {
       {redeemedSuccessModal && (
         <div className="cvp-modal-backdrop" onClick={() => setRedeemedSuccessModal(null)}>
           <div className="cvp-modal" onClick={e => e.stopPropagation()}>
-            <div className="cvp-modal-icon">🎉</div>
+            <div className="cvp-modal-icon"></div>
             <h3>Đổi Voucher Thành Công!</h3>
             <p>Bạn đã quy đổi thành công mã voucher giảm giá:</p>
 
@@ -646,7 +646,7 @@ function getUsedVouchers() {
                 className="cvp-modal-copy-btn"
                 onClick={() => handleCopy(redeemedSuccessModal.code)}
               >
-                {copiedCode === redeemedSuccessModal.code ? '✓ Đã sao chép mã!' : '📋 Sao chép mã ngay'}
+                {copiedCode === redeemedSuccessModal.code ? '✓ Đã sao chép mã!' : ' Sao chép mã ngay'}
               </button>
             </div>
 

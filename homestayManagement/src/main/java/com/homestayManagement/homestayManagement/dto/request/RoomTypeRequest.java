@@ -20,6 +20,14 @@ public record RoomTypeRequest(
 
         Long depositPolicyId,
         String description,
-        String videoUrl
+        String videoUrl,
+
+        @jakarta.validation.constraints.DecimalMin(value = "0.0", message = "Giá ngày thường không được âm")
+        java.math.BigDecimal weekdayPrice,
+
+        @jakarta.validation.constraints.DecimalMin(value = "0.0", message = "Giá cuối tuần không được âm")
+        java.math.BigDecimal weekendPrice,
+
+        Long pricePolicyId
 ) {
 }

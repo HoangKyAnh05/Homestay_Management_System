@@ -82,7 +82,7 @@ function PublicHeader() {
       <a className="home-logo" href="/home">Home Stays</a>
       <nav className="home-nav" aria-label="Điều hướng chính">
         <a href="/home">Trang chủ</a>
-        <a href="/landing" className="home-nav-landing-link" title="Khám phá không gian 3D Komorebi Sanctuary">✨ Komorebi 3D</a>
+        <a href="/landing" className="home-nav-landing-link" title="Khám phá không gian 3D Lá Đỏ Sanctuary">🍁 Lá Đỏ 3D</a>
         <a href="/rooms">Phòng</a>
         <a href="/wishlist">Yêu thích</a>
         <a href="/amenities">Tiện nghi</a>
@@ -180,7 +180,7 @@ function ExtendStayButton({ onClick, compact = false }) {
       }}
       title="Thuê thêm giờ / Gia hạn thời gian lưu trú"
     >
-      ⏰ Thuê thêm giờ
+       Thuê thêm giờ
     </button>
   )
 }
@@ -294,7 +294,7 @@ function BookingExtensionModal({
       <div className="extend-modal" onClick={(e) => e.stopPropagation()}>
         <div className="extend-modal-header">
           <div>
-            <h2>⏰ Thuê Thêm Giờ / Gia Hạn Lưu Trú</h2>
+            <h2> Thuê Thêm Giờ / Gia Hạn Lưu Trú</h2>
             <p>Booking {bookingDisplay(booking)} · {roomDetail?.roomNumber ? `Phòng ${roomDetail.roomNumber}` : 'Phòng đang ở'}</p>
           </div>
           <button type="button" className="extend-modal-close" onClick={onClose}>×</button>
@@ -378,7 +378,7 @@ function BookingExtensionModal({
             ) : (
               /* Case 2: Room is already booked by another customer! */
               <div className="extend-result-box extend-result-box--busy">
-                <div className="extend-result-badge extend-result-badge--busy">⚠️ Phòng đã có khách đặt trước</div>
+                <div className="extend-result-badge extend-result-badge--busy">️ Phòng đã có khách đặt trước</div>
                 <div className="extend-busy-desc">
                   <strong>Phòng {checkResult.roomNumber || 'này'} đã được khách khác đặt trước cho khung giờ tiếp theo.</strong>
                   <p>Hệ thống không thể gia hạn tiếp tại phòng hiện tại. Bạn có thể lựa chọn 1 trong 2 phương án dưới đây:</p>
@@ -389,7 +389,7 @@ function BookingExtensionModal({
                   <div className="extend-option-card">
                     <div className="extend-option-head">
                       <span className="extend-option-tag">Lựa chọn 1</span>
-                      <h4>🔄 Chuyển đổi sang phòng khác còn trống để tiếp tục ở</h4>
+                      <h4> Chuyển đổi sang phòng khác còn trống để tiếp tục ở</h4>
                     </div>
 
                     {checkResult.alternativeRooms && checkResult.alternativeRooms.length > 0 ? (
@@ -421,7 +421,7 @@ function BookingExtensionModal({
                   <div className="extend-option-card extend-option-card--checkout">
                     <div className="extend-option-head">
                       <span className="extend-option-tag">Lựa chọn 2</span>
-                      <h4>🚪 Trả phòng đúng giờ (Check-out khi hết giờ)</h4>
+                      <h4> Trả phòng đúng giờ (Check-out khi hết giờ)</h4>
                     </div>
                     <p className="extend-checkout-text">
                       Bạn có thể giữ nguyên lịch trình và thực hiện thủ tục trả phòng vào lúc <strong>{formatAppDateTime(checkResult.currentCheckOut, { weekday: 'short' })}</strong>.
@@ -527,7 +527,7 @@ function BookingCancelModal({
       <div className="history-cancel-modal" onClick={(e) => e.stopPropagation()}>
         <div className="history-cancel-modal-header">
           <div>
-            <h2>🛑 Xác Nhận Hủy Đặt Phòng</h2>
+            <h2> Xác Nhận Hủy Đặt Phòng</h2>
             <p>Booking {bookingDisplay(booking)}</p>
           </div>
           <button type="button" className="history-cancel-modal-close" onClick={onClose}>×</button>
@@ -539,7 +539,7 @@ function BookingCancelModal({
 
           {/* Refund Policy Rules Box */}
           <div className="history-cancel-policy-card">
-            <h4>📋 Quy định chính sách hủy phòng & hoàn tiền:</h4>
+            <h4> Quy định chính sách hủy phòng & hoàn tiền:</h4>
             <ul>
               <li>
                 <span className="policy-tag policy-tag--green">Hoàn 100%</span>
@@ -1144,7 +1144,7 @@ function BookingHistoryPage() {
                   {detail.status === 'CANCELLED' && (
                     <div className="history-cancellation-card">
                       <div className="history-cancellation-badge">
-                        <span className="history-cancellation-icon">🛑</span>
+                        <span className="history-cancellation-icon"></span>
                         <div>
                           <strong>Đơn đặt phòng đã được hủy{detail.cancelledAt ? ` lúc ${formatAppDateTime(detail.cancelledAt, { weekday: 'short' })}` : ''}</strong>
                           {detail.cancellationReason && <p>Lý do hủy: <em>{detail.cancellationReason}</em></p>}
@@ -1162,7 +1162,7 @@ function BookingHistoryPage() {
                         <div>
                           <span>Trạng thái xử lý:</span>
                           <strong className={detail.refundStatus === 'REFUNDED' ? 'refund-status--completed' : 'refund-status--pending'}>
-                            {detail.refundStatus === 'REFUNDED' ? '✓ Đã hoàn tiền thành công' : Number(detail.refundAmount || 0) > 0 ? '⏳ Đang chờ Lễ tân chuyển khoản' : 'Không áp dụng hoàn tiền'}
+                            {detail.refundStatus === 'REFUNDED' ? '✓ Đã hoàn tiền thành công' : Number(detail.refundAmount || 0) > 0 ? ' Đang chờ Lễ tân chuyển khoản' : 'Không áp dụng hoàn tiền'}
                           </strong>
                         </div>
                       </div>
@@ -1174,7 +1174,7 @@ function BookingHistoryPage() {
                       )}
                       {Number(detail.refundAmount || 0) > 0 && detail.refundStatus !== 'REFUNDED' && (
                         <div className="history-cancellation-support-note">
-                          💡 Lễ tân sẽ chủ động liên hệ với quý khách qua Zalo/SĐT để xác nhận và thực hiện chuyển khoản hoàn tiền theo đúng quy định.
+                           Lễ tân sẽ chủ động liên hệ với quý khách qua Zalo/SĐT để xác nhận và thực hiện chuyển khoản hoàn tiền theo đúng quy định.
                         </div>
                       )}
                     </div>
@@ -1221,7 +1221,7 @@ function BookingHistoryPage() {
                                 <strong>Phòng {room.roomNumber}</strong>
                                 {roomExtHours > 0 && (
                                   <span className="history-room-extended-tag">
-                                    ⏰ Đã thuê thêm +{roomExtHours}h
+                                     Đã thuê thêm +{roomExtHours}h
                                   </span>
                                 )}
                               </div>
@@ -1235,7 +1235,7 @@ function BookingHistoryPage() {
                                   className="history-room-extend-link"
                                   onClick={() => handleOpenExtendModal(detail, room)}
                                 >
-                                  ⏰ Thuê thêm giờ phòng này
+                                   Thuê thêm giờ phòng này
                                 </button>
                               )}
                             </div>
@@ -1272,7 +1272,7 @@ function BookingHistoryPage() {
                       <strong>{detail.customerConfirmed ? 'Bạn đã xác nhận đơn này' : 'Xác nhận nếu hóa đơn và dịch vụ đã đúng'}</strong>
                       {reviewData && (
                         <div>
-                          <p className="history-review-done-text">⭐ Bạn đã đánh giá: {reviewData.ratingStars} Sao — "{reviewData.comment}"</p>
+                          <p className="history-review-done-text"> Bạn đã đánh giá: {reviewData.ratingStars} Sao — "{reviewData.comment}"</p>
                           {reviewData.imageUrls && reviewData.imageUrls.length > 0 && (
                             <div style={{ display: 'flex', gap: '6px', marginTop: '6px', flexWrap: 'wrap' }}>
                               {reviewData.imageUrls.map((url, i) => (
@@ -1301,7 +1301,7 @@ function BookingHistoryPage() {
                             setReviewOpen(true)
                           }}
                         >
-                          {reviewData ? `⭐ ${reviewData.ratingStars} Sao (Sửa)` : '⭐ Đánh giá ngay'}
+                          {reviewData ? ` ${reviewData.ratingStars} Sao (Sửa)` : ' Đánh giá ngay'}
                         </button>
                       )}
                       <button
@@ -1399,7 +1399,7 @@ function BookingHistoryPage() {
         <div className="history-feedback-backdrop" onClick={(event) => event.target === event.currentTarget && setReviewOpen(false)}>
           <form className="history-feedback-modal" onSubmit={submitReview}>
             <div>
-              <h2>⭐ Đánh giá chuyến đi</h2>
+              <h2> Đánh giá chuyến đi</h2>
               <p>Hãy chia sẻ cảm nhận của bạn về trải nghiệm kỳ nghỉ tại Homestay.</p>
             </div>
 
@@ -1428,7 +1428,7 @@ function BookingHistoryPage() {
 
             <div style={{ marginTop: '14px' }}>
               <label style={{ display: 'block', fontSize: '13px', fontWeight: '700', marginBottom: '6px', color: '#334155' }}>
-                📷 Thêm hình ảnh đánh giá (Tải tệp từ máy hoặc dán URL ảnh)
+                 Thêm hình ảnh đánh giá (Tải tệp từ máy hoặc dán URL ảnh)
               </label>
               
               <input

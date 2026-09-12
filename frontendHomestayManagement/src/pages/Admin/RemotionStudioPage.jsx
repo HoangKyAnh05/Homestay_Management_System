@@ -98,7 +98,7 @@ export default function RemotionStudioPage() {
         {/* Main Notice Hero Workspace */}
         <div className="remotion-notice-workspace">
           <div className="remotion-notice-card">
-            <div className="remotion-notice-badge">🎬 Trải Nghiệm Full-Screen Đỉnh Cao</div>
+            <div className="remotion-notice-badge"> Trải Nghiệm Full-Screen Đỉnh Cao</div>
             
             <h2 className="remotion-notice-title">
               Studio Đã Được Mở Trên Tab Trình Duyệt Riêng Biệt
@@ -115,7 +115,7 @@ export default function RemotionStudioPage() {
                 className="remotion-btn-launch-glow"
                 onClick={() => handleOpenTab(getDeployUrl())}
               >
-                <span className="remotion-launch-icon">🚀</span>
+                <span className="remotion-launch-icon"></span>
                 <span className="remotion-launch-text">
                   <strong>Vào Ngay Tab Remotion Video Studio</strong>
                   <small>Nhấp vào đây nếu tab chưa tự động mở hoặc bạn đã lỡ đóng</small>
@@ -134,7 +134,7 @@ export default function RemotionStudioPage() {
                 onClick={() => handleOpenTab(REMOTION_LOCAL_URL)}
                 title="Mở phiên bản local Node.js chạy cổng 3000"
               >
-                💻 Mở Localhost:3000
+                 Mở Localhost:3000
               </button>
               <span className="remotion-dot-sep">•</span>
               <button
@@ -143,14 +143,14 @@ export default function RemotionStudioPage() {
                 onClick={() => handleOpenTab(getDeployUrl())}
                 title="Mở đường dẫn bản deploy tích hợp"
               >
-                🌐 Mở /remotion-app/index.html
+                 Mở /remotion-app/index.html
               </button>
             </div>
 
             {/* Feature Highlights Grid */}
             <div className="remotion-features-grid">
               <div className="remotion-feature-item">
-                <span className="remotion-feature-icon">✂️</span>
+                <span className="remotion-feature-icon">️</span>
                 <div>
                   <h4>Cắt Ghép Video Dài Siêu Mượt</h4>
                   <p>Tua và xem video tức thì, hỗ trợ co kéo 2 đầu trái/phải chuẩn tỷ lệ dọc 9:16 TikTok.</p>
@@ -158,7 +158,7 @@ export default function RemotionStudioPage() {
               </div>
 
               <div className="remotion-feature-item">
-                <span className="remotion-feature-icon">🎙️</span>
+                <span className="remotion-feature-icon">️</span>
                 <div>
                   <h4>Lồng Tiếng AI Chuẩn Việt Nam</h4>
                   <p>Tự động tạo giọng đọc truyền cảm (Bắc / Nam) bằng Edge-TTS theo từng phân cảnh kịch bản.</p>
@@ -166,7 +166,7 @@ export default function RemotionStudioPage() {
               </div>
 
               <div className="remotion-feature-item">
-                <span className="remotion-feature-icon">📝</span>
+                <span className="remotion-feature-icon"></span>
                 <div>
                   <h4>Phụ Đề Karaoke Nhảy Chữ</h4>
                   <p>Tự động bóc tách từ ngữ, hiệu ứng nhảy chữ vàng/xanh neon bắt mắt, đa dạng font chữ TikTok.</p>
@@ -174,7 +174,7 @@ export default function RemotionStudioPage() {
               </div>
 
               <div className="remotion-feature-item">
-                <span className="remotion-feature-icon">⚡</span>
+                <span className="remotion-feature-icon"></span>
                 <div>
                   <h4>Không Gian Làm Việc Rộng Rãi</h4>
                   <p>Tận dụng 100% diện tích màn hình máy tính, quản lý timeline và visual layer chuyên nghiệp.</p>
@@ -184,7 +184,7 @@ export default function RemotionStudioPage() {
 
             {/* Footer Hint */}
             <div className="remotion-notice-footer">
-              💡 <strong>Mẹo:</strong> Sau khi hoàn tất video ở tab Remotion Studio, bạn có thể tải video về máy và chuyển sang mục <strong>"AI Agent Đăng Bài"</strong> bên cạnh để đăng trực tiếp lên Facebook Fanpage và kênh YouTube của Lá Đỏ Homestay!
+               <strong>Mẹo:</strong> Sau khi hoàn tất video ở tab Remotion Studio, bạn có thể tải video về máy và chuyển sang mục <strong>"AI Agent Đăng Bài"</strong> bên cạnh để đăng trực tiếp lên Facebook Fanpage và kênh YouTube của Lá Đỏ Homestay!
             </div>
           </div>
         </div>

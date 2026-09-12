@@ -118,7 +118,7 @@ export const GreenScreenDepthMotion: React.FC<GreenScreenDepthMotionProps> = ({
       {/* TẦNG 1: CHỮ SAU LƯNG NGƯỜI (BEHIND LAYER) - BỊ THÂN THỂ NGƯỜI CHE LẤP     */}
       {/* ========================================================================= */}
       <div className="absolute inset-0 pointer-events-none z-10 overflow-hidden">
-        {wordTokens.map((item, idx) => {
+        {subtitleStyle?.enabled !== false && wordTokens.map((item, idx) => {
           const pos = computedPositions[idx % computedPositions.length];
           // Nếu chọn "Luôn ở trước video" thì tầng sau lưng không render
           if (scene.textLayerMode === 'front') return null;
@@ -251,7 +251,7 @@ export const GreenScreenDepthMotion: React.FC<GreenScreenDepthMotionProps> = ({
       {/* TẦNG 3: CHỮ TRƯỚC MẶT NGƯỜI (IN-FRONT LAYER) - ĐA DẠNG FONT & KHÔNG ĐÈ   */}
       {/* ========================================================================= */}
       <div className="absolute inset-0 pointer-events-none z-30 overflow-hidden">
-        {wordTokens.map((item, idx) => {
+        {subtitleStyle?.enabled !== false && wordTokens.map((item, idx) => {
           const pos = computedPositions[idx % computedPositions.length];
           // Nếu chọn "Chạy ở dưới video" thì tầng trước mặt không render
           if (scene.textLayerMode === 'behind') return null;

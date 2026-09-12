@@ -203,7 +203,7 @@ function StayPage() {
         {!loading && error && <div className="stay-error" role="alert">{error}</div>}
         {!loading && !error && stays.length === 0 && (
           <section className="stay-empty">
-            <span>⌁</span>
+            
             <h1>Hiện không có kỳ lưu trú đang hoạt động</h1>
             <p>Khi bạn check-in, thông tin phòng và dịch vụ sẽ xuất hiện tại đây.</p>
             <a href="/home">Về trang chủ</a>

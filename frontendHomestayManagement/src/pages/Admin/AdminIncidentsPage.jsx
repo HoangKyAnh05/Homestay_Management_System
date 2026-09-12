@@ -39,6 +39,63 @@ function formatDateTime(dateStr) {
   })
 }
 
+function toDateInputValue(date) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function getDayRange(refDate = new Date()) {
+  const date = new Date(refDate)
+  return {
+    from: toDateInputValue(date),
+    to: toDateInputValue(date),
+  }
+}
+
+function getWeekRange(refDate = new Date()) {
+  const date = new Date(refDate)
+  const day = date.getDay()
+  const diffToMonday = day === 0 ? -6 : 1 - day
+  const monday = new Date(date)
+  monday.setDate(date.getDate() + diffToMonday)
+  const sunday = new Date(monday)
+  sunday.setDate(monday.getDate() + 6)
+  return {
+    from: toDateInputValue(monday),
+    to: toDateInputValue(sunday),
+  }
+}
+
+function getMonthRange(refDate = new Date()) {
+  const date = new Date(refDate)
+  const firstDay = new Date(date.getFullYear(), date.getMonth(), 1)
+  const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0)
+  return {
+    from: toDateInputValue(firstDay),
+    to: toDateInputValue(lastDay),
+  }
+}
+
+function getYearRange(refDate = new Date()) {
+  const date = new Date(refDate)
+  const firstDay = new Date(date.getFullYear(), 0, 1)
+  const lastDay = new Date(date.getFullYear(), 11, 31)
+  return {
+    from: toDateInputValue(firstDay),
+    to: toDateInputValue(lastDay),
+  }
+}
+
+function defaultFromDate() {
+  return getWeekRange().from
+}
+
+function defaultToDate() {
+  return getWeekRange().to
+}
+
 export default function AdminIncidentsPage() {
   const currentUser = getStoredUser()
   const role = currentUser?.role || ''
@@ -59,6 +116,41 @@ export default function AdminIncidentsPage() {
   const [statusFilter, setStatusFilter] = useState('ALL')
   const [typeFilter, setTypeFilter] = useState('ALL')
   const [searchQuery, setSearchQuery] = useState('')
+  const [periodFilter, setPeriodFilter] = useState('week')
+  const [fromDate, setFromDate] = useState(defaultFromDate)
+  const [toDate, setToDate] = useState(defaultToDate)
+
+  const handlePeriodChange = (event) => {
+    const nextPeriod = event.target.value
+    setPeriodFilter(nextPeriod)
+    if (nextPeriod === 'day') {
+      const range = getDayRange()
+      setFromDate(range.from)
+      setToDate(range.to)
+    } else if (nextPeriod === 'week') {
+      const range = getWeekRange()
+      setFromDate(range.from)
+      setToDate(range.to)
+    } else if (nextPeriod === 'month') {
+      const range = getMonthRange()
+      setFromDate(range.from)
+      setToDate(range.to)
+    } else if (nextPeriod === 'year') {
+      const range = getYearRange()
+      setFromDate(range.from)
+      setToDate(range.to)
+    }
+  }
+
+  const handleFromDateChange = (event) => {
+    setFromDate(event.target.value)
+    setPeriodFilter('custom')
+  }
+
+  const handleToDateChange = (event) => {
+    setToDate(event.target.value)
+    setPeriodFilter('custom')
+  }
 
   // Modals
   const [selectedIncident, setSelectedIncident] = useState(null)
@@ -313,6 +405,14 @@ export default function AdminIncidentsPage() {
   }
 
   const filteredIncidents = incidents.filter((item) => {
+    if (periodFilter !== 'all') {
+      const dateStr = item.reportedAt || item.createdAt
+      if (dateStr) {
+        const itemIso = toDateInputValue(new Date(dateStr))
+        if (fromDate && itemIso < fromDate) return false
+        if (toDate && itemIso > toDate) return false
+      }
+    }
     if (!searchQuery) return true
     const q = searchQuery.toLowerCase()
     return (
@@ -339,7 +439,7 @@ export default function AdminIncidentsPage() {
               onClick={loadData}
               title="Làm mới danh sách"
             >
-              🔄 Làm mới
+               Làm mới
             </button>
             <button
               type="button"
@@ -351,7 +451,7 @@ export default function AdminIncidentsPage() {
                 }, 'Báo đồ hỏng / mất')
               }}
             >
-              ⚠️ + Báo đồ hỏng / mất (đồ quan trọng, cần thay, bảo trì ngay)
+              ️ + Báo đồ hỏng / mất (đồ quan trọng, cần thay, bảo trì ngay)
             </button>
           </div>
         </div>
@@ -413,6 +513,43 @@ export default function AdminIncidentsPage() {
           <div className="filter-group">
             <select
               className="filter-select"
+              value={periodFilter}
+              onChange={handlePeriodChange}
+              aria-label="Lọc theo khoảng thời gian"
+            >
+              <option value="day">Theo ngày</option>
+              <option value="week">Theo tuần</option>
+              <option value="month">Theo tháng</option>
+              <option value="year">Theo năm</option>
+              <option value="all">Tất cả thời gian</option>
+              {periodFilter === 'custom' && <option value="custom">Tùy chọn</option>}
+            </select>
+
+            {periodFilter !== 'all' && (
+              <>
+                <input
+                  type="date"
+                  className="filter-select"
+                  value={fromDate}
+                  onChange={handleFromDateChange}
+                  title="Từ ngày"
+                  aria-label="Từ ngày"
+                  style={{ width: 'auto', minWidth: 130 }}
+                />
+                <input
+                  type="date"
+                  className="filter-select"
+                  value={toDate}
+                  onChange={handleToDateChange}
+                  title="Đến ngày"
+                  aria-label="Đến ngày"
+                  style={{ width: 'auto', minWidth: 130 }}
+                />
+              </>
+            )}
+
+            <select
+              className="filter-select"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
             >
@@ -429,14 +566,14 @@ export default function AdminIncidentsPage() {
               onChange={(e) => setTypeFilter(e.target.value)}
             >
               <option value="ALL">Tất cả phân loại</option>
-              <option value="DAMAGED">💥 Đồ hỏng hóc (Damaged)</option>
-              <option value="LOST">🔍 Đồ bị mất (Lost)</option>
-              <option value="MAINTENANCE">🛠️ Phòng cần bảo trì (Maintenance)</option>
+              <option value="DAMAGED"> Đồ hỏng hóc (Damaged)</option>
+              <option value="LOST"> Đồ bị mất (Lost)</option>
+              <option value="MAINTENANCE">️ Phòng cần bảo trì (Maintenance)</option>
             </select>
           </div>
 
           <div className="search-box">
-            <span className="search-icon">🔍</span>
+            <span className="search-icon"></span>
             <input
               type="text"
               placeholder="Tìm đồ vật, số phòng, nhân viên..."
@@ -452,7 +589,7 @@ export default function AdminIncidentsPage() {
             <div className="empty-state">Đang tải danh sách sự cố đồ hỏng/mất...</div>
           ) : filteredIncidents.length === 0 ? (
             <div className="empty-state">
-              <div className="empty-state-icon">🛡️</div>
+              <div className="empty-state-icon">️</div>
               <p>Chưa có báo cáo đồ hỏng hóc hoặc bị mất nào trong bộ lọc này.</p>
             </div>
           ) : (
@@ -493,7 +630,7 @@ export default function AdminIncidentsPage() {
                     </td>
                     <td>
                       <span className={`type-pill ${item.incidentType === 'LOST' ? 'type-pill--lost' : item.incidentType === 'MAINTENANCE' ? 'type-pill--maintenance' : 'type-pill--damaged'}`}>
-                        {item.incidentType === 'LOST' ? '🔍 Bị mất' : item.incidentType === 'MAINTENANCE' ? '🛠️ Cần bảo trì' : '💥 Hỏng hóc'}
+                        {item.incidentType === 'LOST' ? ' Bị mất' : item.incidentType === 'MAINTENANCE' ? '️ Cần bảo trì' : ' Hỏng hóc'}
                       </span>
                     </td>
                     <td>
@@ -556,7 +693,7 @@ export default function AdminIncidentsPage() {
                             onClick={() => handleDelete(item.id)}
                             title="Xóa bản ghi"
                           >
-                            🗑️
+                            ️
                           </button>
                         )}
                       </div>
@@ -594,7 +731,7 @@ export default function AdminIncidentsPage() {
                     <strong>{item.itemName}</strong>
                     <span style={{ color: '#64748b', marginLeft: 4 }}>× {item.quantity}</span>
                     <span className={`type-pill ${item.incidentType === 'LOST' ? 'type-pill--lost' : item.incidentType === 'MAINTENANCE' ? 'type-pill--maintenance' : 'type-pill--damaged'}`} style={{ marginLeft: 8 }}>
-                      {item.incidentType === 'LOST' ? '🔍 Bị mất' : item.incidentType === 'MAINTENANCE' ? '🛠️ Cần bảo trì' : '💥 Hỏng hóc'}
+                      {item.incidentType === 'LOST' ? ' Bị mất' : item.incidentType === 'MAINTENANCE' ? '️ Cần bảo trì' : ' Hỏng hóc'}
                     </span>
                   </div>
                   {item.description && (
@@ -626,7 +763,7 @@ export default function AdminIncidentsPage() {
                     className="btn-action-view incident-card-btn-view"
                     onClick={() => handleOpenActionModal(item)}
                   >
-                    {isAdmin ? (item.status === 'RESOLVED' ? '👁️ Xem chi tiết' : '⚡ Xử lý / Chi tiết') : '👁️ Xem chi tiết'}
+                    {isAdmin ? (item.status === 'RESOLVED' ? '️ Xem chi tiết' : ' Xử lý / Chi tiết') : '️ Xem chi tiết'}
                   </button>
                   {isAdmin && (
                     <button
@@ -635,7 +772,7 @@ export default function AdminIncidentsPage() {
                       onClick={() => handleDelete(item.id)}
                       title="Xóa bản ghi"
                     >
-                      🗑️
+                      ️
                     </button>
                   )}
                 </div>
@@ -649,7 +786,7 @@ export default function AdminIncidentsPage() {
           <div className="incident-modal-overlay" onClick={() => setShowReportModal(false)}>
             <div className="incident-modal" onClick={(e) => e.stopPropagation()}>
               <div className="modal-header">
-                <h2>⚠️ Báo Cáo Đồ Bị Hỏng Hóc / Mất (Đồ quan trọng, cần thay, bảo trì ngay)</h2>
+                <h2>️ Báo Cáo Đồ Bị Hỏng Hóc / Mất (Đồ quan trọng, cần thay, bảo trì ngay)</h2>
                 <button
                   type="button"
                   className="modal-close-btn"
@@ -686,9 +823,9 @@ export default function AdminIncidentsPage() {
                         onChange={(e) => setReportForm({ ...reportForm, incidentType: e.target.value })}
                         required
                       >
-                        <option value="DAMAGED">💥 Hỏng hóc (Vỡ, rách, hỏng điện...)</option>
-                        <option value="LOST">🔍 Bị mất (Thất lạc, thiếu đồ...)</option>
-                        <option value="MAINTENANCE">🛠️ Phòng cần bảo trì (Sửa chữa, bảo dưỡng...)</option>
+                        <option value="DAMAGED"> Hỏng hóc (Vỡ, rách, hỏng điện...)</option>
+                        <option value="LOST"> Bị mất (Thất lạc, thiếu đồ...)</option>
+                        <option value="MAINTENANCE">️ Phòng cần bảo trì (Sửa chữa, bảo dưỡng...)</option>
                       </select>
                     </div>
 
@@ -735,7 +872,7 @@ export default function AdminIncidentsPage() {
                       <input
                         type="number"
                         min="0"
-                        step="10000"
+                        step="any"
                         className="form-input"
                         placeholder="VD: 150000"
                         value={reportForm.estimatedCost}
@@ -766,7 +903,7 @@ export default function AdminIncidentsPage() {
                                 Đang tải ảnh lên...
                               </>
                             ) : (
-                              <>📁 Chọn ảnh từ máy tính (PC)</>
+                              <> Chọn ảnh từ máy tính (PC)</>
                             )}
                           </button>
                           <span className="upload-tip">hoặc nhập link URL ảnh bên dưới</span>
@@ -789,7 +926,7 @@ export default function AdminIncidentsPage() {
                               title="Xóa ảnh"
                               onClick={() => setReportForm({ ...reportForm, evidenceImageUrl: '' })}
                             >
-                              ✕
+                              
                             </button>
                           </div>
                         )}
@@ -833,7 +970,7 @@ export default function AdminIncidentsPage() {
           <div className="incident-modal-overlay" onClick={() => setShowActionModal(false)}>
             <div className="incident-modal" onClick={(e) => e.stopPropagation()}>
               <div className="modal-header">
-                <h2>{isAdmin ? `🛠️ Xử Lý Sự Cố: ${selectedIncident.itemName}` : `🔍 Chi Tiết Sự Cố: ${selectedIncident.itemName}`}</h2>
+                <h2>{isAdmin ? `️ Xử Lý Sự Cố: ${selectedIncident.itemName}` : ` Chi Tiết Sự Cố: ${selectedIncident.itemName}`}</h2>
                 <button
                   type="button"
                   className="modal-close-btn"
@@ -877,7 +1014,7 @@ export default function AdminIncidentsPage() {
                   {/* Quyết định nghiệp vụ của Admin */}
                   {isAdmin ? (
                     <div className="decision-card">
-                      <h3>⚖️ Quyết định xử lý & Trách nhiệm (Dành cho Quản trị viên)</h3>
+                      <h3>️ Quyết định xử lý & Trách nhiệm (Dành cho Quản trị viên)</h3>
                       <div className="form-grid">
                         <div className="form-group">
                           <label>Trạng thái tiến độ</label>
@@ -912,7 +1049,7 @@ export default function AdminIncidentsPage() {
                             <input
                               type="number"
                               min="0"
-                              step="10000"
+                              step="any"
                               className="form-input"
                               placeholder="Nhập số tiền đền bù..."
                               value={actionForm.compensationAmount}
@@ -934,7 +1071,7 @@ export default function AdminIncidentsPage() {
                     </div>
                   ) : (
                     <div className="decision-card">
-                      <h3>⚖️ Thông Tin Xử Lý Từ Quản Trị Viên</h3>
+                      <h3>️ Thông Tin Xử Lý Từ Quản Trị Viên</h3>
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginTop: 10 }}>
                         <div style={{ background: '#f8fafc', padding: 12, borderRadius: 8 }}>
                           <span style={{ fontSize: 12, color: '#64748b', display: 'block' }}>Trạng thái xử lý:</span>
@@ -942,7 +1079,7 @@ export default function AdminIncidentsPage() {
                             {selectedIncident.status === 'RESOLVED'
                               ? '✓ Đã giải quyết'
                               : selectedIncident.status === 'IN_PROGRESS'
-                              ? '⏳ Đang xử lý'
+                              ? ' Đang xử lý'
                               : selectedIncident.status === 'DISMISSED'
                               ? 'Đã bỏ qua'
                               : 'Chờ Quản trị viên xử lý'}

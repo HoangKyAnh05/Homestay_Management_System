@@ -1,9 +1,10 @@
 .dash-header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 16px;
   margin-bottom: 18px;
+  flex-wrap: wrap;
 }
 
 .dash-header h1 {
@@ -23,7 +24,8 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  flex-shrink: 0;
 }
 
 .dash-actions input,
@@ -36,6 +38,8 @@
   font: inherit;
   font-size: 13px;
   font-weight: 800;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .dash-actions input {
@@ -48,6 +52,22 @@
   background: #111827;
   color: #ffffff;
   cursor: pointer;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.dash-actions button.dash-btn-excel {
+  background: #059669;
+  border-color: #059669;
+  color: #ffffff;
+}
+
+.dash-actions button.dash-btn-excel:hover:not(:disabled) {
+  background: #047857;
+  border-color: #047857;
 }
 
 .dash-actions button:disabled {

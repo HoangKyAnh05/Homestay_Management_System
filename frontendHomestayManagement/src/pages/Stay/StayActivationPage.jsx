@@ -2,6 +2,23 @@ import { useMemo, useState } from 'react'
 import { activateStayAccount } from '../../services/authService'
 import './StayActivationPage.css'
 
+const validatePassword = (val) => {
+  if (!val) return 'Vui lòng nhập mật khẩu mới'
+  if (val.length < 8 || val.length > 64) return 'Mật khẩu phải từ 8 đến 64 ký tự'
+  if (/\s/.test(val)) return 'Mật khẩu không được chứa khoảng trắng'
+  if (!/(?=.*[a-z])/.test(val)) return 'Mật khẩu phải có ít nhất 1 chữ cái viết thường (a-z)'
+  if (!/(?=.*[A-Z])/.test(val)) return 'Mật khẩu phải có ít nhất 1 chữ cái viết hoa (A-Z)'
+  if (!/(?=.*\d)/.test(val)) return 'Mật khẩu phải có ít nhất 1 chữ số (0-9)'
+  if (!/(?=.*[!@#$%^&*()_+\-=[\]{};:,.<>?])/.test(val)) return 'Mật khẩu phải có ít nhất 1 ký tự đặc biệt (!@#$%^&*)'
+  return ''
+}
+
+const validateConfirmPassword = (val, pwd) => {
+  if (!val) return 'Vui lòng nhập lại mật khẩu'
+  if (val !== pwd) return 'Mật khẩu xác nhận chưa trùng khớp.'
+  return ''
+}
+
 function StayActivationPage() {
   const token = useMemo(() => new URLSearchParams(window.location.search).get('token') || '', [])
   const [password, setPassword] = useState('')
@@ -16,8 +33,14 @@ function StayActivationPage() {
       setError('Đường dẫn kích hoạt không hợp lệ.')
       return
     }
-    if (password !== confirmation) {
-      setError('Mật khẩu xác nhận chưa trùng khớp.')
+    const pwdErr = validatePassword(password)
+    if (pwdErr) {
+      setError(pwdErr)
+      return
+    }
+    const confirmErr = validateConfirmPassword(confirmation, password)
+    if (confirmErr) {
+      setError(confirmErr)
       return
     }
     setSubmitting(true)
@@ -45,8 +68,7 @@ function StayActivationPage() {
             <input
               type="password"
               required
-              minLength="6"
-              maxLength="100"
+              placeholder="8-64 ký tự, gồm chữ hoa, thường, số & ký tự đặc biệt"
               autoComplete="new-password"
               value={password}
               onChange={event => setPassword(event.target.value)}
@@ -57,8 +79,7 @@ function StayActivationPage() {
             <input
               type="password"
               required
-              minLength="6"
-              maxLength="100"
+              placeholder="Nhập lại mật khẩu mới"
               autoComplete="new-password"
               value={confirmation}
               onChange={event => setConfirmation(event.target.value)}

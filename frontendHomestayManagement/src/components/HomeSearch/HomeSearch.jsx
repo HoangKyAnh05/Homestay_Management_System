@@ -409,7 +409,7 @@ function HomeSearch({ onSearch, isSearching = false }) {
                 disabledIncreaseReason={`Tối đa ${MAX_CHILDREN_PER_ROOM} trẻ em / 1 phòng`}
               />
               <div style={{ fontSize: '11px', color: '#64748b', marginTop: '6px', textAlign: 'center', borderTop: '1px dashed #e2e8f0', paddingTop: '6px' }}>
-                💡 Quy định: Tối đa {MAX_ADULTS_PER_ROOM} người lớn &amp; {MAX_CHILDREN_PER_ROOM} trẻ em mỗi phòng
+                 Quy định: Tối đa {MAX_ADULTS_PER_ROOM} người lớn &amp; {MAX_CHILDREN_PER_ROOM} trẻ em mỗi phòng
               </div>
             </div>
           )}

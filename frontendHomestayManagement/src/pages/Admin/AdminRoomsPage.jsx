@@ -82,8 +82,15 @@ function getFallbackRoomImage(roomTypeName, roomTypeId) {
 // ─────────────────────────────────────────────────────────────────────
 // Modal loại nhà (tạo / sửa)
 // ─────────────────────────────────────────────────────────────────────
-function RoomTypeModal({ roomType, depositPolicies, rooms = [], onClose, onSave }) {
+function RoomTypeModal({ roomType, depositPolicies, priceConfigs = [], pricePolicies = [], rooms = [], onClose, onSave }) {
   const isEdit = !!roomType
+  const existingWeekday = roomType?.weekdayPrice != null
+    ? roomType.weekdayPrice
+    : (priceConfigs.find(c => c.roomTypeId === roomType?.id && String(c.dayType).toUpperCase() === 'WEEKDAY')?.price ?? '')
+  const existingWeekend = roomType?.weekendPrice != null
+    ? roomType.weekendPrice
+    : (priceConfigs.find(c => c.roomTypeId === roomType?.id && String(c.dayType).toUpperCase() === 'WEEKEND')?.price ?? '')
+
   const [form, setForm] = useState({
     name:           roomType?.name || '',
     maxAdults:      roomType?.maxAdults || 2,
@@ -91,6 +98,9 @@ function RoomTypeModal({ roomType, depositPolicies, rooms = [], onClose, onSave 
     depositPolicyId:roomType?.depositPolicyId || '',
     description:    roomType?.description || '',
     videoUrl:       roomType?.videoUrl || '',
+    weekdayPrice:   existingWeekday !== '' ? String(existingWeekday) : '',
+    weekendPrice:   existingWeekend !== '' ? String(existingWeekend) : '',
+    pricePolicyId:  roomType?.pricePolicyId || '',
   })
 
   const typeRooms = isEdit ? rooms.filter(r => r.roomTypeId === roomType.id) : []
@@ -254,6 +264,15 @@ function RoomTypeModal({ roomType, depositPolicies, rooms = [], onClose, onSave 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setSaving('')
+
+    const weekday = form.weekdayPrice !== '' && form.weekdayPrice != null ? Number(form.weekdayPrice) : null
+    const weekend = form.weekendPrice !== '' && form.weekendPrice != null ? Number(form.weekendPrice) : null
+
+    if (weekday != null && weekend != null && weekend <= weekday) {
+      setSaving('Giá cuối tuần phải lớn hơn giá ngày thường.')
+      return
+    }
+
     setSavingState(true)
     try {
       const res = await fetch(isEdit ? `${API}/types/${roomType.id}` : `${API}/types`, {
@@ -265,6 +284,9 @@ function RoomTypeModal({ roomType, depositPolicies, rooms = [], onClose, onSave 
           maxChildren:Number(form.maxChildren),
           depositPolicyId: form.depositPolicyId ? Number(form.depositPolicyId) : null,
           videoUrl: form.videoUrl?.startsWith('blob:') ? null : (form.videoUrl?.trim() || null),
+          weekdayPrice: weekday,
+          weekendPrice: weekend,
+          pricePolicyId: form.pricePolicyId ? Number(form.pricePolicyId) : null,
         }),
       })
       let data = await res.json()
@@ -323,7 +345,7 @@ function RoomTypeModal({ roomType, depositPolicies, rooms = [], onClose, onSave 
       <div className="arm-modal arm-modal--wide">
         <div className="arm-modal-head">
           <h3>{isEdit ? 'Chỉnh sửa loại phòng' : 'Thêm loại phòng mới'}</h3>
-          <button type="button" className="arm-modal-close" onClick={onClose}>✕</button>
+          <button type="button" className="arm-modal-close" onClick={onClose}></button>
         </div>
         <form className="arm-modal-body" onSubmit={handleSubmit} onPaste={handlePaste}>
           <label className="arm-field"><span>Tên loại phòng</span>
@@ -337,6 +359,53 @@ function RoomTypeModal({ roomType, depositPolicies, rooms = [], onClose, onSave 
               <input type="number" value={form.maxChildren} onChange={e => set('maxChildren', e.target.value)} required min={0} />
             </label>
           </div>
+
+          <div className="arm-field-row" style={{ background: '#f8fafc', padding: '12px', borderRadius: '10px', border: '1px solid #cbd5e1', marginTop: '4px', marginBottom: '6px' }}>
+            <label className="arm-field" style={{ flex: 1, margin: 0 }}>
+              <span style={{ fontWeight: 600, color: '#15803d', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                Giá ngày thường (T2 – T6) (VNĐ)
+              </span>
+              <input
+                type="number"
+                value={form.weekdayPrice}
+                onChange={e => set('weekdayPrice', e.target.value)}
+                placeholder="VD: 500000"
+                min={0}
+                step="any"
+                style={{ fontWeight: 600, fontSize: '15px' }}
+              />
+              {Number(form.weekdayPrice) > 0 && (
+                <small style={{ color: '#16a34a', fontWeight: 600, marginTop: '2px', display: 'block' }}>
+                  ≈ {formatPrice(Number(form.weekdayPrice))} / đêm
+                </small>
+              )}
+            </label>
+            <label className="arm-field" style={{ flex: 1, margin: 0 }}>
+              <span style={{ fontWeight: 600, color: '#c2410c', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                Giá cuối tuần (T7, CN) (VNĐ)
+              </span>
+              <input
+                type="number"
+                value={form.weekendPrice}
+                onChange={e => set('weekendPrice', e.target.value)}
+                placeholder="VD: 700000"
+                min={0}
+                step="any"
+                style={{ fontWeight: 600, fontSize: '15px' }}
+              />
+              {Number(form.weekendPrice) > 0 && (
+                <small style={{ color: '#ea580c', fontWeight: 600, marginTop: '2px', display: 'block' }}>
+                  ≈ {formatPrice(Number(form.weekendPrice))} / đêm
+                </small>
+              )}
+            </label>
+          </div>
+          {Number(form.weekdayPrice) > 0 && Number(form.weekendPrice) > 0 && Number(form.weekendPrice) <= Number(form.weekdayPrice) && (
+            <div style={{ color: '#dc2626', fontSize: '12.5px', marginTop: '-2px', marginBottom: '8px', fontWeight: 600 }}>
+              ️ Giá cuối tuần phải lớn hơn giá ngày thường ({formatPrice(Number(form.weekdayPrice))})
+            </div>
+          )}
+
           <label className="arm-field"><span>Chính sách đặt cọc mặc định</span>
             <select value={form.depositPolicyId} onChange={e => set('depositPolicyId', e.target.value)}>
               <option value="">Chưa cấu hình</option>
@@ -360,7 +429,7 @@ function RoomTypeModal({ roomType, depositPolicies, rooms = [], onClose, onSave 
               <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={handleFileUpload} hidden />
               <svg viewBox="0 0 24 24" style={{ width: 22, height: 22 }}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
               <span>
-                {uploading ? '⏳ Đang tải ảnh...' : '📋 Nhấn để chọn, Dán ảnh (Ctrl + V) hoặc Kéo thả ảnh vào đây'}
+                {uploading ? ' Đang tải ảnh...' : ' Nhấn để chọn, Dán ảnh (Ctrl + V) hoặc Kéo thả ảnh vào đây'}
               </span>
             </label>
 
@@ -395,7 +464,7 @@ function RoomTypeModal({ roomType, depositPolicies, rooms = [], onClose, onSave 
           <div className="arm-field" style={{ marginTop: '14px', padding: '14px', background: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
               <span style={{ fontWeight: 600, fontSize: '13px', color: '#1e293b', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ fontSize: '16px' }}>🎬</span> Video preview phòng (Phát khi hold ở ngoài & xem ở chi tiết)
+                <span style={{ fontSize: '16px' }}></span> Video preview phòng (Phát khi hold ở ngoài & xem ở chi tiết)
               </span>
               {form.videoUrl && (
                 <button
@@ -404,7 +473,7 @@ function RoomTypeModal({ roomType, depositPolicies, rooms = [], onClose, onSave 
                   disabled={videoUploading}
                   style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: 600 }}
                 >
-                  ✕ Xoá video preview
+                   Xoá video preview
                 </button>
               )}
             </div>
@@ -423,7 +492,7 @@ function RoomTypeModal({ roomType, depositPolicies, rooms = [], onClose, onSave 
                 className="arm-btn arm-btn--ghost"
                 style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '7px 14px', fontSize: '13px', border: '1px solid #cbd5e1', background: '#fff' }}
               >
-                📁 {videoUploading ? 'Đang xử lý video...' : 'Tải lên tệp video (.mp4, .webm)'}
+                 {videoUploading ? 'Đang xử lý video...' : 'Tải lên tệp video (.mp4, .webm)'}
               </label>
               <input
                 type="text"
@@ -544,7 +613,7 @@ function ImagesModal({ room, onClose, onUpdate }) {
       <div className="arm-modal arm-modal--wide">
         <div className="arm-modal-head">
           <h3>Ảnh phòng — #{room.roomNumber}</h3>
-          <button type="button" className="arm-modal-close" onClick={onClose}>✕</button>
+          <button type="button" className="arm-modal-close" onClick={onClose}></button>
         </div>
         <div className="arm-modal-body" onPaste={handlePaste}>
           <label
@@ -556,7 +625,7 @@ function ImagesModal({ room, onClose, onUpdate }) {
             <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={handleUpload} hidden />
             <svg viewBox="0 0 24 24" style={{ width: 22, height: 22 }}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
             <span>
-              {uploading ? '⏳ Đang tải ảnh...' : '📋 Nhấn để chọn, Dán ảnh (Ctrl + V) hoặc Kéo thả ảnh vào đây'}
+              {uploading ? ' Đang tải ảnh...' : ' Nhấn để chọn, Dán ảnh (Ctrl + V) hoặc Kéo thả ảnh vào đây'}
             </span>
           </label>
           {error && <p className="arm-error">{error}</p>}
@@ -740,7 +809,7 @@ function RoomModal({ room, roomTypes, onClose, onSave }) {
       <div className="arm-modal arm-modal--wide">
         <div className="arm-modal-head">
           <h3>{isEdit ? 'Chỉnh sửa phòng' : 'Thêm phòng mới'}</h3>
-          <button type="button" className="arm-modal-close" onClick={onClose}>✕</button>
+          <button type="button" className="arm-modal-close" onClick={onClose}></button>
         </div>
         <form className="arm-modal-body" onSubmit={handleSubmit} onPaste={handlePaste}>
           <label className="arm-field"><span>Số phòng</span>
@@ -768,7 +837,7 @@ function RoomModal({ room, roomTypes, onClose, onSave }) {
               <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={handleFileUpload} hidden />
               <svg viewBox="0 0 24 24" style={{ width: 22, height: 22 }}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
               <span>
-                {uploading ? '⏳ Đang tải ảnh...' : '📋 Nhấn để chọn, Dán ảnh (Ctrl + V) hoặc Kéo thả ảnh vào đây'}
+                {uploading ? ' Đang tải ảnh...' : ' Nhấn để chọn, Dán ảnh (Ctrl + V) hoặc Kéo thả ảnh vào đây'}
               </span>
             </label>
 
@@ -822,7 +891,7 @@ function ConfirmDeleteModal({ title, desc, onClose, onConfirm, loading }) {
       <div className="arm-modal arm-modal--sm">
         <div className="arm-modal-head">
           <h3>{title}</h3>
-          <button type="button" className="arm-modal-close" onClick={onClose}>✕</button>
+          <button type="button" className="arm-modal-close" onClick={onClose}></button>
         </div>
         <div className="arm-modal-body">
           <p style={{ margin:'0 0 24px', color:'#374151' }}>{desc}</p>
@@ -872,7 +941,7 @@ function DepositPolicyModal({ policy, onClose, onSave }) {
       <div className="arm-modal">
         <div className="arm-modal-head">
           <h3>{isEdit ? 'Chỉnh sửa chính sách đặt cọc' : 'Thêm chính sách đặt cọc'}</h3>
-          <button type="button" className="arm-modal-close" onClick={onClose}>✕</button>
+          <button type="button" className="arm-modal-close" onClick={onClose}></button>
         </div>
         <form className="arm-modal-body" onSubmit={handleSubmit}>
           <label className="arm-field"><span>Tên chính sách</span>
@@ -946,7 +1015,7 @@ function PricePolicyModal({ policy, onClose, onSave }) {
       <div className="arm-modal">
         <div className="arm-modal-head">
           <h3>{isEdit ? 'Chỉnh sửa gói thuê' : 'Thêm gói thuê mới'}</h3>
-          <button type="button" className="arm-modal-close" onClick={onClose}>✕</button>
+          <button type="button" className="arm-modal-close" onClick={onClose}></button>
         </div>
         <form className="arm-modal-body" onSubmit={handleSubmit}>
           <label className="arm-field"><span>Tên gói thuê</span>
@@ -1029,7 +1098,7 @@ function PriceConfigModal({ config, roomTypes, policies, onClose, onSave }) {
       <div className="arm-modal">
         <div className="arm-modal-head">
           <h3>{isEdit ? 'Chỉnh sửa cấu hình giá' : 'Thêm cấu hình giá'}</h3>
-          <button type="button" className="arm-modal-close" onClick={onClose}>✕</button>
+          <button type="button" className="arm-modal-close" onClick={onClose}></button>
         </div>
         <form className="arm-modal-body" onSubmit={handleSubmit}>
           <label className="arm-field"><span>Loại phòng</span>
@@ -1049,8 +1118,8 @@ function PriceConfigModal({ config, roomTypes, policies, onClose, onSave }) {
           </label>
           {selectedPolicy && (
             <div className="arm-policy-hint">
-              {selectedPolicy.standardCheckIn && <span>🕐 Check-in: {selectedPolicy.standardCheckIn}</span>}
-              {selectedPolicy.standardCheckOut && <span>🕐 Check-out: {selectedPolicy.standardCheckOut}</span>}
+              {selectedPolicy.standardCheckIn && <span> Check-in: {selectedPolicy.standardCheckIn}</span>}
+              {selectedPolicy.standardCheckOut && <span> Check-out: {selectedPolicy.standardCheckOut}</span>}
             </div>
           )}
           <label className="arm-field"><span>Loại ngày</span>
@@ -1145,7 +1214,7 @@ function DepositPoliciesTab({ depositPolicies, setDepositPolicies, showToast }) 
 // ─────────────────────────────────────────────────────────────────────
 // Tab: Loại nhà  — với dropdown lọc giá theo gói thuê
 // ─────────────────────────────────────────────────────────────────────
-function RoomTypesTab({ roomTypes, setRoomTypes, depositPolicies, pricePolicies, priceConfigs, rooms = [], setRooms, showToast }) {
+function RoomTypesTab({ roomTypes, setRoomTypes, depositPolicies, pricePolicies = [], priceConfigs = [], setPriceConfigs, rooms = [], setRooms, showToast }) {
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   // ID của gói thuê đang được chọn để hiển thị giá ('' = hiển thị placeholder)
@@ -1167,9 +1236,14 @@ function RoomTypesTab({ roomTypes, setRoomTypes, depositPolicies, pricePolicies,
    */
   const getPriceForType = (roomTypeId) => {
     const matching = priceConfigs.filter(c => c.roomTypeId === roomTypeId)
-    if (!matching.length) return null
-    const weekday = matching.find(c => String(c.dayType).toUpperCase() === 'WEEKDAY')?.price
-    const weekend = matching.find(c => String(c.dayType).toUpperCase() === 'WEEKEND')?.price
+    const typeObj = roomTypes.find(t => t.id === roomTypeId)
+    const weekday = typeObj?.weekdayPrice != null
+      ? typeObj.weekdayPrice
+      : matching.find(c => String(c.dayType).toUpperCase() === 'WEEKDAY')?.price
+    const weekend = typeObj?.weekendPrice != null
+      ? typeObj.weekendPrice
+      : matching.find(c => String(c.dayType).toUpperCase() === 'WEEKEND')?.price
+    if (weekday == null && weekend == null) return null
     return { WEEKDAY: weekday, WEEKEND: weekend }
   }
 
@@ -1270,16 +1344,29 @@ function RoomTypesTab({ roomTypes, setRoomTypes, depositPolicies, pricePolicies,
       )}
 
       {modalType !== undefined && (
-        <RoomTypeModal roomType={modalType} depositPolicies={depositPolicies} rooms={rooms} onClose={() => setModalType(undefined)}
+        <RoomTypeModal
+          roomType={modalType}
+          depositPolicies={depositPolicies}
+          priceConfigs={priceConfigs}
+          pricePolicies={pricePolicies}
+          rooms={rooms}
+          onClose={() => setModalType(undefined)}
           onSave={async (saved, isEdit) => {
             setRoomTypes(prev => isEdit ? prev.map(t => t.id===saved.id ? { ...saved, roomCount:t.roomCount } : t) : [...prev, saved])
             setModalType(undefined)
-            showToast(isEdit ? 'Đã cập nhật loại phòng' : 'Đã tạo loại phòng mới')
+            showToast(isEdit ? 'Đã cập nhật loại phòng & giá' : 'Đã tạo loại phòng mới & cấu hình giá')
             try {
-              const res = await fetch(API, { headers: authHeaders() })
-              if (res.ok) {
-                const rms = await res.json()
+              const [resRooms, resConfigs] = await Promise.all([
+                fetch(API, { headers: authHeaders() }),
+                fetch(`${API}/price-configs`, { headers: authHeaders() })
+              ])
+              if (resRooms.ok) {
+                const rms = await resRooms.json()
                 if (Array.isArray(rms) && setRooms) setRooms(rms)
+              }
+              if (resConfigs.ok) {
+                const pcs = await resConfigs.json()
+                if (Array.isArray(pcs) && setPriceConfigs) setPriceConfigs(pcs)
               }
             } catch {}
           }} />
@@ -1364,7 +1451,7 @@ function RoomsTab({ rooms, setRooms, setRoomTypes, roomTypes, showToast }) {
                     <td><span className={statusBadgeClass(r.status)}>{STATUS_LABEL[r.status] || r.status}</span></td>
                     <td>
                       <button type="button" className="arm-img-count-btn" onClick={() => setImagesTarget(r)}>
-                        🖼 {r.images?.length || 0} ảnh
+                         {r.images?.length || 0} ảnh
                       </button>
                     </td>
                     <td><div className="arm-actions">
@@ -1511,7 +1598,7 @@ function PriceConfigTab({ roomTypes, pricePolicies, setPricePolicies, priceConfi
 
           {(roomTypes.length === 0 || pricePolicies.length === 0) && (
             <div className="arm-info-banner">
-              💡 Cần có ít nhất 1 <strong>loại phòng</strong> và 1 <strong>gói thuê</strong> trước khi cấu hình giá.
+               Cần có ít nhất 1 <strong>loại phòng</strong> và 1 <strong>gói thuê</strong> trước khi cấu hình giá.
             </div>
           )}
 
@@ -1532,7 +1619,7 @@ function PriceConfigTab({ roomTypes, pricePolicies, setPricePolicies, priceConfi
                   {filteredConfigs.map(c => (
                     <tr key={c.id}>
                       <td className="arm-fw">
-                        <span className="arm-room-type-tag">🏠 {c.roomTypeName}</span>
+                        <span className="arm-room-type-tag"> {c.roomTypeName}</span>
                       </td>
                       <td>
                         <strong className="arm-policy-name">{c.policyName}</strong>
@@ -1544,7 +1631,7 @@ function PriceConfigTab({ roomTypes, pricePolicies, setPricePolicies, priceConfi
                       </td>
                       <td>
                         <span className={`arm-day-badge${c.dayType==='WEEKEND'?' arm-day-badge--weekend':''}`}>
-                          {c.dayType === 'WEEKEND' ? '🌟 Cuối tuần' : '📅 Ngày thường'}
+                          {c.dayType === 'WEEKEND' ? ' Cuối tuần' : ' Ngày thường'}
                         </span>
                       </td>
                       <td className="arm-price-strong">{formatPrice(c.price)}</td>
@@ -1691,7 +1778,7 @@ function AdminRoomsPage({ activePage = 'rooms' }) {
       <div className="arm-header">
         <div>
           <h1>Quản lý Phòng</h1>
-          <p>{roomTypes.length} loại phòng · {rooms.length} phòng vật lý · {pricePolicies.length} gói thuê</p>
+          <p>{roomTypes.length} loại phòng · {rooms.length} phòng vật lý</p>
         </div>
       </div>
 
@@ -1700,7 +1787,6 @@ function AdminRoomsPage({ activePage = 'rooms' }) {
           { key:'deposit', label:'Chính sách đặt cọc' },
           { key:'types',   label:'Loại phòng' },
           { key:'rooms',   label:'Phòng vật lý' },
-          { key:'pricing', label:'Cấu hình giá 💰' },
         ].map(t => (
           <button key={t.key} type="button"
             className={`arm-tab${tab===t.key?' arm-tab--active':''}`}
@@ -1720,16 +1806,11 @@ function AdminRoomsPage({ activePage = 'rooms' }) {
           depositPolicies={depositPolicies}
           pricePolicies={pricePolicies}
           priceConfigs={priceConfigs}
+          setPriceConfigs={setPriceConfigs}
           rooms={rooms} setRooms={setRooms}
           showToast={showToast} />
-      ) : tab === 'rooms' ? (
-        <RoomsTab rooms={rooms} setRooms={setRooms} setRoomTypes={setRoomTypes} roomTypes={roomTypes} showToast={showToast} />
       ) : (
-        <PriceConfigTab
-          roomTypes={roomTypes}
-          pricePolicies={pricePolicies} setPricePolicies={setPricePolicies}
-          priceConfigs={priceConfigs}  setPriceConfigs={setPriceConfigs}
-          showToast={showToast} />
+        <RoomsTab rooms={rooms} setRooms={setRooms} setRoomTypes={setRoomTypes} roomTypes={roomTypes} showToast={showToast} />
       )}
 
       {toast && <div className="arm-toast">{toast}</div>}

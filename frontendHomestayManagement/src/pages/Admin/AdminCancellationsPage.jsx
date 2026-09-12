@@ -200,7 +200,7 @@ function AdminCancellationsPage() {
           </div>
         ) : filteredList.length === 0 ? (
           <div className="ac-empty-state">
-            <div className="ac-empty-icon">📁</div>
+            <div className="ac-empty-icon"></div>
             <h3>Không tìm thấy đơn hủy nào</h3>
             <p>Không có dữ liệu phù hợp với bộ lọc tìm kiếm hiện tại.</p>
           </div>
@@ -235,7 +235,7 @@ function AdminCancellationsPage() {
                             title="Sao chép mã đơn"
                             onClick={() => handleCopyText(item.bookingCode, 'Mã booking')}
                           >
-                            📋
+                            
                           </button>
                         </div>
                       </td>
@@ -250,10 +250,10 @@ function AdminCancellationsPage() {
                                 title="Click để sao chép SĐT"
                                 onClick={() => handleCopyText(item.customerPhone, 'SĐT khách')}
                               >
-                                📞 {item.customerPhone}
+                                 {item.customerPhone}
                               </span>
                             )}
-                            {item.customerEmail && <span className="ac-email-text">✉ {item.customerEmail}</span>}
+                            {item.customerEmail && <span className="ac-email-text"> {item.customerEmail}</span>}
                           </div>
                         </div>
                       </td>
@@ -301,7 +301,7 @@ function AdminCancellationsPage() {
                                 title="Sao chép toàn bộ thông tin nhận tiền"
                                 onClick={() => handleCopyText(item.refundInfo, 'Thông tin nhận hoàn tiền')}
                               >
-                                📋
+                                
                               </button>
                             </div>
                           ) : (
@@ -323,7 +323,7 @@ function AdminCancellationsPage() {
                           </div>
                         ) : isPending ? (
                           <div className="ac-status-badge ac-status-badge--pending">
-                            ⏳ Chờ chuyển khoản
+                             Chờ chuyển khoản
                           </div>
                         ) : (
                           <div className="ac-status-badge ac-status-badge--no-refund">
@@ -393,7 +393,7 @@ function AdminCancellationsPage() {
                 </div>
 
                 <p className="ac-modal-guide-text">
-                  ⚠️ Hãy đảm bảo rằng bạn hoặc bộ phận kế toán đã thực hiện lệnh chuyển khoản <strong>{formatMoney(confirmModalData.refundAmount)}</strong> thành công tới khách hàng trước khi bấm xác nhận.
+                  ️ Hãy đảm bảo rằng bạn hoặc bộ phận kế toán đã thực hiện lệnh chuyển khoản <strong>{formatMoney(confirmModalData.refundAmount)}</strong> thành công tới khách hàng trước khi bấm xác nhận.
                 </p>
 
                 <div className="ac-modal-actions">

@@ -23,8 +23,8 @@ export const sampleHomestayProject: VideoProject = {
     backgroundColor: 'rgba(0, 0, 0, 0.45)'
   },
   watermark: {
-    enabled: true,
-    text: '@LaDoHomestaySaPa',
+    enabled: false,
+    text: '',
     position: 'top-right',
     opacity: 0.9
   },

@@ -722,4 +722,153 @@ class AdminBookingServiceImplTest {
         verify(bookingRepository).save(booking);
         verify(bookingDetailRepository).saveAll(List.of(detail));
     }
+
+    @Test
+    void testGetAvailableRoomsForChange_Success() {
+        LocalDateTime checkIn = LocalDateTime.of(2026, 7, 10, 14, 0);
+        LocalDateTime checkOut = LocalDateTime.of(2026, 7, 12, 12, 0);
+
+        RoomType standardType = RoomType.builder().id(1L).name("Standard").maxAdults(2).maxChildren(1).build();
+        RoomType deluxeType = RoomType.builder().id(2L).name("Deluxe").maxAdults(3).maxChildren(2).build();
+
+        Room currentRoom = Room.builder().id(101L).roomNumber("P101").roomType(standardType).status("OCCUPIED").build();
+        Room sameTypeAvailableRoom = Room.builder().id(102L).roomNumber("P102").roomType(standardType).status("AVAILABLE").build();
+        Room otherTypeAvailableRoom = Room.builder().id(201L).roomNumber("P201").roomType(deluxeType).status("AVAILABLE").build();
+
+        Booking booking = Booking.builder().id(50L).bookingCode("BK-50").customer(Customer.builder().fullName("Nguyễn Văn A").build()).build();
+        BookingDetail detail = BookingDetail.builder()
+                .id(10L)
+                .booking(booking)
+                .room(currentRoom)
+                .roomType(standardType)
+                .checkInTarget(checkIn)
+                .checkOutTarget(checkOut)
+                .status("CHECKED_IN")
+                .build();
+
+        when(bookingDetailRepository.findByIdForAdminDetail(10L)).thenReturn(Optional.of(detail));
+        when(checkInRecordRepository.findByBookingDetailId(10L)).thenReturn(Optional.empty());
+        when(bookingDetailRepository.findOverlappingSchedule(any(), any())).thenReturn(List.of(detail));
+        when(roomRepository.findAll()).thenReturn(List.of(currentRoom, sameTypeAvailableRoom, otherTypeAvailableRoom));
+
+        var response = service.getAvailableRoomsForChange(10L, null);
+
+        assertNotNull(response);
+        assertEquals(101L, response.currentRoomId());
+        assertEquals("P101", response.currentRoomNumber());
+        assertEquals(true, response.hasSameTypeAvailable());
+        assertEquals(1, response.sameTypeRooms().size());
+        assertEquals(102L, response.sameTypeRooms().get(0).roomId());
+        assertEquals(1, response.otherTypes().size());
+        assertEquals(201L, response.otherTypes().get(0).availableRooms().get(0).roomId());
+    }
+
+    @Test
+    void testChangeRoom_SameType_Success() {
+        LocalDateTime checkIn = LocalDateTime.of(2026, 7, 10, 14, 0);
+        LocalDateTime checkOut = LocalDateTime.of(2026, 7, 12, 12, 0);
+
+        RoomType standardType = RoomType.builder().id(1L).name("Standard").maxAdults(2).maxChildren(1).build();
+        Room oldRoom = Room.builder().id(101L).roomNumber("P101").roomType(standardType).status("OCCUPIED").build();
+        Room newRoom = Room.builder().id(102L).roomNumber("P102").roomType(standardType).status("AVAILABLE").build();
+
+        Customer customer = Customer.builder().id(10L).fullName("Nguyễn Văn A").phone("0901234567").build();
+        Booking booking = Booking.builder().id(50L).status("CONFIRMED").customer(customer).build();
+        BookingDetail detail = BookingDetail.builder()
+                .id(10L)
+                .booking(booking)
+                .room(oldRoom)
+                .roomType(standardType)
+                .checkInTarget(checkIn)
+                .checkOutTarget(checkOut)
+                .status("CHECKED_IN")
+                .priceAtBooking(BigDecimal.valueOf(1_000_000))
+                .build();
+
+        CheckInRecord checkInRecord = CheckInRecord.builder()
+                .id(99L)
+                .bookingDetail(detail)
+                .actualCheckIn(checkIn)
+                .build();
+
+        when(bookingDetailRepository.findByIdForAdminDetail(10L)).thenReturn(Optional.of(detail));
+        when(roomRepository.findById(102L)).thenReturn(Optional.of(newRoom));
+        when(checkInRecordRepository.findByBookingDetailId(10L)).thenReturn(Optional.of(checkInRecord));
+        when(bookingDetailRepository.findOverlappingSchedule(any(), any())).thenReturn(List.of(detail));
+        when(checkInRecordRepository.findByBookingDetailIdForAdmin(10L)).thenReturn(List.of(checkInRecord));
+        when(serviceUsageRepository.findByBookingDetailIdForAdmin(10L)).thenReturn(List.of());
+        when(bookingServiceItemRepository.findByBookingDetailIds(List.of(10L))).thenReturn(List.of());
+        when(roomAmenitiesUsageRepository.findByBookingDetailIdForAdmin(10L)).thenReturn(List.of());
+        when(appliedPenaltyRepository.findByBookingDetailIdForAdmin(10L)).thenReturn(List.of());
+        when(bookingGuestRepository.findByBookingDetailIds(List.of(10L))).thenReturn(List.of());
+        when(facilityServiceRepository.findAll()).thenReturn(List.of());
+        when(inventoryServiceRepository.findAll()).thenReturn(List.of());
+        when(roomMiniBarItemRepository.findAll()).thenReturn(List.of());
+        when(rulesPenaltyRepository.findAll()).thenReturn(List.of());
+
+        var request = new com.homestayManagement.homestayManagement.dto.request.AdminChangeRoomRequest(
+                102L,
+                "ROOM_ISSUE",
+                "Máy lạnh hỏng",
+                "MAINTENANCE",
+                null,
+                BigDecimal.ZERO
+        );
+
+        var result = service.changeRoom(10L, request);
+
+        assertNotNull(result);
+        assertEquals(newRoom, detail.getRoom());
+        assertEquals("OCCUPIED", newRoom.getStatus());
+        assertEquals("MAINTENANCE", oldRoom.getStatus());
+        verify(roomRepository).save(newRoom);
+        verify(roomRepository).save(oldRoom);
+        verify(bookingDetailRepository).save(detail);
+    }
+
+    @Test
+    void testChangeRoom_Conflict_ThrowsException() {
+        LocalDateTime checkIn = LocalDateTime.of(2026, 7, 10, 14, 0);
+        LocalDateTime checkOut = LocalDateTime.of(2026, 7, 12, 12, 0);
+
+        RoomType standardType = RoomType.builder().id(1L).name("Standard").build();
+        Room oldRoom = Room.builder().id(101L).roomNumber("P101").roomType(standardType).build();
+        Room newRoom = Room.builder().id(102L).roomNumber("P102").roomType(standardType).build();
+
+        Booking booking = Booking.builder().id(50L).status("CONFIRMED").build();
+        BookingDetail detail = BookingDetail.builder()
+                .id(10L)
+                .booking(booking)
+                .room(oldRoom)
+                .roomType(standardType)
+                .checkInTarget(checkIn)
+                .checkOutTarget(checkOut)
+                .status("CONFIRMED")
+                .build();
+
+        BookingDetail conflictingDetail = BookingDetail.builder()
+                .id(20L)
+                .room(newRoom)
+                .checkInTarget(checkIn)
+                .checkOutTarget(checkOut)
+                .status("CONFIRMED")
+                .build();
+
+        when(bookingDetailRepository.findByIdForAdminDetail(10L)).thenReturn(Optional.of(detail));
+        when(roomRepository.findById(102L)).thenReturn(Optional.of(newRoom));
+        when(checkInRecordRepository.findByBookingDetailId(10L)).thenReturn(Optional.empty());
+        when(bookingDetailRepository.findOverlappingSchedule(any(), any())).thenReturn(List.of(detail, conflictingDetail));
+
+        var request = new com.homestayManagement.homestayManagement.dto.request.AdminChangeRoomRequest(
+                102L,
+                "CUSTOMER_REQUEST",
+                "Khách muốn đổi tầng",
+                "DIRTY",
+                null,
+                BigDecimal.ZERO
+        );
+
+        var ex = assertThrows(IllegalArgumentException.class, () -> service.changeRoom(10L, request));
+        assertEquals("Phòng P102 đã có khách đặt trong khung giờ này", ex.getMessage());
+    }
 }
