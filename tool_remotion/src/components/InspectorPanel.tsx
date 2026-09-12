@@ -558,6 +558,79 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
                         </button>
                       </div>
                     </div>
+
+                    {/* Trục Xoay (Góc nghiêng Rotate) */}
+                    <div className="space-y-1.5 p-2 bg-slate-100 rounded-xl border border-slate-200">
+                      <div className="flex justify-between items-center text-[11px] font-medium text-slate-700">
+                        <span className="flex items-center gap-1">
+                          <span>🔄</span>
+                          <span>Trục Xoay / Góc Nghiêng:</span>
+                        </span>
+                        <span className="text-emerald-700 font-mono font-bold">
+                          {project.subtitleStyle.rotation ?? project.subtitleStyle.rotate ?? 0}°
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const cur = project.subtitleStyle.rotation ?? project.subtitleStyle.rotate ?? 0;
+                            updateSubtitleStyle({ rotation: Math.max(-180, cur - 5), rotate: Math.max(-180, cur - 5) });
+                          }}
+                          className="px-2 py-1 rounded bg-white hover:bg-slate-50 border border-slate-300 text-[11px] font-bold text-slate-700 shadow-xs active:scale-95"
+                          title="Xoay ngược chiều kim đồng hồ"
+                        >
+                          🔄 -5°
+                        </button>
+                        <input
+                          type="range"
+                          min="-180"
+                          max="180"
+                          value={project.subtitleStyle.rotation ?? project.subtitleStyle.rotate ?? 0}
+                          onChange={(e) => {
+                            const val = parseInt(e.target.value);
+                            updateSubtitleStyle({ rotation: val, rotate: val });
+                          }}
+                          className="flex-1 accent-emerald-700 h-1.5 bg-slate-200 rounded-lg cursor-pointer"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const cur = project.subtitleStyle.rotation ?? project.subtitleStyle.rotate ?? 0;
+                            updateSubtitleStyle({ rotation: Math.min(180, cur + 5), rotate: Math.min(180, cur + 5) });
+                          }}
+                          className="px-2 py-1 rounded bg-white hover:bg-slate-50 border border-slate-300 text-[11px] font-bold text-slate-700 shadow-xs active:scale-95"
+                          title="Xoay theo chiều kim đồng hồ"
+                        >
+                          🔄 +5°
+                        </button>
+                      </div>
+                      {/* Nút đặt nhanh góc xoay */}
+                      <div className="flex items-center gap-1.5 pt-1">
+                        <span className="text-[10px] text-slate-500">Mốc nhanh:</span>
+                        <button
+                          type="button"
+                          onClick={() => updateSubtitleStyle({ rotation: -12, rotate: -12 })}
+                          className="px-1.5 py-0.5 rounded text-[10px] bg-white hover:bg-slate-50 border border-slate-200 text-slate-600 font-medium"
+                        >
+                          ↖️ Nghiêng trái (-12°)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => updateSubtitleStyle({ rotation: 0, rotate: 0 })}
+                          className="px-1.5 py-0.5 rounded text-[10px] bg-white hover:bg-slate-50 border border-slate-200 text-slate-600 font-medium"
+                        >
+                          🎯 Thẳng ngang (0°)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => updateSubtitleStyle({ rotation: 12, rotate: 12 })}
+                          className="px-1.5 py-0.5 rounded text-[10px] bg-white hover:bg-slate-50 border border-slate-200 text-slate-600 font-medium"
+                        >
+                          ↗️ Nghiêng phải (+12°)
+                        </button>
+                      </div>
+                    </div>
                   </div>
 
                   {/* Switch Viết hoa */}

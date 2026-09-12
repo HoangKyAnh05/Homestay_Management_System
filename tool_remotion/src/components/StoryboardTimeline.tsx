@@ -2030,6 +2030,43 @@ export const StoryboardTimeline: React.FC<StoryboardTimelineProps> = ({
                                     ➡️ Phải
                                   </button>
                                 </div>
+
+                                {/* Điều khiển Trục Xoay (Góc nghiêng Rotate) */}
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-[10px] text-slate-500 w-12 shrink-0">Góc xoay:</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => updateTextPos({ rotate: Math.max(-180, (textPos.rotate ?? 0) - 5) })}
+                                    className="px-1.5 py-0.5 rounded bg-white hover:bg-slate-100 border border-slate-300 text-[10px] font-bold text-slate-700 shadow-2xs active:scale-95"
+                                    title="Xoay ngược chiều kim đồng hồ"
+                                  >
+                                    🔄 -5°
+                                  </button>
+                                  <input
+                                    type="range"
+                                    min="-180"
+                                    max="180"
+                                    value={textPos.rotate ?? 0}
+                                    onChange={(e) => updateTextPos({ rotate: parseInt(e.target.value) })}
+                                    className="flex-1 accent-emerald-700 h-1 bg-slate-200 rounded cursor-pointer"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => updateTextPos({ rotate: Math.min(180, (textPos.rotate ?? 0) + 5) })}
+                                    className="px-1.5 py-0.5 rounded bg-white hover:bg-slate-100 border border-slate-300 text-[10px] font-bold text-slate-700 shadow-2xs active:scale-95"
+                                    title="Xoay theo chiều kim đồng hồ"
+                                  >
+                                    🔄 +5°
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => updateTextPos({ rotate: 0 })}
+                                    className="px-1.5 py-0.5 rounded text-[9.5px] bg-slate-200 hover:bg-slate-300 text-slate-700"
+                                    title="Đặt góc xoay thẳng 0 độ"
+                                  >
+                                    0°
+                                  </button>
+                                </div>
                               </div>
                             );
                           })()}
@@ -2175,6 +2212,38 @@ export const StoryboardTimeline: React.FC<StoryboardTimelineProps> = ({
                                         className="px-1.5 py-0.5 rounded bg-white hover:bg-amber-100 border border-amber-300 text-[10px] font-bold text-amber-900"
                                       >
                                         ➡️
+                                      </button>
+                                    </div>
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="text-[10px] text-slate-500 w-12 shrink-0">Xoay:</span>
+                                      <button
+                                        type="button"
+                                        onClick={() => updateStkPos({ rotate: Math.max(-180, (currentPos.rotate ?? 0) - 10) })}
+                                        className="px-1.5 py-0.5 rounded bg-white hover:bg-amber-100 border border-amber-300 text-[10px] font-bold text-amber-900"
+                                      >
+                                        🔄 -10°
+                                      </button>
+                                      <input
+                                        type="range"
+                                        min="-180"
+                                        max="180"
+                                        value={currentPos.rotate ?? 0}
+                                        onChange={(e) => updateStkPos({ rotate: parseInt(e.target.value) })}
+                                        className="flex-1 accent-amber-600 h-1 bg-amber-200 rounded cursor-pointer"
+                                      />
+                                      <button
+                                        type="button"
+                                        onClick={() => updateStkPos({ rotate: Math.min(180, (currentPos.rotate ?? 0) + 10) })}
+                                        className="px-1.5 py-0.5 rounded bg-white hover:bg-amber-100 border border-amber-300 text-[10px] font-bold text-amber-900"
+                                      >
+                                        🔄 +10°
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => updateStkPos({ rotate: 0 })}
+                                        className="px-1 py-0.5 rounded text-[9.5px] bg-amber-200 hover:bg-amber-300 text-amber-900"
+                                      >
+                                        0°
                                       </button>
                                     </div>
                                   </div>

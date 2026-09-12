@@ -107,9 +107,9 @@ export const SubtitlesRenderer: React.FC<SubtitlesRendererProps> = ({
 
   const finalTop = customPos ? `${customPos.y}%` : `${subtitleStyle.positionY ?? 75}%`;
   const finalLeft = customPos ? `${customPos.x}%` : `${subtitleStyle.positionX ?? 50}%`;
-  const finalTransform = customPos
-    ? `translate(-50%, -50%) scale(${customPos.scale ?? 1}) rotate(${customPos.rotate ?? 0}deg)`
-    : 'translate(-50%, -50%)';
+  const scaleVal = customPos?.scale ?? subtitleStyle?.scale ?? 1;
+  const rotateVal = customPos?.rotate ?? subtitleStyle?.rotation ?? subtitleStyle?.rotate ?? 0;
+  const finalTransform = `translate(-50%, -50%) scale(${scaleVal}) rotate(${rotateVal}deg)`;
 
   // Nếu words rỗng nhưng có fallbackText, tự động tạo nhịp thời gian để chữ luôn chạy từng chữ một (karaoke)
   const effectiveWords: WordTimestamp[] = React.useMemo(() => {
