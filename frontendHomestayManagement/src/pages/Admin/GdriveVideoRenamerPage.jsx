@@ -288,45 +288,73 @@ export default function GdriveVideoRenamerPage() {
     addLog('success', 'Đã cập nhật quy tắc đặt tên.')
   }
 
-  // Frame Extractor using HTML5 Video + Canvas
-  const extractFramesFromVideoFile = (file, frameCount = 4) => {
+  // Frame Extractor using HTML5 Video + Canvas (Extracts 10 frames across the video)
+  const extractFramesFromVideoFile = (file, frameCount = 10) => {
     return new Promise((resolve) => {
       const url = URL.createObjectURL(file)
       const video = document.createElement('video')
       video.src = url
       video.muted = true
       video.crossOrigin = 'anonymous'
+      video.playsInline = true
+      video.preload = 'auto'
 
       const frames = []
       const canvas = document.createElement('canvas')
       const ctx = canvas.getContext('2d')
 
+      const timer = setTimeout(() => {
+        URL.revokeObjectURL(url)
+        video.src = ''
+        resolve({ frames, duration: 0 })
+      }, 15000)
+
       video.onloadedmetadata = async () => {
         const duration = video.duration || 10
-        const timestamps = [0.15, 0.4, 0.65, 0.85].map((pct) => pct * duration)
+        canvas.width = 480
+        canvas.height = 270
 
-        for (let i = 0; i < Math.min(timestamps.length, frameCount); i++) {
+        const step = duration / (frameCount + 1)
+        const timestamps = []
+        for (let i = 1; i <= frameCount; i++) {
+          timestamps.push(Math.min(step * i, Math.max(0.5, duration - 0.5)))
+        }
+
+        for (let i = 0; i < timestamps.length; i++) {
           await new Promise((seekResolve) => {
-            video.currentTime = timestamps[i]
-            video.onseeked = () => {
-              canvas.width = Math.min(video.videoWidth || 640, 640)
-              canvas.height = (canvas.width / (video.videoWidth || 16)) * (video.videoHeight || 9)
-              ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
-              try {
-                const base64 = canvas.toDataURL('image/jpeg', 0.65)
-                frames.push(base64)
-              } catch (e) {}
+            let seekTimer = setTimeout(() => {
+              video.removeEventListener('seeked', onSeeked)
+              seekResolve()
+            }, 1800)
+
+            const onSeeked = () => {
+              clearTimeout(seekTimer)
+              video.removeEventListener('seeked', onSeeked)
+              if (ctx) {
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+                try {
+                  const base64 = canvas.toDataURL('image/jpeg', 0.7)
+                  frames.push(base64)
+                } catch (e) {}
+              }
               seekResolve()
             }
+
+            video.addEventListener('seeked', onSeeked)
+            video.currentTime = timestamps[i]
           })
         }
 
+        clearTimeout(timer)
         URL.revokeObjectURL(url)
+        video.src = ''
         resolve({ frames, duration: Math.round(duration) })
       }
 
       video.onerror = () => {
+        clearTimeout(timer)
         URL.revokeObjectURL(url)
+        video.src = ''
         resolve({ frames: [], duration: 0 })
       }
     })
@@ -337,7 +365,7 @@ export default function GdriveVideoRenamerPage() {
     if (!fileList || fileList.length === 0) return
 
     setIsScanning(true)
-    addLog('info', `Đang nạp ${fileList.length} tệp tin từ máy cục bộ...`)
+    addLog('info', `Đang trích xuất 10 khung hình cho ${fileList.length} video từ máy cục bộ...`)
 
     const videoFiles = Array.from(fileList).filter((f) => {
       const isVideoType = f.type.startsWith('video/')
@@ -360,7 +388,7 @@ export default function GdriveVideoRenamerPage() {
       let frames = []
       let durationStr = '00:00'
       try {
-        const { frames: extracted, duration } = await extractFramesFromVideoFile(file, 4)
+        const { frames: extracted, duration } = await extractFramesFromVideoFile(file, 10)
         frames = extracted
         const mins = Math.floor(duration / 60)
         const secs = duration % 60
@@ -387,8 +415,8 @@ export default function GdriveVideoRenamerPage() {
 
     setVideos((prev) => [...prev, ...newItems])
     setIsScanning(false)
-    showToast(`Đã thêm thành công ${newItems.length} video!`)
-    addLog('success', `Đã nạp ${newItems.length} video và trích xuất khung hình tự động.`)
+    showToast(`Đã nạp ${newItems.length} video và trích xuất 10 khung hình thành công!`)
+    addLog('success', `Đã nạp ${newItems.length} video và trích xuất 10 khung hình cho mỗi video.`)
   }
 
   // Google Drive Link / Folder Scan Handler
@@ -597,10 +625,8 @@ export default function GdriveVideoRenamerPage() {
 
     return `${indexStr}${userPrefix}${title}${dateStr}${extension}`
   }
-
-  // Helper: Extract clean descriptive title from original filename by stripping unwanted leading hashes/UUIDs/numbers/prefixes
   const extractCleanTitleFromFilename = (rawName, hint = '', index = 0) => {
-    if (!rawName) return getSmartThematicTitle(hint, index)
+    if (!rawName) return `video clip ${index + 1}`
 
     // 1. Remove file extension
     let clean = rawName.replace(/\.[0-9a-z]+$/i, '').trim()
@@ -611,13 +637,13 @@ export default function GdriveVideoRenamerPage() {
     // 3. Remove standard UUIDs (e.g. 184c455a-6319-43e6-b719-ccd19aa2eab9)
     clean = clean.replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, '').trim()
 
-    // 4. Remove space-separated hex UUID chunks (e.g. "184c455a 6319 43e6 b719 ccd19aa2eab9" or "bf288a47 d02f 4ba3 a31e 86e9d4c22e7d")
+    // 4. Remove space-separated hex UUID chunks
     clean = clean.replace(/\b[0-9a-f]{8}\s+[0-9a-f]{4}\s+[0-9a-f]{4}\s+[0-9a-f]{4}\s+[0-9a-f]{12}\b/gi, '').trim()
     clean = clean.replace(/^([0-9a-f]{4,}\s+){2,}[0-9a-f]{4,}\s*/gi, '').trim()
     clean = clean.replace(/^[0-9a-f]{6,}\s*/gi, '').trim()
 
-    // 5. Remove leading camera prefix (e.g. VID_20260912_084512_, DSC_9942_, PXL_...)
-    clean = clean.replace(/^(vid|dsc|pxl|img|mov|mp4|video|clip|rec|screen|file)[_0-9\-\s]*/gi, '').trim()
+    // 5. Remove leading camera prefix (e.g. VID_20260912_084512_, DSC_9942_, PXL_..., IMG_9845, DJI_...)
+    clean = clean.replace(/^(vid|dsc|pxl|img|mov|mp4|video|clip|rec|screen|file|dji)[_0-9\-\s]*/gi, '').trim()
 
     // 6. Replace underscores, hyphens, and multi-spaces with single space
     clean = clean.replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim()
@@ -632,66 +658,10 @@ export default function GdriveVideoRenamerPage() {
       return clean
     }
 
-    // Otherwise, use smart thematic title
-    return getSmartThematicTitle(hint, index)
+    return `video ghi hinh clip ${index + 1}`
   }
 
-  // Helper: Detect meaningless filenames (UUIDs, camera codes, hashes)
-  const isMeaninglessCode = (str) => {
-    if (!str) return true
-    const s = str.trim()
-    if (/[0-9a-f]{4,}-[0-9a-f]{4,}/i.test(s)) return true
-    const alphanumeric = s.replace(/[^a-z0-9]/gi, '')
-    if (/^[0-9a-f]+$/i.test(alphanumeric) && alphanumeric.length >= 8) return true
-    if (/^(vid|dsc|pxl|img|mov|mp4|video|clip|rec|screen|file)?[0-9_\-\s]+$/i.test(s)) return true
-    return false
-  }
-
-  // Helper: Get smart contextual theme based on hint and index
-  const getSmartThematicTitle = (hint, index) => {
-    const lowerHint = (hint || '').toLowerCase()
-    let pool = [
-      'ngắm bình minh săn mây bồng bềnh tại homestay sa pa',
-      'room tour bungalow view núi thung lũng tuyệt đẹp',
-      'thưởng thức ẩm thực lẩu cá hồi tây bắc cực ngon',
-      'check in hoàng hôn lãng mạn view fansipan homestay',
-      'khám phá bản làng sa pa và trải nghiệm văn hóa bản địa',
-      'tiện nghi phòng nghỉ cao cấp bồn tắm gỗ ngắm mây',
-      'hoạt động giao lưu lửa trại check in nghỉ dưỡng homestay',
-      'không gian nghỉ dưỡng yên bình giữa núi rừng tây bắc',
-      'thưởng thức tiệc nướng bbq ngoài trời ấm cúng',
-      'khoảnh khắc thảnh thơi nhâm nhi trà chiều ngắm mây trôi',
-    ]
-
-    if (lowerHint.includes('ẩm thực') || lowerHint.includes('lẩu') || lowerHint.includes('ăn')) {
-      pool = [
-        'thưởng thức lẩu cá hồi tây bắc tươi ngon chuẩn vị',
-        'đặc sản thịt trâu gác bếp sa pa thơm ngon đậm đà',
-        'tiệc nướng bbq ngoài trời ngắm cảnh núi rừng cực chill',
-        'ẩm thực vùng cao cơm lam gà nướng mắc khén hấp dẫn',
-        'thưởng thức cá tầm nướng than hoa đặc sản sa pa',
-      ]
-    } else if (lowerHint.includes('phòng') || lowerHint.includes('room') || lowerHint.includes('bungalow')) {
-      pool = [
-        'room tour bungalow view toàn cảnh thung lũng mây',
-        'khám phá phòng nghỉ phong cách vintage mộc mạc ấm cúng',
-        'tiện nghi phòng tắm bồn gỗ pơ mu ngắm đỉnh fansipan',
-        'không gian phòng đôi lãng mạn cho cặp đôi nghỉ dưỡng',
-        'chi tiết nội thất gỗ tự nhiên sang trọng tại homestay',
-      ]
-    } else if (lowerHint.includes('cầu lông') || lowerHint.includes('thể thao')) {
-      pool = [
-        'trận cầu lông giao lưu đơn nam kịch tính',
-        'pha đập cầu smash uy lực trên sân cầu lông',
-        'kỹ thuật phông cầu và bỏ nhỏ tinh tế',
-        'giao lưu đôi nam nữ cầu lông sôi nổi',
-      ]
-    }
-
-    return pool[index % pool.length]
-  }
-
-  // Analyze Single Video using Gemini AI
+  // Analyze Single Video using Gemini AI Vision (Observes 10 frames from video)
   const analyzeVideoWithGemini = async (video, index) => {
     const extMatch = video.originalName.match(/\.[0-9a-z]+$/i)
     const ext = extMatch ? extMatch[0] : '.mp4'
@@ -700,39 +670,64 @@ export default function GdriveVideoRenamerPage() {
     setVideos((prev) =>
       prev.map((v) => (v.id === video.id ? { ...v, status: 'analyzing', errorMsg: '' } : v))
     )
-    addLog('info', `[AI Gemini] Bắt đầu phân tích video: "${video.originalName}"...`)
+    addLog('info', `[AI Gemini Vision] Đang trích xuất ảnh và phân tích video: "${video.originalName}"...`)
 
     try {
       const apiKey = apiConfig.geminiApiKey || DEFAULT_API_CONFIG.geminiApiKey
       const model = apiConfig.geminiModel || 'gemini-2.5-flash'
       const cleanContentName = extractCleanTitleFromFilename(video.originalName, renameConfig.contextHint, index)
 
-      const contextInstruction = renameConfig.contextHint
-        ? `CHỦ ĐỀ GỢI Ý: "${renameConfig.contextHint}".`
-        : ''
+      // Ensure 10 frames are ready for analysis
+      let framesToUse = [...(video.frames || [])]
+      if (framesToUse.length === 0 && video.fileObject) {
+        try {
+          const { frames: extracted } = await extractFramesFromVideoFile(video.fileObject, 10)
+          framesToUse = extracted
+        } catch (e) {}
+      } else if (framesToUse.length === 0 && video.thumbnailLink) {
+        try {
+          const highRes = video.thumbnailLink.replace(/=s\d+/, '=s800')
+          const imgRes = await fetch(highRes)
+          if (imgRes.ok) {
+            const blob = await imgRes.blob()
+            const b64 = await new Promise((resolve) => {
+              const reader = new FileReader()
+              reader.onloadend = () => resolve(reader.result)
+              reader.readAsDataURL(blob)
+            })
+            if (b64) framesToUse.push(b64)
+          }
+        } catch (e) {}
+      }
 
       const languageDesc =
         renameConfig.language === 'vi'
-          ? 'Tiếng Việt có dấu tự nhiên, hấp dẫn, dễ hiểu'
+          ? 'Tiếng Việt có dấu tự nhiên, chuẩn xác, dễ hiểu'
           : renameConfig.language === 'vi_no_accent'
           ? 'Tiếng Việt KHÔNG DẤU'
           : 'English'
 
       const promptText = `
-Bạn là chuyên gia biên tập video và tối ưu tên tệp chuẩn SEO cho Homestay & Khách sạn Sa Pa.
-Nội dung video gốc: "${cleanContentName}".
-${contextInstruction}
-Ngôn ngữ: ${languageDesc}.
+Bạn là AI chuyên gia phân tích thị giác và biên tập video hàng đầu thế giới.
+Nhiệm vụ: QUAN SÁT KỸ TOÀN BỘ CÁC HÌNH ẢNH TRÍCH XUẤT TỪ VIDEO (${framesToUse.length} khung hình), nhận diện đúng diễn biến thực tế để đặt TÊN FILE MỚI chi tiết, chính xác 100% (khoảng 4 đến ${renameConfig.maxWords || 8} từ).
 
-Nhiệm vụ: Giữ đúng nội dung thực tế của video ("${cleanContentName}"), tinh chỉnh lại thành TÊN TỆP MỚI thật mượt mà, hấp dẫn và chuẩn SEO (khoảng 4 đến ${renameConfig.maxWords || 8} từ).
+HƯỚNG DẪN QUAN SÁT HÌNH ẢNH THỰC TẾ:
+- CẦU LÔNG / THỂ THAO (nếu thấy sân cầu lông, người cầm vợt, quả cầu lông, lưới, sân thảm xanh...):
+  -> Nhận diện chính xác: Đánh cầu lông đơn nam / đôi nam / đôi nam nữ / kỹ thuật đập cầu smash / kéo lưới / giao cầu / cứu cầu ngoạn mục / tập luyện...
+  -> Nêu rõ màu áo người chơi (ví dụ: áo trắng, áo xanh, áo đen...) và diễn biến nổi bật.
+  -> Ví dụ mẫu: "đánh cầu lông đơn nam áo trắng smash", "giao lưu đôi nam cầu lông set 1 gay cấn", "tập kỹ thuật đập cầu smash uy lực".
+- DU LỊCH / KHÁCH SẠN / HOMESTAY (nếu thấy phòng nghỉ, bối cảnh thiên nhiên, check-in...):
+  -> Mô tả đúng phòng hoặc cảnh quan thực tế xuất hiện trong ảnh.
+- ĐỜI SỐNG / VLOG / ẨM THỰC:
+  -> Mô tả đúng hành động hoặc món ăn xuất hiện trong ảnh.
 
 QUY TẮC BẮT BUỘC:
-1. TUYỆT ĐỐI KHÔNG đưa mã tệp rác, mã camera (DSC, VID, PXL) hay chuỗi UUID vào tên.
+1. 100% ĐẶT TÊN DỰA TRÊN HÌNH ẢNH THẬT SỰ CỦA VIDEO. TUYỆT ĐỐI KHÔNG TỰ BỊA RA CHỦ ĐỀ KHÔNG CÓ TRONG HÌNH ẢNH.
 2. Không thêm số thứ tự và không thêm đuôi file trong trường rawTitle (hệ thống sẽ tự ghép).
 3. Trả về DUY NHẤT JSON:
 {
-  "rawTitle": "tên chuẩn hóa dựa trên nội dung video",
-  "summary": "Mô tả 1-2 câu về nội dung thực tế của video"
+  "rawTitle": "tên mô tả đúng 100% hình ảnh thực tế",
+  "summary": "Mô tả chi tiết 2-3 câu về những gì diễn ra trong các khung hình video đã quan sát"
 }
 `
 
@@ -741,10 +736,10 @@ QUY TẮC BẮT BUỘC:
         const parts = [{ text: promptText }]
 
         // Include extracted base64 frames if available
-        if (video.frames && video.frames.length > 0) {
-          video.frames.forEach((frameBase64, idx) => {
+        if (framesToUse && framesToUse.length > 0) {
+          framesToUse.forEach((frameBase64, idx) => {
             const cleanBase64 = frameBase64.replace(/^data:image\/[a-z]+;base64,/, '')
-            parts.push({ text: `--- Khung hình ${idx + 1}/${video.frames.length} ---` })
+            parts.push({ text: `--- Khung hình ${idx + 1}/${framesToUse.length} (Tiến trình video) ---` })
             parts.push({
               inline_data: {
                 mime_type: 'image/jpeg',
@@ -808,6 +803,8 @@ QUY TẮC BẮT BUỘC:
               v.id === video.id
                 ? {
                     ...v,
+                    frames: framesToUse.length > 0 ? framesToUse : v.frames,
+                    thumbnailLink: framesToUse[0] || v.thumbnailLink,
                     status: 'proposed',
                     proposedName,
                     summary,
@@ -828,6 +825,8 @@ QUY TẮC BẮT BUỘC:
             v.id === video.id
               ? {
                   ...v,
+                  frames: framesToUse.length > 0 ? framesToUse : v.frames,
+                  thumbnailLink: framesToUse[0] || v.thumbnailLink,
                   status: 'proposed',
                   proposedName,
                   summary: `Video trải nghiệm ${rawTitle}, góc quay sắc nét.`,
