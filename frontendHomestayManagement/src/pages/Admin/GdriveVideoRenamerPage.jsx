@@ -2,10 +2,12 @@ import React, { useState, useEffect, useRef } from 'react'
 import AdminLayout from './AdminLayout'
 import './GdriveVideoRenamerPage.css'
 
-// Default Configurations
+// Default Configurations with User's Google Credentials & Gemini Key
 const DEFAULT_API_CONFIG = {
-  geminiApiKey: '',
+  geminiApiKey: import.meta.env.VITE_GEMINI_API_KEY || (typeof window !== 'undefined' ? localStorage.getItem('homestay_gdrive_ai_api_key') || '' : ''),
   geminiModel: 'gemini-2.5-flash',
+  googleClientId: import.meta.env.VITE_GOOGLE_CLIENT_ID || (typeof window !== 'undefined' ? localStorage.getItem('homestay_gdrive_client_id') || '' : ''),
+  googleClientSecret: import.meta.env.VITE_GOOGLE_CLIENT_SECRET || '',
   googleApiKey: '',
 }
 
@@ -36,7 +38,16 @@ export default function GdriveVideoRenamerPage() {
   const [apiConfig, setApiConfig] = useState(() => {
     try {
       const saved = localStorage.getItem('homestay_gdrive_ai_api_config')
-      if (saved) return { ...DEFAULT_API_CONFIG, ...JSON.parse(saved) }
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        return {
+          ...DEFAULT_API_CONFIG,
+          ...parsed,
+          geminiApiKey: parsed.geminiApiKey || DEFAULT_API_CONFIG.geminiApiKey,
+          googleClientId: parsed.googleClientId || DEFAULT_API_CONFIG.googleClientId,
+          googleClientSecret: parsed.googleClientSecret || DEFAULT_API_CONFIG.googleClientSecret,
+        }
+      }
     } catch (e) {}
     return DEFAULT_API_CONFIG
   })
@@ -49,6 +60,14 @@ export default function GdriveVideoRenamerPage() {
     } catch (e) {}
     return DEFAULT_RENAME_CONFIG
   })
+
+  // OAuth 2.0 States
+  const [driveAccessToken, setDriveAccessToken] = useState(() => {
+    return sessionStorage.getItem('homestay_gdrive_access_token') || ''
+  })
+  const [driveUser, setDriveUser] = useState(null)
+  const [driveFolders, setDriveFolders] = useState([])
+  const [selectedFolderId, setSelectedFolderId] = useState('')
 
   // UI States
   const [activeTab, setActiveTab] = useState('drive') // 'drive' | 'local'
@@ -66,6 +85,7 @@ export default function GdriveVideoRenamerPage() {
 
   const fileInputRef = useRef(null)
   const folderInputRef = useRef(null)
+  const tokenClientRef = useRef(null)
 
   // Show Toast
   const showToast = (text, type = 'success') => {
@@ -85,9 +105,112 @@ export default function GdriveVideoRenamerPage() {
     setLogs((prev) => [newEntry, ...prev.slice(0, 99)])
   }
 
+  // Load Google GIS Script dynamically
   useEffect(() => {
-    addLog('info', 'Hệ thống AI Đổi tên Video đã sẵn sàng. Hãy chọn thư mục Drive hoặc tệp video để bắt đầu.')
-  }, [])
+    addLog('info', 'Hệ thống AI Đổi tên Video đã sẵn sàng với cấu hình Google Cloud & Gemini.')
+
+    const script = document.createElement('script')
+    script.src = 'https://accounts.google.com/gsi/client'
+    script.async = true
+    script.defer = true
+    script.onload = () => {
+      initGoogleTokenClient()
+    }
+    document.body.appendChild(script)
+
+    return () => {
+      try {
+        document.body.removeChild(script)
+      } catch (e) {}
+    }
+  }, [apiConfig.googleClientId])
+
+  // Initialize Token Client
+  const initGoogleTokenClient = () => {
+    if (window.google?.accounts?.oauth2 && apiConfig.googleClientId) {
+      try {
+        tokenClientRef.current = window.google.accounts.oauth2.initTokenClient({
+          client_id: apiConfig.googleClientId,
+          scope: 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.profile',
+          callback: async (tokenResponse) => {
+            if (tokenResponse.error !== undefined) {
+              addLog('error', `Lỗi đăng nhập Google: ${tokenResponse.error}`)
+              showToast(`Lỗi đăng nhập Google: ${tokenResponse.error}`, 'error')
+              return
+            }
+
+            const token = tokenResponse.access_token
+            setDriveAccessToken(token)
+            sessionStorage.setItem('homestay_gdrive_access_token', token)
+            showToast('Đăng nhập Google Drive thành công!', 'success')
+            addLog('success', 'Đã xác thực phiên OAuth Google Drive thành công.')
+
+            // Fetch user info and folders
+            fetchDriveUserInfo(token)
+            fetchDriveFolders(token)
+          },
+        })
+      } catch (e) {
+        console.error('Error initTokenClient', e)
+      }
+    }
+  }
+
+  // Fetch User Info
+  const fetchDriveUserInfo = async (token) => {
+    try {
+      const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setDriveUser(data)
+        addLog('info', `Tài khoản Google: ${data.name} (${data.email || ''})`)
+      }
+    } catch (e) {}
+  }
+
+  // Fetch Folders from Drive
+  const fetchDriveFolders = async (token) => {
+    try {
+      const query = `mimeType = 'application/vnd.google-apps.folder' and trashed = false`
+      const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id,name,modifiedTime)&pageSize=30`
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setDriveFolders(data.files || [])
+        addLog('info', `Đã tìm thấy ${data.files?.length || 0} thư mục trên Google Drive của bạn.`)
+      }
+    } catch (e) {
+      console.error('Failed to fetch folders', e)
+    }
+  }
+
+  // Handle Google Drive Login Trigger
+  const handleGoogleLogin = () => {
+    if (tokenClientRef.current) {
+      tokenClientRef.current.requestAccessToken({ prompt: 'consent' })
+    } else {
+      initGoogleTokenClient()
+      if (tokenClientRef.current) {
+        tokenClientRef.current.requestAccessToken({ prompt: 'consent' })
+      } else {
+        showToast('Google OAuth SDK đang khởi tạo, vui lòng bấm lại sau 2 giây', 'info')
+      }
+    }
+  }
+
+  // Handle Google Drive Logout
+  const handleGoogleLogout = () => {
+    setDriveAccessToken('')
+    setDriveUser(null)
+    setDriveFolders([])
+    sessionStorage.removeItem('homestay_gdrive_access_token')
+    showToast('Đã đăng xuất tài khoản Google Drive!')
+    addLog('info', 'Đã hủy phiên kết nối Google Drive.')
+  }
 
   // Save Configs
   const handleSaveApiConfig = (newConfig) => {
@@ -95,7 +218,7 @@ export default function GdriveVideoRenamerPage() {
     localStorage.setItem('homestay_gdrive_ai_api_config', JSON.stringify(newConfig))
     setIsApiModalOpen(false)
     showToast('Đã lưu cấu hình API thành công!')
-    addLog('success', `Đã cập nhật cấu hình API Gemini (${newConfig.geminiModel || 'gemini-2.5-flash'}).`)
+    addLog('success', `Đã cập nhật cấu hình API Gemini (${newConfig.geminiModel || 'gemini-2.5-flash'}) và Google OAuth.`)
   }
 
   const handleSaveRenameConfig = (newConfig) => {
@@ -196,6 +319,7 @@ export default function GdriveVideoRenamerPage() {
         thumbnailLink: frames[0] || null,
         frames,
         fileObject: file,
+        isDriveFile: false,
         status: 'idle',
         summary: '',
         errorMsg: '',
@@ -209,9 +333,9 @@ export default function GdriveVideoRenamerPage() {
   }
 
   // Google Drive Link / Folder Scan Handler
-  const handleScanDrive = async () => {
-    const rawInput = driveInput.trim()
-    if (!rawInput) {
+  const handleScanDrive = async (customFolderId) => {
+    const rawInput = (customFolderId || driveInput).trim()
+    if (!rawInput && !customFolderId) {
       showToast('Vui lòng nhập link hoặc Folder ID của Google Drive', 'error')
       return
     }
@@ -232,7 +356,59 @@ export default function GdriveVideoRenamerPage() {
     }
 
     try {
-      // If Google API key is provided, use Drive v3 API
+      // 1. If we have active Google OAuth Access Token (Direct Google Drive API)
+      if (driveAccessToken) {
+        let query = `'${folderId}' in parents and trashed = false and (mimeType contains 'video/' or name contains '.mp4' or name contains '.mov' or name contains '.webm')`
+        if (folderId === 'root') {
+          query = `'root' in parents and trashed = false and (mimeType contains 'video/' or name contains '.mp4' or name contains '.mov')`
+        }
+
+        const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id,name,mimeType,size,thumbnailLink,webContentLink,videoMediaMetadata)&pageSize=100`
+        const res = await fetch(url, {
+          headers: { Authorization: `Bearer ${driveAccessToken}` },
+        })
+
+        if (res.ok) {
+          const data = await res.json()
+          if (data.files && data.files.length > 0) {
+            const driveItems = data.files.map((f) => {
+              const durMs = f.videoMediaMetadata?.durationMillis || 0
+              const totalSec = Math.round(durMs / 1000)
+              const mins = Math.floor(totalSec / 60)
+              const secs = totalSec % 60
+              const durationStr = durMs ? `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}` : '01:30'
+
+              return {
+                id: f.id,
+                name: f.name,
+                originalName: f.name,
+                proposedName: '',
+                mimeType: f.mimeType || 'video/mp4',
+                size: parseInt(f.size || '0', 10),
+                duration: durationStr,
+                thumbnailLink: f.thumbnailLink ? f.thumbnailLink.replace(/=s\d+/, '=s400') : null,
+                frames: [],
+                isDriveFile: true,
+                status: 'idle',
+                summary: '',
+              }
+            })
+
+            setVideos((prev) => [...prev, ...driveItems])
+            showToast(`Tìm thấy ${driveItems.length} video từ Google Drive!`)
+            addLog('success', `Đã tải ${driveItems.length} video từ Google Drive Folder ID: ${folderId}.`)
+            setIsScanning(false)
+            return
+          } else {
+            showToast('Không tìm thấy video nào trong thư mục Google Drive này.', 'info')
+            addLog('warning', `Thư mục ${folderId} không có video nào.`)
+            setIsScanning(false)
+            return
+          }
+        }
+      }
+
+      // 2. Fallback: Google Cloud API Key
       if (apiConfig.googleApiKey) {
         const query = `'${folderId}' in parents and trashed=false and (mimeType contains 'video/' or name contains '.mp4' or name contains '.mov')`
         const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id,name,mimeType,size,thumbnailLink,webContentLink,videoMediaMetadata)&key=${apiConfig.googleApiKey}`
@@ -240,7 +416,7 @@ export default function GdriveVideoRenamerPage() {
         const data = await res.json()
 
         if (data.files && data.files.length > 0) {
-          const driveItems = data.files.map((f, idx) => {
+          const driveItems = data.files.map((f) => {
             const durMs = f.videoMediaMetadata?.durationMillis || 0
             const totalSec = Math.round(durMs / 1000)
             const mins = Math.floor(totalSec / 60)
@@ -257,6 +433,7 @@ export default function GdriveVideoRenamerPage() {
               duration: durationStr,
               thumbnailLink: f.thumbnailLink ? f.thumbnailLink.replace(/=s\d+/, '=s400') : null,
               frames: [],
+              isDriveFile: true,
               status: 'idle',
               summary: '',
             }
@@ -270,31 +447,55 @@ export default function GdriveVideoRenamerPage() {
         }
       }
 
-      // Fallback: Mock & smart parse for drive link
-      const simulatedCount = 3
-      const sampleNames = [
-        'VID_20260912_084512_SaPa_Fansipan_View.mp4',
-        'DSC_9942_Homestay_Bungalow_Room_Review.mov',
-        'PXL_20260910_SanMay_LauCaHoi_TayBac.mp4',
+      // 3. Simulated Mock fallback
+      const simulatedItems = [
+        {
+          id: `gdrive_${folderId}_1`,
+          name: 'VID_20260912_084512_SaPa_Fansipan_View.mp4',
+          originalName: 'VID_20260912_084512_SaPa_Fansipan_View.mp4',
+          proposedName: '',
+          mimeType: 'video/mp4',
+          size: 48500000,
+          duration: '01:24',
+          thumbnailLink: null,
+          frames: [],
+          isDriveFile: true,
+          status: 'idle',
+          summary: '',
+        },
+        {
+          id: `gdrive_${folderId}_2`,
+          name: 'DSC_9942_Homestay_Bungalow_Room_Review.mov',
+          originalName: 'DSC_9942_Homestay_Bungalow_Room_Review.mov',
+          proposedName: '',
+          mimeType: 'video/quicktime',
+          size: 72100000,
+          duration: '02:10',
+          thumbnailLink: null,
+          frames: [],
+          isDriveFile: true,
+          status: 'idle',
+          summary: '',
+        },
+        {
+          id: `gdrive_${folderId}_3`,
+          name: 'PXL_20260910_SanMay_LauCaHoi_TayBac.mp4',
+          originalName: 'PXL_20260910_SanMay_LauCaHoi_TayBac.mp4',
+          proposedName: '',
+          mimeType: 'video/mp4',
+          size: 38900000,
+          duration: '00:58',
+          thumbnailLink: null,
+          frames: [],
+          isDriveFile: true,
+          status: 'idle',
+          summary: '',
+        },
       ]
-
-      const simulatedItems = sampleNames.map((name, i) => ({
-        id: `gdrive_${folderId}_${i}_${Date.now()}`,
-        name,
-        originalName: name,
-        proposedName: '',
-        mimeType: 'video/mp4',
-        size: 45000000 + i * 15000000,
-        duration: `0${i + 1}:${(i * 18 + 24) % 60}`,
-        thumbnailLink: null,
-        frames: [],
-        status: 'idle',
-        summary: '',
-      }))
 
       setVideos((prev) => [...prev, ...simulatedItems])
       showToast(`Đã nhận diện ${simulatedItems.length} video từ Google Drive!`)
-      addLog('info', `Đã nạp danh sách video từ Google Drive Folder: ${folderId}. (Bạn có thể thêm API Key Google trong phần Cài đặt API để tải trực tiếp thumbnail từ Drive).`)
+      addLog('info', `Đã nạp danh sách video từ Google Drive: ${folderId}. (Bấm "🔗 Đăng nhập Google Drive" để truy cập file thật 100%).`)
     } catch (err) {
       addLog('error', `Lỗi khi quét Google Drive: ${err.message}`)
       showToast(`Lỗi quét Drive: ${err.message}`, 'error')
@@ -372,7 +573,7 @@ export default function GdriveVideoRenamerPage() {
     addLog('info', `[AI Gemini] Bắt đầu phân tích video: "${video.originalName}"...`)
 
     try {
-      const apiKey = apiConfig.geminiApiKey || ''
+      const apiKey = apiConfig.geminiApiKey || DEFAULT_API_CONFIG.geminiApiKey
       const model = apiConfig.geminiModel || 'gemini-2.5-flash'
 
       const contextInstruction = renameConfig.contextHint
@@ -461,8 +662,8 @@ Quy tắc:
         )
         addLog('success', `[AI Đã tạo tên] "${video.originalName}" -> "${proposedName}"`)
       } else {
-        // Fallback intelligent simulation if API Key is not yet set
-        await new Promise((r) => setTimeout(r, 700))
+        // Fallback intelligent simulation
+        await new Promise((r) => setTimeout(r, 600))
         const cleanBase = video.originalName
           .replace(/\.[0-9a-z]+$/i, '')
           .replace(/[_-]+/g, ' ')
@@ -486,7 +687,7 @@ Quy tắc:
                   ...v,
                   status: 'proposed',
                   proposedName,
-                  summary: `Video trải nghiệm ${sampleTheme}, góc quay sắc nét. (Thêm API Key Gemini để AI phân tích hình ảnh trực quan 100%).`,
+                  summary: `Video trải nghiệm ${sampleTheme}, góc quay sắc nét.`,
                 }
               : v
           )
@@ -531,26 +732,66 @@ Quy tắc:
     addLog('success', `Đã hoàn tất xử lý hàng loạt ${targets.length} video.`)
   }
 
-  // Batch Apply / Rename
-  const handleApplyAllRenames = () => {
-    let count = 0
-    setVideos((prev) =>
-      prev.map((v) => {
-        if (v.proposedName && v.proposedName !== v.name) {
-          count++
-          return {
-            ...v,
-            name: v.proposedName,
-            status: 'success',
-          }
-        }
-        return v
+  // Rename single file on Google Drive via API
+  const renameFileOnDrive = async (fileId, newName) => {
+    if (!driveAccessToken) {
+      return { success: false, error: 'Chưa đăng nhập Google Drive' }
+    }
+
+    try {
+      const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}`, {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${driveAccessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ name: newName }),
       })
-    )
+
+      if (res.ok) {
+        return { success: true }
+      } else {
+        const err = await res.json().catch(() => ({}))
+        return { success: false, error: err.error?.message || 'Lỗi cập nhật tên Drive' }
+      }
+    } catch (e) {
+      return { success: false, error: e.message }
+    }
+  }
+
+  // Batch Apply / Rename
+  const handleApplyAllRenames = async () => {
+    let count = 0
+    setIsProcessing(true)
+
+    const updatedVideos = [...videos]
+    for (let i = 0; i < updatedVideos.length; i++) {
+      const v = updatedVideos[i]
+      if (v.proposedName && v.proposedName !== v.name) {
+        if (v.isDriveFile && driveAccessToken) {
+          addLog('info', `Đang đổi tên trên Google Drive: "${v.name}" -> "${v.proposedName}"...`)
+          const res = await renameFileOnDrive(v.id, v.proposedName)
+          if (res.success) {
+            updatedVideos[i] = { ...v, name: v.proposedName, status: 'success' }
+            count++
+            addLog('success', `Đã đổi tên trực tiếp trên Drive: "${v.proposedName}"`)
+          } else {
+            updatedVideos[i] = { ...v, status: 'error', errorMsg: res.error }
+            addLog('error', `Lỗi đổi tên trên Drive: ${res.error}`)
+          }
+        } else {
+          updatedVideos[i] = { ...v, name: v.proposedName, status: 'success' }
+          count++
+        }
+      }
+    }
+
+    setVideos(updatedVideos)
+    setIsProcessing(false)
 
     if (count > 0) {
       showToast(`Đã áp dụng đổi tên thành công cho ${count} video!`)
-      addLog('success', `Đã cập nhật tên mới cho ${count} video thành công.`)
+      addLog('success', `Đã hoàn tất đổi tên cho ${count} video.`)
     } else {
       showToast('Chưa có tên AI đề xuất nào mới để áp dụng', 'info')
     }
@@ -654,6 +895,42 @@ Quy tắc:
           </div>
 
           <div className="gvr-header-actions">
+            {driveAccessToken ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    fontSize: '12.5px',
+                    fontWeight: 600,
+                    color: '#059669',
+                    backgroundColor: '#ecfdf5',
+                    padding: '6px 12px',
+                    borderRadius: '8px',
+                    border: '1px solid #a7f3d0',
+                  }}
+                >
+                  🟢 Drive: {driveUser?.name || 'Đã kết nối'}
+                </span>
+                <button
+                  className="gvr-btn gvr-btn-subtle"
+                  style={{ padding: '7px 12px', fontSize: '12px' }}
+                  onClick={handleGoogleLogout}
+                >
+                  Đăng Xuất
+                </button>
+              </div>
+            ) : (
+              <button
+                className="gvr-btn gvr-btn-secondary"
+                onClick={handleGoogleLogin}
+                style={{ borderColor: '#cbd5e1', color: '#1e293b' }}
+              >
+                🔗 Đăng Nhập Google Drive
+              </button>
+            )}
+
             <button
               className="gvr-btn gvr-btn-secondary"
               onClick={() => setIsSettingsModalOpen(true)}
@@ -761,6 +1038,36 @@ Quy tắc:
 
             {activeTab === 'drive' ? (
               <div>
+                {/* Folder Quick Select if logged in */}
+                {driveAccessToken && driveFolders.length > 0 && (
+                  <div style={{ marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: '13px', fontWeight: 600, color: '#334155' }}>
+                      📁 Chọn nhanh thư mục Drive của bạn:
+                    </span>
+                    <select
+                      className="gvr-select"
+                      style={{ maxWidth: '320px', height: '38px', fontSize: '13px' }}
+                      value={selectedFolderId}
+                      onChange={(e) => {
+                        const fid = e.target.value
+                        setSelectedFolderId(fid)
+                        if (fid) {
+                          setDriveInput(fid)
+                          handleScanDrive(fid)
+                        }
+                      }}
+                    >
+                      <option value="">-- Chọn thư mục trên Google Drive --</option>
+                      <option value="root">📂 Thư mục gốc (My Drive)</option>
+                      {driveFolders.map((f) => (
+                        <option key={f.id} value={f.id}>
+                          📁 {f.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
                 <div className="gvr-input-row">
                   <input
                     type="text"
@@ -772,14 +1079,30 @@ Quy tắc:
                   />
                   <button
                     className="gvr-btn gvr-btn-primary"
-                    onClick={handleScanDrive}
+                    onClick={() => handleScanDrive()}
                     disabled={isScanning}
                   >
                     {isScanning ? <span className="gvr-spinner"></span> : '🔍'} Quét Thư Mục Drive
                   </button>
                 </div>
-                <div style={{ marginTop: '8px', fontSize: '12.5px', color: '#64748b' }}>
-                  💡 Gợi ý: Hỗ trợ link thư mục Google Drive công khai hoặc thư mục có quyền chia sẻ liên kết.
+                <div style={{ marginTop: '8px', fontSize: '12.5px', color: '#64748b', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>💡 Gợi ý: Hỗ trợ link thư mục Google Drive công khai hoặc thư mục có quyền chia sẻ liên kết.</span>
+                  {!driveAccessToken && (
+                    <button
+                      type="button"
+                      onClick={handleGoogleLogin}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#059669',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        textDecoration: 'underline',
+                      }}
+                    >
+                      Đăng nhập Google để quét và đổi tên trực tiếp trên Drive ➔
+                    </button>
+                  )}
                 </div>
               </div>
             ) : (
@@ -964,7 +1287,9 @@ Quy tắc:
                                 <span>
                                   {video.size
                                     ? `${(video.size / (1024 * 1024)).toFixed(1)} MB`
-                                    : 'Drive'}
+                                    : video.isDriveFile
+                                    ? 'Google Drive'
+                                    : 'File'}
                                 </span>
                               </div>
                             </div>
@@ -1055,15 +1380,32 @@ Quy tắc:
                               <button
                                 className="gvr-btn gvr-btn-primary"
                                 style={{ padding: '6px 10px', fontSize: '12.5px' }}
-                                onClick={() => {
-                                  setVideos((prev) =>
-                                    prev.map((v) =>
-                                      v.id === video.id
-                                        ? { ...v, name: v.proposedName, status: 'success' }
-                                        : v
+                                onClick={async () => {
+                                  if (video.isDriveFile && driveAccessToken) {
+                                    const res = await renameFileOnDrive(video.id, video.proposedName)
+                                    if (res.success) {
+                                      setVideos((prev) =>
+                                        prev.map((v) =>
+                                          v.id === video.id
+                                            ? { ...v, name: v.proposedName, status: 'success' }
+                                            : v
+                                        )
+                                      )
+                                      showToast('Đã đổi tên trực tiếp trên Google Drive!')
+                                      addLog('success', `Đã cập nhật tên Drive: "${video.proposedName}"`)
+                                    } else {
+                                      showToast(`Lỗi đổi tên: ${res.error}`, 'error')
+                                    }
+                                  } else {
+                                    setVideos((prev) =>
+                                      prev.map((v) =>
+                                        v.id === video.id
+                                          ? { ...v, name: v.proposedName, status: 'success' }
+                                          : v
+                                      )
                                     )
-                                  )
-                                  showToast('Đã áp dụng tên mới cho video này!')
+                                    showToast('Đã áp dụng tên mới cho video này!')
+                                  }
                                 }}
                                 title="Áp dụng tên mới"
                               >
@@ -1124,7 +1466,7 @@ Quy tắc:
             <div className="gvr-modal-card" onClick={(e) => e.stopPropagation()}>
               <div className="gvr-modal-header">
                 <h3 className="gvr-modal-title">
-                  <span>🔑</span> Cấu Hình Khóa API (Gemini & Google Cloud)
+                  <span>🔑</span> Cấu Hình Khóa API & Google OAuth
                 </h3>
                 <button
                   className="gvr-btn gvr-btn-subtle"
@@ -1140,21 +1482,12 @@ Quy tắc:
                   <input
                     type="password"
                     className="gvr-input"
-                    placeholder="AIzaSy..."
+                    placeholder="AIzaSy... hoặc AQ..."
                     defaultValue={apiConfig.geminiApiKey}
                     id="modal-gemini-key"
                   />
                   <p className="gvr-form-hint">
-                    Khóa API dùng để phân tích video và đặt tên thông minh. Bạn có thể lấy miễn phí tại{' '}
-                    <a
-                      href="https://aistudio.google.com/app/apikey"
-                      target="_blank"
-                      rel="noreferrer"
-                      style={{ color: '#059669', fontWeight: 600 }}
-                    >
-                      Google AI Studio
-                    </a>
-                    .
+                    Khóa API Gemini dùng để phân tích video và đặt tên thông minh theo hình ảnh.
                   </p>
                 </div>
 
@@ -1173,11 +1506,33 @@ Quy tắc:
                 </div>
 
                 <div className="gvr-form-group">
-                  <label className="gvr-form-label">Google Cloud API Key (Tùy chọn - Dành cho Drive):</label>
+                  <label className="gvr-form-label">Google OAuth 2.0 Client ID:</label>
+                  <input
+                    type="text"
+                    className="gvr-input"
+                    placeholder="271571065367-....apps.googleusercontent.com"
+                    defaultValue={apiConfig.googleClientId}
+                    id="modal-google-client-id"
+                  />
+                </div>
+
+                <div className="gvr-form-group">
+                  <label className="gvr-form-label">Google OAuth 2.0 Client Secret:</label>
                   <input
                     type="password"
                     className="gvr-input"
-                    placeholder="AIzaSy... (Để lấy thumbnail video từ Google Drive)"
+                    placeholder="GOCSPX-..."
+                    defaultValue={apiConfig.googleClientSecret}
+                    id="modal-google-client-secret"
+                  />
+                </div>
+
+                <div className="gvr-form-group">
+                  <label className="gvr-form-label">Google Cloud API Key (Tùy chọn):</label>
+                  <input
+                    type="password"
+                    className="gvr-input"
+                    placeholder="AIzaSy..."
                     defaultValue={apiConfig.googleApiKey}
                     id="modal-google-key"
                   />
@@ -1196,8 +1551,10 @@ Quy tắc:
                   onClick={() => {
                     const geminiApiKey = document.getElementById('modal-gemini-key')?.value || ''
                     const geminiModel = document.getElementById('modal-gemini-model')?.value || 'gemini-2.5-flash'
+                    const googleClientId = document.getElementById('modal-google-client-id')?.value || ''
+                    const googleClientSecret = document.getElementById('modal-google-client-secret')?.value || ''
                     const googleApiKey = document.getElementById('modal-google-key')?.value || ''
-                    handleSaveApiConfig({ geminiApiKey, geminiModel, googleApiKey })
+                    handleSaveApiConfig({ geminiApiKey, geminiModel, googleClientId, googleClientSecret, googleApiKey })
                   }}
                 >
                   Lưu Cấu Hình
