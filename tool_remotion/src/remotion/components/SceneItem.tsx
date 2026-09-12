@@ -315,11 +315,24 @@ export const SceneItem: React.FC<SceneItemProps> = ({
           {showHeaderBadge &&
             scene.headerBadge &&
             !scene.headerBadge.toUpperCase().includes('CLIP') &&
-            !scene.headerBadge.startsWith('📍') && (
-              <div className="absolute top-12 left-0 right-0 z-20 flex justify-center pointer-events-none">
-                <HeaderBadge text={scene.headerBadge} variant="cyan" />
-              </div>
-            )}
+            !scene.headerBadge.startsWith('📍') && (() => {
+              const badgePos = scene.elementPositions?.['header_badge'];
+              const bTop = badgePos ? `${badgePos.y}%` : '48px';
+              const bLeft = badgePos ? `${badgePos.x}%` : '50%';
+              const bTransform = badgePos ? `translate(-50%, -50%) scale(${badgePos.scale ?? 1})` : 'translateX(-50%)';
+              return (
+                <div
+                  className="absolute z-20 flex justify-center pointer-events-none"
+                  style={{
+                    top: bTop,
+                    left: bLeft,
+                    transform: bTransform
+                  }}
+                >
+                  <HeaderBadge text={scene.headerBadge} variant="cyan" />
+                </div>
+              );
+            })()}
         </div>
       )}
 

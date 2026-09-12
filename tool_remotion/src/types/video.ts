@@ -52,6 +52,7 @@ export interface SubtitleStyle {
   strokeWidth: number;
   backgroundColor?: string;
   positionY: number; // percentage from top (e.g. 75)
+  positionX?: number; // percentage from left (e.g. 50)
   animationStyle: 'pop' | 'glow' | 'bounce' | 'karaoke' | 'box' | 'single_word';
   displayMode?: 'phrase_karaoke' | 'single_word' | 'single_word_spotlight'; // 'phrase_karaoke': Cụm từ | 'single_word': Chạy nối tiếp từ trái qua phải | 'single_word_spotlight': 1 chữ nhảy trái qua phải
   maxWordsPerLine: number;

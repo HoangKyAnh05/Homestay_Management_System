@@ -399,36 +399,164 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
                     </div>
                   </div>
 
-                  {/* Sliders: Kích thước & Trục Y */}
+                  {/* Sliders: Kích thước, Trục Y & Trục X */}
                   <div className="space-y-3 pt-1">
+                    {/* Kích thước chữ */}
                     <div className="space-y-1">
                       <div className="flex justify-between text-[11px] text-slate-600 font-medium">
                         <span>Kích thước chữ:</span>
                         <span className="text-emerald-700 font-mono font-bold">{project.subtitleStyle.fontSize}px</span>
                       </div>
-                      <input
-                        type="range"
-                        min="24"
-                        max="72"
-                        value={project.subtitleStyle.fontSize}
-                        onChange={(e) => updateSubtitleStyle({ fontSize: parseInt(e.target.value) })}
-                        className="w-full accent-emerald-700 h-1.5 bg-slate-200 rounded-lg cursor-pointer"
-                      />
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => updateSubtitleStyle({ fontSize: Math.max(20, (project.subtitleStyle.fontSize || 40) - 2) })}
+                          className="px-2 py-0.5 rounded bg-slate-200 hover:bg-slate-300 text-xs font-bold text-slate-700"
+                          title="Giảm kích thước chữ"
+                        >
+                          A-
+                        </button>
+                        <input
+                          type="range"
+                          min="20"
+                          max="72"
+                          value={project.subtitleStyle.fontSize}
+                          onChange={(e) => updateSubtitleStyle({ fontSize: parseInt(e.target.value) })}
+                          className="flex-1 accent-emerald-700 h-1.5 bg-slate-200 rounded-lg cursor-pointer"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => updateSubtitleStyle({ fontSize: Math.min(80, (project.subtitleStyle.fontSize || 40) + 2) })}
+                          className="px-2 py-0.5 rounded bg-slate-200 hover:bg-slate-300 text-xs font-bold text-slate-700"
+                          title="Tăng kích thước chữ"
+                        >
+                          A+
+                        </button>
+                      </div>
                     </div>
 
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-[11px] text-slate-600 font-medium">
-                        <span>Vị trí độ cao phụ đề (Trục Y):</span>
+                    {/* Vị trí Lên / Xuống theo trục Y */}
+                    <div className="space-y-1.5 p-2 bg-slate-100 rounded-xl border border-slate-200">
+                      <div className="flex justify-between items-center text-[11px] font-medium text-slate-700">
+                        <span className="flex items-center gap-1">
+                          <span>↕️</span>
+                          <span>Vị trí Lên / Xuống (Trục Y):</span>
+                        </span>
                         <span className="text-emerald-700 font-mono font-bold">{project.subtitleStyle.positionY}%</span>
                       </div>
-                      <input
-                        type="range"
-                        min="20"
-                        max="90"
-                        value={project.subtitleStyle.positionY}
-                        onChange={(e) => updateSubtitleStyle({ positionY: parseInt(e.target.value) })}
-                        className="w-full accent-emerald-700 h-1.5 bg-slate-200 rounded-lg cursor-pointer"
-                      />
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => updateSubtitleStyle({ positionY: Math.max(5, (project.subtitleStyle.positionY || 75) - 3) })}
+                          className="px-2 py-1 rounded bg-white hover:bg-slate-50 border border-slate-300 text-[11px] font-bold text-slate-700 shadow-xs active:scale-95"
+                          title="Dịch chữ LÊN TRÊN"
+                        >
+                          ⬆️ Lên
+                        </button>
+                        <input
+                          type="range"
+                          min="5"
+                          max="95"
+                          value={project.subtitleStyle.positionY}
+                          onChange={(e) => updateSubtitleStyle({ positionY: parseInt(e.target.value) })}
+                          className="flex-1 accent-emerald-700 h-1.5 bg-slate-200 rounded-lg cursor-pointer"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => updateSubtitleStyle({ positionY: Math.min(95, (project.subtitleStyle.positionY || 75) + 3) })}
+                          className="px-2 py-1 rounded bg-white hover:bg-slate-50 border border-slate-300 text-[11px] font-bold text-slate-700 shadow-xs active:scale-95"
+                          title="Dịch chữ XUỐNG DƯỚI"
+                        >
+                          ⬇️ Xuống
+                        </button>
+                      </div>
+                      {/* Nút đặt nhanh độ cao */}
+                      <div className="flex items-center gap-1.5 pt-1">
+                        <span className="text-[10px] text-slate-500">Mốc nhanh:</span>
+                        <button
+                          type="button"
+                          onClick={() => updateSubtitleStyle({ positionY: 20 })}
+                          className="px-1.5 py-0.5 rounded text-[10px] bg-white hover:bg-slate-50 border border-slate-200 text-slate-600 font-medium"
+                        >
+                          🔝 Trên (20%)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => updateSubtitleStyle({ positionY: 50 })}
+                          className="px-1.5 py-0.5 rounded text-[10px] bg-white hover:bg-slate-50 border border-slate-200 text-slate-600 font-medium"
+                        >
+                          🎯 Giữa (50%)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => updateSubtitleStyle({ positionY: 75 })}
+                          className="px-1.5 py-0.5 rounded text-[10px] bg-white hover:bg-slate-50 border border-slate-200 text-slate-600 font-medium"
+                        >
+                          🔻 Đáy (75%)
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Vị trí Trái / Phải theo trục X */}
+                    <div className="space-y-1.5 p-2 bg-slate-100 rounded-xl border border-slate-200">
+                      <div className="flex justify-between items-center text-[11px] font-medium text-slate-700">
+                        <span className="flex items-center gap-1">
+                          <span>↔️</span>
+                          <span>Vị trí Trái / Phải (Trục X):</span>
+                        </span>
+                        <span className="text-emerald-700 font-mono font-bold">{project.subtitleStyle.positionX ?? 50}%</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => updateSubtitleStyle({ positionX: Math.max(5, (project.subtitleStyle.positionX ?? 50) - 3) })}
+                          className="px-2 py-1 rounded bg-white hover:bg-slate-50 border border-slate-300 text-[11px] font-bold text-slate-700 shadow-xs active:scale-95"
+                          title="Dịch chữ SANG TRÁI"
+                        >
+                          ⬅️ Trái
+                        </button>
+                        <input
+                          type="range"
+                          min="5"
+                          max="95"
+                          value={project.subtitleStyle.positionX ?? 50}
+                          onChange={(e) => updateSubtitleStyle({ positionX: parseInt(e.target.value) })}
+                          className="flex-1 accent-emerald-700 h-1.5 bg-slate-200 rounded-lg cursor-pointer"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => updateSubtitleStyle({ positionX: Math.min(95, (project.subtitleStyle.positionX ?? 50) + 3) })}
+                          className="px-2 py-1 rounded bg-white hover:bg-slate-50 border border-slate-300 text-[11px] font-bold text-slate-700 shadow-xs active:scale-95"
+                          title="Dịch chữ SANG PHẢI"
+                        >
+                          ➡️ Phải
+                        </button>
+                      </div>
+                      {/* Nút đặt nhanh trục X */}
+                      <div className="flex items-center gap-1.5 pt-1">
+                        <span className="text-[10px] text-slate-500">Mốc nhanh:</span>
+                        <button
+                          type="button"
+                          onClick={() => updateSubtitleStyle({ positionX: 25 })}
+                          className="px-1.5 py-0.5 rounded text-[10px] bg-white hover:bg-slate-50 border border-slate-200 text-slate-600 font-medium"
+                        >
+                          ⬅️ Trái (25%)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => updateSubtitleStyle({ positionX: 50 })}
+                          className="px-1.5 py-0.5 rounded text-[10px] bg-white hover:bg-slate-50 border border-slate-200 text-slate-600 font-medium"
+                        >
+                          🎯 Chính Giữa (50%)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => updateSubtitleStyle({ positionX: 75 })}
+                          className="px-1.5 py-0.5 rounded text-[10px] bg-white hover:bg-slate-50 border border-slate-200 text-slate-600 font-medium"
+                        >
+                          ➡️ Phải (75%)
+                        </button>
+                      </div>
                     </div>
                   </div>
 

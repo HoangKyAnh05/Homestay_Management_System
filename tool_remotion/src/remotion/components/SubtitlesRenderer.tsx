@@ -105,8 +105,8 @@ export const SubtitlesRenderer: React.FC<SubtitlesRendererProps> = ({
   const AUDIO_LEAD_OFFSET = 0.16;
   const effectiveTime = currentTime + AUDIO_LEAD_OFFSET;
 
-  const finalTop = customPos ? `${customPos.y}%` : `${subtitleStyle.positionY}%`;
-  const finalLeft = customPos ? `${customPos.x}%` : '50%';
+  const finalTop = customPos ? `${customPos.y}%` : `${subtitleStyle.positionY ?? 75}%`;
+  const finalLeft = customPos ? `${customPos.x}%` : `${subtitleStyle.positionX ?? 50}%`;
   const finalTransform = customPos
     ? `translate(-50%, -50%) scale(${customPos.scale ?? 1}) rotate(${customPos.rotate ?? 0}deg)`
     : 'translate(-50%, -50%)';

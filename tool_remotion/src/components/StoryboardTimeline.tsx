@@ -11,6 +11,7 @@ import { visualStylesService, CustomVisualItem } from '../services/visualStylesS
 import { SOUND_EFFECTS_LIST, playSoundEffectById } from '../services/soundEffectsService';
 import { TIKTOK_VIDEO_EFFECTS } from '../remotion/tiktok/tiktokEffects';
 import { TIKTOK_FILTERS } from '../remotion/tiktok/tiktokFilters';
+import { getTikTokStickerById } from '../remotion/tiktok/tiktokStickers';
 import { SparkleBadge, WorkflowMode } from './SparkleBadge';
 import {
   Film,
@@ -1920,6 +1921,268 @@ export const StoryboardTimeline: React.FC<StoryboardTimelineProps> = ({
                           <span>🎬</span>
                           <span>TikTok / CapCut Studio</span>
                         </button>
+
+                        {/* 6. ĐIỀU CHỈNH VỊ TRÍ X, Y & KÍCH THƯỚC TRỰC TIẾP (Không cần mở tab khác) */}
+                        <div className="pt-2 border-t border-slate-200 space-y-2">
+                          <div className="flex items-center justify-between text-[11px] font-bold text-slate-800">
+                            <span className="flex items-center gap-1">
+                              <span>🕹️</span>
+                              <span>Vị Trí Chữ & Icon Phân Cảnh (Trục X, Y):</span>
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                updateScene(scene.id, {
+                                  elementPositions: {}
+                                });
+                              }}
+                              className="text-[10px] text-slate-500 hover:text-slate-800 underline font-normal"
+                              title="Đặt lại vị trí mặc định"
+                            >
+                              Đặt lại
+                            </button>
+                          </div>
+
+                          {/* A. Điều chỉnh vị trí Chữ / Mẫu chữ / Phụ đề */}
+                          {(() => {
+                            const textKey = scene.tiktokTextTemplate
+                              ? 'text_template'
+                              : scene.tiktokTextEffect || (scene.textEffectsMix && scene.textEffectsMix.length > 0)
+                              ? 'text_effect'
+                              : 'subtitles';
+                            const textPos = scene.elementPositions?.[textKey] || {
+                              x: 50,
+                              y: scene.tiktokTextTemplate ? 25 : project.subtitleStyle.positionY || 75,
+                              scale: 1
+                            };
+
+                            const updateTextPos = (partial: Partial<import('../types/video').ElementPosition>) => {
+                              const newPos = { ...textPos, ...partial };
+                              updateScene(scene.id, {
+                                elementPositions: {
+                                  ...(scene.elementPositions || {}),
+                                  [textKey]: newPos
+                                }
+                              });
+                            };
+
+                            return (
+                              <div className="p-2 bg-slate-50 rounded-lg border border-slate-200 space-y-1.5">
+                                <div className="flex justify-between items-center text-[10.5px] font-semibold text-slate-700">
+                                  <span>📝 Chữ chính ({textKey === 'text_template' ? 'Mẫu Chữ' : textKey === 'text_effect' ? 'Chữ FX' : 'Phụ đề'}):</span>
+                                  <span className="font-mono text-emerald-700 font-bold">X:{textPos.x}% | Y:{textPos.y}%</span>
+                                </div>
+
+                                {/* Điều khiển Trục Y (Lên / Xuống) */}
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-[10px] text-slate-500 w-12 shrink-0">Trục Y:</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => updateTextPos({ y: Math.max(5, textPos.y - 4) })}
+                                    className="px-2 py-0.5 rounded bg-white hover:bg-slate-100 border border-slate-300 text-[10px] font-bold text-slate-700 shadow-2xs active:scale-95"
+                                    title="Dịch chữ LÊN TRÊN"
+                                  >
+                                    ⬆️ Lên
+                                  </button>
+                                  <input
+                                    type="range"
+                                    min="5"
+                                    max="95"
+                                    value={textPos.y}
+                                    onChange={(e) => updateTextPos({ y: parseInt(e.target.value) })}
+                                    className="flex-1 accent-emerald-700 h-1 bg-slate-200 rounded cursor-pointer"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => updateTextPos({ y: Math.min(95, textPos.y + 4) })}
+                                    className="px-2 py-0.5 rounded bg-white hover:bg-slate-100 border border-slate-300 text-[10px] font-bold text-slate-700 shadow-2xs active:scale-95"
+                                    title="Dịch chữ XUỐNG DƯỚI"
+                                  >
+                                    ⬇️ Xuống
+                                  </button>
+                                </div>
+
+                                {/* Điều khiển Trục X (Trái / Phải) */}
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-[10px] text-slate-500 w-12 shrink-0">Trục X:</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => updateTextPos({ x: Math.max(5, textPos.x - 4) })}
+                                    className="px-2 py-0.5 rounded bg-white hover:bg-slate-100 border border-slate-300 text-[10px] font-bold text-slate-700 shadow-2xs active:scale-95"
+                                    title="Dịch chữ SANG TRÁI"
+                                  >
+                                    ⬅️ Trái
+                                  </button>
+                                  <input
+                                    type="range"
+                                    min="5"
+                                    max="95"
+                                    value={textPos.x}
+                                    onChange={(e) => updateTextPos({ x: parseInt(e.target.value) })}
+                                    className="flex-1 accent-emerald-700 h-1 bg-slate-200 rounded cursor-pointer"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => updateTextPos({ x: Math.min(95, textPos.x + 4) })}
+                                    className="px-2 py-0.5 rounded bg-white hover:bg-slate-100 border border-slate-300 text-[10px] font-bold text-slate-700 shadow-2xs active:scale-95"
+                                    title="Dịch chữ SANG PHẢI"
+                                  >
+                                    ➡️ Phải
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })()}
+
+                          {/* B. Điều chỉnh vị trí Huy hiệu Tiêu đề (Header Badge) nếu có */}
+                          {scene.headerBadge && (
+                            (() => {
+                              const badgePos = scene.elementPositions?.['header_badge'] || { x: 50, y: 10, scale: 1 };
+                              const updateBadgePos = (partial: Partial<import('../types/video').ElementPosition>) => {
+                                updateScene(scene.id, {
+                                  elementPositions: {
+                                    ...(scene.elementPositions || {}),
+                                    header_badge: { ...badgePos, ...partial }
+                                  }
+                                });
+                              };
+
+                              return (
+                                <div className="p-2 bg-slate-50 rounded-lg border border-slate-200 space-y-1.5">
+                                  <div className="flex justify-between items-center text-[10.5px] font-semibold text-slate-700">
+                                    <span>🏷️ Tiêu đề ({scene.headerBadge}):</span>
+                                    <span className="font-mono text-cyan-700 font-bold">X:{badgePos.x}% | Y:{badgePos.y}%</span>
+                                  </div>
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-[10px] text-slate-500 w-12 shrink-0">Trục Y:</span>
+                                    <button
+                                      type="button"
+                                      onClick={() => updateBadgePos({ y: Math.max(2, badgePos.y - 3) })}
+                                      className="px-2 py-0.5 rounded bg-white hover:bg-slate-100 border border-slate-300 text-[10px] font-bold text-slate-700"
+                                    >
+                                      ⬆️
+                                    </button>
+                                    <input
+                                      type="range"
+                                      min="2"
+                                      max="80"
+                                      value={badgePos.y}
+                                      onChange={(e) => updateBadgePos({ y: parseInt(e.target.value) })}
+                                      className="flex-1 accent-cyan-600 h-1 bg-slate-200 rounded cursor-pointer"
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => updateBadgePos({ y: Math.min(80, badgePos.y + 3) })}
+                                      className="px-2 py-0.5 rounded bg-white hover:bg-slate-100 border border-slate-300 text-[10px] font-bold text-slate-700"
+                                    >
+                                      ⬇️
+                                    </button>
+                                  </div>
+                                </div>
+                              );
+                            })()
+                          )}
+
+                          {/* C. Điều chỉnh vị trí từng Sticker / Icon */}
+                          {scene.tiktokStickers && scene.tiktokStickers.length > 0 && (
+                            <div className="space-y-1.5">
+                              {scene.tiktokStickers.map((stkId, i) => {
+                                const stk = getTikTokStickerById(stkId);
+                                const stkKey = `stk_${stkId}`;
+                                const defaultPositions = [
+                                  { x: 80, y: 18 },
+                                  { x: 20, y: 82 },
+                                  { x: 20, y: 35 },
+                                  { x: 80, y: 78 }
+                                ];
+                                const def = defaultPositions[i % defaultPositions.length];
+                                const currentPos = scene.elementPositions?.[stkKey] || scene.elementPositions?.[stkId] || { ...def, scale: 1 };
+
+                                const updateStkPos = (partial: Partial<import('../types/video').ElementPosition>) => {
+                                  updateScene(scene.id, {
+                                    elementPositions: {
+                                      ...(scene.elementPositions || {}),
+                                      [stkKey]: { ...currentPos, ...partial }
+                                    }
+                                  });
+                                };
+
+                                return (
+                                  <div key={stkId} className="p-2 bg-amber-50/70 rounded-lg border border-amber-200 space-y-1">
+                                    <div className="flex justify-between items-center text-[10.5px] font-bold text-amber-900">
+                                      <span className="flex items-center gap-1">
+                                        <span>🎭</span>
+                                        <span>{stk ? stk.name : `Sticker ${stkId}`}</span>
+                                      </span>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          updateScene(scene.id, {
+                                            tiktokStickers: scene.tiktokStickers?.filter((id) => id !== stkId)
+                                          });
+                                        }}
+                                        className="text-[10px] text-rose-600 hover:text-rose-800 font-bold"
+                                        title="Xóa icon này"
+                                      >
+                                        ✕ Xóa
+                                      </button>
+                                    </div>
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="text-[10px] text-slate-500 w-12 shrink-0">Trục Y:</span>
+                                      <button
+                                        type="button"
+                                        onClick={() => updateStkPos({ y: Math.max(5, currentPos.y - 4) })}
+                                        className="px-1.5 py-0.5 rounded bg-white hover:bg-amber-100 border border-amber-300 text-[10px] font-bold text-amber-900"
+                                      >
+                                        ⬆️
+                                      </button>
+                                      <input
+                                        type="range"
+                                        min="5"
+                                        max="95"
+                                        value={currentPos.y}
+                                        onChange={(e) => updateStkPos({ y: parseInt(e.target.value) })}
+                                        className="flex-1 accent-amber-600 h-1 bg-amber-200 rounded cursor-pointer"
+                                      />
+                                      <button
+                                        type="button"
+                                        onClick={() => updateStkPos({ y: Math.min(95, currentPos.y + 4) })}
+                                        className="px-1.5 py-0.5 rounded bg-white hover:bg-amber-100 border border-amber-300 text-[10px] font-bold text-amber-900"
+                                      >
+                                        ⬇️
+                                      </button>
+                                    </div>
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="text-[10px] text-slate-500 w-12 shrink-0">Trục X:</span>
+                                      <button
+                                        type="button"
+                                        onClick={() => updateStkPos({ x: Math.max(5, currentPos.x - 4) })}
+                                        className="px-1.5 py-0.5 rounded bg-white hover:bg-amber-100 border border-amber-300 text-[10px] font-bold text-amber-900"
+                                      >
+                                        ⬅️
+                                      </button>
+                                      <input
+                                        type="range"
+                                        min="5"
+                                        max="95"
+                                        value={currentPos.x}
+                                        onChange={(e) => updateStkPos({ x: parseInt(e.target.value) })}
+                                        className="flex-1 accent-amber-600 h-1 bg-amber-200 rounded cursor-pointer"
+                                      />
+                                      <button
+                                        type="button"
+                                        onClick={() => updateStkPos({ x: Math.min(95, currentPos.x + 4) })}
+                                        className="px-1.5 py-0.5 rounded bg-white hover:bg-amber-100 border border-amber-300 text-[10px] font-bold text-amber-900"
+                                      >
+                                        ➡️
+                                      </button>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     )}
                   </div>
