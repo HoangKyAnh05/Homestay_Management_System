@@ -10,6 +10,9 @@ public record AdminRoomTypeResponse(
         String depositPolicyName,
         String description,
         int roomCount,
-        String videoUrl
+        String videoUrl,
+        java.math.BigDecimal weekdayPrice,
+        java.math.BigDecimal weekendPrice,
+        Long pricePolicyId
 ) {
 }

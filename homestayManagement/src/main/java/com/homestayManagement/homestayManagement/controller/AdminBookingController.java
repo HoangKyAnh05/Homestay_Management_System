@@ -258,6 +258,24 @@ public class AdminBookingController {
         return adminBookingService.confirmRefund(bookingId, authentication != null ? authentication.getName() : "Admin");
     }
 
+    @GetMapping("/details/{bookingDetailId}/available-change-rooms")
+    public com.homestayManagement.homestayManagement.dto.response.AdminAvailableChangeRoomsResponse getAvailableRoomsForChange(
+            @PathVariable Long bookingDetailId,
+            @RequestParam(value = "newCheckOutTarget", required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+            LocalDateTime newCheckOutTarget
+    ) {
+        return adminBookingService.getAvailableRoomsForChange(bookingDetailId, newCheckOutTarget);
+    }
+
+    @PostMapping("/details/{bookingDetailId}/change-room")
+    public AdminBookingDetailResponse changeRoom(
+            @PathVariable Long bookingDetailId,
+            @Valid @RequestBody com.homestayManagement.homestayManagement.dto.request.AdminChangeRoomRequest request
+    ) {
+        return adminBookingService.changeRoom(bookingDetailId, request);
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String, String>> handleIllegal(IllegalArgumentException e) {
         return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));

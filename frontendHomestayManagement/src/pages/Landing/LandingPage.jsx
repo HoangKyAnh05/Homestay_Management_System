@@ -4,6 +4,7 @@ import { LandingApp, VILLAS_DATA } from './LandingController';
 import { resolveImageUrl } from '../../utils/imageUrl';
 import FloatingContactWidget from '../../components/FloatingContact/FloatingContactWidget';
 import ArticleReviewModal from './ArticleReviewModal';
+import RoomScheduleCalendarModal from '../../components/RoomScheduleCalendar/RoomScheduleCalendarModal';
 import { SCENERY_ARTICLES } from './sceneryArticles';
 
 const API_BASE_URL = (import.meta.env.VITE_API_URL || '') + '/api';
@@ -47,6 +48,7 @@ function LandingPage() {
   const dbRoomsRef = useRef([]);
   const [loadingRooms, setLoadingRooms] = useState(true);
   const [selectedArticle, setSelectedArticle] = useState(null);
+  const [scheduleModalVilla, setScheduleModalVilla] = useState(null);
   const [liveArticles, setLiveArticles] = useState([]);
 
   const today = new Date().toISOString().split('T')[0];
@@ -237,15 +239,19 @@ function LandingPage() {
         const found = dbRoomsRef.current.find((r) => String(r.id || r.roomTypeId) === String(villaOrId));
         if (found) {
           const img = resolveImageUrl(found.primaryImageUrl) || getFallbackRoomImage(found.name, found.id);
+          const allImgs = Array.isArray(found.imageUrls) && found.imageUrls.length > 0
+            ? found.imageUrls.map(resolveImageUrl)
+            : [img, img, img];
           villa = {
             id: found.id || found.roomTypeId,
             name: found.name || `Căn ${found.id}`,
-            tagline: 'Phòng NghI Dưỡng Sang Trọng',
+            tagline: 'Phòng Nghỉ Dưỡng Sang Trọng',
             price: getRoomPrice(found),
             area: `${found.area || 85}m²`,
             guests: `${found.maxAdults || 2} Người lớn, ${found.maxChildren || 0} Trẻ em`,
             view: 'View Rừng Thông & Thung Lũng Mây',
-            images: [img, img, img],
+            images: allImgs,
+            videoUrl: found.videoUrl,
             description: found.description || 'Không gian nghỉ dưỡng tuyệt hảo giữa thiên nhiên Sa Pa trong lành.',
             features: ['Điều hòa 2 chiều', 'Wifi Starlink tốc độ cao', 'Nước khoáng & Trà thảo mộc', 'Bữa sáng bản địa'],
           };
@@ -257,14 +263,24 @@ function LandingPage() {
       const contentEl = document.getElementById('villa-modal-content');
       const overlay = document.getElementById('villa-modal-overlay');
 
-      contentEl.innerHTML = `
-        <div class="modal-gallery" style="display: grid; grid-template-columns: 2fr 1fr; gap: 0.8rem; margin-bottom: 1.8rem; border-radius: 16px; overflow: hidden; height: 320px;">
-          <img src="${villa.images[0]}" alt="${villa.name}" style="width: 100%; height: 100%; object-fit: cover;" />
-          <div style="display: flex; flex-direction: column; gap: 0.8rem; height: 100%;">
-            <img src="${villa.images[1] || villa.images[0]}" alt="${villa.name}" style="width: 100%; height: 50%; object-fit: cover;" />
-            <img src="${villa.images[2] || villa.images[0]}" alt="${villa.name}" style="width: 100%; height: 50%; object-fit: cover;" />
+      const galleryHtml = villa.videoUrl
+        ? `
+          <div class="modal-gallery" style="margin-bottom: 1.8rem; border-radius: 16px; overflow: hidden; background: #000;">
+            <video src="${resolveImageUrl(villa.videoUrl)}" controls autoplay playsinline loop style="width: 100%; max-height: 340px; object-fit: cover; border-radius: 16px; display: block;"></video>
           </div>
-        </div>
+        `
+        : `
+          <div class="modal-gallery" style="display: grid; grid-template-columns: 2fr 1fr; gap: 0.8rem; margin-bottom: 1.8rem; border-radius: 16px; overflow: hidden; height: 320px;">
+            <img src="${villa.images[0]}" alt="${villa.name}" style="width: 100%; height: 100%; object-fit: cover;" />
+            <div style="display: flex; flex-direction: column; gap: 0.8rem; height: 100%;">
+              <img src="${villa.images[1] || villa.images[0]}" alt="${villa.name}" style="width: 100%; height: 50%; object-fit: cover;" />
+              <img src="${villa.images[2] || villa.images[0]}" alt="${villa.name}" style="width: 100%; height: 50%; object-fit: cover;" />
+            </div>
+          </div>
+        `;
+
+      contentEl.innerHTML = `
+        ${galleryHtml}
         <div style="display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
           <h2 style="font-family: var(--font-serif-display); font-size: 1.8rem;">${villa.name}</h2>
           <span style="font-size: 1.4rem; font-weight: 700; color: #f5cf9e;">${formatVND(villa.price)} <small style="font-size: 0.82rem; color: var(--text-muted); font-weight: normal;">/ 2 ngày 1 đêm</small></span>
@@ -318,17 +334,23 @@ function LandingPage() {
     ? dbRooms.slice(0, 6).map((room, idx) => {
         const fallback = defaultVillas[idx % defaultVillas.length];
         const img = resolveImageUrl(room.primaryImageUrl) || getFallbackRoomImage(room.name, room.id);
+        const resolvedImages = Array.isArray(room.imageUrls) && room.imageUrls.length > 0
+          ? room.imageUrls.map(resolveImageUrl)
+          : [img, fallback.images[1], fallback.images[2]];
         return {
           id: room.id || room.roomTypeId,
           dbId: room.id || room.roomTypeId,
           name: room.name || fallback.name,
           tagline: room.roomTypeName || fallback.tagline,
           price: getRoomPrice(room),
+          weekdayPrice: room.weekdayPrice != null ? Number(room.weekdayPrice) : null,
+          weekendPrice: room.weekendPrice != null ? Number(room.weekendPrice) : null,
           area: `${room.area || (85 + idx * 25)}m²`,
           guests: `${room.maxAdults || 2} - ${(room.maxAdults || 2) + (room.maxChildren || 2)} Khách`,
           view: fallback.view || 'View Thung Lũng Mây',
           image: img,
-          images: [img, fallback.images[1], fallback.images[2]],
+          images: resolvedImages,
+          videoUrl: room.videoUrl,
           description: room.description || fallback.description,
           features: fallback.features || ['Onsen Khoáng Nóng', 'Wifi Starlink', 'Loa Marshall', 'Bữa Sáng Bản Địa'],
           badge: idx === 0 ? 'Phổ Biến Nhất' : idx === 1 ? 'View Đẹp Nhất' : 'Không Gian Yên Tĩnh',
@@ -422,7 +444,7 @@ function LandingPage() {
               </span>
               <span className="sound-label">Suối Rừng</span>
               <div className="sound-wave-visualizer" id="sound-bars">
-                <span></span><span></span><span></span><span></span>
+                
               </div>
             </button>
 
@@ -658,7 +680,11 @@ function LandingPage() {
                       <img src={villa.image} alt={villa.name} className="villa-img" loading="lazy" />
                       <div className="villa-price-tag">
                         <span className="price">{formatVND(villa.price)}</span>
-                        <span className="unit">/ 2 ngày 1 đêm</span>
+                        <span className="unit">
+                          {villa.weekdayPrice && villa.weekendPrice
+                            ? ` (T2–T6: ${formatVND(villa.weekdayPrice)} · T7–CN: ${formatVND(villa.weekendPrice)})`
+                            : '/ 2 ngày 1 đêm'}
+                        </span>
                       </div>
                     </div>
                     <div className="villa-body">
@@ -679,6 +705,16 @@ function LandingPage() {
                       <div className="villa-footer">
                         <button className="detail-btn" onClick={() => window.openVillaModal(villa)}>
                           Chi Tiết Căn <i data-lucide="arrow-right"></i>
+                        </button>
+                        <button
+                          type="button"
+                          className="detail-btn"
+                          style={{ borderColor: 'rgba(56, 189, 248, 0.4)', color: '#38bdf8', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                          onClick={() => setScheduleModalVilla(villa)}
+                          title="Xem lịch đặt phòng"
+                        >
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                          Lịch Đặt
                         </button>
                         <button
                           className="liquid-btn book-villa-btn"
@@ -750,46 +786,46 @@ function LandingPage() {
               <div>
                 <div className="section-badge">
                   <i data-lucide="compass"></i>
-                  <span>HÀNH TRÌNH CHỮA LÀNH TÂM HỒN</span>
+                  <span>TRẢI NGHIỆM ĐẬM CHẤT SA PA</span>
                 </div>
                 <h2 className="section-title">Những Trải Nghiệm Độc Bản</h2>
               </div>
               <p className="section-subtitle">
-                Mỗi khoảnh khắc tại Komorebi được thiết kế để kết nối bạn sâu sắc hơn với thiên nhiên và văn hóa bản địa vùng cao.
+                Mỗi khoảnh khắc tại Lá Đỏ Homestay được thiết kế để kết nối bạn sâu sắc hơn với thiên nhiên đại ngàn và văn hóa bản địa Sa Pa.
               </p>
             </div>
 
             <div className="exp-grid">
               <div className="exp-card" data-tilt>
                 <div className="exp-img-wrap">
-                  <img src="/landing/images/thien-nhien-kham-pha/images.jpg" alt="Tắm Khoáng Onsen" loading="lazy" />
+                  <img src="/landing/images/sapa_real/tam_la_thuoc_dao_do.jpg" alt="Tắm Thảo Dược Người Dao Đỏ" loading="lazy" />
                   <span className="exp-tag">Chữa Lành Cơ Thể</span>
                 </div>
                 <div className="exp-content">
                   <h3>Tắm Khoáng Thảo Dược Người Dao Đỏ</h3>
-                  <p>Bài thuốc ngâm thảo dược gia truyền với hơn 30 vị thuốc rừng quý hiếm thu hái từ đại ngàn, giúp đả thông kinh mạch và xua tan mệt mỏi.</p>
+                  <p>Bài thuốc ngâm thảo dược gia truyền với hơn 30 vị lá rừng Hoàng Liên Sơn thu hái tự nhiên, giúp đả thông kinh mạch và phục hồi năng lượng.</p>
                 </div>
               </div>
 
               <div className="exp-card" data-tilt>
                 <div className="exp-img-wrap">
-                  <img src="/landing/images/an-uong-thu-gian/du-lich-am-thuc-1.jpg" alt="Thưởng Trà" loading="lazy" />
-                  <span className="exp-tag">Văn Hóa Bản Địa</span>
+                  <img src="/landing/images/sapa_real/la_do_cafe_balcony.jpg" alt="Cafe Săn Mây Lá Đỏ" loading="lazy" />
+                  <span className="exp-tag">Săn Mây & Thư Giãn</span>
                 </div>
                 <div className="exp-content">
-                  <h3>Trà Đạo Shan Tuyết Trên Đỉnh Mây</h3>
-                  <p>Nghi thức pha trà cổ truyền cùng chuyên gia bản địa, thưởng thức những búp trà phủ tuyết trắng xóa từ thân cây cổ thụ hàng trăm năm tuổi.</p>
+                  <h3>Cafe Săn Mây & Tàu Hỏa Mường Hoa</h3>
+                  <p>Thưởng thức tách trà Shan Tuyết cổ thụ hoặc ly cà phê trứng béo ngậy bên ban công gỗ ngắm trọn đoàn tàu đỏ lướt qua thung lũng.</p>
                 </div>
               </div>
 
               <div className="exp-card" data-tilt>
                 <div className="exp-img-wrap">
-                  <img src="/landing/images/van-hoa-trai-nghiem/du-lich-trai-nghiem-6.jpg" alt="Trekking Rừng Trúc" loading="lazy" />
-                  <span className="exp-tag">Khám Phá Thiên Nhiên</span>
+                  <img src="/landing/images/sapa_real/am_thuc_tay_bac.jpg" alt="Ẩm Thực Tây Bắc" loading="lazy" />
+                  <span className="exp-tag">Ẩm Thực Bản Địa</span>
                 </div>
                 <div className="exp-content">
-                  <h3>Trekking Rừng Trúc & Cơm Lam Rừng</h3>
-                  <p>Hành trình đi bộ băng qua thung lũng hoa tam giác mạch, khám phá rừng trúc bí ẩn và thưởng thức bữa trưa đậm đà phong vị núi rừng.</p>
+                  <h3>Lẩu Cá Tầm & Tiệc Nướng BBQ Thung Lũng</h3>
+                  <p>Quây quần bên nồi lẩu cá tầm, cá hồi tươi Sa Pa và tiệc nướng BBQ thơm lừng thịt bản địa ướp hạt dổi mắc khén giữa tiết trời se lạnh.</p>
                 </div>
               </div>
             </div>
@@ -1217,6 +1253,18 @@ function LandingPage() {
             setSelectedArticle(null);
             window.goToBookingPage();
           }}
+        />
+      )}
+
+      {/* Room Schedule Calendar Modal */}
+      {scheduleModalVilla && (
+        <RoomScheduleCalendarModal
+          room={{
+            roomTypeId: scheduleModalVilla.dbId || scheduleModalVilla.id,
+            roomTypeName: scheduleModalVilla.name,
+            id: scheduleModalVilla.dbId || scheduleModalVilla.id,
+          }}
+          onClose={() => setScheduleModalVilla(null)}
         />
       )}
 

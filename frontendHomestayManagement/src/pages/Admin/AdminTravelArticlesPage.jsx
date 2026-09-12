@@ -321,7 +321,7 @@ function ArticleEditModal({ article, isNew, onClose, onSave, saving }) {
 
             {/* Mẹo trải nghiệm */}
             <div className="ata-field full">
-              <label>💡 Mẹo trải nghiệm & Lưu ý hữu ích</label>
+              <label> Mẹo trải nghiệm & Lưu ý hữu ích</label>
               <input
                 type="text"
                 name="tipText"
@@ -588,7 +588,7 @@ function AdminTravelArticlesPage() {
                       className="ata-act-preview"
                       onClick={() => setPreviewArticle(formatForPreview(item))}
                     >
-                      👁 Xem trước bài báo
+                       Xem trước bài báo
                     </button>
                     <button
                       type="button"
@@ -598,7 +598,7 @@ function AdminTravelArticlesPage() {
                         setIsNewModal(false)
                       }}
                     >
-                      ✏ Sửa
+                       Sửa
                     </button>
                     <button
                       type="button"
@@ -612,7 +612,7 @@ function AdminTravelArticlesPage() {
                       className="ata-act-delete"
                       onClick={() => handleDelete(item.id, item.title)}
                     >
-                      🗑 Xóa
+                       Xóa
                     </button>
                   </div>
                 </div>

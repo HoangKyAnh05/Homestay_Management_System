@@ -110,7 +110,7 @@ function dateKeyToDateTimeLocal(dateKey, hour, minute = 0) {
 
 function defaultCheckInValue() {
   const date = new Date()
-  date.setHours(Math.max(13, date.getHours() + 1), 0, 0, 0)
+  date.setHours(14, 0, 0, 0)
   return toDateTimeLocalValue(date)
 }
 
@@ -123,7 +123,7 @@ function defaultCheckOutValue(checkInValue) {
 
 function nowDateTimeLocalMin() {
   const now = new Date()
-  now.setSeconds(0, 0)
+  now.setHours(0, 0, 0, 0)
   return toDateTimeLocalValue(now)
 }
 
@@ -179,7 +179,7 @@ function PublicHeader() {
       <a className="home-logo" href="/home">Home Stays</a>
       <nav className="home-nav" aria-label="Điều hướng chính">
         <a href="/home">Trang chủ</a>
-        <a href="/landing" className="home-nav-landing-link" title="Khám phá không gian 3D Komorebi Sanctuary">✨ Komorebi 3D</a>
+        <a href="/landing" className="home-nav-landing-link" title="Khám phá không gian 3D Lá Đỏ Sanctuary">🍁 Lá Đỏ 3D</a>
         <a href="/rooms" className="home-nav-active">Phòng</a>
         <a href="/wishlist">Yêu thích</a>
         <a href="/amenities">Tiện nghi</a>
@@ -289,15 +289,16 @@ function BookingModal({ room, initialBookingData, onClose, onCreated }) {
   const [sePayPayment, setSePayPayment] = useState(null)
   const [paymentLoading, setPaymentLoading] = useState(false)
 
-  const startPayment = () => {
+  const startPayment = (targetSummary = null) => {
+    const activeSummary = targetSummary || paymentSummary
+    if (!activeSummary) return
     const token = getStoredToken()
-    if (!paymentSummary) return
     const guestEmail = form.email.trim()
     setPaymentLoading(true)
     setError('')
     fetch(token
-      ? `${API_BASE_URL}/payments/sepay/bookings/${paymentSummary.bookingId}`
-      : `${API_BASE_URL}/payments/sepay/public/bookings/${paymentSummary.bookingId}`, {
+      ? `${API_BASE_URL}/payments/sepay/bookings/${activeSummary.bookingId}`
+      : `${API_BASE_URL}/payments/sepay/public/bookings/${activeSummary.bookingId}`, {
       method: 'POST',
       headers: {
         ...(token ? { Authorization: `Bearer ${token}` } : { 'Content-Type': 'application/json' }),
@@ -492,11 +493,8 @@ function BookingModal({ room, initialBookingData, onClose, onCreated }) {
         return data
       })
       .then((data) => {
-        if (data.requiresDeposit) {
-          setPaymentSummary(data)
-        } else {
-          onCreated(data)
-        }
+        setPaymentSummary(data)
+        startPayment(data)
       })
       .catch((err) => setError(err.message))
       .finally(() => setSubmitting(false))
@@ -549,8 +547,8 @@ function BookingModal({ room, initialBookingData, onClose, onCreated }) {
 
           <div className="public-booking-actions">
             {error && <span className="public-booking-error">{error}</span>}
-            <button type="button" onClick={() => onCreated(paymentSummary)}>Để sau</button>
-            <button type="button" disabled={paymentLoading} onClick={startPayment}>
+            <button type="button" onClick={() => onCreated({ ...paymentSummary, isSavedForLater: true })}>Để sau</button>
+            <button type="button" disabled={paymentLoading} onClick={() => startPayment(paymentSummary)}>
               {paymentLoading ? 'Đang tạo QR...' : 'Thanh toán'}
             </button>
           </div>
@@ -564,7 +562,7 @@ function BookingModal({ room, initialBookingData, onClose, onCreated }) {
               : `${API_BASE_URL}/payments/sepay/public/bookings/${paymentSummary.bookingId}/status?email=${encodeURIComponent(form.email.trim())}`}
             headers={getStoredToken() ? { Authorization: `Bearer ${getStoredToken()}` } : {}}
             successStatus="CONFIRMED"
-            onSuccess={(booking) => onCreated({ ...paymentSummary, ...booking, requiresDeposit: false })}
+            onSuccess={(booking) => onCreated({ ...paymentSummary, ...booking, requiresDeposit: false, isPaid: true })}
             onClose={() => setSePayPayment(null)}
           />
         )}
@@ -612,9 +610,11 @@ function BookingModal({ room, initialBookingData, onClose, onCreated }) {
                   value={form.checkInTarget}
                   min={nowDateTimeLocalMin()}
                   onChange={(val) => {
-                    const now = new Date()
-                    now.setSeconds(0, 0)
-                    if (val && new Date(val) < now) return
+                    if (!val) return
+                    const targetDateKey = val.split('T')[0]
+                    const today = new Date()
+                    const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+                    if (targetDateKey < todayKey) return
                     setForm({ ...form, checkInTarget: val })
                   }}
                   busySlots={busySlots}
@@ -694,7 +694,7 @@ function BookingModal({ room, initialBookingData, onClose, onCreated }) {
               </label>
             </div>
             <div style={{ marginTop: 10, padding: '8px 12px', background: '#f8fafc', borderRadius: 6, color: '#334155', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span>📅</span>
+              
               <span>
                 Thời gian lưu trú: <strong>{stayBreakdown.totalNights === 1 ? '2 ngày 1 đêm' : `${stayBreakdown.totalNights + 1} ngày ${stayBreakdown.totalNights} đêm`}</strong>
                 {stayBreakdown.weekendNights > 0 ? (
@@ -750,7 +750,7 @@ function BookingModal({ room, initialBookingData, onClose, onCreated }) {
 
         {error && (
           <div className="public-booking-error" style={{ padding: '12px 16px', borderRadius: 8, background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', fontWeight: 600, fontSize: 13, margin: '12px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span>⚠️</span>
+            <span>️</span>
             <span>{error}</span>
           </div>
         )}
@@ -929,7 +929,7 @@ function RoomDetailPage({ roomId }) {
                   }}
                   title={isWishlisted ? 'Bỏ yêu thích' : 'Thêm vào yêu thích'}
                 >
-                  {isWishlisted ? '❤️' : '♡'}
+                  {isWishlisted ? '️' : '♡'}
                 </button>
                 <div className="room-detail-rating">
                   ★ {room.averageRating ? Number(room.averageRating).toFixed(1) : '5.0'} ({reviews.length} đánh giá)
@@ -1024,9 +1024,9 @@ function RoomDetailPage({ roomId }) {
                       <h2>Đặt loại phòng này</h2>
                       <p style={{ color: isBookedOrConflicted ? '#dc2626' : undefined, fontWeight: isBookedOrConflicted ? 600 : undefined }}>
                         {isMaintenance
-                          ? '⚠️ Hạng phòng này hiện đang tạm bảo trì.'
+                          ? '️ Hạng phòng này hiện đang tạm bảo trì.'
                           : isBookedOrConflicted
-                          ? '⚠️ Hạng phòng này đã có khách đặt trước trong khung giờ bạn chọn.'
+                          ? '️ Hạng phòng này đã có khách đặt trước trong khung giờ bạn chọn.'
                           : 'Chọn thời gian lưu trú và gói thuê phù hợp để tạo đơn đặt phòng.'}
                       </p>
                     </div>

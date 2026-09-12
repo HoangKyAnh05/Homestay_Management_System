@@ -58,7 +58,7 @@ function PublicHeader() {
       <a className="home-logo" href="/home">Home Stays</a>
       <nav className="home-nav" aria-label="Điều hướng chính">
         <a href="/home">Trang chủ</a>
-        <a href="/landing" className="home-nav-landing-link" title="Khám phá không gian 3D Komorebi Sanctuary">✨ Komorebi 3D</a>
+        <a href="/landing" className="home-nav-landing-link" title="Khám phá không gian 3D Lá Đỏ Sanctuary">🍁 Lá Đỏ 3D</a>
         <a href="/rooms">Phòng</a>
         <a href="/wishlist" className="home-nav-active">Yêu thích</a>
         <a href="/amenities">Tiện nghi</a>
@@ -151,7 +151,7 @@ export default function WishlistPage() {
         <section className="wishlist-heading">
           <div>
             <p>Tài khoản của tôi</p>
-            <h1>Danh sách loại phòng yêu thích ❤️</h1>
+            <h1>Danh sách loại phòng yêu thích ️</h1>
           </div>
           <span>{items.length} loại phòng đã lưu</span>
         </section>
@@ -185,14 +185,14 @@ export default function WishlistPage() {
                     title="Bỏ yêu thích"
                     onClick={() => handleRemove(item.roomTypeId)}
                   >
-                    ❤️
+                    ️
                   </button>
                 </div>
 
                 <div className="wishlist-card-body">
                   <div className="wishlist-card-title">
                     <h3>{houseTypeName(item)}</h3>
-                    <span>⭐ {item.averageRating || 5.0} ({item.totalReviews || 0})</span>
+                    <span> {item.averageRating || 5.0} ({item.totalReviews || 0})</span>
                   </div>
                   <p>{item.description || 'Không gian nghỉ dưỡng tiện nghi, ấm cúng.'}</p>
                   <div className="wishlist-card-meta">

@@ -4,6 +4,7 @@ import { getStoredToken } from '../../services/authService'
 import './AdminGiveawayLeadsPage.css'
 
 const API_BASE = (import.meta.env.VITE_API_URL || '') + '/api/admin/marketing/giveaway'
+const API_MARKETING = (import.meta.env.VITE_API_URL || '') + '/api/admin/marketing'
 
 function authHeader() {
   const token = getStoredToken() || localStorage.getItem('homeStayAccessToken') || localStorage.getItem('token')
@@ -23,6 +24,126 @@ export default function AdminGiveawayLeadsPage() {
   const [detailCustomer, setDetailCustomer] = useState(null)
   const [updating, setUpdating] = useState(false)
   const [statusForm, setStatusForm] = useState({ status: 'NEW', staffNote: '' })
+
+  // Giveaway Post Creation Modal State
+  const [isCreatePostModalOpen, setIsCreatePostModalOpen] = useState(false)
+  const [socialAccounts, setSocialAccounts] = useState([])
+  const [selectedAccountId, setSelectedAccountId] = useState('')
+  const [postTitle, setPostTitle] = useState('🎉 MINI GAME VÒNG QUAY MAY MẮN - TRÚNG VOUCHER NGHỈ DƯỠNG ĐẾN 50% TẠI LÁ ĐỎ HOMESTAY!')
+  const [postContent, setPostContent] = useState(`✨ CHÀO ĐÓN MÙA SĂN MÂY - THAM GIA VÒNG QUAY MAY MẮN NHẬN NGAY QUÀ KHỦNG! ✨
+
+🌿 Bạn đang lên kế hoạch du lịch Sa Pa tận hưởng không khí trong lành, ngắm mây bồng bềnh và thung lũng Mường Hoa thơ mộng?
+🎁 Lá Đỏ Homestay gửi tặng bạn cơ hội nhận hàng loạt voucher ưu đãi siêu hấp dẫn:
+- 🏆 Giải Đặc Biệt: Voucher Giảm 50% tổng hóa đơn đặt phòng
+- 🌟 Giải Nhất: Voucher Giảm 30% phòng view núi
+- 🎈 Giải Nhì: Voucher Giảm 20% & Voucher Giảm 10%
+- ☕ Cùng hàng trăm voucher Miễn phí Cà phê sáng & Dịch vụ BBQ sân vườn!
+
+👇 Cách thức tham gia cực kỳ đơn giản:
+1️⃣ Bấm vào đường link bên dưới để vào trang Vòng Quay May Mắn.
+2️⃣ Nhập thông tin & Quay thưởng ngay - 100% trúng quà!
+3️⃣ Lưu lại mã Voucher để áp dụng khi đặt phòng trực tuyến hoặc qua hotline.`)
+  const [giveawayUrl, setGiveawayUrl] = useState(() => `${window.location.origin}/giveaway`)
+  const [hashtags, setHashtags] = useState('#LaDoHomestay #SaPa #Giveaway #VongQuayMayMan #DuLichSaPa #HomestaySaPa #SanMaySaPa')
+  const [imageUrl, setImageUrl] = useState('')
+  const [uploadingImage, setUploadingImage] = useState(false)
+  const [publishing, setPublishing] = useState(false)
+  const [publishSuccessMsg, setPublishSuccessMsg] = useState('')
+  const [publishErrorMsg, setPublishErrorMsg] = useState('')
+
+  const fetchAccounts = async () => {
+    try {
+      const res = await fetch(`${API_MARKETING}/social-auth/accounts`, { headers: authHeader() })
+      if (res.ok) {
+        const data = await res.json()
+        setSocialAccounts(data || [])
+        if (data && data.length > 0 && !selectedAccountId) {
+          setSelectedAccountId(String(data[0].id))
+        }
+      }
+    } catch {
+      // Ignored
+    }
+  }
+
+  const handleOpenCreatePostModal = () => {
+    fetchAccounts()
+    setIsCreatePostModalOpen(true)
+    setPublishSuccessMsg('')
+    setPublishErrorMsg('')
+  }
+
+  const handleImageUpload = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploadingImage(true)
+    setPublishErrorMsg('')
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      const token = getStoredToken() || localStorage.getItem('homeStayAccessToken') || localStorage.getItem('token')
+      const res = await fetch(`${API_MARKETING}/media/upload`, {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: formData,
+      })
+      if (!res.ok) throw new Error('Không thể tải ảnh lên máy chủ')
+      const data = await res.json()
+      if (data.url) {
+        setImageUrl(data.url)
+      }
+    } catch (err) {
+      setPublishErrorMsg(err.message || 'Lỗi khi tải ảnh')
+    } finally {
+      setUploadingImage(false)
+    }
+  }
+
+  const handlePublishGiveaway = async (e) => {
+    e.preventDefault()
+    if (!postTitle.trim() || !postContent.trim()) {
+      setPublishErrorMsg('Vui lòng nhập đầy đủ tiêu đề và nội dung bài viết!')
+      return
+    }
+    setPublishing(true)
+    setPublishSuccessMsg('')
+    setPublishErrorMsg('')
+
+    try {
+      const payload = {
+        socialAccountId: selectedAccountId ? Number(selectedAccountId) : null,
+        title: postTitle.trim(),
+        content: postContent.trim(),
+        giveawayUrl: giveawayUrl.trim(),
+        hashtags: hashtags ? hashtags.split(' ').map(s => s.trim()).filter(Boolean) : [],
+        imageUrls: imageUrl ? [imageUrl.trim()] : []
+      }
+
+      const res = await fetch(`${API_BASE}/publish-post`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...authHeader(),
+        },
+        body: JSON.stringify(payload)
+      })
+
+      const data = await res.json()
+      if (!res.ok) {
+        throw new Error(data.message || 'Đăng bài thất bại')
+      }
+
+      setPublishSuccessMsg(data.message || '🎉 Đã xuất bản bài viết Giveaway thành công lên Fanpage!')
+      setTimeout(() => {
+        setIsCreatePostModalOpen(false)
+        setPublishSuccessMsg('')
+      }, 2500)
+    } catch (err) {
+      setPublishErrorMsg(err.message || 'Có lỗi xảy ra khi xuất bản bài viết')
+    } finally {
+      setPublishing(false)
+    }
+  }
 
   const fetchStats = async () => {
     try {
@@ -171,13 +292,13 @@ export default function AdminGiveawayLeadsPage() {
   const renderStatusBadge = (status) => {
     switch (status) {
       case 'NEW':
-        return <span className="gw-badge gw-badge--new">🔴 Mới - Chưa liên hệ</span>
+        return <span className="gw-badge gw-badge--new"> Mới - Chưa liên hệ</span>
       case 'CONTACTED':
-        return <span className="gw-badge gw-badge--contacted">🟡 Đang tư vấn</span>
+        return <span className="gw-badge gw-badge--contacted"> Đang tư vấn</span>
       case 'BOOKED':
-        return <span className="gw-badge gw-badge--booked">🟢 Đã chốt phòng</span>
+        return <span className="gw-badge gw-badge--booked"> Đã chốt phòng</span>
       case 'CANCELLED':
-        return <span className="gw-badge gw-badge--cancelled">⚪ Hủy / Không nghe</span>
+        return <span className="gw-badge gw-badge--cancelled"> Hủy / Không nghe</span>
       default:
         return <span className="gw-badge">{status}</span>
     }
@@ -189,7 +310,7 @@ export default function AdminGiveawayLeadsPage() {
         {/* Header */}
         <div className="gw-leads-header">
           <div className="gw-leads-title-wrap">
-            <h1>🎁 Khách Hàng Tiềm Năng & MiniGame Giveaway</h1>
+            <h1> Khách Hàng Tiềm Năng & MiniGame Giveaway</h1>
             <p>Dữ liệu cào tương tác, khách hàng tham gia Vòng quay may mắn từ Fanpage & Mạng xã hội</p>
           </div>
           <div className="gw-leads-actions">
@@ -199,15 +320,15 @@ export default function AdminGiveawayLeadsPage() {
               style={{ display: 'flex', alignItems: 'center', gap: 6 }}
               onClick={handleExportExcel}
             >
-              📥 Xuất File Excel (.xlsx)
+               Xuất File Excel (.xlsx)
             </button>
             <button
               type="button"
               className="mkt-btn mkt-btn--primary"
               style={{ display: 'flex', alignItems: 'center', gap: 6 }}
-              onClick={() => navigate('/admin/marketing/ai-agent')}
+              onClick={handleOpenCreatePostModal}
             >
-              🚀 Đăng Bài Giveaway Mới
+               Đăng Bài Giveaway Mới
             </button>
           </div>
         </div>
@@ -216,7 +337,7 @@ export default function AdminGiveawayLeadsPage() {
         <div className="gw-stats-grid">
           <div className="gw-stat-card">
             <div className="gw-stat-icon" style={{ background: '#eff6ff', color: '#2563eb' }}>
-              👥
+              
             </div>
             <div className="gw-stat-info">
               <h3>{stats?.totalInteractions || 0}</h3>
@@ -226,7 +347,7 @@ export default function AdminGiveawayLeadsPage() {
 
           <div className="gw-stat-card">
             <div className="gw-stat-icon" style={{ background: '#fef2f2', color: '#dc2626' }}>
-              🔥
+              
             </div>
             <div className="gw-stat-info">
               <h3>{stats?.newLeadsCount || 0}</h3>
@@ -236,7 +357,7 @@ export default function AdminGiveawayLeadsPage() {
 
           <div className="gw-stat-card">
             <div className="gw-stat-icon" style={{ background: '#fefce8', color: '#ca8a04' }}>
-              💬
+              
             </div>
             <div className="gw-stat-info">
               <h3>{stats?.contactedCount || 0}</h3>
@@ -246,7 +367,7 @@ export default function AdminGiveawayLeadsPage() {
 
           <div className="gw-stat-card">
             <div className="gw-stat-icon" style={{ background: '#ecfdf5', color: '#059669' }}>
-              🎉
+              
             </div>
             <div className="gw-stat-info">
               <h3>{stats?.bookedCount || 0}</h3>
@@ -256,7 +377,7 @@ export default function AdminGiveawayLeadsPage() {
 
           <div className="gw-stat-card">
             <div className="gw-stat-icon" style={{ background: '#fdf4ff', color: '#c026d3' }}>
-              👑
+              
             </div>
             <div className="gw-stat-info">
               <h3>{stats?.topPrizesWon || 0}</h3>
@@ -268,7 +389,7 @@ export default function AdminGiveawayLeadsPage() {
         {/* Toolbar & Filter */}
         <div className="gw-toolbar">
           <form onSubmit={handleSearchSubmit} className="gw-search-box">
-            <span>🔍</span>
+            
             <input
               type="text"
               placeholder="Tìm kiếm Họ tên, Số điện thoại..."
@@ -338,7 +459,7 @@ export default function AdminGiveawayLeadsPage() {
                         </td>
                         <td>
                           <div style={{ fontSize: '0.875rem', fontWeight: 600, color: '#475569' }}>
-                            📅 {cust.travelPlan || 'Chưa rõ'}
+                             {cust.travelPlan || 'Chưa rõ'}
                           </div>
                           {cust.notes && (
                             <div style={{ fontSize: '0.8rem', color: '#64748b', fontStyle: 'italic', maxWidth: '240px' }}>
@@ -365,7 +486,7 @@ export default function AdminGiveawayLeadsPage() {
                               }}
                               title="Bấm để xem danh sách tất cả voucher"
                             >
-                              🎁 {cust.allPrizes.length} giải thưởng trúng
+                               {cust.allPrizes.length} giải thưởng trúng
                             </span>
                           ) : topPrize ? (
                             <div>
@@ -395,7 +516,7 @@ export default function AdminGiveawayLeadsPage() {
                               onClick={() => setDetailCustomer(cust)}
                               title="Xem chi tiết khách hàng và lịch sử giải thưởng"
                             >
-                              🔍 Chi tiết
+                               Chi tiết
                             </button>
                             <a
                               href={`https://zalo.me/${cust.phone}`}
@@ -404,14 +525,14 @@ export default function AdminGiveawayLeadsPage() {
                               className="gw-action-btn gw-action-btn--zalo"
                               title="Nhắn tin Zalo"
                             >
-                              💬 Zalo
+                               Zalo
                             </a>
                             <a
                               href={`tel:${cust.phone}`}
                               className="gw-action-btn gw-action-btn--call"
                               title="Gọi điện"
                             >
-                              📞 Gọi
+                               Gọi
                             </a>
                             <button
                               type="button"
@@ -419,7 +540,7 @@ export default function AdminGiveawayLeadsPage() {
                               onClick={() => handleOpenStatusModal(cust)}
                               title="Cập nhật trạng thái"
                             >
-                              ✏️ Cập nhật
+                              ️ Cập nhật
                             </button>
                           </div>
                         </td>
@@ -475,7 +596,7 @@ export default function AdminGiveawayLeadsPage() {
                   style={{ border: 'none', background: '#f1f5f9', width: 32, height: 32, borderRadius: '50%', cursor: 'pointer', fontSize: 16, fontWeight: 700, color: '#64748b' }}
                   onClick={() => setDetailCustomer(null)}
                 >
-                  ✕
+                  
                 </button>
               </div>
 
@@ -491,7 +612,7 @@ export default function AdminGiveawayLeadsPage() {
                 </div>
                 <div>
                   <span style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Kế hoạch lưu trú</span>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: '#166534', marginTop: 2 }}>📅 {detailCustomer.travelPlan || 'Chưa rõ'}</div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: '#166534', marginTop: 2 }}> {detailCustomer.travelPlan || 'Chưa rõ'}</div>
                 </div>
                 <div>
                   <span style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Trạng thái chăm sóc</span>
@@ -519,7 +640,7 @@ export default function AdminGiveawayLeadsPage() {
               <div style={{ marginBottom: 16 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                   <h4 style={{ margin: 0, fontSize: '0.95rem', color: '#0f172a' }}>
-                    🎁 Danh Sách Giải Thưởng & Voucher Đã Trúng ({detailCustomer.allPrizes.length})
+                     Danh Sách Giải Thưởng & Voucher Đã Trúng ({detailCustomer.allPrizes.length})
                   </h4>
                 </div>
                 {detailCustomer.allPrizes.length === 0 ? (
@@ -561,7 +682,7 @@ export default function AdminGiveawayLeadsPage() {
                                   }}
                                   title="Bấm để sao chép mã"
                                 >
-                                  {p.prizeCode} 📋
+                                  {p.prizeCode} 
                                 </span>
                               ) : '—'}
                             </td>
@@ -589,14 +710,14 @@ export default function AdminGiveawayLeadsPage() {
                     className="mkt-btn"
                     style={{ background: '#0284c7', color: '#fff', padding: '8px 14px', borderRadius: 6, fontSize: 13, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}
                   >
-                    💬 Chat Zalo
+                     Chat Zalo
                   </a>
                   <a
                     href={`tel:${detailCustomer.phone}`}
                     className="mkt-btn"
                     style={{ background: '#166534', color: '#fff', padding: '8px 14px', borderRadius: 6, fontSize: 13, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}
                   >
-                    📞 Gọi Ngay
+                     Gọi Ngay
                   </a>
                 </div>
                 <button
@@ -606,7 +727,7 @@ export default function AdminGiveawayLeadsPage() {
                     handleOpenStatusModal(detailCustomer)
                   }}
                 >
-                  ✏️ Cập Nhật Trạng Thái
+                  ️ Cập Nhật Trạng Thái
                 </button>
               </div>
             </div>
@@ -665,6 +786,225 @@ export default function AdminGiveawayLeadsPage() {
                   </button>
                   <button type="submit" className="mkt-btn mkt-btn--primary" disabled={updating}>
                     {updating ? 'Đang lưu...' : 'Lưu Thay Đổi'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Giveaway Post Creation Modal */}
+        {isCreatePostModalOpen && (
+          <div className="gw-admin-modal-backdrop" onClick={() => !publishing && setIsCreatePostModalOpen(false)}>
+            <div className="gw-admin-modal gw-post-modal" onClick={(e) => e.stopPropagation()}>
+              <div className="gw-modal-head">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div className="gw-modal-head-icon">🎁</div>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a', fontWeight: 800 }}>
+                      Đăng Bài Giveaway Vòng Quay May Mắn
+                    </h3>
+                    <p style={{ margin: '2px 0 0 0', color: '#64748b', fontSize: '0.85rem' }}>
+                      Tạo & xuất bản bài viết tặng voucher trực tiếp lên Fanpage & Kênh Marketing
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="gw-modal-close-btn"
+                  onClick={() => setIsCreatePostModalOpen(false)}
+                  disabled={publishing}
+                >
+                  ✕
+                </button>
+              </div>
+
+              {publishSuccessMsg && (
+                <div className="gw-alert-success">
+                  <span>🎉</span>
+                  <div>{publishSuccessMsg}</div>
+                </div>
+              )}
+
+              {publishErrorMsg && (
+                <div className="gw-alert-error">
+                  <span>⚠️</span>
+                  <div>{publishErrorMsg}</div>
+                </div>
+              )}
+
+              <form onSubmit={handlePublishGiveaway} className="gw-post-form">
+                {/* Channel / Fanpage Selection */}
+                <div className="gw-form-group">
+                  <label className="gw-form-label">
+                    <span>📢 Kênh đăng bài (Facebook Fanpage):</span>
+                  </label>
+                  <select
+                    className="gw-form-select"
+                    value={selectedAccountId}
+                    onChange={(e) => setSelectedAccountId(e.target.value)}
+                    disabled={publishing}
+                  >
+                    {socialAccounts.length > 0 ? (
+                      socialAccounts.map((acc) => (
+                        <option key={acc.id} value={acc.id}>
+                          {acc.accountName || acc.pageName || 'Fanpage'} ({acc.platform || 'FACEBOOK'})
+                        </option>
+                      ))
+                    ) : (
+                      <option value="">Tự động chọn Facebook Fanpage mặc định</option>
+                    )}
+                  </select>
+                </div>
+
+                {/* Quick Templates */}
+                <div className="gw-templates-bar">
+                  <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#64748b' }}>Mẫu nhanh:</span>
+                  <button
+                    type="button"
+                    className="gw-template-btn"
+                    onClick={() => {
+                      setPostTitle('🎉 MINI GAME VÒNG QUAY MAY MẮN - TRÚNG VOUCHER NGHỈ DƯỠNG ĐẾN 50% TẠI LÁ ĐỎ HOMESTAY!')
+                      setPostContent(`✨ CHÀO ĐÓN MÙA SĂN MÂY - THAM GIA VÒNG QUAY MAY MẮN NHẬN NGAY QUÀ KHỦNG! ✨\n\n🌿 Bạn đang lên kế hoạch du lịch Sa Pa tận hưởng không khí trong lành, ngắm mây bồng bềnh và thung lũng Mường Hoa thơ mộng?\n🎁 Lá Đỏ Homestay gửi tặng bạn cơ hội nhận hàng loạt voucher ưu đãi siêu hấp dẫn:\n- 🏆 Giải Đặc Biệt: Voucher Giảm 50% tổng hóa đơn đặt phòng\n- 🌟 Giải Nhất: Voucher Giảm 30% phòng view núi\n- 🎈 Giải Nhì: Voucher Giảm 20% & Voucher Giảm 10%\n- ☕ Cùng hàng trăm voucher Miễn phí Cà phê sáng & Dịch vụ BBQ sân vườn!\n\n👇 Cách thức tham gia cực kỳ đơn giản:\n1️⃣ Bấm vào đường link bên dưới để vào trang Vòng Quay May Mắn.\n2️⃣ Nhập thông tin & Quay thưởng ngay - 100% trúng quà!\n3️⃣ Lưu lại mã Voucher để áp dụng khi đặt phòng trực tuyến hoặc qua hotline.`)
+                    }}
+                  >
+                    🏔️ Mùa Săn Mây Sa Pa
+                  </button>
+                  <button
+                    type="button"
+                    className="gw-template-btn"
+                    onClick={() => {
+                      setPostTitle('🔥 ĐẠI TIỆC GIVEAWAY ĐẦU TUẦN - VÒNG QUAY 100% TRÚNG THƯỞNG TẠI LÁ ĐỎ!')
+                      setPostContent(`🎁 VÒNG QUAY TRI ÂN KHÁCH HÀNG - RINH VOUCHER NGHỈ DƯỠNG MIỄN PHÍ! 🎁\n\nBạn muốn tìm chốn bình yên, thức giấc đón mây bay qua ô cửa kính view trọn dãy Hoàng Liên Sơn hùng vĩ?\n👉 Chỉ cần 10 giây quay thưởng để nhận ngay:\n✨ Voucher giảm trực tiếp 50% tiền phòng\n✨ Voucher giảm 30% & 20% đặt phòng trong tuần\n✨ Tặng kèm set đồ nướng BBQ chill sân vườn\n\n👇 Bấm link bên dưới để quay ngay hôm nay:`)
+                    }}
+                  >
+                    🔥 Tri Ân Khách Hàng
+                  </button>
+                </div>
+
+                {/* Post Title */}
+                <div className="gw-form-group">
+                  <label className="gw-form-label">
+                    <span>Tiêu đề bài viết:</span>
+                    <span className="gw-required">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    className="gw-form-input"
+                    value={postTitle}
+                    onChange={(e) => setPostTitle(e.target.value)}
+                    placeholder="Nhập tiêu đề bài đăng hấp dẫn..."
+                    required
+                    disabled={publishing}
+                  />
+                </div>
+
+                {/* Post Content */}
+                <div className="gw-form-group">
+                  <label className="gw-form-label">
+                    <span>Nội dung bài viết:</span>
+                    <span className="gw-required">*</span>
+                  </label>
+                  <textarea
+                    rows={6}
+                    className="gw-form-textarea"
+                    value={postContent}
+                    onChange={(e) => setPostContent(e.target.value)}
+                    placeholder="Nhập nội dung chi tiết bài viết giveaway..."
+                    required
+                    disabled={publishing}
+                  />
+                </div>
+
+                {/* Giveaway Link & Hashtags Grid */}
+                <div className="gw-form-row">
+                  <div className="gw-form-group" style={{ flex: 1 }}>
+                    <label className="gw-form-label">
+                      <span>🔗 Link trang MiniGame:</span>
+                    </label>
+                    <input
+                      type="url"
+                      className="gw-form-input"
+                      value={giveawayUrl}
+                      onChange={(e) => setGiveawayUrl(e.target.value)}
+                      placeholder="https://ladohomestay.vn/giveaway"
+                      disabled={publishing}
+                    />
+                  </div>
+
+                  <div className="gw-form-group" style={{ flex: 1 }}>
+                    <label className="gw-form-label">
+                      <span>🏷️ Hashtags:</span>
+                    </label>
+                    <input
+                      type="text"
+                      className="gw-form-input"
+                      value={hashtags}
+                      onChange={(e) => setHashtags(e.target.value)}
+                      placeholder="#LaDoHomestay #SaPa #Giveaway"
+                      disabled={publishing}
+                    />
+                  </div>
+                </div>
+
+                {/* Image Upload / Attachment */}
+                <div className="gw-form-group">
+                  <label className="gw-form-label">
+                    <span>🖼️ Hình ảnh bài viết (Banner / Poster):</span>
+                  </label>
+                  <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                    <input
+                      type="text"
+                      className="gw-form-input"
+                      style={{ flex: 1 }}
+                      value={imageUrl}
+                      onChange={(e) => setImageUrl(e.target.value)}
+                      placeholder="Dán đường link ảnh hoặc tải ảnh từ máy tính..."
+                      disabled={publishing || uploadingImage}
+                    />
+                    <label className="gw-upload-btn">
+                      {uploadingImage ? '⏳ Đang tải...' : '📁 Tải Ảnh Lên'}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        style={{ display: 'none' }}
+                        onChange={handleImageUpload}
+                        disabled={publishing || uploadingImage}
+                      />
+                    </label>
+                  </div>
+                  {imageUrl && (
+                    <div className="gw-image-preview">
+                      <img src={imageUrl} alt="Preview bài viết" />
+                      <button
+                        type="button"
+                        className="gw-remove-image-btn"
+                        onClick={() => setImageUrl('')}
+                        title="Xóa ảnh"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Actions */}
+                <div className="gw-modal-footer">
+                  <button
+                    type="button"
+                    className="mkt-btn mkt-btn--secondary"
+                    onClick={() => setIsCreatePostModalOpen(false)}
+                    disabled={publishing}
+                  >
+                    Hủy Bỏ
+                  </button>
+                  <button
+                    type="submit"
+                    className="mkt-btn mkt-btn--primary"
+                    style={{ minWidth: 160 }}
+                    disabled={publishing || uploadingImage}
+                  >
+                    {publishing ? '⏳ Đang Xuất Bản...' : '🚀 Đăng Ngay Lên Fanpage'}
                   </button>
                 </div>
               </form>

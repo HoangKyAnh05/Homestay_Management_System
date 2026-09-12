@@ -45,7 +45,7 @@ function ArticleReviewModal({ article, onClose, onBookRoom }) {
           <div className="arm-hero-meta">
             <div className="arm-tags-row">
               <span className="arm-category-badge">{article.category}</span>
-              <span className="arm-time-badge">⏱️ {article.readTime}</span>
+              <span className="arm-time-badge">️ {article.readTime}</span>
               <span className="arm-rating-badge">{article.rating}</span>
             </div>
             <h1 className="arm-title">{article.title}</h1>
@@ -65,28 +65,28 @@ function ArticleReviewModal({ article, onClose, onBookRoom }) {
           {/* Quick Info Bar */}
           <div className="arm-info-bar">
             <div className="arm-info-item">
-              <span className="arm-info-icon">📍</span>
+              <span className="arm-info-icon"></span>
               <div>
                 <small>Vị Trí</small>
                 <strong>{article.location}</strong>
               </div>
             </div>
             <div className="arm-info-item">
-              <span className="arm-info-icon">🛵</span>
+              <span className="arm-info-icon"></span>
               <div>
                 <small>Khoảng Cách</small>
                 <strong>{article.distance}</strong>
               </div>
             </div>
             <div className="arm-info-item">
-              <span className="arm-info-icon">⏰</span>
+              <span className="arm-info-icon"></span>
               <div>
                 <small>Thời Điểm Lý Tưởng</small>
                 <strong>{article.bestTime}</strong>
               </div>
             </div>
             <div className="arm-info-item">
-              <span className="arm-info-icon">🎟️</span>
+              <span className="arm-info-icon">️</span>
               <div>
                 <small>Chi Phí Tham Khảo</small>
                 <strong>{article.cost}</strong>
@@ -97,7 +97,7 @@ function ArticleReviewModal({ article, onClose, onBookRoom }) {
           {/* Key Highlights */}
           {article.highlights && (
             <div className="arm-highlights-card">
-              <h3>✨ Điểm Nổi Bật Không Thể Bỏ Lỡ:</h3>
+              <h3> Điểm Nổi Bật Không Thể Bỏ Lỡ:</h3>
               <ul>
                 {article.highlights.map((h, i) => (
                   <li key={i}>
@@ -128,7 +128,7 @@ function ArticleReviewModal({ article, onClose, onBookRoom }) {
                 </div>
                 {sec.tip && (
                   <div className="arm-tip-box">
-                    <span className="arm-tip-icon">💡</span>
+                    <span className="arm-tip-icon"></span>
                     <div>
                       <strong>Mẹo trải nghiệm:</strong>
                       <p>{sec.tip}</p>

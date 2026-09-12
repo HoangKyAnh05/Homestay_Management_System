@@ -113,7 +113,7 @@ function CreateUserModal({ roles, entityLabel, onClose, onSave }) {
       <div className="aum-modal">
         <div className="aum-modal-head">
           <h3>Thêm {entityLabel} mới</h3>
-          <button type="button" className="aum-modal-close" onClick={onClose}>✕</button>
+          <button type="button" className="aum-modal-close" onClick={onClose}></button>
         </div>
         <form className="aum-modal-body" onSubmit={handleSubmit}>
           <label className="aum-field"><span>Họ và tên</span>
@@ -187,7 +187,7 @@ function EditUserModal({ user, roles, entityLabel, onClose, onSave }) {
       <div className="aum-modal">
         <div className="aum-modal-head">
           <h3>Chỉnh sửa {entityLabel}</h3>
-          <button type="button" className="aum-modal-close" onClick={onClose}>✕</button>
+          <button type="button" className="aum-modal-close" onClick={onClose}></button>
         </div>
         <form className="aum-modal-body" onSubmit={handleSubmit}>
           {/* Avatar */}
@@ -237,7 +237,7 @@ function DeactivateModal({ user, onClose, onConfirm, loading }) {
       <div className="aum-modal aum-modal--sm">
         <div className="aum-modal-head">
           <h3>Vô hiệu hoá tài khoản</h3>
-          <button type="button" className="aum-modal-close" onClick={onClose}>✕</button>
+          <button type="button" className="aum-modal-close" onClick={onClose}></button>
         </div>
         <div className="aum-modal-body">
           <p style={{ margin: '0 0 24px', color: '#374151' }}>
@@ -262,7 +262,7 @@ function ActivateModal({ user, onClose, onConfirm, loading }) {
       <div className="aum-modal aum-modal--sm">
         <div className="aum-modal-head">
           <h3>Kích hoạt tài khoản</h3>
-          <button type="button" className="aum-modal-close" onClick={onClose}>✕</button>
+          <button type="button" className="aum-modal-close" onClick={onClose}></button>
         </div>
         <div className="aum-modal-body">
           <p style={{ margin: '0 0 24px', color: '#374151' }}>

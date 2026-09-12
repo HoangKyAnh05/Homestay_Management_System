@@ -179,12 +179,18 @@ public class AuthServiceImpl implements AuthService {
                 .filter(t -> t.getExpiresAt().isAfter(LocalDateTime.now()))
                 .orElseThrow(() -> new IllegalArgumentException("Mã OTP không đúng hoặc đã hết hạn"));
 
+        if (token.isLocked()) {
+            throw new OtpLockedException("Mã OTP đã bị khóa do nhập sai quá 5 lần. Vui lòng nhấn gửi lại mã mới.");
+        }
+
         if (!token.getOtp().equals(request.otp())) {
             int attempts = token.incrementFailedAttempts();
             if (attempts >= 5) {
-                tokenRepository.deleteAllByEmail(request.email());
+                token.lock();
+                tokenRepository.save(token);
                 throw new OtpLockedException("Mã OTP đã bị khóa do nhập sai quá 5 lần. Vui lòng nhấn gửi lại mã mới.");
             }
+            tokenRepository.save(token);
             int remaining = 5 - attempts;
             throw new IllegalArgumentException("Mã OTP không đúng. Bạn còn " + remaining + " lần thử.");
         }

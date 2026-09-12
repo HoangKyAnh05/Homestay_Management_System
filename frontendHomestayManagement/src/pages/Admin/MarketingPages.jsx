@@ -12,7 +12,7 @@ const MARKETING_EDIT_DRAFT_KEY = 'marketingEditDraftPost'
 const CHANNELS = {
   FACEBOOK: { label: 'Facebook', short: 'f', color: '#1877f2' },
   INSTAGRAM: { label: 'Instagram', short: '◎', color: '#d946ef' },
-  TIKTOK: { label: 'TikTok', short: '♪', color: '#111827' },
+  TIKTOK: { label: 'TikTok', short: '', color: '#111827' },
   ZALO: { label: 'Zalo', short: 'Z', color: '#0068ff' },
   LINKEDIN: { label: 'LinkedIn', short: 'in', color: '#0a66c2' },
 }
@@ -358,9 +358,9 @@ function SocialEngagementModal({ modal, setModal, onSimulateInteraction, onRefre
   const [repliesMap, setRepliesMap] = useState({})
 
   const replyTemplates = [
-    '🌲 Dạ chào bạn! Homestay còn phòng view ngắm thung lũng Mường Hoa bồng bềnh mây nhé ạ!',
-    '📞 Dạ bạn vui lòng liên hệ hotline lễ tân 0941 186 699 để bên mình tư vấn lịch phòng đẹp nhất nhé!',
-    '🎁 Dạ bạn ghé web tham gia Vòng quay may mắn nhận voucher giảm 50% chuyến đi Sa Pa nhé!',
+    ' Dạ chào bạn! Homestay còn phòng view ngắm thung lũng Mường Hoa bồng bềnh mây nhé ạ!',
+    ' Dạ bạn vui lòng liên hệ hotline lễ tân 0941 186 699 để bên mình tư vấn lịch phòng đẹp nhất nhé!',
+    ' Dạ bạn ghé web tham gia Vòng quay may mắn nhận voucher giảm 50% chuyến đi Sa Pa nhé!',
   ]
 
   const handleSendReply = async (commentId) => {
@@ -393,7 +393,7 @@ function SocialEngagementModal({ modal, setModal, onSimulateInteraction, onRefre
       setReplyInputText('')
       setActiveReplyId(null)
       window.dispatchEvent(new Event('admin_notification_update'))
-      alert(`🎉 ${res.note || 'Đã gửi câu trả lời thành công!'}`)
+      alert(` ${res.note || 'Đã gửi câu trả lời thành công!'}`)
     } catch (err) {
       alert('Không thể gửi câu trả lời: ' + err.message)
     } finally {
@@ -415,7 +415,7 @@ function SocialEngagementModal({ modal, setModal, onSimulateInteraction, onRefre
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
               <span style={{ fontSize: '22px' }}>
-                {modal.data?.platform === 'YOUTUBE' ? '🔴' : '📘'}
+                {modal.data?.platform === 'YOUTUBE' ? '' : ''}
               </span>
               <h2 style={{ fontSize: '1.25rem', color: '#0f172a', margin: 0 }}>
                 Thống Kê Tương Tác & Bình Luận Trực Tiếp
@@ -454,7 +454,7 @@ function SocialEngagementModal({ modal, setModal, onSimulateInteraction, onRefre
             </div>
           ) : modal.error ? (
             <div className="mkt-alert" style={{ margin: '10px 0' }}>
-              <strong>⚠️ Không thể lấy dữ liệu:</strong> {modal.error}
+              <strong>️ Không thể lấy dữ liệu:</strong> {modal.error}
             </div>
           ) : modal.data ? (
             <div>
@@ -467,7 +467,7 @@ function SocialEngagementModal({ modal, setModal, onSimulateInteraction, onRefre
               {/* 4 Thẻ KPI Metrics */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '12px', marginBottom: '20px' }}>
                 <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '14px', textAlign: 'center' }}>
-                  <div style={{ fontSize: '24px', marginBottom: '4px' }}>👍</div>
+                  <div style={{ fontSize: '24px', marginBottom: '4px' }}></div>
                   <div style={{ fontSize: '20px', fontWeight: 800, color: '#0f172a' }}>
                     {Number(modal.data.likeCount || 0).toLocaleString()}
                   </div>
@@ -475,7 +475,7 @@ function SocialEngagementModal({ modal, setModal, onSimulateInteraction, onRefre
                 </div>
 
                 <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '14px', textAlign: 'center' }}>
-                  <div style={{ fontSize: '24px', marginBottom: '4px' }}>💬</div>
+                  <div style={{ fontSize: '24px', marginBottom: '4px' }}></div>
                   <div style={{ fontSize: '20px', fontWeight: 800, color: '#0284c7' }}>
                     {Number(modal.data.commentCount || 0).toLocaleString()}
                   </div>
@@ -483,7 +483,7 @@ function SocialEngagementModal({ modal, setModal, onSimulateInteraction, onRefre
                 </div>
 
                 <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '14px', textAlign: 'center' }}>
-                  <div style={{ fontSize: '24px', marginBottom: '4px' }}>🔄</div>
+                  <div style={{ fontSize: '24px', marginBottom: '4px' }}></div>
                   <div style={{ fontSize: '20px', fontWeight: 800, color: '#10b981' }}>
                     {Number(modal.data.shareCount || 0).toLocaleString()}
                   </div>
@@ -491,7 +491,7 @@ function SocialEngagementModal({ modal, setModal, onSimulateInteraction, onRefre
                 </div>
 
                 <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '14px', textAlign: 'center' }}>
-                  <div style={{ fontSize: '24px', marginBottom: '4px' }}>👁️</div>
+                  <div style={{ fontSize: '24px', marginBottom: '4px' }}>️</div>
                   <div style={{ fontSize: '20px', fontWeight: 800, color: '#8b5cf6' }}>
                     {Number(modal.data.viewCount || 0).toLocaleString()}
                   </div>
@@ -502,7 +502,7 @@ function SocialEngagementModal({ modal, setModal, onSimulateInteraction, onRefre
               {/* Tiêu đề danh sách bình luận */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                 <strong style={{ fontSize: '14px', color: '#1e293b' }}>
-                  💬 Bình luận từ người xem ({modal.data.comments?.length || 0}):
+                   Bình luận từ người xem ({modal.data.comments?.length || 0}):
                 </strong>
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                   <button
@@ -519,7 +519,7 @@ function SocialEngagementModal({ modal, setModal, onSimulateInteraction, onRefre
                     onClick={() => onSimulateInteraction(modal.channelId, 'LIKE')}
                     title="Bấm để mô phỏng người dùng thả tim (Like) bài viết và gửi thông báo cho Admin/Marketing"
                   >
-                    ❤️ Thả Tim (Like) bài viết
+                    ️ Thả Tim (Like) bài viết
                   </button>
                   <button
                     type="button"
@@ -535,7 +535,7 @@ function SocialEngagementModal({ modal, setModal, onSimulateInteraction, onRefre
                     onClick={() => onSimulateInteraction(modal.channelId, 'COMMENT')}
                     title="Bấm để mô phỏng người dùng gửi bình luận"
                   >
-                    💬 Thử bình luận
+                     Thử bình luận
                   </button>
                   {modal.data.externalUrl && (
                     <a
@@ -545,7 +545,7 @@ function SocialEngagementModal({ modal, setModal, onSimulateInteraction, onRefre
                       className="mkt-btn mkt-btn--secondary"
                       style={{ fontSize: '12px', padding: '4px 10px', textDecoration: 'none' }}
                     >
-                      🔗 Xem trên {modal.data.platform}
+                       Xem trên {modal.data.platform}
                     </a>
                   )}
                   <button
@@ -554,7 +554,7 @@ function SocialEngagementModal({ modal, setModal, onSimulateInteraction, onRefre
                     style={{ fontSize: '12px', padding: '4px 10px' }}
                     onClick={() => onRefresh(modal.channelId)}
                   >
-                    🔄 Làm mới
+                     Làm mới
                   </button>
                 </div>
               </div>
@@ -578,7 +578,7 @@ function SocialEngagementModal({ modal, setModal, onSimulateInteraction, onRefre
                         <img src={cm.authorAvatarUrl} alt="" style={{ width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover' }} />
                       ) : (
                         <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px' }}>
-                          👤
+                          
                         </div>
                       )}
                       <div style={{ flex: 1 }}>
@@ -594,7 +594,7 @@ function SocialEngagementModal({ modal, setModal, onSimulateInteraction, onRefre
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                           {cm.likeCount > 0 && (
                             <span style={{ fontSize: '11px', color: '#0284c7', display: 'flex', alignItems: 'center', gap: '3px' }}>
-                              👍 {cm.likeCount} lượt thích
+                               {cm.likeCount} lượt thích
                             </span>
                           )}
                           <button
@@ -614,7 +614,7 @@ function SocialEngagementModal({ modal, setModal, onSimulateInteraction, onRefre
                               borderRadius: '4px',
                             }}
                           >
-                            💬 {activeReplyId === cm.id ? 'Đóng ô trả lời' : 'Trả lời bình luận này'}
+                             {activeReplyId === cm.id ? 'Đóng ô trả lời' : 'Trả lời bình luận này'}
                           </button>
                         </div>
 
@@ -625,7 +625,7 @@ function SocialEngagementModal({ modal, setModal, onSimulateInteraction, onRefre
                               <div key={rep.id} style={{ background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: '8px', padding: '8px 12px' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3px' }}>
                                   <strong style={{ fontSize: '12px', color: '#0369a1', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                    <span>🏡 {rep.responderName}</span>
+                                    <span> {rep.responderName}</span>
                                     <span style={{ fontSize: '10px', background: '#0284c7', color: '#fff', padding: '1px 6px', borderRadius: '4px', fontWeight: 700 }}>
                                       Quản trị viên
                                     </span>
@@ -645,7 +645,7 @@ function SocialEngagementModal({ modal, setModal, onSimulateInteraction, onRefre
                           <div style={{ marginTop: '10px', padding: '12px', background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                               <span style={{ fontSize: '12.5px', fontWeight: 700, color: '#0f172a' }}>
-                                ✍️ Trả lời trực tiếp lên {modal.data?.platform === 'YOUTUBE' ? 'YouTube' : 'Facebook Fanpage'}:
+                                ️ Trả lời trực tiếp lên {modal.data?.platform === 'YOUTUBE' ? 'YouTube' : 'Facebook Fanpage'}:
                               </span>
                               <span style={{ fontSize: '11px', color: '#64748b' }}>Tư cách: Lá Đỏ Homestay Sa Pa</span>
                             </div>
@@ -682,7 +682,7 @@ function SocialEngagementModal({ modal, setModal, onSimulateInteraction, onRefre
                                   onClick={() => setReplyInputText(tpl)}
                                   title="Nhấp để áp dụng mẫu trả lời này"
                                 >
-                                  ⚡ {tpl.slice(0, 32)}...
+                                   {tpl.slice(0, 32)}...
                                 </button>
                               ))}
                             </div>
@@ -710,7 +710,7 @@ function SocialEngagementModal({ modal, setModal, onSimulateInteraction, onRefre
                                 disabled={replySubmitting || !replyInputText.trim()}
                               >
                                 {replySubmitting ? <span className="mkt-spinner" /> : null}
-                                <span>{replySubmitting ? 'Đang gửi...' : '🚀 Gửi câu trả lời'}</span>
+                                <span>{replySubmitting ? 'Đang gửi...' : ' Gửi câu trả lời'}</span>
                               </button>
                             </div>
                           </div>
@@ -797,8 +797,8 @@ export function MarketingAIAgentPage() {
   // Giveaway Campaign Post Generator & Publisher
   const [giveawayPostModal, setGiveawayPostModal] = useState({
     open: false,
-    title: '🎉 GIVEAWAY DU LỊCH SA PA - VÒNG QUAY MAY MẮN TRÚNG CHUYẾN ĐI GIẢM 50%!',
-    content: `🔥 SIÊU GIVEAWAY CHÀO MÙA DU LỊCH SA PA - LÁ ĐỎ HOMESTAY! 🔥\n\nBạn đã sẵn sàng thức dậy giữa thung lũng mờ sương, nhâm nhi tách trà nóng ngắm trọn biển mây Mường Hoa chưa?\n\nNhân dịp mùa du lịch đẹp nhất trong năm, Lá Đỏ Homestay gửi tặng bạn cơ hội tham gia VÒNG QUAY MAY MẮN với hàng ngàn phần quà cực khủng:\n👑 01 CHUYẾN ĐI GIẢM GIÁ 50% TIỀN PHÒNG\n🎟️ Voucher Giảm 30% - 20% đặt phòng\n🍢 Miễn phí 01 set nướng BBQ sân vườn\n☕ Tặng 02 thức uống ngắm hoàng hôn\n\n👉 Nhận 1 lượt quay miễn phí ngay tại:`,
+    title: ' GIVEAWAY DU LỊCH SA PA - VÒNG QUAY MAY MẮN TRÚNG CHUYẾN ĐI GIẢM 50%!',
+    content: ` SIÊU GIVEAWAY CHÀO MÙA DU LỊCH SA PA - LÁ ĐỎ HOMESTAY! \n\nBạn đã sẵn sàng thức dậy giữa thung lũng mờ sương, nhâm nhi tách trà nóng ngắm trọn biển mây Mường Hoa chưa?\n\nNhân dịp mùa du lịch đẹp nhất trong năm, Lá Đỏ Homestay gửi tặng bạn cơ hội tham gia VÒNG QUAY MAY MẮN với hàng ngàn phần quà cực khủng:\n 01 CHUYẾN ĐI GIẢM GIÁ 50% TIỀN PHÒNG\n️ Voucher Giảm 30% - 20% đặt phòng\n Miễn phí 01 set nướng BBQ sân vườn\n Tặng 02 thức uống ngắm hoàng hôn\n\n Nhận 1 lượt quay miễn phí ngay tại:`,
     giveawayUrl: '',
     selectedAccountId: '',
     publishing: false,
@@ -832,7 +832,7 @@ export function MarketingAIAgentPage() {
       setGiveawayPostModal((c) => ({
         ...c,
         publishing: false,
-        successMsg: '🎉 Đã đăng bài viết Giveaway thành công lên Fanpage Facebook! Khách hàng có thể bấm vào link để tham gia ngay.',
+        successMsg: ' Đã đăng bài viết Giveaway thành công lên Fanpage Facebook! Khách hàng có thể bấm vào link để tham gia ngay.',
       }))
       refreshDashboard()
     } catch (err) {
@@ -842,6 +842,150 @@ export function MarketingAIAgentPage() {
 
   const [videoLibrary, setVideoLibrary] = useState([])
   const [videoSearchPath, setVideoSearchPath] = useState('')
+
+  const [gdriveModal, setGdriveModal] = useState({
+    open: false,
+    folderInput: localStorage.getItem('remotion_last_drive_folder_url') || '',
+    apiKey: localStorage.getItem('remotion_google_drive_api_key') || '',
+    showApiKey: !localStorage.getItem('remotion_google_drive_api_key'),
+    isScanning: false,
+    results: [],
+    error: '',
+    successMsg: '',
+    downloadingId: null,
+    downloadProgress: 0,
+  })
+
+  const extractDriveFolderId = (input) => {
+    if (!input || !input.trim()) return null
+    const clean = input.trim()
+    const folderMatch = clean.match(/\/folders\/([a-zA-Z0-9_-]+)/)
+    if (folderMatch && folderMatch[1]) return folderMatch[1]
+    const idParamMatch = clean.match(/[?&]id=([a-zA-Z0-9_-]+)/)
+    if (idParamMatch && idParamMatch[1]) return idParamMatch[1]
+    if (/^[a-zA-Z0-9_-]{15,60}$/.test(clean)) return clean
+    return null
+  }
+
+  const handleOpenGdriveModal = (initialUrl) => {
+    const url = initialUrl || videoSearchPath || gdriveModal.folderInput || localStorage.getItem('remotion_last_drive_folder_url') || ''
+    setGdriveModal((prev) => ({
+      ...prev,
+      open: true,
+      folderInput: url,
+      error: '',
+      successMsg: '',
+    }))
+    if (url && (url.includes('drive.google.com') || /^[a-zA-Z0-9_-]{20,}$/.test(url.trim()))) {
+      setTimeout(() => {
+        scanGdriveWithParams(url, gdriveModal.apiKey)
+      }, 100)
+    }
+  }
+
+  const scanGdriveWithParams = async (folderInput, apiKeyInput) => {
+    const folderId = extractDriveFolderId(folderInput)
+    if (!folderId) {
+      setGdriveModal((prev) => ({
+        ...prev,
+        error: 'Vui lòng nhập link hoặc ID thư mục Google Drive hợp lệ (Ví dụ: https://drive.google.com/drive/folders/...)',
+      }))
+      return
+    }
+
+    const effectiveKey = (apiKeyInput || gdriveModal.apiKey || localStorage.getItem('remotion_google_drive_api_key') || '').trim()
+
+    setGdriveModal((prev) => ({ ...prev, isScanning: true, error: '', successMsg: '', results: [] }))
+    try {
+      localStorage.setItem('remotion_last_drive_folder_url', folderInput.trim())
+      if (effectiveKey) {
+        localStorage.setItem('remotion_google_drive_api_key', effectiveKey)
+      }
+
+      // 1. Thử gọi Google Drive API v3 nếu có API Key
+      let files = []
+      if (effectiveKey) {
+        const query = encodeURIComponent(
+          `'${folderId}' in parents and (mimeType contains 'video/' or mimeType contains 'image/' or fileExtension = 'mp4' or fileExtension = 'mov' or fileExtension = 'webm' or fileExtension = 'mkv' or fileExtension = 'jpg' or fileExtension = 'png' or fileExtension = 'jpeg') and trashed = false`
+        )
+        const fields = encodeURIComponent('files(id,name,mimeType,size,thumbnailLink,webContentLink,createdTime)')
+        const url = `https://www.googleapis.com/drive/v3/files?q=${query}&fields=${fields}&key=${effectiveKey}&pageSize=100`
+
+        const res = await fetch(url)
+        if (!res.ok) {
+          const errBody = await res.json().catch(() => ({}))
+          throw new Error(errBody?.error?.message || `Lỗi Google API (HTTP ${res.status}): Không thể đọc thư mục Drive. Vui lòng kiểm tra quyền chia sẻ công khai hoặc API Key.`)
+        }
+        const data = await res.json()
+        files = data.files || []
+      } else {
+        // Fallback: Nếu chưa có API Key, hướng dẫn nhập key
+        throw new Error('Vui lòng nhập Google Drive API Key để quét thư mục. Bấm nút "Cấu hình Google API Key" bên dưới để dán API Key miễn phí.')
+      }
+
+      if (!files.length) {
+        throw new Error('Không tìm thấy file video hoặc ảnh nào trong thư mục Google Drive này. Hãy đảm bảo thư mục chứa file .mp4, .mov, .jpg, .png.')
+      }
+
+      const mappedVideos = files.map((file) => {
+        const sizeBytes = Number(file.size) || 0
+        const isVideo = file.mimeType?.startsWith('video/') || /\.(mp4|mov|webm|mkv|avi|m4v)$/i.test(file.name)
+        const ext = isVideo ? (file.name.split('.').pop()?.toLowerCase() || 'mp4') : (file.name.split('.').pop()?.toLowerCase() || 'jpg')
+        const rawTitle = file.name ? file.name.replace(/\.[^/.]+$/, '') : `video_${file.id}`
+        const fullFileName = `${rawTitle}.${ext}`
+
+        return {
+          id: `gdrive_${file.id}`,
+          gdriveFileId: file.id,
+          title: rawTitle,
+          fileName: fullFileName,
+          type: isVideo ? 'MP4' : 'ẢNH',
+          mediaType: isVideo ? 'VIDEO' : 'IMAGE',
+          source: 'Google Drive Cloud',
+          date: new Date(file.createdTime || Date.now()).toLocaleDateString('vi-VN'),
+          sizeBytes,
+          sizeMb: Number((sizeBytes / (1024 * 1024)).toFixed(2)),
+          thumbnailUrl: file.thumbnailLink ? file.thumbnailLink.replace(/=s\d+$/, '=s400') : `https://lh3.googleusercontent.com/d/${file.id}=s400`,
+          downloadUrl: `https://drive.google.com/uc?export=download&id=${file.id}`,
+          directDriveUrl: `https://www.googleapis.com/drive/v3/files/${file.id}?alt=media&key=${effectiveKey}`,
+          caption: `Khám phá vẻ đẹp Sa Pa tại Lá Đỏ Homestay.`,
+          hashtags: '#shorts #reels #LaDoHomestay #SaPa #DuLichSaPa',
+        }
+      })
+
+      setGdriveModal((prev) => ({
+        ...prev,
+        isScanning: false,
+        results: mappedVideos,
+        successMsg: ` Quét thành công! Đã tìm thấy ${mappedVideos.length} video & hình ảnh.`,
+      }))
+    } catch (err) {
+      setGdriveModal((prev) => ({
+        ...prev,
+        isScanning: false,
+        error: err.message || 'Lỗi khi quét thư mục Google Drive',
+      }))
+    }
+  }
+
+  const handleAddAllGdriveToLibrary = () => {
+    if (!gdriveModal.results.length) return
+    setVideoLibrary((prev) => {
+      const existingIds = new Set(prev.map((p) => p.id))
+      const newItems = gdriveModal.results.filter((r) => !existingIds.has(r.id))
+      return [...newItems, ...prev]
+    })
+    setVideoSearchPath(gdriveModal.folderInput)
+    setGdriveModal((prev) => ({ ...prev, open: false }))
+  }
+
+  const handleAddSingleGdriveToLibrary = (item) => {
+    setVideoLibrary((prev) => {
+      if (prev.some((p) => p.id === item.id)) return prev
+      return [item, ...prev]
+    })
+    setGdriveModal((prev) => ({ ...prev, open: false }))
+  }
 
   const handleDirectoryScan = (e) => {
     const files = Array.from(e.target.files || [])
@@ -874,7 +1018,7 @@ export function MarketingAIAgentPage() {
     })
 
     setVideoLibrary(newVideos)
-    alert(`✅ Đã quét xong thư mục: Tìm thấy ${newVideos.length} video & ảnh của bạn sẵn sàng đăng bài!`)
+    alert(` Đã quét xong thư mục: Tìm thấy ${newVideos.length} video & ảnh của bạn sẵn sàng đăng bài!`)
   }
 
   const handleMultipleFilesSelect = (e) => {
@@ -906,7 +1050,7 @@ export function MarketingAIAgentPage() {
     goal: FALLBACK_GOALS[0].label,
     tone: FALLBACK_TONES[0].label,
     targetAudience: 'Khách du lịch yêu thích nghỉ dưỡng, săn mây và trải nghiệm bản địa Sa Pa.',
-    brief: 'Sa Pa sáng nay mây tràn qua ô cửa sổ, không gian tĩnh lặng chỉ có tiếng chim hót và hương núi rừng thoang thoảng.\n\nTự thưởng cho bản thân một buổi sáng thong thả: nhấp ngụm cà phê phin đậm đà, cuộn mình trong chăn ấm và ngắm nhìn từng dải mây lững lờ trôi qua sườn đồi.\n\nNếu bạn đang tìm một nơi để "chữa lành" và tạm gác lại những bộn bề nơi phố thị, Lá Đỏ Homestay luôn sẵn sàng mở cửa chào đón bạn.\n\n📍 Lá Đỏ Homestay Sa Pa - Nơi bạn tìm về với sự bình yên giữa mây trời Tây Bắc.\n\n#LaDoHomestay #SaPa #HomestaySaPa #DuLichSaPa #SanMaySaPa #MuongHoaValley #GocNghiDuong',
+    brief: 'Sa Pa sáng nay mây tràn qua ô cửa sổ, không gian tĩnh lặng chỉ có tiếng chim hót và hương núi rừng thoang thoảng.\n\nTự thưởng cho bản thân một buổi sáng thong thả: nhấp ngụm cà phê phin đậm đà, cuộn mình trong chăn ấm và ngắm nhìn từng dải mây lững lờ trôi qua sườn đồi.\n\nNếu bạn đang tìm một nơi để "chữa lành" và tạm gác lại những bộn bề nơi phố thị, Lá Đỏ Homestay luôn sẵn sàng mở cửa chào đón bạn.\n\n Lá Đỏ Homestay Sa Pa - Nơi bạn tìm về với sự bình yên giữa mây trời Tây Bắc.\n\n#LaDoHomestay #SaPa #HomestaySaPa #DuLichSaPa #SanMaySaPa #MuongHoaValley #GocNghiDuong',
     mediaUrl: '',
     mediaItems: [],
   })
@@ -960,7 +1104,7 @@ export function MarketingAIAgentPage() {
     for (const item of pending) {
       await publish(item.id)
     }
-    alert(`🚀 Đã kích hoạt xuất bản thành công ${pending.length} bài viết trong hàng đợi!`)
+    alert(` Đã kích hoạt xuất bản thành công ${pending.length} bài viết trong hàng đợi!`)
   }
 
   const scheduledItems = useMemo(() => {
@@ -1573,21 +1717,21 @@ export function MarketingAIAgentPage() {
     setPublishingChannels((current) => ({ ...current, [channelId]: true }))
     setUploadProgressMap((prev) => ({
       ...prev,
-      [channelId]: { percent: 25, stageText: '⚡ Đang chuẩn bị bài viết...' },
+      [channelId]: { percent: 25, stageText: ' Đang chuẩn bị bài viết...' },
     }))
     setError('')
 
     const step1 = setTimeout(() => {
       setUploadProgressMap((prev) => prev[channelId] ? {
         ...prev,
-        [channelId]: { percent: 65, stageText: '📤 Đang kết nối Graph API Facebook...' },
+        [channelId]: { percent: 65, stageText: ' Đang kết nối Graph API Facebook...' },
       } : prev)
     }, 400)
 
     const step2 = setTimeout(() => {
       setUploadProgressMap((prev) => prev[channelId] ? {
         ...prev,
-        [channelId]: { percent: 85, stageText: '🔄 Đang xuất bản lên Fanpage...' },
+        [channelId]: { percent: 85, stageText: ' Đang xuất bản lên Fanpage...' },
       } : prev)
     }, 800)
 
@@ -1606,7 +1750,7 @@ export function MarketingAIAgentPage() {
       if (publishedChannel?.status === 'FAILED') {
         setUploadProgressMap((prev) => ({
           ...prev,
-          [channelId]: { percent: 0, stageText: `❌ Thất bại: ${publishedChannel.errorMessage || 'Lỗi API'}`, isError: true },
+          [channelId]: { percent: 0, stageText: ` Thất bại: ${publishedChannel.errorMessage || 'Lỗi API'}`, isError: true },
         }))
         setTimeout(() => {
           setUploadProgressMap((prev) => {
@@ -1618,7 +1762,7 @@ export function MarketingAIAgentPage() {
       } else {
         setUploadProgressMap((prev) => ({
           ...prev,
-          [channelId]: { percent: 100, stageText: '🚀 Đã xuất bản thành công!' },
+          [channelId]: { percent: 100, stageText: ' Đã xuất bản thành công!' },
         }))
         setTimeout(() => {
           setUploadProgressMap((prev) => {
@@ -1634,7 +1778,7 @@ export function MarketingAIAgentPage() {
       setError(err.message)
       setUploadProgressMap((prev) => ({
         ...prev,
-        [channelId]: { percent: 0, stageText: `❌ ${err.message}`, isError: true },
+        [channelId]: { percent: 0, stageText: ` ${err.message}`, isError: true },
       }))
       setTimeout(() => {
         setUploadProgressMap((prev) => {
@@ -1790,16 +1934,16 @@ export function MarketingAIAgentPage() {
   const runSandboxSimulation = (channelId) => {
     setSandboxSimulation(true)
     setSimulationLog([
-      `[SANDBOX] 🚀 Khởi động mô phỏng đăng tải đa kênh (Tool_Cre Mock Engine)...`,
-      `[SANDBOX] 📡 Kết nối API giả lập an toàn (Zero Rate-limit / Không cần Token thật)...`,
+      `[SANDBOX]  Khởi động mô phỏng đăng tải đa kênh (Tool_Cre Mock Engine)...`,
+      `[SANDBOX]  Kết nối API giả lập an toàn (Zero Rate-limit / Không cần Token thật)...`,
     ])
     setTimeout(() => {
-      setSimulationLog((l) => [...l, `[SANDBOX] 🖼️ Đang tối ưu hình ảnh và gắn thẻ hashtag địa phương Sa Pa...`])
+      setSimulationLog((l) => [...l, `[SANDBOX] ️ Đang tối ưu hình ảnh và gắn thẻ hashtag địa phương Sa Pa...`])
     }, 700)
     setTimeout(() => {
       setSimulationLog((l) => [
         ...l,
-        `[SANDBOX] 📝 Đăng bài thành công lên kênh ${previewChannel?.platform || 'FACEBOOK'} (Mô phỏng 100% hoàn tất)!`,
+        `[SANDBOX]  Đăng bài thành công lên kênh ${previewChannel?.platform || 'FACEBOOK'} (Mô phỏng 100% hoàn tất)!`,
       ])
       setGeneratedPost((current) => {
         if (!current?.channels) return current
@@ -1896,7 +2040,7 @@ export function MarketingAIAgentPage() {
       setApiConfigModal((c) => ({
         ...c,
         detectedPages: pages,
-        successMessage: `🎉 Đã nhận diện thành công: ${pages.map(p => p.name).join(', ')} (ID: ${pages[0].id})`,
+        successMessage: ` Đã nhận diện thành công: ${pages.map(p => p.name).join(', ')} (ID: ${pages[0].id})`,
       }))
     } catch (err) {
       setApiConfigModal((c) => ({ ...c, message: `Lỗi nhận diện: ${err.message}` }))
@@ -1927,7 +2071,7 @@ export function MarketingAIAgentPage() {
               ...prev,
               [account.id]: {
                 success: true,
-                text: `✅ Kênh YouTube "${ytResults[0].name}" kết nối tốt! Đã sẵn sàng tự động xuất bản Video/Shorts.`,
+                text: ` Kênh YouTube "${ytResults[0].name}" kết nối tốt! Đã sẵn sàng tự động xuất bản Video/Shorts.`,
               },
             }))
             return
@@ -1940,7 +2084,7 @@ export function MarketingAIAgentPage() {
           ...prev,
           [account.id]: {
             success: true,
-            text: `✅ Kênh YouTube "${account.accountName}" (${account.externalAccountId || 'ID đã xác thực'}) kết nối tốt! Đã sẵn sàng xuất bản Video/Shorts.`,
+            text: ` Kênh YouTube "${account.accountName}" (${account.externalAccountId || 'ID đã xác thực'}) kết nối tốt! Đã sẵn sàng xuất bản Video/Shorts.`,
           },
         }))
         return
@@ -1955,7 +2099,7 @@ export function MarketingAIAgentPage() {
                 ...prev,
                 [account.id]: {
                   success: false,
-                  text: `⚠️ Facebook báo lỗi: ${data.error.message} (Code ${data.error.code}). Token có thể đã hết hạn.`,
+                  text: `️ Facebook báo lỗi: ${data.error.message} (Code ${data.error.code}). Token có thể đã hết hạn.`,
                 },
               }))
               return
@@ -1968,7 +2112,7 @@ export function MarketingAIAgentPage() {
           ...prev,
           [account.id]: {
             success: true,
-            text: `✅ Facebook Fanpage "${account.accountName}" hoạt động tốt! Sẵn sàng xuất bản bài viết.`,
+            text: ` Facebook Fanpage "${account.accountName}" hoạt động tốt! Sẵn sàng xuất bản bài viết.`,
           },
         }))
         return
@@ -1978,7 +2122,7 @@ export function MarketingAIAgentPage() {
         ...prev,
         [account.id]: {
           success: true,
-          text: `✅ Kết nối ${account.accountName} hoạt động tốt! API đã liên kết sẵn sàng xuất bản.`,
+          text: ` Kết nối ${account.accountName} hoạt động tốt! API đã liên kết sẵn sàng xuất bản.`,
         },
       }))
     } catch (err) {
@@ -1986,7 +2130,7 @@ export function MarketingAIAgentPage() {
         ...prev,
         [account.id]: {
           success: false,
-          text: `⚠️ Lỗi kiểm tra: ${err.message}`,
+          text: `️ Lỗi kiểm tra: ${err.message}`,
         },
       }))
     } finally {
@@ -2071,21 +2215,28 @@ export function MarketingAIAgentPage() {
   }
 
   const handleOpenScheduleForVideo = (video) => {
+    const isVideo = video.mediaType === 'VIDEO' || video.type === 'MP4' || video.type === 'VIDEO' || /\.(mp4|mov|avi|webm|mkv|m4v)(\?|#|$)/i.test(video.fileName || video.title || '')
+    const displayFileName = video.fileName || (isVideo ? `${video.title}.mp4` : `${video.title}.jpg`)
+
     setMultiPostModal({
       open: true,
-      mediaUrl: video.uploadedUrl || video.gdriveUrl || video.title,
+      mediaUrl: displayFileName,
+      actualMediaUrl: video.downloadUrl || video.directDriveUrl || video.uploadedUrl || video.gdriveUrl || '',
+      gdriveFileId: video.gdriveFileId || null,
+      mediaType: isVideo ? 'VIDEO' : 'IMAGE',
       rawFile: video.rawFile || null,
       title: video.title,
       caption: video.caption || `Một sớm mai thức dậy giữa biển mây bồng bềnh tại Lá Đỏ Homestay Sa Pa, thưởng thức tách trà nóng và ngắm trọn thung lũng Mường Hoa.`,
       hashtags: video.hashtags || '#shorts #reels #tiktok #fyp #LaDoHomestay #SaPa #DuLichSaPa',
       thumbnailUrl: video.thumbnailUrl || 'https://images.unsplash.com/photo-1506744038136-46273834b3fb',
       platforms: {
-        YOUTUBE: false,
+        YOUTUBE: isVideo,
         FACEBOOK: true,
       },
       selectedFacebookAccountId: socialAccounts.find(a => a.platform === 'FACEBOOK')?.id || '',
       selectedYoutubeAccountId: socialAccounts.find(a => a.platform === 'YOUTUBE')?.id || '',
       publishing: false,
+      errorMsg: '',
       successMsg: '',
     })
   }
@@ -2094,114 +2245,209 @@ export function MarketingAIAgentPage() {
     setVideoLibrary((prev) => prev.filter((v) => v.id !== videoId))
   }
 
-  const handleAutoGenerateModalCaption = () => {
+  const handleAutoGenerateModalCaption = async () => {
+    const currentTopic = multiPostModal.title || 'Lá Đỏ Homestay Sa Pa - Trải nghiệm săn mây thung lũng Mường Hoa';
+    const apiKey = (localStorage.getItem('GEMINI_API_KEY') || 'AQ.Ab8RN6L0VAaU9IwNSWWFxw9d19eWJh8J6Mx9DrGXKEv3ojKmqw8Cv9pscK').trim();
+
+    try {
+      const prompt = `Bạn là chuyên gia Content Creator & Social Media Marketing cho Homestay và Du Lịch Sa Pa.
+Hãy viết tiêu đề hấp dẫn, nội dung caption lôi cuốn (có icon cảm xúc) và danh sách hashtag phù hợp cho bài viết/video ngắn về chủ đề: "${currentTopic}".
+BẮT BUỘC trả về đúng 1 JSON duy nhất:
+{
+  "title": "Tiêu đề ngắn gọn giật tít hấp dẫn",
+  "caption": "Đoạn văn caption cảm xúc, chạm đến trái tim người đọc, mô tả khung cảnh mây núi thơ mộng, kèm lời mời ghé Lá Đỏ Homestay",
+  "hashtags": "#shorts #reels #tiktok #fyp #LaDoHomestay #SaPa #DuLichSaPa #SanMaySaPa"
+}`;
+
+      const candidateModels = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-flash-latest'];
+      let aiResult = null;
+
+      for (const model of candidateModels) {
+        try {
+          const res = await axios.post(
+            `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+            {
+              contents: [{ parts: [{ text: prompt }] }],
+              generationConfig: { responseMimeType: 'application/json', temperature: 0.7 }
+            },
+            { timeout: 15000 }
+          );
+          const raw = res.data?.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (raw) {
+            aiResult = JSON.parse(raw);
+            break;
+          }
+        } catch {}
+      }
+
+      if (aiResult?.caption) {
+        setMultiPostModal((c) => ({
+          ...c,
+          title: aiResult.title || c.title,
+          caption: aiResult.caption,
+          hashtags: aiResult.hashtags || c.hashtags,
+        }));
+        return;
+      }
+    } catch (e) {
+      console.warn('Gemini caption gen failed, fallback:', e);
+    }
+
+    // Fallback nếu mạng chậm
     const titles = [
       'Một sớm Sa Pa thức dậy giữa biển mây bồng bềnh tại Lá Đỏ',
       'Hoàng hôn buông xuống thung lũng Mường Hoa - Góc chill cực đỉnh',
       'Trải nghiệm lẩu cá tầm Tây Bắc bên bếp lửa hồng ấm áp',
-    ]
-    const randomTitle = titles[Math.floor(Math.random() * titles.length)]
+    ];
+    const randomTitle = titles[Math.floor(Math.random() * titles.length)];
     setMultiPostModal((c) => ({
       ...c,
       title: randomTitle,
       caption: `Sa Pa mùa này đẹp ngỡ ngàng, sương mờ bảng lảng qua từng nếp nhà gỗ. Cùng ghé Lá Đỏ Homestay để tận hưởng trọn vẹn sự tĩnh lặng và mây trời Tây Bắc nhé!`,
       hashtags: '#shorts #reels #tiktok #fyp #LaDoHomestay #SaPa #DuLichSaPa #SanMaySaPa',
-    }))
-  }
+    }));
+  };
 
   const handleMultiPlatformPublish = async (e, instantPublish = false) => {
     e?.preventDefault()
+    setMultiPostModal((c) => ({ ...c, errorMsg: '', successMsg: '' }))
 
     const selectedList = []
     if (multiPostModal.platforms.FACEBOOK) {
       const fbAccId = multiPostModal.selectedFacebookAccountId || socialAccounts.find(a => a.platform === 'FACEBOOK')?.id
       const fbAcc = socialAccounts.find(a => a.id === Number(fbAccId)) || socialAccounts.find(a => a.platform === 'FACEBOOK')
+
+      if (!fbAcc || !fbAcc.accessTokenEncrypted) {
+        setMultiPostModal((c) => ({
+          ...c,
+          errorMsg: '❌ Chưa có Fanpage Facebook nào được kết nối hợp lệ hoặc Access Token đã hết hạn. Vui lòng bấm "Thêm API / Token Kênh" để cấu hình trước!',
+        }))
+        return
+      }
+
       selectedList.push({
         platform: 'FACEBOOK',
-        name: fbAcc?.accountName || 'Lá Đỏ Homestay Sa Pa',
-        id: fbAcc?.id ? Number(fbAcc.id) : null,
-        pageUrl: fbAcc?.pageUrl || 'https://facebook.com',
+        name: fbAcc.accountName || 'Lá Đỏ Homestay Sa Pa',
+        id: Number(fbAcc.id),
+        pageUrl: fbAcc.pageUrl || 'https://facebook.com',
       })
     }
+
     if (multiPostModal.platforms.YOUTUBE) {
       const ytAccId = multiPostModal.selectedYoutubeAccountId || socialAccounts.find(a => a.platform === 'YOUTUBE')?.id
       const ytAcc = socialAccounts.find(a => a.id === Number(ytAccId)) || socialAccounts.find(a => a.platform === 'YOUTUBE')
+
+      if (!ytAcc || !ytAcc.accessTokenEncrypted) {
+        setMultiPostModal((c) => ({
+          ...c,
+          errorMsg: '❌ Chưa có Kênh YouTube nào được kết nối hợp lệ. Vui lòng bấm "Thêm API / Token Kênh" để kết nối Kênh YouTube trước!',
+        }))
+        return
+      }
+
       selectedList.push({
         platform: 'YOUTUBE',
-        name: ytAcc?.accountName || 'Kênh YouTube Lá Đỏ Homestay',
-        id: ytAcc?.id ? Number(ytAcc.id) : null,
-        pageUrl: ytAcc?.pageUrl || 'https://youtube.com',
+        name: ytAcc.accountName || 'Kênh YouTube Lá Đỏ Homestay',
+        id: Number(ytAcc.id),
+        pageUrl: ytAcc.pageUrl || 'https://youtube.com',
       })
     }
 
     if (!selectedList.length) {
-      alert('Vui lòng chọn ít nhất 1 nền tảng (Facebook hoặc YouTube) để đăng tải.')
+      setMultiPostModal((c) => ({
+        ...c,
+        errorMsg: '⚠️ Vui lòng chọn ít nhất 1 nền tảng (Facebook hoặc YouTube) để đăng tải.',
+      }))
       return
     }
 
-    // Upload rawFile or convert blob URL to backend so Facebook Graph API receives the actual photo/video
-    let finalMediaUrl = multiPostModal.mediaUrl || multiPostModal.thumbnailUrl || ''
-    if (multiPostModal.rawFile) {
-      try {
+    const isVideoFile = multiPostModal.mediaType === 'VIDEO' ||
+      Boolean(multiPostModal.rawFile?.type?.startsWith('video/')) ||
+      Boolean(multiPostModal.mediaUrl?.match(/\.(mp4|mov|avi|webm|mkv|m4v)(\?|#|$)/i)) ||
+      Boolean(multiPostModal.actualMediaUrl?.match(/\.(mp4|mov|avi|webm|mkv|m4v)(\?|#|$)/i))
+
+    if (multiPostModal.platforms.YOUTUBE && !isVideoFile) {
+      setMultiPostModal((c) => ({
+        ...c,
+        errorMsg: '⚠️ Kênh YouTube chỉ hỗ trợ xuất bản tệp Video (.mp4, .mov, .webm,...). Vui lòng chọn tệp Video (.mp4) hoặc bỏ tích YouTube để chỉ đăng lên Facebook.',
+      }))
+      return
+    }
+
+    setMultiPostModal((c) => ({ ...c, publishing: true, errorMsg: '', successMsg: '' }))
+
+    try {
+      // 1. Resolve actual media upload to server
+      let finalMediaUrl = ''
+
+      if (multiPostModal.rawFile) {
         const uploaded = await uploadRequest('/media/upload', multiPostModal.rawFile)
         if (uploaded?.mediaUrl) {
           finalMediaUrl = uploaded.mediaUrl
         }
-      } catch (uploadErr) {
-        console.warn('Could not upload rawFile to server:', uploadErr)
-      }
-    } else if (finalMediaUrl.startsWith('blob:')) {
-      try {
-        const blobResp = await fetch(finalMediaUrl)
+      } else if (multiPostModal.actualMediaUrl?.startsWith('blob:')) {
+        const blobResp = await fetch(multiPostModal.actualMediaUrl)
         const blobData = await blobResp.blob()
-        const isVideo = blobData.type.startsWith('video/')
-        const ext = isVideo ? 'mp4' : 'jpg'
-        const dummyFile = new File([blobData], `media_${Date.now()}.${ext}`, { type: blobData.type || (isVideo ? 'video/mp4' : 'image/jpeg') })
+        const isVid = blobData.type.startsWith('video/')
+        const ext = isVid ? 'mp4' : 'jpg'
+        const dummyFile = new File([blobData], `${multiPostModal.title || 'media'}.${ext}`, { type: blobData.type || (isVid ? 'video/mp4' : 'image/jpeg') })
         const uploaded = await uploadRequest('/media/upload', dummyFile)
         if (uploaded?.mediaUrl) {
           finalMediaUrl = uploaded.mediaUrl
         }
-      } catch (blobErr) {
-        console.warn('Could not convert and upload blob to server:', blobErr)
+      } else if (multiPostModal.gdriveFileId || (multiPostModal.actualMediaUrl && multiPostModal.actualMediaUrl.includes('drive.google.com'))) {
+        const driveDownloadUrl = multiPostModal.actualMediaUrl || `https://drive.google.com/uc?export=download&id=${multiPostModal.gdriveFileId}`
+        try {
+          const resp = await fetch(driveDownloadUrl)
+          if (resp.ok) {
+            const blob = await resp.blob()
+            const ext = isVideoFile ? 'mp4' : 'jpg'
+            const driveFile = new File([blob], `${multiPostModal.title || 'gdrive_video'}.${ext}`, { type: isVideoFile ? 'video/mp4' : 'image/jpeg' })
+            const uploaded = await uploadRequest('/media/upload', driveFile)
+            if (uploaded?.mediaUrl) {
+              finalMediaUrl = uploaded.mediaUrl
+            }
+          }
+        } catch (driveErr) {
+          console.warn('Direct drive fetch failed:', driveErr)
+        }
+      } else if (multiPostModal.actualMediaUrl && (multiPostModal.actualMediaUrl.startsWith('http://') || multiPostModal.actualMediaUrl.startsWith('https://') || multiPostModal.actualMediaUrl.startsWith('/uploads/'))) {
+        finalMediaUrl = multiPostModal.actualMediaUrl
       }
-    }
 
-    const fullContent = `${multiPostModal.caption}\n\n${multiPostModal.hashtags}`
-    const pad = (n) => String(n).padStart(2, '0')
-    const targetDate = instantPublish || !multiPostModal.scheduledDateTime ? new Date() : new Date(multiPostModal.scheduledDateTime)
-    const isPastOrNow = instantPublish || targetDate <= new Date()
-    const formattedDateTime = `${targetDate.getFullYear()}-${pad(targetDate.getMonth() + 1)}-${pad(targetDate.getDate())}T${pad(targetDate.getHours())}:${pad(targetDate.getMinutes())}:${pad(targetDate.getSeconds())}`
+      // If still no finalMediaUrl, use thumbnailUrl or placeholder
+      if (!finalMediaUrl) {
+        finalMediaUrl = multiPostModal.thumbnailUrl || ''
+      }
 
-    const postPayload = {
-      title: multiPostModal.title || 'Bài đăng Lá Đỏ Homestay',
-      goal: 'Tăng nhận diện thương hiệu',
-      tone: 'Ấm áp & truyền cảm hứng',
-      targetAudience: 'Khách du lịch yêu thích nghỉ dưỡng và trải nghiệm Sa Pa',
-      brief: fullContent,
-      channels: selectedList.map((item) => ({
-        socialAccountId: item.id || null,
-        platform: item.platform,
-        pageName: item.name,
-        pageUrl: item.pageUrl,
-      })),
-      media: finalMediaUrl ? [{
-        mediaUrl: finalMediaUrl,
-        mediaType: finalMediaUrl.match(/\.(mp4|mov|avi|webm)$/i) ? 'VIDEO' : 'IMAGE',
-        displayOrder: 1,
-        altText: multiPostModal.title || 'Media bài đăng',
-        source: 'UPLOADED',
-      }] : [],
-    }
+      const fullContent = `${multiPostModal.caption}\n\n${multiPostModal.hashtags}`
+      const pad = (n) => String(n).padStart(2, '0')
+      const targetDate = instantPublish || !multiPostModal.scheduledDateTime ? new Date() : new Date(multiPostModal.scheduledDateTime)
+      const isPastOrNow = instantPublish || targetDate <= new Date()
+      const formattedDateTime = `${targetDate.getFullYear()}-${pad(targetDate.getMonth() + 1)}-${pad(targetDate.getDate())}T${pad(targetDate.getHours())}:${pad(targetDate.getMinutes())}:${pad(targetDate.getSeconds())}`
 
-    // Close modal immediately and jump to Queue
-    setMultiPostModal((c) => ({ ...c, open: false, publishing: false }))
-    setTimeout(() => {
-      const queueElem = document.querySelector('.mkt-queue-section')
-      if (queueElem) queueElem.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }, 50)
+      const postPayload = {
+        title: multiPostModal.title || 'Bài đăng Lá Đỏ Homestay',
+        goal: 'Tăng nhận diện thương hiệu',
+        tone: 'Ấm áp & truyền cảm hứng',
+        targetAudience: 'Khách du lịch yêu thích nghỉ dưỡng và trải nghiệm Sa Pa',
+        brief: fullContent,
+        channels: selectedList.map((item) => ({
+          socialAccountId: item.id || null,
+          platform: item.platform,
+          pageName: item.name,
+          pageUrl: item.pageUrl,
+        })),
+        media: finalMediaUrl ? [{
+          mediaUrl: finalMediaUrl,
+          mediaType: isVideoFile ? 'VIDEO' : 'IMAGE',
+          displayOrder: 1,
+          altText: multiPostModal.title || 'Media bài đăng',
+          source: 'UPLOADED',
+        }] : [],
+      }
 
-    try {
-      // 1. Create post on backend
+      // 2. Create post on backend
       const created = await request('/posts/generate', {
         method: 'POST',
         body: JSON.stringify(postPayload),
@@ -2213,35 +2459,48 @@ export function MarketingAIAgentPage() {
       if (instantPublish || isPastOrNow) {
         if (created?.channels && created.channels.length > 0) {
           for (const ch of created.channels) {
-            publish(ch.id)
+            await publish(ch.id)
           }
         }
-        return
-      }
-
-      // Schedule for future
-      if (created?.channels && created.channels.length > 0) {
-        for (const ch of created.channels) {
-          try {
-            await request(`/channels/${ch.id}/schedule`, {
-              method: 'POST',
-              body: JSON.stringify({
-                scheduledAt: formattedDateTime,
-              }),
-            })
-          } catch (sErr) {
-            console.warn('Schedule channel error:', sErr)
+      } else {
+        if (created?.channels && created.channels.length > 0) {
+          for (const ch of created.channels) {
+            try {
+              await request(`/channels/${ch.id}/schedule`, {
+                method: 'POST',
+                body: JSON.stringify({
+                  scheduledAt: formattedDateTime,
+                }),
+              })
+            } catch (sErr) {
+              console.warn('Schedule channel error:', sErr)
+            }
           }
         }
       }
 
       await refreshDashboard()
+      setMultiPostModal((c) => ({
+        ...c,
+        publishing: false,
+        successMsg: instantPublish ? '🎉 Đã xuất bản bài viết thành công lên các kênh đã chọn!' : ' Đã lên lịch hẹn xuất bản bài viết thành công!',
+      }))
+
+      setTimeout(() => {
+        setMultiPostModal((c) => ({ ...c, open: false, successMsg: '' }))
+        const queueElem = document.querySelector('.mkt-queue-section')
+        if (queueElem) queueElem.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }, 1500)
     } catch (err) {
-      alert(`Lỗi đăng bài: ${err.message}`)
+      setMultiPostModal((c) => ({
+        ...c,
+        publishing: false,
+        errorMsg: err.message || 'Lỗi khi xuất bản bài viết. Vui lòng kiểm tra lại kết nối Kênh hoặc tệp video.',
+      }))
     }
   }
 
-  // 🕒 Auto-Poster Watcher: Khi mở web, tự động quét và đăng bài đúng giờ hẹn!
+  //  Auto-Poster Watcher: Khi mở web, tự động quét và đăng bài đúng giờ hẹn!
   useEffect(() => {
     const timer = setInterval(async () => {
       try {
@@ -2254,7 +2513,7 @@ export function MarketingAIAgentPage() {
         )
 
         for (const item of dueChannels) {
-          console.log(`⏰ [Auto-Post Watcher] Đã tới giờ hẹn! Tự động đăng "${item.post.title}" lên ${item.platform}...`)
+          console.log(` [Auto-Post Watcher] Đã tới giờ hẹn! Tự động đăng "${item.post.title}" lên ${item.platform}...`)
           await publish(item.id)
         }
       } catch {
@@ -2275,51 +2534,16 @@ export function MarketingAIAgentPage() {
           action={
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
               <button
-                className="mkt-btn"
-                type="button"
-                onClick={() => setGiveawayPostModal((c) => ({
-                  ...c,
-                  open: true,
-                  giveawayUrl: window.location.origin + '/giveaway',
-                  selectedAccountId: socialAccounts.find(a => a.platform === 'FACEBOOK')?.id || '',
-                  successMsg: '',
-                  errorMsg: '',
-                }))}
-                style={{
-                  padding: '9px 18px',
-                  fontSize: '13px',
-                  background: 'linear-gradient(135deg, #e11d48 0%, #f59e0b 100%)',
-                  color: '#ffffff',
-                  border: 'none',
-                  fontWeight: 700,
-                  boxShadow: '0 4px 12px rgba(225, 29, 72, 0.35)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  cursor: 'pointer',
-                }}
-              >
-                <span>🎁 Tạo & Đăng Bài Giveaway Vòng Quay</span>
-              </button>
-              <button
-                className="mkt-btn mkt-btn--secondary"
-                type="button"
-                onClick={() => navigate('/admin/marketing/giveaway-leads')}
-                style={{ padding: '9px 14px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}
-              >
-                <span>📊 Xem Kết Quả Leads</span>
-              </button>
-              <button
                 className="mkt-btn mkt-btn--primary"
                 type="button"
                 onClick={() => setMultiPostModal((c) => ({ ...c, open: true }))}
                 style={{ padding: '9px 18px', fontSize: '13px' }}
               >
                 <Icon name="send" />
-                <span>📹 Lên lịch & Đăng Video Đa Nền Tảng</span>
+                <span> Lên lịch & Đăng Video Đa Nền Tảng</span>
               </button>
               <button className="mkt-btn mkt-btn--secondary" type="button" onClick={() => setApiConfigModal((c) => ({ ...c, open: true }))}>
-                <Icon name="link" />🔑 Thêm API / Token Kênh
+                <Icon name="link" /> Thêm API / Token Kênh
               </button>
               <button className="mkt-btn mkt-btn--secondary" type="button" onClick={() => setCalendarOpen(true)} disabled={loading}>
                 <Icon name="clock" />{loading ? 'Đang tải...' : 'Lịch nội dung'}
@@ -2330,7 +2554,7 @@ export function MarketingAIAgentPage() {
 
         {error && <p className="mkt-alert">{error}</p>}
 
-        {/* 🌟 Quản lý tài khoản mạng xã hội (Clean Light Theme) */}
+        {/*  Quản lý tài khoản mạng xã hội (Clean Light Theme) */}
         <section className="mkt-social-accounts-manager">
           <div className="mkt-social-manager-head">
             <div>
@@ -2375,7 +2599,7 @@ export function MarketingAIAgentPage() {
                         </div>
                       </div>
                       <span className="mkt-social-card-platform-icon">
-                        {isFb ? '📘' : isYt ? '🔴' : '🌐'}
+                        {isFb ? '' : isYt ? '' : ''}
                       </span>
                     </div>
 
@@ -2403,7 +2627,7 @@ export function MarketingAIAgentPage() {
                         disabled={isTesting}
                       >
                         {isTesting ? <span className="mkt-spinner" /> : <Icon name="sparkles" size={14} />}
-                        {isTesting ? 'Đang kiểm tra...' : '⚡ Kiểm tra kết nối'}
+                        {isTesting ? 'Đang kiểm tra...' : ' Kiểm tra kết nối'}
                       </button>
                       <div className="mkt-btn--active-check" title="Tài khoản đang hoạt động">
                         <Icon name="check" size={16} />
@@ -2427,14 +2651,14 @@ export function MarketingAIAgentPage() {
                   <div className="mkt-social-card-top">
                     <div className="mkt-social-card-profile">
                       <div className="mkt-social-card-avatar" style={{ background: '#2563eb' }}>
-                        📘
+                        
                       </div>
                       <div className="mkt-social-card-info">
                         <strong>Lá Đỏ Homestay Sa Pa</strong>
                         <small>ID: 290099357528057</small>
                       </div>
                     </div>
-                    <span className="mkt-social-card-platform-icon">📘</span>
+                    <span className="mkt-social-card-platform-icon"></span>
                   </div>
                   <div className="mkt-social-card-badges">
                     <span className="mkt-platform-pill mkt-platform-pill--facebook">Facebook Fanpage</span>
@@ -2442,7 +2666,7 @@ export function MarketingAIAgentPage() {
                   </div>
                   <div className="mkt-social-card-bottom">
                     <button type="button" className="mkt-btn--test-connection" onClick={() => setApiConfigModal((c) => ({ ...c, open: true, platform: 'FACEBOOK' }))}>
-                      ⚡ Kiểm tra kết nối
+                       Kiểm tra kết nối
                     </button>
                     <div className="mkt-btn--active-check"><Icon name="check" size={16} /></div>
                   </div>
@@ -2452,14 +2676,14 @@ export function MarketingAIAgentPage() {
                   <div className="mkt-social-card-top">
                     <div className="mkt-social-card-profile">
                       <div className="mkt-social-card-avatar" style={{ background: '#dc2626' }}>
-                        🔴
+                        
                       </div>
                       <div className="mkt-social-card-info">
                         <strong>Kênh YouTube Lá Đỏ Official</strong>
                         <small>ID: UC_9Z9REZF</small>
                       </div>
                     </div>
-                    <span className="mkt-social-card-platform-icon">🔴</span>
+                    <span className="mkt-social-card-platform-icon"></span>
                   </div>
                   <div className="mkt-social-card-badges">
                     <span className="mkt-platform-pill mkt-platform-pill--youtube">YouTube Channel</span>
@@ -2467,7 +2691,7 @@ export function MarketingAIAgentPage() {
                   </div>
                   <div className="mkt-social-card-bottom">
                     <button type="button" className="mkt-btn--test-connection" onClick={() => setApiConfigModal((c) => ({ ...c, open: true, platform: 'YOUTUBE' }))}>
-                      ⚡ Kiểm tra kết nối
+                       Kiểm tra kết nối
                     </button>
                     <div className="mkt-btn--active-check"><Icon name="check" size={16} /></div>
                   </div>
@@ -2477,7 +2701,7 @@ export function MarketingAIAgentPage() {
           </div>
         </section>
 
-        {/* 🌟 Hàng Đợi Đăng Tải (Queue Section - Placed ABOVE Video Library) */}
+        {/*  Hàng Đợi Đăng Tải (Queue Section - Placed ABOVE Video Library) */}
         <section className="mkt-queue-section">
           <div className="mkt-queue-head">
             <div>
@@ -2491,7 +2715,7 @@ export function MarketingAIAgentPage() {
                 onClick={handleRunQueueNow}
               >
                 <Icon name="send" size={15} />
-                <span>⚙️ Chạy Hàng Đợi Ngay</span>
+                <span>️ Chạy Hàng Đợi Ngay</span>
               </button>
 
               <button
@@ -2589,7 +2813,20 @@ export function MarketingAIAgentPage() {
                               </div>
                             )}
                             <div className="mkt-queue-video-info">
-                              <strong title={item.postTitle}>{item.postTitle || 'Bài đăng Lá Đỏ Homestay'}</strong>
+                              {item.externalUrl ? (
+                                <a
+                                  href={item.externalUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  style={{ color: '#0f172a', textDecoration: 'none', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '3px' }}
+                                  title="Bấm để mở video/bài viết trên mạng xã hội"
+                                >
+                                  <span>{item.postTitle || 'Bài đăng Lá Đỏ Homestay'}</span>
+                                  <span style={{ fontSize: '11px', color: '#64748b' }}>↗</span>
+                                </a>
+                              ) : (
+                                <strong title={item.postTitle}>{item.postTitle || 'Bài đăng Lá Đỏ Homestay'}</strong>
+                              )}
                               <small title={item.postBrief || item.id}>ID: #{item.id} {item.pageName ? `· ${item.pageName}` : ''}</small>
                             </div>
                           </div>
@@ -2597,13 +2834,13 @@ export function MarketingAIAgentPage() {
 
                         <td>
                           {item.platform === 'YOUTUBE' && (
-                            <span className="mkt-queue-platform-pill mkt-queue-platform-pill--youtube">🔴 YouTube</span>
+                            <span className="mkt-queue-platform-pill mkt-queue-platform-pill--youtube"> YouTube</span>
                           )}
                           {item.platform === 'FACEBOOK' && (
-                            <span className="mkt-queue-platform-pill mkt-queue-platform-pill--facebook">📘 Facebook</span>
+                            <span className="mkt-queue-platform-pill mkt-queue-platform-pill--facebook"> Facebook</span>
                           )}
                           {item.platform === 'TIKTOK' && (
-                            <span className="mkt-queue-platform-pill mkt-queue-platform-pill--tiktok">🎵 TikTok</span>
+                            <span className="mkt-queue-platform-pill mkt-queue-platform-pill--tiktok"> TikTok</span>
                           )}
                           {!['YOUTUBE', 'FACEBOOK', 'TIKTOK'].includes(item.platform) && (
                             <span className="mkt-queue-platform-pill">{item.platform}</span>
@@ -2645,14 +2882,41 @@ export function MarketingAIAgentPage() {
                               </div>
                               <span className="mkt-progress-text">
                                 <span className="mkt-spinner" style={{ width: '10px', height: '10px' }} />
-                                <span>Đang tải lên Facebook... (65%)</span>
+                                <span>Đang xuất bản lên {item.platform === 'YOUTUBE' ? 'YouTube' : 'Facebook'}...</span>
                               </span>
                             </div>
                           ) : isPublished ? (
-                            <span className="mkt-queue-status-pill mkt-queue-status-pill--completed">
-                              <Icon name="check" size={13} />
-                              <span>Đã hoàn tất</span>
-                            </span>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                              <span className="mkt-queue-status-pill mkt-queue-status-pill--completed">
+                                <Icon name="check" size={13} />
+                                <span>Đã hoàn tất</span>
+                              </span>
+                              {item.externalUrl && (
+                                <a
+                                  href={item.externalUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
+                                    fontSize: '11.5px',
+                                    fontWeight: 700,
+                                    color: item.platform === 'YOUTUBE' ? '#b91c1c' : '#1d4ed8',
+                                    background: item.platform === 'YOUTUBE' ? '#fee2e2' : '#dbeafe',
+                                    border: `1px solid ${item.platform === 'YOUTUBE' ? '#fca5a5' : '#bfdbfe'}`,
+                                    padding: '2px 8px',
+                                    borderRadius: '6px',
+                                    textDecoration: 'none',
+                                    width: 'fit-content',
+                                  }}
+                                  title="Bấm để mở bài đăng trực tiếp trên mạng xã hội"
+                                >
+                                  <span> Xem trên {item.platform === 'YOUTUBE' ? 'YouTube' : 'Facebook'}</span>
+                                  <span style={{ fontSize: '10px' }}>↗</span>
+                                </a>
+                              )}
+                            </div>
                           ) : isScheduled ? (
                             <span className="mkt-queue-status-pill mkt-queue-status-pill--pending">
                               <Icon name="calendar" size={13} />
@@ -2675,6 +2939,27 @@ export function MarketingAIAgentPage() {
 
                         <td>
                           <div className="mkt-queue-actions">
+                            {item.externalUrl && (
+                              <a
+                                href={item.externalUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="mkt-queue-action-btn"
+                                title="Mở xem trực tiếp bài viết / video trên mạng xã hội"
+                                style={{
+                                  color: item.platform === 'YOUTUBE' ? '#dc2626' : '#2563eb',
+                                  borderColor: item.platform === 'YOUTUBE' ? '#fca5a5' : '#bfdbfe',
+                                  background: item.platform === 'YOUTUBE' ? '#fef2f2' : '#eff6ff',
+                                  textDecoration: 'none',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  fontSize: '13px',
+                                }}
+                              >
+                                
+                              </a>
+                            )}
                             {isPublished && (
                               <button
                                 type="button"
@@ -2683,7 +2968,7 @@ export function MarketingAIAgentPage() {
                                 title="Xem tương tác & bình luận trực tiếp từ MXH (Like, Comment, Share)"
                                 style={{ color: '#0284c7', borderColor: '#bae6fd', background: '#f0f9ff' }}
                               >
-                                <span>📊</span>
+                                
                               </button>
                             )}
                             {!isPublished && (
@@ -2728,16 +3013,16 @@ export function MarketingAIAgentPage() {
                 gap: '8px',
               }}
             >
-              <div style={{ fontSize: '28px' }}>📋</div>
+              <div style={{ fontSize: '28px' }}></div>
               <strong style={{ fontSize: '15px', color: '#0f172a' }}>Hàng đợi hiện tại đang trống</strong>
               <p style={{ margin: 0, fontSize: '13px' }}>
-                Khi bạn bấm <strong>"✈️ Lên Lịch Đăng"</strong> hoặc <strong>"Lưu & Thêm Vào Hàng Đợi"</strong>, bài viết sẽ được xếp vào đây để tự động xuất bản đúng giờ.
+                Khi bạn bấm <strong>"️ Lên Lịch Đăng"</strong> hoặc <strong>"Lưu & Thêm Vào Hàng Đợi"</strong>, bài viết sẽ được xếp vào đây để tự động xuất bản đúng giờ.
               </p>
             </div>
           )}
         </section>
 
-        {/* 🌟 Kho Nội Dung Video (Matching tool_cre) */}
+        {/*  Kho Nội Dung Video (Matching tool_cre) */}
         <section className="mkt-video-library">
           <div className="mkt-video-library-head">
             <div>
@@ -2753,12 +3038,12 @@ export function MarketingAIAgentPage() {
                 title="Mở Studio Remotion để cắt ghép, lồng tiếng AI & chèn subtitle"
               >
                 <Icon name="sparkles" size={15} />
-                <span>🎬 Studio Remotion (Edit Video)</span>
+                <span> Studio Remotion (Edit Video)</span>
               </button>
 
               <label className="mkt-btn mkt-btn--secondary" style={{ cursor: 'pointer', margin: 0 }}>
                 <Icon name="upload" size={15} />
-                <span>📁 Chọn File Lẻ</span>
+                <span> Chọn File Lẻ</span>
                 <input
                   type="file"
                   accept="video/*,image/*"
@@ -2770,7 +3055,7 @@ export function MarketingAIAgentPage() {
 
               <label className="mkt-btn mkt-btn--secondary" style={{ cursor: 'pointer', margin: 0 }}>
                 <Icon name="folder" size={15} />
-                <span>📁 Quét Thư Mục Máy</span>
+                <span> Quét Thư Mục Máy</span>
                 <input
                   type="file"
                   webkitdirectory="true"
@@ -2784,7 +3069,8 @@ export function MarketingAIAgentPage() {
               <button
                 type="button"
                 className="mkt-btn--gdrive"
-                onClick={() => alert('Đã kết nối Google Drive Cloud! Đang đồng bộ video mới...')}
+                onClick={() => handleOpenGdriveModal()}
+                title="Mở bảng quét video từ thư mục Google Drive Cloud"
               >
                 <span>Google Drive Cloud</span>
               </button>
@@ -2797,13 +3083,28 @@ export function MarketingAIAgentPage() {
               <input
                 value={videoSearchPath}
                 onChange={(e) => setVideoSearchPath(e.target.value)}
-                placeholder="Đường dẫn thư mục video trên máy hoặc Google Drive..."
+                placeholder="Dán link thư mục Google Drive hoặc đường dẫn máy tính..."
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    if (videoSearchPath.includes('drive.google.com') || /^[a-zA-Z0-9_-]{20,}$/.test(videoSearchPath.trim())) {
+                      handleOpenGdriveModal(videoSearchPath)
+                    } else if (videoSearchPath.trim()) {
+                      handleOpenGdriveModal(videoSearchPath)
+                    }
+                  }
+                }}
               />
             </div>
             <button
               type="button"
               className="mkt-btn mkt-btn--secondary"
-              onClick={() => alert(`Đang quét lại đường dẫn: ${videoSearchPath || 'Thư mục máy tính'}`)}
+              onClick={() => {
+                if (videoSearchPath.includes('drive.google.com') || /^[a-zA-Z0-9_-]{20,}$/.test(videoSearchPath.trim())) {
+                  handleOpenGdriveModal(videoSearchPath)
+                } else {
+                  handleOpenGdriveModal(videoSearchPath)
+                }
+              }}
             >
               <Icon name="refresh" size={14} />
               <span>Quét lại</span>
@@ -2819,7 +3120,7 @@ export function MarketingAIAgentPage() {
               type="button"
               className="mkt-btn mkt-btn--secondary"
               style={{ background: '#ffffff', borderColor: '#a7f3d0', color: '#065f46', fontWeight: 600 }}
-              onClick={() => alert('Đang quét Google Drive: Đồng bộ video thành công!')}
+              onClick={() => handleOpenGdriveModal()}
             >
               <Icon name="refresh" size={14} />
               <span>Quét Google Drive Ngay</span>
@@ -2852,8 +3153,8 @@ export function MarketingAIAgentPage() {
                   <div className="mkt-video-card-body">
                     <h3 className="mkt-video-card-title" title={video.title}>{video.title}</h3>
                     <div className="mkt-video-meta-row">
-                      <span>📁 {video.source}</span>
-                      <span>📅 {video.date}</span>
+                      <span> {video.source}</span>
+                      <span> {video.date}</span>
                     </div>
 
                     <div className="mkt-video-actions-row">
@@ -2863,7 +3164,7 @@ export function MarketingAIAgentPage() {
                         onClick={() => handleOpenScheduleForVideo(video)}
                       >
                         <Icon name="send" size={14} />
-                        <span>✈️ Lên Lịch Đăng</span>
+                        <span>️ Lên Lịch Đăng</span>
                       </button>
                       <button
                         type="button"
@@ -2893,10 +3194,10 @@ export function MarketingAIAgentPage() {
                 gap: '12px',
               }}
             >
-              <div style={{ fontSize: '36px' }}>🎬</div>
+              <div style={{ fontSize: '36px' }}></div>
               <strong style={{ fontSize: '16px', color: '#0f172a' }}>Chưa có video nào trong kho</strong>
               <p style={{ margin: 0, fontSize: '13.5px', maxWidth: '480px' }}>
-                Bấm <strong>📁 Chọn File Lẻ</strong> để chọn video từ máy hoặc bấm <strong>📁 Quét Thư Mục Máy</strong> để tự động nạp toàn bộ video trong thư mục của bạn.
+                Bấm <strong> Chọn File Lẻ</strong> để chọn video từ máy hoặc bấm <strong> Quét Thư Mục Máy</strong> để tự động nạp toàn bộ video trong thư mục của bạn.
               </p>
             </div>
           )}
@@ -3040,21 +3341,21 @@ export function MarketingAIAgentPage() {
                       className={`mkt-chip ${apiConfigModal.autoPlatform === 'ALL' ? 'mkt-chip--active' : ''}`}
                       onClick={() => setApiConfigModal((c) => ({ ...c, autoPlatform: 'ALL' }))}
                     >
-                      ⚡ Tự động nhận biết
+                       Tự động nhận biết
                     </button>
                     <button
                       type="button"
                       className={`mkt-chip ${apiConfigModal.autoPlatform === 'YOUTUBE' ? 'mkt-chip--active' : ''}`}
                       onClick={() => setApiConfigModal((c) => ({ ...c, autoPlatform: 'YOUTUBE' }))}
                     >
-                      🔴 Kênh YouTube / Shorts
+                       Kênh YouTube / Shorts
                     </button>
                     <button
                       type="button"
                       className={`mkt-chip ${apiConfigModal.autoPlatform === 'FACEBOOK' ? 'mkt-chip--active' : ''}`}
                       onClick={() => setApiConfigModal((c) => ({ ...c, autoPlatform: 'FACEBOOK' }))}
                     >
-                      📘 Facebook Fanpage
+                       Facebook Fanpage
                     </button>
                   </div>
 
@@ -3091,7 +3392,7 @@ export function MarketingAIAgentPage() {
                   {/* Quick links to get tokens */}
                   <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '10px 14px', marginTop: '12px', marginBottom: '8px' }}>
                     <div style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
-                      <span>🔗 Đường link lấy Token / API (Bấm mở ngay tab mới):</span>
+                      <span> Đường link lấy Token / API (Bấm mở ngay tab mới):</span>
                     </div>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                       {(apiConfigModal.autoPlatform === 'FACEBOOK' || apiConfigModal.autoPlatform === 'ALL') && (
@@ -3113,7 +3414,7 @@ export function MarketingAIAgentPage() {
                             textDecoration: 'none',
                           }}
                         >
-                          📘 Meta Graph API Explorer ↗
+                           Meta Graph API Explorer ↗
                         </a>
                       )}
                       {(apiConfigModal.autoPlatform === 'YOUTUBE' || apiConfigModal.autoPlatform === 'ALL') && (
@@ -3136,7 +3437,7 @@ export function MarketingAIAgentPage() {
                               textDecoration: 'none',
                             }}
                           >
-                            🔴 Google OAuth 2.0 Playground ↗
+                             Google OAuth 2.0 Playground ↗
                           </a>
                           <a
                             href="https://console.cloud.google.com/apis/credentials"
@@ -3156,7 +3457,7 @@ export function MarketingAIAgentPage() {
                               textDecoration: 'none',
                             }}
                           >
-                            🔑 Google Cloud Credentials ↗
+                             Google Cloud Credentials ↗
                           </a>
                         </>
                       )}
@@ -3167,7 +3468,7 @@ export function MarketingAIAgentPage() {
                   {apiConfigModal.autoPlatform === 'YOUTUBE' && (
                     <div style={{ background: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: '8px', padding: '10px 12px', marginTop: '6px', fontSize: '12px', color: '#475569' }}>
                       <strong style={{ color: '#0f172a', display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '4px' }}>
-                        💡 Hướng dẫn kết nối Kênh YouTube:
+                         Hướng dẫn kết nối Kênh YouTube:
                       </strong>
                       <p style={{ margin: '0 0 6px 0', lineHeight: 1.4 }}>
                         Chỉ cần nhập <strong>Handle Kênh</strong> (ví dụ <code>@ladohomestay</code>) và bấm <strong>Kết nối</strong>. Hệ thống sẽ tự động liên kết kênh của bạn vào danh sách đăng video!
@@ -3183,14 +3484,14 @@ export function MarketingAIAgentPage() {
                     style={{ width: '100%', marginTop: '14px', minHeight: '42px', fontSize: '14px', fontWeight: 700 }}
                   >
                     {apiConfigModal.detecting ? <span className="mkt-spinner" /> : <Icon name="search" />}
-                    {apiConfigModal.detecting ? 'Đang kết nối nhận diện Kênh...' : '🔍 Kết Nối Kênh / Fanpage Tự Động'}
+                    {apiConfigModal.detecting ? 'Đang kết nối nhận diện Kênh...' : ' Kết Nối Kênh / Fanpage Tự Động'}
                   </button>
 
                   {/* Danh sách Kênh/Fanpage nhận diện được */}
                   {apiConfigModal.detectedPages.length > 0 && (
                     <div style={{ marginTop: '18px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                       <strong style={{ fontSize: '13.5px', color: '#1e293b' }}>
-                        📋 Kênh / Fanpage tìm thấy ({apiConfigModal.detectedPages.length}):
+                         Kênh / Fanpage tìm thấy ({apiConfigModal.detectedPages.length}):
                       </strong>
                       {apiConfigModal.detectedPages.map((page) => (
                         <div
@@ -3209,7 +3510,7 @@ export function MarketingAIAgentPage() {
                             {page.thumbnailUrl ? (
                               <img src={page.thumbnailUrl} alt="" style={{ width: '38px', height: '38px', borderRadius: '50%', objectFit: 'cover' }} />
                             ) : (
-                              <span style={{ fontSize: '24px' }}>{page.platform === 'YOUTUBE' ? '🔴' : '📘'}</span>
+                              <span style={{ fontSize: '24px' }}>{page.platform === 'YOUTUBE' ? '' : ''}</span>
                             )}
                             <div>
                               <strong style={{ fontSize: '14px', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -3231,7 +3532,7 @@ export function MarketingAIAgentPage() {
                             style={{ minHeight: '36px', padding: '0 14px', fontSize: '12.5px' }}
                           >
                             {apiConfigModal.saving ? <span className="mkt-spinner" /> : <Icon name="check" />}
-                            ⚡ Kích hoạt & Lưu Kênh này
+                             Kích hoạt & Lưu Kênh này
                           </button>
                         </div>
                       ))}
@@ -3259,22 +3560,26 @@ export function MarketingAIAgentPage() {
                 boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
                 maxWidth: '720px',
                 width: '94%',
+                maxHeight: '90vh',
+                display: 'flex',
+                flexDirection: 'column',
                 overflow: 'hidden',
               }}
             >
               <div
                 className="mkt-modal-head"
                 style={{
-                  padding: '20px 24px',
+                  padding: '18px 24px',
                   background: '#ffffff',
                   borderBottom: '1px solid #f1f5f9',
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
+                  flexShrink: 0,
                 }}
               >
-                <h2 style={{ margin: 0, fontSize: '19px', fontWeight: 800, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <span>📹</span>
+                <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  
                   <span>Lên lịch & Đăng Video Đa Nền Tảng</span>
                 </h2>
                 <button className="mkt-icon-btn" type="button" onClick={() => setMultiPostModal((c) => ({ ...c, open: false }))} disabled={multiPostModal.publishing} style={{ background: '#f1f5f9', color: '#64748b' }}>
@@ -3282,145 +3587,72 @@ export function MarketingAIAgentPage() {
                 </button>
               </div>
 
-              <form onSubmit={handleMultiPlatformPublish} className="mkt-modal-body" style={{ background: '#ffffff', color: '#0f172a', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                {multiPostModal.successMsg && (
-                  <p className="mkt-alert" style={{ background: '#ecfdf5', color: '#065f46', borderColor: '#a7f3d0' }}>
-                    {multiPostModal.successMsg}
-                  </p>
-                )}
+              <form onSubmit={handleMultiPlatformPublish} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
+                <div
+                  className="mkt-modal-body"
+                  style={{
+                    background: '#ffffff',
+                    color: '#0f172a',
+                    padding: '20px 24px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '16px',
+                    flex: 1,
+                    overflowY: 'auto',
+                    minHeight: 0,
+                  }}
+                >
+                  {multiPostModal.errorMsg && (
+                    <p className="mkt-alert" style={{ background: '#fef2f2', color: '#991b1b', borderColor: '#fecaca', fontWeight: 600 }}>
+                      {multiPostModal.errorMsg}
+                    </p>
+                  )}
+                  {multiPostModal.successMsg && (
+                    <p className="mkt-alert" style={{ background: '#ecfdf5', color: '#065f46', borderColor: '#a7f3d0' }}>
+                      {multiPostModal.successMsg}
+                    </p>
+                  )}
 
-                {/* 1. Chọn File Video */}
-                <div className="mkt-dark-field">
-                  <label style={{ color: '#334155', fontWeight: 700, fontSize: '13px' }}>Chọn File Video / Ảnh:</label>
-                  <div className="mkt-input-with-btn">
-                    <input
-                      style={{ background: '#f8fafc', color: '#0f172a', border: '1px solid #cbd5e1', borderRadius: '10px', padding: '12px 16px' }}
-                      value={multiPostModal.mediaUrl}
-                      onChange={(e) => setMultiPostModal({ ...multiPostModal, mediaUrl: e.target.value })}
-                      placeholder="gdrive://... hoặc https://... hoặc /uploads/..."
-                    />
-                    <label className="mkt-dark-side-btn" style={{ cursor: 'pointer', background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1', borderRadius: '10px', padding: '0 18px', fontWeight: 600 }}>
-                      <Icon name="upload" size={15} />
-                      <span>Chọn File</span>
-                      <input
-                        type="file"
-                        accept="video/*,image/*"
-                        style={{ display: 'none' }}
-                        onChange={async (e) => {
-                          const file = e.target.files?.[0]
-                          if (file) {
-                            try {
-                              const uploaded = await uploadRequest('/media/upload', file)
-                              setMultiPostModal((c) => ({
-                                ...c,
-                                mediaUrl: uploaded.mediaUrl,
-                                thumbnailUrl: uploaded.mediaType === 'IMAGE' ? uploaded.mediaUrl : c.thumbnailUrl,
-                                rawFile: file,
-                                title: file.name.replace(/\.[^/.]+$/, ''),
-                              }))
-                            } catch {
-                              setMultiPostModal((c) => ({
-                                ...c,
-                                mediaUrl: URL.createObjectURL(file),
-                                rawFile: file,
-                                title: file.name.replace(/\.[^/.]+$/, ''),
-                              }))
-                            }
-                          }
-                        }}
-                      />
-                    </label>
-                  </div>
-                </div>
-
-                {/* 2. Tiêu đề Video */}
-                <div className="mkt-dark-field">
-                  <label style={{ color: '#334155', fontWeight: 700, fontSize: '13px' }}>Tiêu đề Video / Bài viết:</label>
-                  <input
-                    style={{ background: '#f8fafc', color: '#0f172a', border: '1px solid #cbd5e1', borderRadius: '10px', padding: '12px 16px' }}
-                    value={multiPostModal.title}
-                    onChange={(e) => setMultiPostModal({ ...multiPostModal, title: e.target.value })}
-                    placeholder="VD: VID 20260807 130928..."
-                    required
-                  />
-                </div>
-
-                {/* 3. Nội dung Caption */}
-                <div className="mkt-dark-field">
-                  <label style={{ color: '#334155', fontWeight: 700, fontSize: '13px' }}>
-                    <span>Nội dung Caption:</span>
-                    <button
-                      type="button"
-                      className="mkt-mini-btn"
-                      onClick={handleAutoGenerateModalCaption}
-                      style={{ background: '#e0f2fe', color: '#0369a1', border: '1px solid #bae6fd', padding: '4px 12px', borderRadius: '6px', fontWeight: 600 }}
-                    >
-                      <Icon name="sparkles" size={13} />
-                      <span>✨ Tự động sinh bằng AI</span>
-                    </button>
-                  </label>
-                  <textarea
-                    style={{ background: '#f8fafc', color: '#0f172a', border: '1px solid #cbd5e1', borderRadius: '10px', padding: '12px 16px' }}
-                    rows="3"
-                    value={multiPostModal.caption}
-                    onChange={(e) => setMultiPostModal({ ...multiPostModal, caption: e.target.value })}
-                    placeholder="Nhập mô tả / caption..."
-                    required
-                  />
-                </div>
-
-                {/* 4. Hashtags */}
-                <div className="mkt-dark-field">
-                  <label style={{ color: '#334155', fontWeight: 700, fontSize: '13px' }}>Hashtags:</label>
-                  <input
-                    style={{ background: '#f8fafc', color: '#0f172a', border: '1px solid #cbd5e1', borderRadius: '10px', padding: '12px 16px' }}
-                    value={multiPostModal.hashtags}
-                    onChange={(e) => setMultiPostModal({ ...multiPostModal, hashtags: e.target.value })}
-                    placeholder="#shorts #reels #tiktok #fyp..."
-                  />
-                </div>
-
-                {/* 5. Thumbnail (Ảnh bìa) */}
-                <div className="mkt-dark-field">
-                  <label style={{ color: '#334155', fontWeight: 700, fontSize: '13px' }}>Thumbnail (Ảnh bìa):</label>
-                  <div className="mkt-thumb-preview-box">
-                    <img
-                      src={multiPostModal.thumbnailUrl || 'https://via.placeholder.com/120x80'}
-                      alt="Thumbnail Preview"
-                      className="mkt-thumb-img"
-                      style={{ border: '1px solid #e2e8f0', background: '#f8fafc', borderRadius: '6px' }}
-                      onError={(e) => { e.currentTarget.style.display = 'none' }}
-                    />
-                    <div className="mkt-input-with-btn" style={{ flex: 1 }}>
+                  {/* 1. Chọn File Video */}
+                  <div className="mkt-dark-field">
+                    <label style={{ color: '#334155', fontWeight: 700, fontSize: '13px' }}>Chọn File Video / Ảnh:</label>
+                    <div className="mkt-input-with-btn">
                       <input
                         style={{ background: '#f8fafc', color: '#0f172a', border: '1px solid #cbd5e1', borderRadius: '10px', padding: '12px 16px' }}
-                        value={multiPostModal.thumbnailUrl}
-                        onChange={(e) => setMultiPostModal({ ...multiPostModal, thumbnailUrl: e.target.value })}
-                        placeholder="https://..."
+                        value={multiPostModal.mediaUrl}
+                        onChange={(e) => setMultiPostModal({ ...multiPostModal, mediaUrl: e.target.value })}
+                        placeholder="gdrive://... hoặc https://... hoặc /uploads/..."
                       />
                       <label className="mkt-dark-side-btn" style={{ cursor: 'pointer', background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1', borderRadius: '10px', padding: '0 18px', fontWeight: 600 }}>
                         <Icon name="upload" size={15} />
-                        <span>Chọn Ảnh</span>
+                        <span>Chọn File</span>
                         <input
                           type="file"
-                          accept="image/*,video/*"
+                          accept={multiPostModal.platforms.YOUTUBE && !multiPostModal.platforms.FACEBOOK ? 'video/*' : 'video/*,image/*'}
                           style={{ display: 'none' }}
                           onChange={async (e) => {
                             const file = e.target.files?.[0]
                             if (file) {
+                              const isVid = file.type.startsWith('video/')
                               try {
                                 const uploaded = await uploadRequest('/media/upload', file)
                                 setMultiPostModal((c) => ({
                                   ...c,
-                                  thumbnailUrl: uploaded.mediaUrl,
                                   mediaUrl: uploaded.mediaUrl,
+                                  actualMediaUrl: uploaded.mediaUrl,
+                                  mediaType: isVid ? 'VIDEO' : 'IMAGE',
+                                  thumbnailUrl: !isVid ? uploaded.mediaUrl : c.thumbnailUrl,
                                   rawFile: file,
+                                  title: file.name.replace(/\.[^/.]+$/, ''),
                                 }))
                               } catch {
                                 setMultiPostModal((c) => ({
                                   ...c,
-                                  thumbnailUrl: URL.createObjectURL(file),
+                                  mediaUrl: URL.createObjectURL(file),
+                                  actualMediaUrl: URL.createObjectURL(file),
+                                  mediaType: isVid ? 'VIDEO' : 'IMAGE',
                                   rawFile: file,
+                                  title: file.name.replace(/\.[^/.]+$/, ''),
                                 }))
                               }
                             }
@@ -3428,114 +3660,243 @@ export function MarketingAIAgentPage() {
                         />
                       </label>
                     </div>
+
+                    {multiPostModal.mediaUrl && (
+                      <div style={{ marginTop: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        {multiPostModal.mediaType === 'VIDEO' ||
+                         multiPostModal.rawFile?.type?.startsWith('video/') ||
+                         multiPostModal.mediaUrl?.match(/\.(mp4|mov|avi|webm|mkv|m4v)(\?|#|$)/i) ||
+                         multiPostModal.actualMediaUrl?.match(/\.(mp4|mov|avi|webm|mkv|m4v)(\?|#|$)/i) ? (
+                          <span style={{ fontSize: '12px', padding: '2px 8px', borderRadius: '6px', background: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0', fontWeight: 600 }}>
+                            🎥 Định dạng Video (.mp4) — Đủ điều kiện đăng YouTube Shorts & Facebook
+                          </span>
+                        ) : (
+                          <span style={{ fontSize: '12px', padding: '2px 8px', borderRadius: '6px', background: '#fffbeb', color: '#b45309', border: '1px solid #fde68a', fontWeight: 600 }}>
+                            🖼️ Định dạng Ảnh ({multiPostModal.mediaUrl.split('.').pop()?.split('?')[0] || 'Image'}) — Phù hợp đăng Facebook (YouTube yêu cầu .mp4)
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
-                </div>
 
-                {/* 6. Chọn nền tảng đăng tải đồng thời */}
-                <div className="mkt-dark-field">
-                  <label style={{ color: '#334155', fontWeight: 700, fontSize: '13px' }}>Chọn nền tảng đăng tải đồng thời:</label>
-                  <div className="mkt-platform-select-grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
-                    {/* YouTube */}
-                    <div
-                      className={`mkt-platform-box ${multiPostModal.platforms.YOUTUBE ? 'mkt-platform-box--active' : ''}`}
-                      style={{
-                        background: multiPostModal.platforms.YOUTUBE ? '#f0f9ff' : '#f8fafc',
-                        border: multiPostModal.platforms.YOUTUBE ? '2px solid #0284c7' : '1px solid #e2e8f0',
-                        color: multiPostModal.platforms.YOUTUBE ? '#0284c7' : '#475569',
-                      }}
-                      onClick={() => setMultiPostModal((c) => ({ ...c, platforms: { ...c.platforms, YOUTUBE: !c.platforms.YOUTUBE } }))}
-                    >
-                      <input type="checkbox" checked={multiPostModal.platforms.YOUTUBE} readOnly />
-                      <span>🔴 YouTube</span>
-                    </div>
-
-                    {/* Facebook */}
-                    <div
-                      className={`mkt-platform-box ${multiPostModal.platforms.FACEBOOK ? 'mkt-platform-box--active' : ''}`}
-                      style={{
-                        background: multiPostModal.platforms.FACEBOOK ? '#f0f9ff' : '#f8fafc',
-                        border: multiPostModal.platforms.FACEBOOK ? '2px solid #0284c7' : '1px solid #e2e8f0',
-                        color: multiPostModal.platforms.FACEBOOK ? '#0284c7' : '#475569',
-                      }}
-                      onClick={() => setMultiPostModal((c) => ({ ...c, platforms: { ...c.platforms, FACEBOOK: !c.platforms.FACEBOOK } }))}
-                    >
-                      <input type="checkbox" checked={multiPostModal.platforms.FACEBOOK} readOnly />
-                      <span>📘 Facebook</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* 7. Dropdown Chọn Page Facebook nếu đã chọn */}
-                {multiPostModal.platforms.FACEBOOK && (
+                  {/* 2. Tiêu đề Video */}
                   <div className="mkt-dark-field">
-                    <label style={{ color: '#334155', fontWeight: 700, fontSize: '13px' }}>📘 Đăng lên Fanpage:</label>
-                    <select
-                      style={{ background: '#f8fafc', color: '#0f172a', border: '1px solid #cbd5e1', borderRadius: '10px', padding: '12px 16px' }}
-                      value={multiPostModal.selectedFacebookAccountId}
-                      onChange={(e) => setMultiPostModal({ ...multiPostModal, selectedFacebookAccountId: e.target.value })}
-                    >
-                      {socialAccounts.filter(a => a.platform === 'FACEBOOK').length > 0 ? (
-                        socialAccounts.filter(a => a.platform === 'FACEBOOK').map((acc) => (
-                          <option key={acc.id} value={acc.id}>
-                            {acc.accountName} ({acc.externalAccountId || acc.id})
-                          </option>
-                        ))
-                      ) : (
-                        <option value="">Lá Đỏ Homestay Sa Pa (290099357528057)</option>
-                      )}
-                    </select>
-                  </div>
-                )}
-
-                {/* Dropdown Chọn Kênh YouTube nếu đã chọn */}
-                {multiPostModal.platforms.YOUTUBE && (
-                  <div className="mkt-dark-field">
-                    <label style={{ color: '#334155', fontWeight: 700, fontSize: '13px' }}>🔴 Đăng lên Kênh YouTube:</label>
-                    <select
-                      style={{ background: '#f8fafc', color: '#0f172a', border: '1px solid #cbd5e1', borderRadius: '10px', padding: '12px 16px' }}
-                      value={multiPostModal.selectedYoutubeAccountId}
-                      onChange={(e) => setMultiPostModal({ ...multiPostModal, selectedYoutubeAccountId: e.target.value })}
-                    >
-                      {socialAccounts.filter(a => a.platform === 'YOUTUBE').length > 0 ? (
-                        socialAccounts.filter(a => a.platform === 'YOUTUBE').map((acc) => (
-                          <option key={acc.id} value={acc.id}>
-                            {acc.accountName} ({acc.externalAccountId || acc.id})
-                          </option>
-                        ))
-                      ) : (
-                        <option value="">Kênh YouTube Lá Đỏ Official</option>
-                      )}
-                    </select>
-                  </div>
-                )}
-
-                {/* 8. Thời gian hẹn giờ đăng & Lặp lại lịch trình (Matching user screenshot) */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginTop: '4px' }}>
-                  <div className="mkt-dark-field">
-                    <label style={{ color: '#334155', fontWeight: 700, fontSize: '13px' }}>Thời gian hẹn giờ đăng</label>
+                    <label style={{ color: '#334155', fontWeight: 700, fontSize: '13px' }}>Tiêu đề Video / Bài viết:</label>
                     <input
                       style={{ background: '#f8fafc', color: '#0f172a', border: '1px solid #cbd5e1', borderRadius: '10px', padding: '12px 16px' }}
-                      type="datetime-local"
-                      value={multiPostModal.scheduledDateTime}
-                      onChange={(e) => setMultiPostModal({ ...multiPostModal, scheduledDateTime: e.target.value })}
+                      value={multiPostModal.title}
+                      onChange={(e) => setMultiPostModal({ ...multiPostModal, title: e.target.value })}
+                      placeholder="VD: Khám phá vẻ đẹp Sa Pa tại Lá Đỏ Homestay..."
+                      required
                     />
                   </div>
 
+                  {/* 3. Nội dung Caption */}
                   <div className="mkt-dark-field">
-                    <label style={{ color: '#334155', fontWeight: 700, fontSize: '13px' }}>Lặp lại lịch trình</label>
-                    <select
+                    <label style={{ color: '#334155', fontWeight: 700, fontSize: '13px' }}>
+                      <span>Nội dung Caption:</span>
+                      <button
+                        type="button"
+                        className="mkt-mini-btn"
+                        onClick={handleAutoGenerateModalCaption}
+                        style={{ background: '#e0f2fe', color: '#0369a1', border: '1px solid #bae6fd', padding: '4px 12px', borderRadius: '6px', fontWeight: 600 }}
+                      >
+                        <Icon name="sparkles" size={13} />
+                        <span> Tự động sinh bằng AI</span>
+                      </button>
+                    </label>
+                    <textarea
                       style={{ background: '#f8fafc', color: '#0f172a', border: '1px solid #cbd5e1', borderRadius: '10px', padding: '12px 16px' }}
-                      value={multiPostModal.repeatInterval}
-                      onChange={(e) => setMultiPostModal({ ...multiPostModal, repeatInterval: e.target.value })}
-                    >
-                      <option value="ONCE">Một lần duy nhất</option>
-                      <option value="DAILY">Lặp hàng ngày (Daily)</option>
-                      <option value="WEEKLY">Lặp hàng tuần (Weekly)</option>
-                    </select>
+                      rows="3"
+                      value={multiPostModal.caption}
+                      onChange={(e) => setMultiPostModal({ ...multiPostModal, caption: e.target.value })}
+                      placeholder="Nhập mô tả / caption..."
+                      required
+                    />
+                  </div>
+
+                  {/* 4. Hashtags */}
+                  <div className="mkt-dark-field">
+                    <label style={{ color: '#334155', fontWeight: 700, fontSize: '13px' }}>Hashtags:</label>
+                    <input
+                      style={{ background: '#f8fafc', color: '#0f172a', border: '1px solid #cbd5e1', borderRadius: '10px', padding: '12px 16px' }}
+                      value={multiPostModal.hashtags}
+                      onChange={(e) => setMultiPostModal({ ...multiPostModal, hashtags: e.target.value })}
+                      placeholder="#shorts #reels #tiktok #fyp..."
+                    />
+                  </div>
+
+                  {/* 5. Thumbnail (Ảnh bìa) */}
+                  <div className="mkt-dark-field">
+                    <label style={{ color: '#334155', fontWeight: 700, fontSize: '13px' }}>Thumbnail (Ảnh bìa):</label>
+                    <div className="mkt-thumb-preview-box">
+                      <img
+                        src={multiPostModal.thumbnailUrl || 'https://via.placeholder.com/120x80'}
+                        alt="Thumbnail Preview"
+                        className="mkt-thumb-img"
+                        style={{ border: '1px solid #e2e8f0', background: '#f8fafc', borderRadius: '6px' }}
+                        onError={(e) => { e.currentTarget.style.display = 'none' }}
+                      />
+                      <div className="mkt-input-with-btn" style={{ flex: 1 }}>
+                        <input
+                          style={{ background: '#f8fafc', color: '#0f172a', border: '1px solid #cbd5e1', borderRadius: '10px', padding: '12px 16px' }}
+                          value={multiPostModal.thumbnailUrl}
+                          onChange={(e) => setMultiPostModal({ ...multiPostModal, thumbnailUrl: e.target.value })}
+                          placeholder="https://..."
+                        />
+                        <label className="mkt-dark-side-btn" style={{ cursor: 'pointer', background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1', borderRadius: '10px', padding: '0 18px', fontWeight: 600 }}>
+                          <Icon name="upload" size={15} />
+                          <span>Chọn Ảnh</span>
+                          <input
+                            type="file"
+                            accept="image/*,video/*"
+                            style={{ display: 'none' }}
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0]
+                              if (file) {
+                                try {
+                                  const uploaded = await uploadRequest('/media/upload', file)
+                                  setMultiPostModal((c) => ({
+                                    ...c,
+                                    thumbnailUrl: uploaded.mediaUrl,
+                                    mediaUrl: uploaded.mediaUrl,
+                                    rawFile: file,
+                                  }))
+                                } catch {
+                                  setMultiPostModal((c) => ({
+                                    ...c,
+                                    thumbnailUrl: URL.createObjectURL(file),
+                                    rawFile: file,
+                                  }))
+                                }
+                              }
+                            }}
+                          />
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 6. Chọn nền tảng đăng tải đồng thời */}
+                  <div className="mkt-dark-field">
+                    <label style={{ color: '#334155', fontWeight: 700, fontSize: '13px' }}>Chọn nền tảng đăng tải đồng thời:</label>
+                    <div className="mkt-platform-select-grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
+                      {/* YouTube */}
+                      <div
+                        className={`mkt-platform-box ${multiPostModal.platforms.YOUTUBE ? 'mkt-platform-box--active' : ''}`}
+                        style={{
+                          background: multiPostModal.platforms.YOUTUBE ? '#f0f9ff' : '#f8fafc',
+                          border: multiPostModal.platforms.YOUTUBE ? '2px solid #0284c7' : '1px solid #e2e8f0',
+                          color: multiPostModal.platforms.YOUTUBE ? '#0284c7' : '#475569',
+                        }}
+                        onClick={() => setMultiPostModal((c) => ({ ...c, platforms: { ...c.platforms, YOUTUBE: !c.platforms.YOUTUBE } }))}
+                      >
+                        <input type="checkbox" checked={multiPostModal.platforms.YOUTUBE} readOnly />
+                        <span> YouTube</span>
+                      </div>
+
+                      {/* Facebook */}
+                      <div
+                        className={`mkt-platform-box ${multiPostModal.platforms.FACEBOOK ? 'mkt-platform-box--active' : ''}`}
+                        style={{
+                          background: multiPostModal.platforms.FACEBOOK ? '#f0f9ff' : '#f8fafc',
+                          border: multiPostModal.platforms.FACEBOOK ? '2px solid #0284c7' : '1px solid #e2e8f0',
+                          color: multiPostModal.platforms.FACEBOOK ? '#0284c7' : '#475569',
+                        }}
+                        onClick={() => setMultiPostModal((c) => ({ ...c, platforms: { ...c.platforms, FACEBOOK: !c.platforms.FACEBOOK } }))}
+                      >
+                        <input type="checkbox" checked={multiPostModal.platforms.FACEBOOK} readOnly />
+                        <span> Facebook</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 7. Dropdown Chọn Page Facebook nếu đã chọn */}
+                  {multiPostModal.platforms.FACEBOOK && (
+                    <div className="mkt-dark-field">
+                      <label style={{ color: '#334155', fontWeight: 700, fontSize: '13px' }}> Đăng lên Fanpage:</label>
+                      <select
+                        style={{ background: '#f8fafc', color: '#0f172a', border: '1px solid #cbd5e1', borderRadius: '10px', padding: '12px 16px' }}
+                        value={multiPostModal.selectedFacebookAccountId}
+                        onChange={(e) => setMultiPostModal({ ...multiPostModal, selectedFacebookAccountId: e.target.value })}
+                      >
+                        {socialAccounts.filter(a => a.platform === 'FACEBOOK').length > 0 ? (
+                          socialAccounts.filter(a => a.platform === 'FACEBOOK').map((acc) => (
+                            <option key={acc.id} value={acc.id}>
+                              {acc.accountName} ({acc.externalAccountId || acc.id})
+                            </option>
+                          ))
+                        ) : (
+                          <option value="">Lá Đỏ Homestay Sa Pa (290099357528057)</option>
+                        )}
+                      </select>
+                    </div>
+                  )}
+
+                  {/* Dropdown Chọn Kênh YouTube nếu đã chọn */}
+                  {multiPostModal.platforms.YOUTUBE && (
+                    <div className="mkt-dark-field">
+                      <label style={{ color: '#334155', fontWeight: 700, fontSize: '13px' }}> Đăng lên Kênh YouTube:</label>
+                      <select
+                        style={{ background: '#f8fafc', color: '#0f172a', border: '1px solid #cbd5e1', borderRadius: '10px', padding: '12px 16px' }}
+                        value={multiPostModal.selectedYoutubeAccountId}
+                        onChange={(e) => setMultiPostModal({ ...multiPostModal, selectedYoutubeAccountId: e.target.value })}
+                      >
+                        {socialAccounts.filter(a => a.platform === 'YOUTUBE').length > 0 ? (
+                          socialAccounts.filter(a => a.platform === 'YOUTUBE').map((acc) => (
+                            <option key={acc.id} value={acc.id}>
+                              {acc.accountName} ({acc.externalAccountId || acc.id})
+                            </option>
+                          ))
+                        ) : (
+                          <option value="">Kênh YouTube Lá Đỏ Official</option>
+                        )}
+                      </select>
+                    </div>
+                  )}
+
+                  {/* 8. Thời gian hẹn giờ đăng & Lặp lại lịch trình */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginTop: '4px' }}>
+                    <div className="mkt-dark-field">
+                      <label style={{ color: '#334155', fontWeight: 700, fontSize: '13px' }}>Thời gian hẹn giờ đăng</label>
+                      <input
+                        style={{ background: '#f8fafc', color: '#0f172a', border: '1px solid #cbd5e1', borderRadius: '10px', padding: '12px 16px' }}
+                        type="datetime-local"
+                        value={multiPostModal.scheduledDateTime}
+                        onChange={(e) => setMultiPostModal({ ...multiPostModal, scheduledDateTime: e.target.value })}
+                      />
+                    </div>
+
+                    <div className="mkt-dark-field">
+                      <label style={{ color: '#334155', fontWeight: 700, fontSize: '13px' }}>Lặp lại lịch trình</label>
+                      <select
+                        style={{ background: '#f8fafc', color: '#0f172a', border: '1px solid #cbd5e1', borderRadius: '10px', padding: '12px 16px' }}
+                        value={multiPostModal.repeatInterval}
+                        onChange={(e) => setMultiPostModal({ ...multiPostModal, repeatInterval: e.target.value })}
+                      >
+                        <option value="ONCE">Một lần duy nhất</option>
+                        <option value="DAILY">Lặp hàng ngày (Daily)</option>
+                        <option value="WEEKLY">Lặp hàng tuần (Weekly)</option>
+                      </select>
+                    </div>
                   </div>
                 </div>
 
-                <div className="mkt-modal-actions" style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', flexWrap: 'wrap', background: '#f8fafc', borderTop: '1px solid #f1f5f9', padding: '16px 24px', margin: '0 -24px -24px -24px', borderRadius: '0 0 18px 18px' }}>
+                {/* Footer Buttons - Always pinned and 100% visible */}
+                <div
+                  className="mkt-modal-actions"
+                  style={{
+                    display: 'flex',
+                    gap: '10px',
+                    justifyContent: 'flex-end',
+                    flexWrap: 'wrap',
+                    background: '#f8fafc',
+                    borderTop: '1px solid #e2e8f0',
+                    padding: '16px 24px',
+                    flexShrink: 0,
+                    borderRadius: '0 0 18px 18px',
+                  }}
+                >
                   <button
                     type="button"
                     className="mkt-btn--cancel-dark"
@@ -3553,7 +3914,7 @@ export function MarketingAIAgentPage() {
                     disabled={multiPostModal.publishing}
                   >
                     {multiPostModal.publishing ? <span className="mkt-spinner" /> : <Icon name="send" size={16} />}
-                    <span>{multiPostModal.publishing ? 'Đang đăng bài...' : '🚀 Đăng Ngay Lập Tức'}</span>
+                    <span>{multiPostModal.publishing ? 'Đang đăng bài...' : ' Đăng Ngay Lập Tức'}</span>
                   </button>
                   <button
                     type="button"
@@ -3562,7 +3923,7 @@ export function MarketingAIAgentPage() {
                     disabled={multiPostModal.publishing}
                   >
                     {multiPostModal.publishing ? <span className="mkt-spinner" /> : <Icon name="calendar" size={16} />}
-                    <span>{multiPostModal.publishing ? 'Đang lưu lịch...' : '📅 Hẹn Giờ & Thêm Vào Hàng Đợi'}</span>
+                    <span>{multiPostModal.publishing ? 'Đang lưu lịch...' : ' Hẹn Giờ & Thêm Vào Hàng Đợi'}</span>
                   </button>
                 </div>
               </form>
@@ -3576,7 +3937,7 @@ export function MarketingAIAgentPage() {
               <div className="mkt-modal-head" style={{ borderBottom: '1px solid #f1f5f9', paddingBottom: '14px' }}>
                 <div>
                   <span style={{ color: '#e11d48', fontWeight: 800 }}>CHIẾN DỊCH MINI-GAME CÀO TƯƠNG TÁC</span>
-                  <h2 style={{ fontSize: '1.35rem', color: '#0f172a' }}>🎉 Tạo & Đăng Bài Giveaway Vòng Quay May Mắn</h2>
+                  <h2 style={{ fontSize: '1.35rem', color: '#0f172a' }}> Tạo & Đăng Bài Giveaway Vòng Quay May Mắn</h2>
                   <p style={{ color: '#64748b' }}>Đăng bài viết kèm link Minigame lên Fanpage để kéo tương tác và thu thập khách hàng tiềm năng.</p>
                 </div>
                 <button className="mkt-icon-btn" type="button" onClick={() => setGiveawayPostModal((c) => ({ ...c, open: false }))} disabled={giveawayPostModal.publishing}><Icon name="close" /></button>
@@ -3624,7 +3985,7 @@ export function MarketingAIAgentPage() {
                         alert('Đã copy đường dẫn Giveaway!')
                       }}
                     >
-                      📋 Copy Link
+                       Copy Link
                     </button>
                   </div>
                 </div>
@@ -3644,12 +4005,12 @@ export function MarketingAIAgentPage() {
                     type="button"
                     className="mkt-btn mkt-btn--secondary"
                     onClick={() => {
-                      const fullText = giveawayPostModal.content + '\n\n👉 Tham gia ngay tại: ' + (giveawayPostModal.giveawayUrl || (window.location.origin + '/giveaway'))
+                      const fullText = giveawayPostModal.content + '\n\n Tham gia ngay tại: ' + (giveawayPostModal.giveawayUrl || (window.location.origin + '/giveaway'))
                       navigator.clipboard.writeText(fullText)
                       alert('Đã copy toàn bộ nội dung bài viết và link!')
                     }}
                   >
-                    📋 Copy Toàn Bộ Nội Dung
+                     Copy Toàn Bộ Nội Dung
                   </button>
 
                   <div style={{ display: 'flex', gap: '8px' }}>
@@ -3669,10 +4030,200 @@ export function MarketingAIAgentPage() {
                       disabled={giveawayPostModal.publishing}
                     >
                       {giveawayPostModal.publishing ? <span className="mkt-spinner" /> : <Icon name="send" />}
-                      <span>{giveawayPostModal.publishing ? 'Đang xuất bản...' : '🚀 Đăng Lên Fanpage Ngay'}</span>
+                      <span>{giveawayPostModal.publishing ? 'Đang xuất bản...' : ' Đăng Lên Fanpage Ngay'}</span>
                     </button>
                   </div>
                 </div>
+              </div>
+            </section>
+          </div>
+        )}
+
+        {/* Modal Quét Google Drive Cloud */}
+        {gdriveModal.open && (
+          <div className="mkt-modal-backdrop" role="presentation" onMouseDown={() => !gdriveModal.isScanning && setGdriveModal((c) => ({ ...c, open: false }))}>
+            <section className="mkt-modal mkt-api-modal" role="dialog" aria-modal="true" aria-label="Quét Google Drive Cloud" onMouseDown={(e) => e.stopPropagation()} style={{ maxWidth: '780px', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+              <div className="mkt-modal-head" style={{ borderBottom: '1px solid #f1f5f9', paddingBottom: '14px', flexShrink: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{ width: 44, height: 44, borderRadius: 12, background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px' }}>
+                    <Icon name="folder" size={22} />
+                  </div>
+                  <div>
+                    <h2 style={{ fontSize: '1.25rem', color: '#0f172a', margin: 0, fontWeight: 800 }}>Quét Thư Mục Google Drive Cloud</h2>
+                    <p style={{ color: '#64748b', margin: '2px 0 0 0', fontSize: '0.85rem' }}>Quét tự động video & hình ảnh cảnh đẹp Homestay để nạp vào kho nội dung và lên lịch đăng 24/7.</p>
+                  </div>
+                </div>
+                <button className="mkt-icon-btn" type="button" onClick={() => setGdriveModal((c) => ({ ...c, open: false }))} disabled={gdriveModal.isScanning}><Icon name="close" /></button>
+              </div>
+
+              <div className="mkt-modal-body" style={{ padding: '16px 0', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                {/* API Key configuration toggle bar */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc', padding: '10px 14px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', color: '#334155' }}>
+                    <Icon name="wand" size={16} />
+                    <span>Google Drive API Key: {gdriveModal.apiKey ? <b style={{ color: '#059669' }}> Đã cấu hình</b> : <span style={{ color: '#d97706' }}>️ Chưa có key</span>}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setGdriveModal((c) => ({ ...c, showApiKey: !c.showApiKey }))}
+                    style={{ background: 'transparent', border: 'none', color: '#0284c7', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    {gdriveModal.showApiKey ? 'Ẩn cấu hình' : 'Cấu hình Google API Key'}
+                  </button>
+                </div>
+
+                {gdriveModal.showApiKey && (
+                  <div style={{ background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: '10px', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <label style={{ fontSize: '0.8rem', fontWeight: 700, color: '#0369a1' }}>Nhập Google Drive API Key (Google Cloud Console):</label>
+                      <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noreferrer" style={{ fontSize: '0.75rem', color: '#0284c7', textDecoration: 'underline' }}>
+                        Lấy API Key miễn phí ↗
+                      </a>
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <input
+                        type="text"
+                        placeholder="AIzaSy..."
+                        value={gdriveModal.apiKey}
+                        onChange={(e) => setGdriveModal((c) => ({ ...c, apiKey: e.target.value }))}
+                        style={{ flex: 1, padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }}
+                      />
+                      <button
+                        type="button"
+                        className="mkt-btn mkt-btn--primary"
+                        style={{ padding: '8px 14px', fontSize: '0.8rem' }}
+                        onClick={() => {
+                          localStorage.setItem('remotion_google_drive_api_key', gdriveModal.apiKey.trim())
+                          setGdriveModal((c) => ({ ...c, successMsg: 'Đã lưu Google Drive API Key thành công!' }))
+                          setTimeout(() => setGdriveModal((c) => ({ ...c, successMsg: '' })), 2500)
+                        }}
+                      >
+                        Lưu Key
+                      </button>
+                    </div>
+                    <p style={{ margin: 0, fontSize: '0.75rem', color: '#64748b' }}>
+                      * Mẹo: Thư mục Google Drive nên được chia sẻ ở chế độ <b>"Bất kỳ ai có đường liên kết đều có thể xem"</b>.
+                    </p>
+                  </div>
+                )}
+
+                {/* Input Folder URL / ID */}
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+                    Dán đường dẫn thư mục Google Drive:
+                  </label>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <input
+                      type="text"
+                      placeholder="https://drive.google.com/drive/folders/1aBcDeFgHiJkLmNoPqRsTuVwXyZ..."
+                      value={gdriveModal.folderInput}
+                      onChange={(e) => setGdriveModal((c) => ({ ...c, folderInput: e.target.value }))}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') scanGdriveWithParams(gdriveModal.folderInput, gdriveModal.apiKey)
+                      }}
+                      style={{ flex: 1, padding: '10px 14px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '0.9rem' }}
+                    />
+                    <button
+                      type="button"
+                      className="mkt-btn mkt-btn--primary"
+                      onClick={() => scanGdriveWithParams(gdriveModal.folderInput, gdriveModal.apiKey)}
+                      disabled={gdriveModal.isScanning || !gdriveModal.folderInput.trim()}
+                      style={{ background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)', minWidth: '130px' }}
+                    >
+                      {gdriveModal.isScanning ? <span className="mkt-spinner" /> : <Icon name="refresh" size={15} />}
+                      <span>{gdriveModal.isScanning ? 'Đang quét...' : 'Quét Video'}</span>
+                    </button>
+                  </div>
+                </div>
+
+                {gdriveModal.error && <p className="mkt-alert" style={{ background: '#fef2f2', color: '#991b1b', borderColor: '#fecaca', margin: 0 }}>{gdriveModal.error}</p>}
+                {gdriveModal.successMsg && <p className="mkt-alert" style={{ background: '#ecfdf5', color: '#065f46', borderColor: '#a7f3d0', margin: 0 }}>{gdriveModal.successMsg}</p>}
+
+                {/* Scanned Results */}
+                {gdriveModal.results.length > 0 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '4px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0f172a' }}>
+                        Danh sách video & hình ảnh tìm thấy ({gdriveModal.results.length}):
+                      </span>
+                      <button
+                        type="button"
+                        className="mkt-btn mkt-btn--primary"
+                        onClick={handleAddAllGdriveToLibrary}
+                        style={{ padding: '6px 14px', fontSize: '0.8rem', background: '#059669' }}
+                      >
+                         Nạp Toàn Bộ Vào Kho Video ({gdriveModal.results.length})
+                      </button>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px', maxHeight: '280px', overflowY: 'auto', padding: '4px' }}>
+                      {gdriveModal.results.map((item) => (
+                        <div
+                          key={item.id}
+                          style={{
+                            background: '#f8fafc',
+                            border: '1px solid #e2e8f0',
+                            borderRadius: '12px',
+                            padding: '10px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            justifyContent: 'space-between',
+                            gap: '8px',
+                          }}
+                        >
+                          <div style={{ position: 'relative', width: '100%', height: '100px', borderRadius: '8px', overflow: 'hidden', background: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <img
+                              src={item.thumbnailUrl}
+                              alt={item.title}
+                              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none'
+                              }}
+                            />
+                            <span style={{ position: 'absolute', bottom: 4, right: 4, background: 'rgba(0,0,0,0.7)', color: '#fff', fontSize: '10px', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>
+                              {item.sizeMb ? `${item.sizeMb} MB` : item.type}
+                            </span>
+                          </div>
+                          <div>
+                            <p style={{ margin: 0, fontSize: '0.8rem', fontWeight: 700, color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={item.title}>
+                              {item.title}
+                            </p>
+                            <span style={{ fontSize: '0.7rem', color: '#64748b' }}>{item.date}</span>
+                          </div>
+                          <button
+                            type="button"
+                            className="mkt-btn mkt-btn--secondary"
+                            onClick={() => handleAddSingleGdriveToLibrary(item)}
+                            style={{ width: '100%', padding: '6px', fontSize: '0.75rem', fontWeight: 600, justifyContent: 'center' }}
+                          >
+                             Chọn File Này
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', borderTop: '1px solid #f1f5f9', paddingTop: '14px', flexShrink: 0 }}>
+                <button
+                  type="button"
+                  className="mkt-btn mkt-btn--secondary"
+                  onClick={() => setGdriveModal((c) => ({ ...c, open: false }))}
+                  disabled={gdriveModal.isScanning}
+                >
+                  Đóng
+                </button>
+                {gdriveModal.results.length > 0 && (
+                  <button
+                    type="button"
+                    className="mkt-btn mkt-btn--primary"
+                    style={{ background: '#059669' }}
+                    onClick={handleAddAllGdriveToLibrary}
+                  >
+                     Nạp Vào Kho & Bắt Đầu Đăng Bài
+                  </button>
+                )}
               </div>
             </section>
           </div>
@@ -3812,7 +4363,7 @@ export function MarketingPostLogsPage() {
                               handleOpenEngagementModal(channel.id)
                             }}
                           >
-                            <span>📊</span>
+                            
                           </button>
                         )}
                         <button
@@ -3924,7 +4475,7 @@ export function MarketingPostLogsPage() {
                     style={{ background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)', color: '#fff' }}
                     onClick={() => handleOpenEngagementModal(selectedChannel.id)}
                   >
-                    <span>📊 Xem tương tác & bình luận MXH</span>
+                    <span> Xem tương tác & bình luận MXH</span>
                   </button>
                 )}
                 {selectedIsDraft ? (
@@ -3941,7 +4492,7 @@ export function MarketingPostLogsPage() {
           </div>
         )}
 
-        {/* 🌟 Modal Tương Tác & Bình Luận Mạng Xã Hội */}
+        {/*  Modal Tương Tác & Bình Luận Mạng Xã Hội */}
         <SocialEngagementModal
           modal={engagementModal}
           setModal={setEngagementModal}

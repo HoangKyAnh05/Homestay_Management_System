@@ -912,6 +912,8 @@
 .rooms-slider-shell {
   position: relative;
   width: 100%;
+  padding: 0 46px; /* Khoảng đệm 2 bên để nút tròn nổi hoàn toàn bên ngoài thẻ phòng */
+  box-sizing: border-box;
 }
 
 .rooms-slider-viewport {
@@ -924,7 +926,8 @@
 .rooms-slider-track {
   display: flex;
   gap: 24px;
-  transition: transform 0.45s cubic-bezier(0.2, 0.9, 0.3, 1);
+  /* Lướt chậm rãi, êm ái và siêu mượt */
+  transition: transform 1.25s cubic-bezier(0.22, 1, 0.36, 1);
   will-change: transform;
 }
 
@@ -943,27 +946,27 @@
   position: absolute;
   top: 48%;
   transform: translateY(-50%);
-  width: 48px;
-  height: 48px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   background: #ffffff;
   border: 1.5px solid #e2e8f0;
-  box-shadow: 0 6px 20px rgba(15, 23, 42, 0.14);
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.12);
   color: #15573a;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  z-index: 20;
-  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 10;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .rooms-slider-btn--prev {
-  left: -20px;
+  left: -4px;
 }
 
 .rooms-slider-btn--next {
-  right: -20px;
+  right: -4px;
 }
 
 .rooms-slider-btn:hover:not(:disabled) {
@@ -1004,7 +1007,7 @@
   border: 0;
   padding: 0;
   cursor: pointer;
-  transition: all 0.25s ease;
+  transition: all 0.4s ease;
 }
 
 .rooms-slider-dot.active {
@@ -1013,18 +1016,24 @@
 }
 
 @media (max-width: 1280px) {
+  .rooms-slider-shell {
+    padding: 0 36px;
+  }
   .rooms-slider-btn--prev {
-    left: -12px;
+    left: -4px;
   }
   .rooms-slider-btn--next {
-    right: -12px;
+    right: -4px;
   }
 }
 
 @media (max-width: 640px) {
+  .rooms-slider-shell {
+    padding: 0 20px;
+  }
   .rooms-slider-btn {
-    width: 40px;
-    height: 40px;
+    width: 36px;
+    height: 36px;
   }
   .rooms-slider-btn--prev {
     left: -6px;
@@ -2292,27 +2301,41 @@
   }
 }
 
-/* ── Komorebi 3D Sanctuary Showcase & Nav Link ── */
+/* ── Lá Đỏ 3D Sanctuary Showcase & Nav Link ── */
 .home-nav-landing-link {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   padding: 5px 14px;
   border-radius: 999px;
-  background: linear-gradient(135deg, rgba(226, 177, 115, 0.18), rgba(60, 163, 116, 0.15));
-  border: 1px solid rgba(226, 177, 115, 0.45);
-  color: #1f4328 !important;
-  font-weight: 600 !important;
-  font-size: 15px !important;
+  background: linear-gradient(135deg, rgba(244, 63, 94, 0.16), rgba(225, 29, 72, 0.22), rgba(245, 158, 11, 0.18));
+  border: 1.5px solid rgba(225, 29, 72, 0.5);
+  color: #be123c !important;
+  font-weight: 700 !important;
+  font-size: 14.5px !important;
   transition: all 0.25s ease;
-  box-shadow: 0 2px 8px rgba(226, 177, 115, 0.15);
+  box-shadow: 0 2px 10px rgba(225, 29, 72, 0.2);
+  animation: lado-3d-pulse 2.2s infinite ease-in-out;
 }
 
 .home-nav-landing-link:hover {
-  background: linear-gradient(135deg, rgba(226, 177, 115, 0.32), rgba(60, 163, 116, 0.25));
-  border-color: #e2b173;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(226, 177, 115, 0.25);
+  background: linear-gradient(135deg, rgba(244, 63, 94, 0.28), rgba(225, 29, 72, 0.35), rgba(245, 158, 11, 0.28));
+  border-color: #e11d48;
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 0 6px 18px rgba(225, 29, 72, 0.35);
+}
+
+@keyframes lado-3d-pulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(225, 29, 72, 0.4), 0 2px 8px rgba(225, 29, 72, 0.2);
+    border-color: rgba(225, 29, 72, 0.45);
+  }
+  50% {
+    transform: scale(1.04);
+    box-shadow: 0 0 14px 4px rgba(225, 29, 72, 0.35), 0 4px 14px rgba(225, 29, 72, 0.3);
+    border-color: #e11d48;
+  }
 }
 
 .komorebi-showcase-section {

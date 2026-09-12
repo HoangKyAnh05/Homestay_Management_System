@@ -19,6 +19,10 @@ import com.homestayManagement.homestayManagement.dto.response.AdminCustomerHisto
 import com.homestayManagement.homestayManagement.dto.response.AdminDirectBookingBusySlotResponse;
 import com.homestayManagement.homestayManagement.dto.response.AdminDirectBookingRoomResponse;
 import com.homestayManagement.homestayManagement.dto.response.AdminDirectBookingResponse;
+import com.homestayManagement.homestayManagement.dto.response.AdminAvailableChangeRoomsResponse;
+import com.homestayManagement.homestayManagement.dto.response.AdminChangeRoomItemResponse;
+import com.homestayManagement.homestayManagement.dto.response.AdminOtherTypeChangeResponse;
+import com.homestayManagement.homestayManagement.dto.request.AdminChangeRoomRequest;
 import com.homestayManagement.homestayManagement.dto.request.AdminBookingAddMiniBarRequest;
 import com.homestayManagement.homestayManagement.dto.request.AdminBookingAddPenaltyRequest;
 import com.homestayManagement.homestayManagement.dto.request.AdminBookingAddServiceRequest;
@@ -300,18 +304,40 @@ public class AdminBookingServiceImpl implements AdminBookingService {
             return List.of();
         }
 
+        List<Long> detailIds = details.stream().map(BookingDetail::getId).toList();
         Map<Long, CheckInRecord> recordsByDetailId = checkInRecordRepository
-                .findByBookingDetailIdsForAdmin(details.stream().map(BookingDetail::getId).toList())
+                .findByBookingDetailIdsForAdmin(detailIds)
                 .stream()
                 .collect(Collectors.toMap(record -> record.getBookingDetail().getId(), record -> record));
-        Set<Long> inspectedRecordIds = recordsByDetailId.isEmpty()
-                ? Set.of()
-                : housekeepingTaskRepository.findByCheckInRecordIdIn(
-                                recordsByDetailId.values().stream().map(CheckInRecord::getId).toList()
-                        ).stream()
-                        .filter(task -> "COMPLETED".equalsIgnoreCase(task.getInspectionStatus()))
-                        .map(task -> task.getCheckInRecord().getId())
-                        .collect(Collectors.toSet());
+
+        Set<Long> inspectedDetailIds = new HashSet<>();
+        Set<Long> inspectedRecordIds = new HashSet<>();
+
+        housekeepingTaskRepository.findByBookingDetailIdIn(detailIds).stream()
+                .filter(task -> "COMPLETED".equalsIgnoreCase(task.getInspectionStatus()))
+                .forEach(task -> {
+                    if (task.getCheckInRecord() != null) {
+                        inspectedRecordIds.add(task.getCheckInRecord().getId());
+                        if (task.getCheckInRecord().getBookingDetail() != null) {
+                            inspectedDetailIds.add(task.getCheckInRecord().getBookingDetail().getId());
+                        }
+                    }
+                });
+
+        if (!recordsByDetailId.isEmpty()) {
+            housekeepingTaskRepository.findByCheckInRecordIdIn(
+                            recordsByDetailId.values().stream().map(CheckInRecord::getId).toList()
+                    ).stream()
+                    .filter(task -> "COMPLETED".equalsIgnoreCase(task.getInspectionStatus()))
+                    .forEach(task -> {
+                        if (task.getCheckInRecord() != null) {
+                            inspectedRecordIds.add(task.getCheckInRecord().getId());
+                            if (task.getCheckInRecord().getBookingDetail() != null) {
+                                inspectedDetailIds.add(task.getCheckInRecord().getBookingDetail().getId());
+                            }
+                        }
+                    });
+        }
 
         Map<Long, List<BookingDetail>> detailsByBooking = details.stream()
                 .collect(Collectors.groupingBy(
@@ -321,7 +347,7 @@ public class AdminBookingServiceImpl implements AdminBookingService {
                 ));
 
         return detailsByBooking.values().stream()
-                .map(group -> toCheckInLogBookingResponse(group, recordsByDetailId, inspectedRecordIds))
+                .map(group -> toCheckInLogBookingResponse(group, recordsByDetailId, inspectedDetailIds, inspectedRecordIds))
                 .toList();
     }
 
@@ -392,7 +418,10 @@ public class AdminBookingServiceImpl implements AdminBookingService {
                         .map(this::toBookingGuestResponse)
                         .toList(),
                 checkInRecords.stream().map(this::toCheckInResponse).toList(),
-                checkInRecords.stream().anyMatch(this::isInspectionComplete),
+                checkInRecords.stream().anyMatch(this::isInspectionComplete)
+                        || housekeepingTaskRepository.findByBookingDetailId(detail.getId())
+                                .map(task -> "COMPLETED".equalsIgnoreCase(task.getInspectionStatus()))
+                                .orElse(false),
                 serviceItems,
                 penaltyItems,
                 incidents,
@@ -1243,6 +1272,7 @@ public class AdminBookingServiceImpl implements AdminBookingService {
     private AdminCheckInLogBookingResponse toCheckInLogBookingResponse(
             List<BookingDetail> details,
             Map<Long, CheckInRecord> recordsByDetailId,
+            Set<Long> inspectedDetailIds,
             Set<Long> inspectedRecordIds
     ) {
         Booking booking = details.getFirst().getBooking();
@@ -1252,6 +1282,7 @@ public class AdminBookingServiceImpl implements AdminBookingService {
                 .map(detail -> toCheckInLogDetailResponse(
                         detail,
                         recordsByDetailId.get(detail.getId()),
+                        inspectedDetailIds,
                         inspectedRecordIds
                 ))
                 .toList();
@@ -1282,12 +1313,16 @@ public class AdminBookingServiceImpl implements AdminBookingService {
     private AdminCheckInLogDetailResponse toCheckInLogDetailResponse(
             BookingDetail detail,
             CheckInRecord record,
+            Set<Long> inspectedDetailIds,
             Set<Long> inspectedRecordIds
     ) {
         Room room = detail.getRoom();
         RoomType roomType = detail.getRoomType() != null
                 ? detail.getRoomType()
                 : room != null ? room.getRoomType() : null;
+        boolean inspectionCompleted = inspectedDetailIds.contains(detail.getId())
+                || (record != null && inspectedRecordIds.contains(record.getId()));
+
         return new AdminCheckInLogDetailResponse(
                 detail.getId(),
                 room != null ? room.getId() : null,
@@ -1301,7 +1336,7 @@ public class AdminBookingServiceImpl implements AdminBookingService {
                 detail.getRentType(),
                 detail.getStatus(),
                 record != null ? toCheckInResponse(record) : null,
-                record != null && inspectedRecordIds.contains(record.getId()),
+                inspectionCompleted,
                 detail.getExtensionHours() != null ? detail.getExtensionHours() : 0,
                 safeExtensionAmount(detail)
         );
@@ -1524,7 +1559,11 @@ public class AdminBookingServiceImpl implements AdminBookingService {
     }
 
     private boolean isInspectionComplete(CheckInRecord record) {
+        if (record == null) return false;
         return housekeepingTaskRepository.findByCheckInRecordId(record.getId())
+                .or(() -> record.getBookingDetail() != null
+                        ? housekeepingTaskRepository.findByBookingDetailId(record.getBookingDetail().getId())
+                        : Optional.empty())
                 .map(task -> "COMPLETED".equalsIgnoreCase(task.getInspectionStatus()))
                 .orElse(false);
     }
@@ -1654,6 +1693,9 @@ public class AdminBookingServiceImpl implements AdminBookingService {
             throw new IllegalArgumentException("Chức năng housekeeping chưa sẵn sàng");
         }
         var task = housekeepingTaskRepository.findByCheckInRecordId(record.getId())
+                .or(() -> record.getBookingDetail() != null
+                        ? housekeepingTaskRepository.findByBookingDetailId(record.getBookingDetail().getId())
+                        : Optional.empty())
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Vui lòng gửi yêu cầu housekeeping kiểm tra phòng trước khi checkout"
                 ));
@@ -1835,5 +1877,242 @@ public class AdminBookingServiceImpl implements AdminBookingService {
             throw new IllegalArgumentException("Đơn đặt phòng không có thông tin chi tiết");
         }
         return getBookingDetail(details.get(0).getId());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public AdminAvailableChangeRoomsResponse getAvailableRoomsForChange(Long bookingDetailId, LocalDateTime newCheckOutTarget) {
+        BookingDetail detail = bookingDetailRepository.findByIdForAdminDetail(bookingDetailId)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy thông tin phòng đặt"));
+
+        LocalDateTime startWindow = detail.getCheckInTarget();
+        boolean hasCheckIn = checkInRecordRepository.findByBookingDetailId(bookingDetailId).isPresent();
+        if (hasCheckIn) {
+            LocalDateTime now = LocalDateTime.now();
+            if (startWindow == null || (now.isAfter(startWindow) && detail.getCheckOutTarget() != null && detail.getCheckOutTarget().isAfter(now))) {
+                startWindow = now.minusMinutes(30);
+            }
+        }
+        if (startWindow == null) {
+            startWindow = LocalDateTime.now();
+        }
+
+        LocalDateTime endWindow = newCheckOutTarget != null ? newCheckOutTarget : detail.getCheckOutTarget();
+        if (endWindow == null || !endWindow.isAfter(startWindow)) {
+            endWindow = startWindow.plusHours(2);
+        }
+
+        final LocalDateTime queryStart = startWindow;
+        final LocalDateTime queryEnd = endWindow;
+
+        Set<Long> busyRoomIds = bookingDetailRepository.findOverlappingSchedule(queryStart, queryEnd)
+                .stream()
+                .filter(d -> !d.getId().equals(detail.getId()))
+                .filter(d -> !"CANCELLED".equalsIgnoreCase(d.getStatus()) && !"COMPLETED".equalsIgnoreCase(d.getStatus()))
+                .map(BookingDetail::getRoom)
+                .filter(Objects::nonNull)
+                .map(Room::getId)
+                .collect(Collectors.toSet());
+
+        Set<Long> inProgressIncidentRoomIds = roomIncidentRepository != null
+                ? new HashSet<>(roomIncidentRepository.findRoomIdsWithInProgressIncidents())
+                : java.util.Collections.emptySet();
+
+        Room currentRoom = detail.getRoom();
+        Long currentRoomId = currentRoom != null ? currentRoom.getId() : null;
+        String currentRoomNumber = currentRoom != null ? currentRoom.getRoomNumber() : "";
+        RoomType currentRoomType = detail.getRoomType() != null
+                ? detail.getRoomType()
+                : (currentRoom != null ? currentRoom.getRoomType() : null);
+        Long currentRoomTypeId = currentRoomType != null ? currentRoomType.getId() : null;
+        String currentRoomTypeName = currentRoomType != null ? currentRoomType.getName() : "";
+
+        List<Room> allRooms = roomRepository.findAll();
+        List<AdminChangeRoomItemResponse> sameTypeRooms = new ArrayList<>();
+        Map<Long, List<AdminChangeRoomItemResponse>> otherTypeRoomsMap = new LinkedHashMap<>();
+        Map<Long, RoomType> roomTypesMap = new LinkedHashMap<>();
+
+        for (Room room : allRooms) {
+            if (currentRoomId != null && room.getId().equals(currentRoomId)) {
+                continue;
+            }
+            if ("MAINTENANCE".equalsIgnoreCase(room.getStatus()) || inProgressIncidentRoomIds.contains(room.getId())) {
+                continue;
+            }
+            if (busyRoomIds.contains(room.getId())) {
+                continue;
+            }
+
+            RoomType rt = room.getRoomType();
+            Long rtId = rt != null ? rt.getId() : null;
+            String rtName = rt != null ? rt.getName() : "Khác";
+            if (rtId != null) {
+                roomTypesMap.putIfAbsent(rtId, rt);
+            }
+
+            AdminChangeRoomItemResponse item = new AdminChangeRoomItemResponse(
+                    room.getId(),
+                    room.getRoomNumber(),
+                    room.getStatus(),
+                    rtName,
+                    rtId
+            );
+
+            if (currentRoomTypeId != null && currentRoomTypeId.equals(rtId)) {
+                sameTypeRooms.add(item);
+            } else if (rtId != null) {
+                otherTypeRoomsMap.computeIfAbsent(rtId, k -> new ArrayList<>()).add(item);
+            }
+        }
+
+        List<AdminOtherTypeChangeResponse> otherTypes = new ArrayList<>();
+        for (Map.Entry<Long, List<AdminChangeRoomItemResponse>> entry : otherTypeRoomsMap.entrySet()) {
+            RoomType rt = roomTypesMap.get(entry.getKey());
+            otherTypes.add(new AdminOtherTypeChangeResponse(
+                    entry.getKey(),
+                    rt != null ? rt.getName() : "Khác",
+                    rt != null ? rt.getMaxAdults() : 2,
+                    rt != null ? rt.getMaxChildren() : 1,
+                    entry.getValue()
+            ));
+        }
+
+        Customer customer = detail.getBooking() != null ? detail.getBooking().getCustomer() : null;
+
+        return new AdminAvailableChangeRoomsResponse(
+                detail.getId(),
+                detail.getBooking() != null ? detail.getBooking().getId() : null,
+                detail.getBooking() != null ? detail.getBooking().getBookingCode() : null,
+                customer != null ? customer.getFullName() : "",
+                currentRoomId,
+                currentRoomNumber,
+                currentRoomTypeId,
+                currentRoomTypeName,
+                detail.getCheckInTarget(),
+                endWindow,
+                !sameTypeRooms.isEmpty(),
+                sameTypeRooms,
+                otherTypes
+        );
+    }
+
+    @Override
+    @Transactional
+    public AdminBookingDetailResponse changeRoom(Long bookingDetailId, AdminChangeRoomRequest request) {
+        BookingDetail detail = bookingDetailRepository.findByIdForAdminDetail(bookingDetailId)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy thông tin phòng đặt"));
+
+        if ("CANCELLED".equalsIgnoreCase(detail.getStatus()) || "COMPLETED".equalsIgnoreCase(detail.getStatus())) {
+            throw new IllegalArgumentException("Không thể đổi phòng cho đơn đã hủy hoặc đã hoàn tất");
+        }
+
+        Room oldRoom = detail.getRoom();
+        Room newRoom = roomRepository.findById(request.newRoomId())
+                .orElseThrow(() -> new IllegalArgumentException("Phòng chuyển đến không tồn tại"));
+
+        if (oldRoom != null && oldRoom.getId().equals(newRoom.getId()) && request.newCheckOutTarget() == null) {
+            throw new IllegalArgumentException("Phòng mới phải khác với phòng hiện tại");
+        }
+
+        LocalDateTime startWindow = detail.getCheckInTarget();
+        boolean hasCheckIn = checkInRecordRepository.findByBookingDetailId(bookingDetailId).isPresent();
+        if (hasCheckIn) {
+            LocalDateTime now = LocalDateTime.now();
+            if (startWindow == null || (now.isAfter(startWindow) && detail.getCheckOutTarget() != null && detail.getCheckOutTarget().isAfter(now))) {
+                startWindow = now.minusMinutes(30);
+            }
+        }
+        if (startWindow == null) {
+            startWindow = LocalDateTime.now();
+        }
+
+        LocalDateTime endWindow = request.newCheckOutTarget() != null ? request.newCheckOutTarget() : detail.getCheckOutTarget();
+        if (endWindow == null || !endWindow.isAfter(startWindow)) {
+            endWindow = startWindow.plusHours(2);
+        }
+
+        final LocalDateTime checkStart = startWindow;
+        final LocalDateTime checkEnd = endWindow;
+
+        boolean isNewRoomBusy = bookingDetailRepository.findOverlappingSchedule(checkStart, checkEnd)
+                .stream()
+                .filter(d -> !d.getId().equals(detail.getId()))
+                .filter(d -> !"CANCELLED".equalsIgnoreCase(d.getStatus()) && !"COMPLETED".equalsIgnoreCase(d.getStatus()))
+                .anyMatch(d -> d.getRoom() != null && d.getRoom().getId().equals(newRoom.getId()));
+
+        if (isNewRoomBusy) {
+            throw new IllegalArgumentException("Phòng " + newRoom.getRoomNumber() + " đã có khách đặt trong khung giờ này");
+        }
+
+        if ("MAINTENANCE".equalsIgnoreCase(newRoom.getStatus())) {
+            throw new IllegalArgumentException("Phòng " + newRoom.getRoomNumber() + " hiện đang bảo trì, không thể chuyển vào");
+        }
+
+        Set<Long> inProgressIncidentRoomIds = roomIncidentRepository != null
+                ? new HashSet<>(roomIncidentRepository.findRoomIdsWithInProgressIncidents())
+                : java.util.Collections.emptySet();
+        if (inProgressIncidentRoomIds.contains(newRoom.getId())) {
+            throw new IllegalArgumentException("Phòng " + newRoom.getRoomNumber() + " đang có sự cố cần xử lý, không thể chuyển vào");
+        }
+
+        String oldRoomNumber = oldRoom != null ? oldRoom.getRoomNumber() : "N/A";
+        String newRoomNumber = newRoom.getRoomNumber();
+
+        if (hasCheckIn) {
+            newRoom.setStatus("OCCUPIED");
+            roomRepository.save(newRoom);
+
+            if (oldRoom != null) {
+                String oldStatus = request.oldRoomStatusAfterChange();
+                if (oldStatus == null || oldStatus.isBlank()) {
+                    oldStatus = "ROOM_ISSUE".equalsIgnoreCase(request.reason()) ? "MAINTENANCE" : "DIRTY";
+                }
+                oldRoom.setStatus(oldStatus.toUpperCase());
+                roomRepository.save(oldRoom);
+            }
+        }
+
+        if ("ROOM_ISSUE".equalsIgnoreCase(request.reason()) && oldRoom != null && roomIncidentRepository != null) {
+            try {
+                Employee reportedBy = employeeRepository.findAll().stream().findFirst().orElse(null);
+                RoomIncident incident = RoomIncident.builder()
+                        .room(oldRoom)
+                        .bookingDetail(detail)
+                        .incidentType("MAINTENANCE")
+                        .description(request.notes() != null && !request.notes().isBlank()
+                                ? request.notes().trim() + " (Đã đổi sang phòng " + newRoomNumber + ")"
+                                : "Phòng gặp sự cố, khách đã được chuyển sang phòng " + newRoomNumber)
+                        .severity("MEDIUM")
+                        .liability("HOMESTAY")
+                        .status("REPORTED")
+                        .reportedBy(reportedBy)
+                        .reportedAt(LocalDateTime.now())
+                        .build();
+                roomIncidentRepository.save(incident);
+            } catch (Exception ignored) {}
+        }
+
+        detail.setRoom(newRoom);
+        if (newRoom.getRoomType() != null) {
+            detail.setRoomType(newRoom.getRoomType());
+        }
+        if (request.newCheckOutTarget() != null) {
+            detail.setCheckOutTarget(request.newCheckOutTarget());
+        }
+
+        if (request.priceAdjustment() != null && request.priceAdjustment().compareTo(BigDecimal.ZERO) != 0) {
+            detail.setPriceAtBooking(detail.getPriceAtBooking().add(request.priceAdjustment()));
+            if (detail.getBooking() != null) {
+                invoiceRepository.findByBookingIdForAdmin(detail.getBooking().getId()).ifPresent(inv -> {
+                    inv.setRoomCharge(inv.getRoomCharge().add(request.priceAdjustment()));
+                    inv.setTotalAmount(inv.getTotalAmount().add(request.priceAdjustment()));
+                    invoiceRepository.save(inv);
+                });
+            }
+        }
+
+        bookingDetailRepository.save(detail);
+
+        return getBookingDetail(bookingDetailId);
     }
 }

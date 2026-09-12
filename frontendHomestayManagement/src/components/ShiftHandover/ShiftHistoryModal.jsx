@@ -82,7 +82,7 @@ export default function ShiftHistoryModal({ isOpen, onClose }) {
             <p>Nhật ký tất cả các ca làm việc, đối soát quỹ và theo dõi bù tiền</p>
           </div>
           <button type="button" className="sh-modal-close" onClick={onClose} aria-label="Đóng">
-            ✕
+            
           </button>
         </div>
 
@@ -100,14 +100,14 @@ export default function ShiftHistoryModal({ isOpen, onClose }) {
               className={`sh-filter-pill ${filterCompensation === 'PENDING' ? 'sh-filter-pill--active' : ''}`}
               onClick={() => setFilterCompensation('PENDING')}
             >
-              ⚠️ Cần bù tiền
+              ️ Cần bù tiền
             </button>
             <button
               type="button"
               className={`sh-filter-pill ${filterCompensation === 'RESOLVED' ? 'sh-filter-pill--active' : ''}`}
               onClick={() => setFilterCompensation('RESOLVED')}
             >
-              ✅ Đã bù tiền
+               Đã bù tiền
             </button>
           </div>
 
@@ -140,7 +140,7 @@ export default function ShiftHistoryModal({ isOpen, onClose }) {
                         <span className="sh-badge-enough">✓ Đủ tiền đối soát</span>
                       ) : (
                         <span className="sh-badge-shortage">
-                          ⚠️ Thiếu {formatMoney(s.shortageAmount)}
+                          ️ Thiếu {formatMoney(s.shortageAmount)}
                         </span>
                       )}
                     </div>
@@ -151,7 +151,7 @@ export default function ShiftHistoryModal({ isOpen, onClose }) {
                       <small>Người giao ca:</small>
                       <strong>{s.outgoingStaffName || s.outgoingStaffEmail}</strong>
                     </div>
-                    <div className="sh-hi-arrow">➔</div>
+                    <div className="sh-hi-arrow"></div>
                     <div className="sh-hi-staff">
                       <small>Người nhận ca:</small>
                       <strong>{s.incomingStaffName || s.incomingStaffEmail}</strong>

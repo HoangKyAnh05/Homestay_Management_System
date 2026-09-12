@@ -36,10 +36,25 @@ export default function FloatingContactWidget() {
           className="fcw-btn fcw-btn--wheel"
           aria-label="Vòng quay may mắn trúng thưởng"
           title="Vòng quay may mắn nhận voucher"
-          style={{ background: 'linear-gradient(135deg, #e11d48 0%, #f59e0b 100%)', color: '#fff', fontSize: '20px' }}
         >
+          <div className="fcw-pulse-ring fcw-pulse-ring--wheel"></div>
           <span className="fcw-tooltip">Vòng quay may mắn</span>
-          <span>🎡</span>
+          <svg viewBox="0 0 24 24" className="fcw-icon fcw-wheel-icon-svg" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="9.5" stroke="#ffffff" strokeWidth="1.8" />
+            <circle cx="12" cy="12" r="2.8" fill="#fef08a" stroke="#ffffff" strokeWidth="1.2" />
+            <line x1="12" y1="2.5" x2="12" y2="9.2" stroke="#ffffff" strokeWidth="1.6" />
+            <line x1="12" y1="14.8" x2="12" y2="21.5" stroke="#ffffff" strokeWidth="1.6" />
+            <line x1="2.5" y1="12" x2="9.2" y2="12" stroke="#ffffff" strokeWidth="1.6" />
+            <line x1="14.8" y1="12" x2="21.5" y2="12" stroke="#ffffff" strokeWidth="1.6" />
+            <line x1="5.28" y1="5.28" x2="10.02" y2="10.02" stroke="#fef08a" strokeWidth="1.4" />
+            <line x1="13.98" y1="13.98" x2="18.72" y2="18.72" stroke="#fef08a" strokeWidth="1.4" />
+            <line x1="5.28" y1="18.72" x2="10.02" y2="13.98" stroke="#fef08a" strokeWidth="1.4" />
+            <line x1="13.98" y1="10.02" x2="18.72" y2="5.28" stroke="#fef08a" strokeWidth="1.4" />
+            <circle cx="12" cy="3.8" r="0.9" fill="#fef08a" />
+            <circle cx="12" cy="20.2" r="0.9" fill="#fef08a" />
+            <circle cx="3.8" cy="12" r="0.9" fill="#fef08a" />
+            <circle cx="20.2" cy="12" r="0.9" fill="#fef08a" />
+          </svg>
         </a>
 
         {/* Nút Facebook Messenger */}
@@ -50,6 +65,7 @@ export default function FloatingContactWidget() {
           className="fcw-btn fcw-btn--facebook"
           aria-label="Liên hệ qua Facebook Messenger"
         >
+          <div className="fcw-pulse-ring fcw-pulse-ring--facebook"></div>
           <span className="fcw-tooltip">Facebook Lá Đỏ</span>
           <svg viewBox="0 0 24 24" className="fcw-icon" fill="currentColor">
             <path d="M12 2C6.477 2 2 6.145 2 11.258c0 2.91 1.455 5.51 3.736 7.15V22l3.433-1.884c.907.251 1.867.388 2.831.388 5.523 0 10-4.145 10-9.246C22 6.145 17.523 2 12 2zm1.066 12.457l-2.724-2.906-5.313 2.906 5.845-6.205 2.787 2.906 5.25-2.906-5.845 6.205z" />
@@ -64,6 +80,7 @@ export default function FloatingContactWidget() {
           className="fcw-btn fcw-btn--zalo"
           aria-label="Chat qua Zalo"
         >
+          <div className="fcw-pulse-ring fcw-pulse-ring--zalo"></div>
           <span className="fcw-tooltip">Zalo: 0941.186.699</span>
           <span className="fcw-zalo-text">Zalo</span>
         </a>

@@ -43,6 +43,63 @@ function matchesTab(task, tab) {
   return task.cleaningStatus === 'COMPLETED'
 }
 
+function toDateInputValue(date) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function getDayRange(refDate = new Date()) {
+  const date = new Date(refDate)
+  return {
+    from: toDateInputValue(date),
+    to: toDateInputValue(date),
+  }
+}
+
+function getWeekRange(refDate = new Date()) {
+  const date = new Date(refDate)
+  const day = date.getDay()
+  const diffToMonday = day === 0 ? -6 : 1 - day
+  const monday = new Date(date)
+  monday.setDate(date.getDate() + diffToMonday)
+  const sunday = new Date(monday)
+  sunday.setDate(monday.getDate() + 6)
+  return {
+    from: toDateInputValue(monday),
+    to: toDateInputValue(sunday),
+  }
+}
+
+function getMonthRange(refDate = new Date()) {
+  const date = new Date(refDate)
+  const firstDay = new Date(date.getFullYear(), date.getMonth(), 1)
+  const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0)
+  return {
+    from: toDateInputValue(firstDay),
+    to: toDateInputValue(lastDay),
+  }
+}
+
+function getYearRange(refDate = new Date()) {
+  const date = new Date(refDate)
+  const firstDay = new Date(date.getFullYear(), 0, 1)
+  const lastDay = new Date(date.getFullYear(), 11, 31)
+  return {
+    from: toDateInputValue(firstDay),
+    to: toDateInputValue(lastDay),
+  }
+}
+
+function defaultFromDate() {
+  return getWeekRange().from
+}
+
+function defaultToDate() {
+  return getWeekRange().to
+}
+
 function StatusBadge({ task }) {
   if (task.cleaningStatus === 'COMPLETED') return <span className="hk-badge hk-badge--done">Đã dọn xong</span>
   if (task.inspectionStatus === 'COMPLETED') return <span className="hk-badge hk-badge--inspected">Đã gửi chi phí</span>
@@ -218,7 +275,7 @@ function TaskDetail({ task, busy, onStart, onSubmitInspection, onCompleteCleanin
 
           <div style={{ background: '#fff1f2', border: '1px dashed #f43f5e', borderRadius: 12, padding: '14px 16px', marginTop: 18, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
             <div>
-              <strong style={{ color: '#be123c', display: 'block', fontSize: 14 }}>⚠️ Phát hiện đồ đạc bị hỏng hóc hoặc bị mất (đồ quan trọng, cần thay, bảo trì ngay)?</strong>
+              <strong style={{ color: '#be123c', display: 'block', fontSize: 14 }}>️ Phát hiện đồ đạc bị hỏng hóc hoặc bị mất (đồ quan trọng, cần thay, bảo trì ngay)?</strong>
               <span style={{ color: '#881337', fontSize: 12 }}>Báo cáo ngay để Quản trị viên xử lý bồi thường hoặc bố trí bảo trì thay mới</span>
             </div>
             <button
@@ -309,6 +366,42 @@ function HousekeepingPage() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  const [periodFilter, setPeriodFilter] = useState('week')
+  const [fromDate, setFromDate] = useState(defaultFromDate)
+  const [toDate, setToDate] = useState(defaultToDate)
+  const [search, setSearch] = useState('')
+
+  const handlePeriodChange = (event) => {
+    const nextPeriod = event.target.value
+    setPeriodFilter(nextPeriod)
+    if (nextPeriod === 'day') {
+      const range = getDayRange()
+      setFromDate(range.from)
+      setToDate(range.to)
+    } else if (nextPeriod === 'week') {
+      const range = getWeekRange()
+      setFromDate(range.from)
+      setToDate(range.to)
+    } else if (nextPeriod === 'month') {
+      const range = getMonthRange()
+      setFromDate(range.from)
+      setToDate(range.to)
+    } else if (nextPeriod === 'year') {
+      const range = getYearRange()
+      setFromDate(range.from)
+      setToDate(range.to)
+    }
+  }
+
+  const handleFromDateChange = (event) => {
+    setFromDate(event.target.value)
+    setPeriodFilter('custom')
+  }
+
+  const handleToDateChange = (event) => {
+    setToDate(event.target.value)
+    setPeriodFilter('custom')
+  }
 
   const loadTasks = useCallback(async (silent = false) => {
     if (!silent) setLoading(true)
@@ -331,9 +424,38 @@ function HousekeepingPage() {
     return () => window.clearInterval(timer)
   }, [loadTasks])
 
-  const selected = tasks.find(task => task.id === selectedId) || null
-  const visibleTasks = useMemo(() => tasks.filter(task => matchesTab(task, tab)), [tasks, tab])
-  const count = key => tasks.filter(task => matchesTab(task, key)).length
+  const isTaskInDateRange = useCallback((task, from, to) => {
+    if (!from && !to) return true
+    const taskDateStr = task.requestedAt || task.checkOutTarget || task.inspectionCompletedAt || task.cleaningCompletedAt
+    if (!taskDateStr) return true
+    const d = new Date(taskDateStr)
+    if (isNaN(d.getTime())) return true
+    const taskIso = toDateInputValue(d)
+    if (from && taskIso < from) return false
+    if (to && taskIso > to) return false
+    return true
+  }, [])
+
+  const filteredTasks = useMemo(() => {
+    let list = tasks
+    if (periodFilter !== 'all') {
+      list = list.filter(task => isTaskInDateRange(task, fromDate, toDate))
+    }
+    if (search.trim()) {
+      const q = search.trim().toLowerCase()
+      list = list.filter(task =>
+        String(task.roomNumber || '').toLowerCase().includes(q) ||
+        String(task.customerName || '').toLowerCase().includes(q) ||
+        String(task.customerPhone || '').toLowerCase().includes(q) ||
+        String(task.bookingCode || '').toLowerCase().includes(q)
+      )
+    }
+    return list
+  }, [tasks, periodFilter, fromDate, toDate, search, isTaskInDateRange])
+
+  const selected = filteredTasks.find(task => task.id === selectedId) || null
+  const visibleTasks = useMemo(() => filteredTasks.filter(task => matchesTab(task, tab)), [filteredTasks, tab])
+  const count = key => filteredTasks.filter(task => matchesTab(task, key)).length
 
   const runAction = async (path, options, success) => {
     setBusy(true)
@@ -469,6 +591,50 @@ function HousekeepingPage() {
         {error && <div className="hk-alert hk-alert--error">{error}</div>}
         {notice && <div className="hk-alert hk-alert--success">{notice}</div>}
 
+        <section className="hk-toolbar">
+          <input
+            className="hk-search-input"
+            value={search}
+            onChange={event => setSearch(event.target.value)}
+            placeholder="Tìm theo số phòng, tên khách, số điện thoại, mã booking..."
+          />
+          <div className="hk-toolbar-filters">
+            <select
+              className="hk-period-select"
+              value={periodFilter}
+              onChange={handlePeriodChange}
+              aria-label="Lọc theo khoảng thời gian"
+            >
+              <option value="day">Theo ngày</option>
+              <option value="week">Theo tuần</option>
+              <option value="month">Theo tháng</option>
+              <option value="year">Theo năm</option>
+              <option value="all">Tất cả thời gian</option>
+              {periodFilter === 'custom' && <option value="custom">Tùy chọn</option>}
+            </select>
+            {periodFilter !== 'all' && (
+              <>
+                <input
+                  type="date"
+                  className="hk-date-input"
+                  value={fromDate}
+                  onChange={handleFromDateChange}
+                  title="Từ ngày"
+                  aria-label="Từ ngày"
+                />
+                <input
+                  type="date"
+                  className="hk-date-input"
+                  value={toDate}
+                  onChange={handleToDateChange}
+                  title="Đến ngày"
+                  aria-label="Đến ngày"
+                />
+              </>
+            )}
+          </div>
+        </section>
+
         <div className="hk-tabs">
           {TABS.map(item => <button type="button" key={item.key} className={tab === item.key ? 'is-active' : ''} onClick={() => { setTab(item.key); setSelectedId(null) }}>{item.label}<b>{count(item.key)}</b></button>)}
         </div>
@@ -493,7 +659,7 @@ function HousekeepingPage() {
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }} onClick={() => setReportingTask(null)}>
             <div style={{ background: '#fff', borderRadius: 16, maxWidth: 520, width: '100%', padding: 24, boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }} onClick={e => e.stopPropagation()}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
-                <h2 style={{ margin: 0, fontSize: 17, color: '#0f172a' }}>⚠️ Báo Đồ Hỏng / Mất (Đồ quan trọng, cần thay, bảo trì ngay) - Phòng {reportingTask.roomNumber}</h2>
+                <h2 style={{ margin: 0, fontSize: 17, color: '#0f172a' }}>️ Báo Đồ Hỏng / Mất (Đồ quan trọng, cần thay, bảo trì ngay) - Phòng {reportingTask.roomNumber}</h2>
                 <button type="button" onClick={() => setReportingTask(null)} style={{ background: 'none', border: 0, fontSize: 24, cursor: 'pointer', color: '#94a3b8' }}>×</button>
               </div>
               <form onSubmit={handleIncidentSubmit}>
@@ -517,9 +683,9 @@ function HousekeepingPage() {
                         onChange={e => setIncidentForm({ ...incidentForm, incidentType: e.target.value })}
                         style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #cbd5e1', background: '#ffffff', color: '#0f172a' }}
                       >
-                        <option value="DAMAGED">💥 Đồ bị hỏng hóc</option>
-                        <option value="LOST">🔍 Đồ thất lạc / bị mất</option>
-                        <option value="MAINTENANCE">🛠️ Phòng cần bảo trì (Sửa chữa, bảo dưỡng...)</option>
+                        <option value="DAMAGED"> Đồ bị hỏng hóc</option>
+                        <option value="LOST"> Đồ thất lạc / bị mất</option>
+                        <option value="MAINTENANCE">️ Phòng cần bảo trì (Sửa chữa, bảo dưỡng...)</option>
                       </select>
                     </div>
                     <div>
@@ -553,7 +719,7 @@ function HousekeepingPage() {
                       <input
                         type="number"
                         min="0"
-                        step="10000"
+                        step="any"
                         placeholder="VD: 150000"
                         value={incidentForm.estimatedCost}
                         onChange={e => setIncidentForm({ ...incidentForm, estimatedCost: e.target.value })}
@@ -587,7 +753,7 @@ function HousekeepingPage() {
                             cursor: 'pointer',
                           }}
                         >
-                          {hkUploadingImage ? 'Đang tải ảnh...' : '📁 Chọn ảnh từ máy (PC)'}
+                          {hkUploadingImage ? 'Đang tải ảnh...' : ' Chọn ảnh từ máy (PC)'}
                         </button>
                         <span style={{ fontSize: 12, color: '#64748b' }}>hoặc nhập link URL ảnh:</span>
                       </div>
@@ -627,7 +793,7 @@ function HousekeepingPage() {
                               fontSize: 12,
                             }}
                           >
-                            ✕
+                            
                           </button>
                         </div>
                       )}

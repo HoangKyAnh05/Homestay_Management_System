@@ -21,6 +21,11 @@ target/
 .gradle/
 build/
 
+scratch/
+*.tar.gz
+*.xlsx
+*.csv
+
 # Logs
 
 *.log

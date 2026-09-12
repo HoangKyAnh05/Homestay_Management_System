@@ -45,10 +45,9 @@ export default function RoomScheduleCalendarModal({
   initialBusySlots = [],
   currentCheckIn,
   currentCheckOut,
-  onSelectCheckIn,
   onClose,
 }) {
-  const roomName = room?.roomTypeName || room?.name || room?.roomNumber ? `Phòng ${room.roomNumber || ''}` : (room?.title || 'Phòng')
+  const roomName = room?.roomTypeName || room?.name || (room?.roomNumber ? `Phòng ${room.roomNumber}` : (room?.title || 'Phòng'))
 
   const initialDate = useMemo(() => {
     if (currentCheckIn) {
@@ -100,6 +99,7 @@ export default function RoomScheduleCalendarModal({
     } else {
       setActiveMonth((m) => m - 1)
     }
+    setSelectedDay(null)
   }
 
   const handleNextMonth = () => {
@@ -109,12 +109,14 @@ export default function RoomScheduleCalendarModal({
     } else {
       setActiveMonth((m) => m + 1)
     }
+    setSelectedDay(null)
   }
 
   const handleGoToday = () => {
     const today = new Date()
     setActiveYear(today.getFullYear())
     setActiveMonth(today.getMonth())
+    setSelectedDay(null)
   }
 
   const calendarDays = useMemo(() => {
@@ -198,14 +200,29 @@ export default function RoomScheduleCalendarModal({
       .sort((a, b) => new Date(a.checkInTarget) - new Date(b.checkInTarget))
   }, [busySlots, activeYear, activeMonth])
 
+  const displayedSlots = useMemo(() => {
+    if (selectedDay && selectedDay.matchedSlots) {
+      return selectedDay.matchedSlots
+    }
+    return activeMonthSlots
+  }, [selectedDay, activeMonthSlots])
+
   return (
     <div className="room-schedule-modal-backdrop" onClick={onClose}>
       <div className="room-schedule-modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
         {/* Header */}
         <div className="room-schedule-head">
           <div className="room-schedule-head-content">
-            <h3>📅 Lịch đặt phòng – {roomName}</h3>
-            <p>Trực quan các ngày đã có khách đặt và các ngày còn trống trong tháng</p>
+            <h3>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                <line x1="16" y1="2" x2="16" y2="6"/>
+                <line x1="8" y1="2" x2="8" y2="6"/>
+                <line x1="3" y1="10" x2="21" y2="10"/>
+              </svg>
+              Lịch đặt phòng – {roomName}
+            </h3>
+            <p>Chế độ xem lịch: kiểm tra tình trạng phòng trống và các khung giờ đã được đặt</p>
           </div>
           <button type="button" className="room-schedule-close-btn" onClick={onClose} aria-label="Đóng">
             ×
@@ -221,7 +238,7 @@ export default function RoomScheduleCalendarModal({
               <button type="button" className="calendar-today-btn" onClick={handleGoToday}>
                 Hôm nay
               </button>
-              {loading && <span style={{ fontSize: 12, color: '#64748b' }}>Đang tải lịch...</span>}
+              {loading && <span style={{ fontSize: 12, color: '#64748b' }}>Đang tải dữ liệu...</span>}
             </div>
             <div className="calendar-nav-buttons">
               <button
@@ -256,7 +273,7 @@ export default function RoomScheduleCalendarModal({
             {currentCheckIn && (
               <span className="legend-item">
                 <span className="legend-dot is-selected" />
-                Thời gian bạn đang chọn
+                Đang xem
               </span>
             )}
             <span className="legend-item">
@@ -280,6 +297,8 @@ export default function RoomScheduleCalendarModal({
                   return <div key={cell.key} className="vivid-day-cell is-empty" />
                 }
 
+                const isSelectedCell = selectedDay?.key === cell.key
+
                 const cellClasses = [
                   'vivid-day-cell',
                   cell.isPast ? 'is-past' : cell.isBooked ? 'is-booked' : 'is-available',
@@ -287,6 +306,7 @@ export default function RoomScheduleCalendarModal({
                   cell.isInSelectedRange ? 'is-selected-range' : '',
                   cell.isCheckIn ? 'is-selected-checkin' : '',
                   cell.isCheckOut ? 'is-selected-checkout' : '',
+                  isSelectedCell ? 'is-inspecting' : '',
                 ]
                   .filter(Boolean)
                   .join(' ')
@@ -296,32 +316,28 @@ export default function RoomScheduleCalendarModal({
                     key={cell.key}
                     type="button"
                     className={cellClasses}
-                    disabled={cell.isPast}
                     onClick={() => {
-                      setSelectedDay(cell)
-                      if (!cell.isPast && !cell.isBooked && onSelectCheckIn) {
-                        onSelectCheckIn(cell.dayKey)
-                      }
+                      setSelectedDay(cell === selectedDay ? null : cell)
                     }}
                     title={
                       cell.isBooked
-                        ? `Đã có khách đặt: ${cell.matchedSlots.map((s) => `${formatDisplayDateTime(s.checkInTarget)} - ${formatDisplayDateTime(s.checkOutTarget)}`).join(', ')}`
+                        ? `Đã đặt: ${cell.matchedSlots.map((s) => `${formatDisplayDateTime(s.checkInTarget)} - ${formatDisplayDateTime(s.checkOutTarget)}`).join(', ')}`
                         : cell.isPast
                         ? 'Ngày đã qua'
-                        : 'Phòng còn trống - bấm để chọn nhận phòng'
+                        : 'Phòng còn trống'
                     }
                   >
                     <span className="vivid-day-number">{cell.day}</span>
                     <span className="vivid-day-status">
                       {cell.isCheckIn
-                        ? '🎯 Nhận'
+                        ? 'Nhận'
                         : cell.isCheckOut
-                        ? '🏁 Trả'
+                        ? 'Trả'
                         : cell.isBooked
-                        ? '🔴 Đã đặt'
+                        ? 'Đã đặt'
                         : cell.isPast
                         ? ''
-                        : '✓ Trống'}
+                        : 'Trống'}
                     </span>
                   </button>
                 )
@@ -331,10 +347,26 @@ export default function RoomScheduleCalendarModal({
 
           {/* Booked Slots List in this Month */}
           <div className="room-schedule-details">
-            <h5>🕒 Chi tiết các đợt khách đặt trong Tháng {activeMonth + 1}/{activeYear}</h5>
-            {activeMonthSlots.length > 0 ? (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <h5 style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#334155' }}>
+                {selectedDay
+                  ? `Khung giờ đã đặt ngày ${selectedDay.day}/${activeMonth + 1}/${activeYear} (${displayedSlots.length})`
+                  : `Tất cả đợt khách đặt trong Tháng ${activeMonth + 1}/${activeYear} (${displayedSlots.length})`}
+              </h5>
+              {selectedDay && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedDay(null)}
+                  style={{ fontSize: 12, color: '#0284c7', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}
+                >
+                  Xem toàn bộ tháng
+                </button>
+              )}
+            </div>
+
+            {displayedSlots.length > 0 ? (
               <div className="busy-slots-list">
-                {activeMonthSlots.map((slot, index) => (
+                {displayedSlots.map((slot, index) => (
                   <div key={slot.bookingDetailId || index} className="busy-slot-card">
                     <div className="busy-slot-times">
                       <strong>Đợt {index + 1}:</strong> Từ <strong>{formatDisplayDateTime(slot.checkInTarget)}</strong>
@@ -347,7 +379,9 @@ export default function RoomScheduleCalendarModal({
               </div>
             ) : (
               <div className="empty-slots-state">
-                ✨ Toàn bộ Tháng {activeMonth + 1}/{activeYear} đang trống! Bạn có thể thoải mái chọn bất kỳ khung giờ nào.
+                {selectedDay
+                  ? `Ngày ${selectedDay.day}/${activeMonth + 1}/${activeYear} hiện chưa có lượt đặt nào.`
+                  : `Toàn bộ Tháng ${activeMonth + 1}/${activeYear} đang trống.`}
               </div>
             )}
           </div>
@@ -356,13 +390,7 @@ export default function RoomScheduleCalendarModal({
         {/* Footer */}
         <div className="room-schedule-footer">
           <div className="room-schedule-selected-hint">
-            {currentCheckIn && currentCheckOut ? (
-              <span>
-                Đang chọn: <strong>{formatDisplayDateTime(currentCheckIn)}</strong> ➔ <strong>{formatDisplayDateTime(currentCheckOut)}</strong>
-              </span>
-            ) : (
-              <span>Bấm vào một ngày còn trống để chọn ngày nhận phòng</span>
-            )}
+            <span>Chế độ xem lịch · Không áp dụng đặt trực tiếp trên bảng lịch này.</span>
           </div>
           <button type="button" className="room-schedule-action-btn" onClick={onClose}>
             Đóng

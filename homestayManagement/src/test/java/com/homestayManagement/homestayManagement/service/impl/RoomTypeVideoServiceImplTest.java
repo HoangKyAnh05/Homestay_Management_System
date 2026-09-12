@@ -39,6 +39,8 @@ class RoomTypeVideoServiceImplTest {
     private HousekeepingTaskRepository housekeepingTaskRepository;
     @Mock
     private BookingDetailRepository bookingDetailRepository;
+    @Mock
+    private com.homestayManagement.homestayManagement.repository.PricePolicyRepository pricePolicyRepository;
 
     private AdminRoomServiceImpl adminRoomService;
 
@@ -53,7 +55,8 @@ class RoomTypeVideoServiceImplTest {
                 roomPriceConfigRepository,
                 roomScheduleRepository,
                 housekeepingTaskRepository,
-                bookingDetailRepository
+                bookingDetailRepository,
+                pricePolicyRepository
         );
     }
 
@@ -65,7 +68,10 @@ class RoomTypeVideoServiceImplTest {
                 1,
                 null,
                 "Beautiful room with balcony",
-                "/uploads/preview-room-1.mp4"
+                "/uploads/preview-room-1.mp4",
+                null,
+                null,
+                null
         );
 
         RoomType savedType = RoomType.builder()

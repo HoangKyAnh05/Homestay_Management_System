@@ -43,6 +43,7 @@ export interface WordTimestamp {
 }
 
 export interface SubtitleStyle {
+  enabled?: boolean; // Bật / Tắt hiển thị toàn bộ chữ phụ đề trên video
   fontFamily: string;
   fontSize: number;
   textColor: string;
@@ -51,7 +52,12 @@ export interface SubtitleStyle {
   strokeWidth: number;
   backgroundColor?: string;
   positionY: number; // percentage from top (e.g. 75)
-  animationStyle: 'pop' | 'glow' | 'bounce' | 'karaoke' | 'box';
+  positionX?: number; // percentage from left (e.g. 50)
+  rotation?: number; // rotation in degrees e.g. 0
+  rotate?: number; // alias for rotation
+  scale?: number; // scale multiplier e.g. 1.0
+  animationStyle: 'pop' | 'glow' | 'bounce' | 'karaoke' | 'box' | 'single_word';
+  displayMode?: 'phrase_karaoke' | 'single_word' | 'single_word_spotlight'; // 'phrase_karaoke': Cụm từ | 'single_word': Chạy nối tiếp từ trái qua phải | 'single_word_spotlight': 1 chữ nhảy trái qua phải
   maxWordsPerLine: number;
   uppercase: boolean;
 }
@@ -142,6 +148,8 @@ export interface Scene {
   order: number;
   narration: string;
   searchKeyword: string;
+  sourceName?: string;          // Tên source video cần đưa vào phân cảnh (từ AI JSON)
+  cutAction?: string;           // Mô tả thao tác cắt / góc quay / hướng dẫn source (từ AI JSON)
   imagePrompt?: string;
   mediaType: 'image' | 'video';
   mediaUrl: string;
@@ -176,24 +184,31 @@ export interface Scene {
   chatMessages?: ChatMessage[];
   orbitTitle?: string;
   orbitIcon?: string;
-  // Video Trimming & Clip Segmenting
+  // Video Trimming & Audio Controls
   videoStartOffset?: number; // Giây bắt đầu cắt từ video gốc (dùng cho Remotion startFrom)
   videoEndOffset?: number;   // Giây kết thúc cắt từ video gốc
   sourceVideoUrl?: string;   // URL của video gốc dài
+  videoMuted?: boolean;      // Mặc định false (giữ tiếng gốc của video). Nếu true thì tắt tiếng video
+  videoVolume?: number;     // Âm lượng video gốc (0.0 đến 1.0)
   // Motion Edit & Gesture Layering
   motionEdit?: MotionEditConfig;
 }
 
-export type TrimOverflowOption = 'shift_to_next' | 'discard';
+export type TrimSide = 'left' | 'right';
+export type TrimOverflowOption = 'shift_to_next' | 'shift_to_prev' | 'discard';
 
 export interface VideoSegment {
   id: string;
   order: number;
   title: string;
   sourceUrl: string;
+  sourceName?: string;       // Tên file video nguồn (vd: video_homestay_1.mp4)
   startOffset: number;       // Giây bắt đầu trong video gốc (vd: 0.0)
   endOffset: number;         // Giây kết thúc trong video gốc (vd: 10.0)
   duration: number;          // Độ dài của clip con (endOffset - startOffset)
+  originalStartOffset?: number; // Mốc giây gốc trong video dài ban đầu
+  originalEndOffset?: number;
+  isStandalone?: boolean;    // Đã được tách thành file video độc lập siêu mượt
   thumbnail?: string;        // Ảnh chụp thumbnail đại diện của đoạn clip
   narration?: string;        // Kịch bản / lời dẫn (nếu có)
 }
@@ -214,6 +229,7 @@ export interface VideoProject {
   subtitleStyle: SubtitleStyle;
   watermark: WatermarkConfig;
   showProgressBar: boolean;
+  showHeaderBadge?: boolean; // Bật / Tắt chữ tiêu đề / huy hiệu phía trên video (Mặc định: false)
   showAudioVisualizer?: boolean;
   showCinematicParticles?: boolean;
   showCameraShake?: boolean;
@@ -275,6 +291,7 @@ export const VIETNAMESE_VOICES: VoiceOption[] = [
 ];
 
 export const DEFAULT_SUBTITLE_STYLE: SubtitleStyle = {
+  enabled: true,
   fontFamily: 'Montserrat, Inter, sans-serif',
   fontSize: 48,
   textColor: '#FFFFFF',
@@ -288,8 +305,8 @@ export const DEFAULT_SUBTITLE_STYLE: SubtitleStyle = {
 };
 
 export const DEFAULT_WATERMARK: WatermarkConfig = {
-  enabled: true,
-  text: '@LaDoHomestaySaPa',
+  enabled: false,
+  text: '',
   position: 'top-right',
   opacity: 0.85
 };

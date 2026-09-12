@@ -106,7 +106,7 @@ function SePayQrPayment({
                   onClick={checkPaymentNow}
                   disabled={checking}
                 >
-                  {checking ? 'Đang kiểm tra...' : '🔄 Kiểm tra lại giao dịch'}
+                  {checking ? 'Đang kiểm tra...' : ' Kiểm tra lại giao dịch'}
                 </button>
               </div>
               <dl className="sepay-shared-info">

@@ -306,7 +306,7 @@ public class RoomServiceImpl implements RoomService {
 
     private List<String> buildRoomImageUrls(Long roomId) {
         return roomImageRepository.findByRoomId(roomId).stream()
-                .sorted(Comparator.comparing(RoomImage::isPrimary).reversed().thenComparing(RoomImage::getId))
+                .sorted(Comparator.comparing(RoomImage::isPrimary).reversed().thenComparing(Comparator.comparing(RoomImage::getId).reversed()))
                 .map(RoomImage::getImageUrl)
                 .toList();
     }
@@ -314,7 +314,7 @@ public class RoomServiceImpl implements RoomService {
     private List<String> buildRoomTypeImageUrls(Long roomTypeId) {
         return roomRepository.findByRoomTypeId(roomTypeId).stream()
                 .flatMap(room -> roomImageRepository.findByRoomId(room.getId()).stream())
-                .sorted(Comparator.comparing(RoomImage::isPrimary).reversed().thenComparing(RoomImage::getId))
+                .sorted(Comparator.comparing(RoomImage::isPrimary).reversed().thenComparing(Comparator.comparing(RoomImage::getId).reversed()))
                 .map(RoomImage::getImageUrl)
                 .toList();
     }
@@ -336,7 +336,7 @@ public class RoomServiceImpl implements RoomService {
                 .count();
         List<String> allUrls = rooms.stream()
                 .flatMap(room -> roomImageRepository.findByRoomId(room.getId()).stream())
-                .sorted(Comparator.comparing(RoomImage::isPrimary).reversed().thenComparing(RoomImage::getId))
+                .sorted(Comparator.comparing(RoomImage::isPrimary).reversed().thenComparing(Comparator.comparing(RoomImage::getId).reversed()))
                 .map(RoomImage::getImageUrl)
                 .toList();
         String primaryUrl = allUrls.isEmpty() ? null : allUrls.get(0);

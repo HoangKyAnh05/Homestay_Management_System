@@ -364,7 +364,7 @@ export default function AdminShiftHandoversPage() {
                       ) : (
                         <div className="ash-shortage-cell">
                           <span className="ash-badge-shortage">
-                            ⚠️ Thiếu {formatMoney(s.shortageAmount)}
+                            ️ Thiếu {formatMoney(s.shortageAmount)}
                           </span>
                           <small title={s.shortageReason}>Lý do: {s.shortageReason || '—'}</small>
                           <small>Hạn: {formatDateTime(s.compensationDeadline)}</small>
@@ -375,12 +375,12 @@ export default function AdminShiftHandoversPage() {
                       {s.cashStatus === 'SHORTAGE' ? (
                         s.compensationStatus === 'RESOLVED' ? (
                           <div className="ash-comp-resolved">
-                            <span>✅ Đã bù đủ</span>
+                            <span> Đã bù đủ</span>
                             <small>{formatDateTime(s.compensationResolvedAt)}</small>
                           </div>
                         ) : (
                           <div className="ash-comp-pending">
-                            <span>⏳ Chờ bù tiền</span>
+                            <span> Chờ bù tiền</span>
                             <button
                               type="button"
                               className="ash-btn-resolve-sm"
@@ -453,7 +453,7 @@ export default function AdminShiftHandoversPage() {
                       <input
                         type="number"
                         min="0"
-                        step="10000"
+                        step="any"
                         className="ash-input ash-fund-amount-input"
                         value={fundAmountInput}
                         onChange={(e) => setFundAmountInput(e.target.value)}
@@ -612,7 +612,7 @@ export default function AdminShiftHandoversPage() {
                   className="ash-close-btn"
                   onClick={() => setSelectedShiftDetail(null)}
                 >
-                  ✕
+                  
                 </button>
               </div>
 

@@ -5,6 +5,7 @@ import { formatClockTime, formatDateTime as formatAppDateTime } from '../../util
 import { houseTypeName } from '../../utils/houseType'
 import SePayQrPayment from '../../components/SePayQrPayment/SePayQrPayment'
 import AdminLayout from './AdminLayout'
+import AdminChangeRoomModal from '../../components/AdminChangeRoom/AdminChangeRoomModal'
 import './AdminBookingsPage.css'
 
 const API_BASE = (import.meta.env.VITE_API_URL || '') + '/api/admin/bookings'
@@ -132,7 +133,8 @@ function bookingStatusClass(status) {
   if (normalized === 'COMPLETED') return 'abk-booking abk-booking--completed'
   if (normalized === 'PENDING') return 'abk-booking abk-booking--pending'
   if (normalized === 'CHECKED_IN') return 'abk-booking abk-booking--active'
-  return 'abk-booking'
+  if (normalized === 'CONFIRMED') return 'abk-booking abk-booking--confirmed'
+  return 'abk-booking abk-booking--confirmed'
 }
 
 function overlapsDay(booking, day) {
@@ -201,18 +203,55 @@ function hasVoucherDiscount(detail) {
 
 function BookingCard({ booking, onOpenDetail }) {
   const totalGuests = Number(booking.numberOfAdults || 0) + Number(booking.numberOfChildren || 0)
+  const status = normalizeStatus(booking.detailStatus || booking.bookingStatus)
+  const statusText = statusLabel(booking.detailStatus || booking.bookingStatus)
+  const cardTime = formatBookingCardTime(booking)
+
   return (
     <article className={bookingStatusClass(booking.detailStatus || booking.bookingStatus)}>
-      <div className="abk-booking-main">
-        <strong>{booking.customerName || 'Khách hàng'}</strong>
-        <span>{bookingDisplay(booking)} · {statusLabel(booking.detailStatus || booking.bookingStatus)}</span>
+      <div className="abk-card-header">
+        <strong className="abk-card-name" title={booking.customerName || 'Khách hàng'}>
+          {booking.customerName || 'Khách hàng'}
+        </strong>
+        <span className={`abk-card-badge abk-card-badge--${status.toLowerCase()}`}>
+          {statusText}
+        </span>
       </div>
-      <div className="abk-booking-meta">
-        <span>{formatBookingCardTime(booking)}</span>
-        <span>{totalGuests} khách · {booking.rentType}</span>
+
+      <div className="abk-card-sub">
+        <span className="abk-card-code">{bookingDisplay(booking)}</span>
+        {booking.rentType && (
+          <span className="abk-card-rent-type">{booking.rentType}</span>
+        )}
       </div>
+
+      <div className="abk-card-meta">
+        {cardTime && (
+          <div className="abk-card-time">
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10" />
+              <polyline points="12 6 12 12 16 14" />
+            </svg>
+            <span>{cardTime}</span>
+          </div>
+        )}
+        <div className="abk-card-guests">
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+            <circle cx="9" cy="7" r="4" />
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+            <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+          </svg>
+          <span>{totalGuests > 0 ? `${totalGuests} khách` : '1 khách'}</span>
+        </div>
+      </div>
+
       <button type="button" className="abk-detail-link" onClick={() => onOpenDetail(booking.bookingDetailId)}>
-        Chi tiết
+        <span>Chi tiết</span>
+        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M5 12h14" />
+          <path d="M12 5l7 7-7 7" />
+        </svg>
       </button>
     </article>
   )
@@ -343,7 +382,7 @@ function InvoicePreviewModal({ detail, onClose }) {
                   </div>
                   <div className="abk-line-row" style={{ background: '#f0f9ff', padding: '8px 10px', borderRadius: '6px' }}>
                     <div>
-                      <strong style={{ color: '#0369a1' }}>⏰ Thuê thêm giờ (+{extHours}h)</strong>
+                      <strong style={{ color: '#0369a1' }}> Thuê thêm giờ (+{extHours}h)</strong>
                       <span style={{ color: '#0284c7' }}>Gia hạn thời gian trả phòng đến {formatAppDateTime(detail?.checkOutTarget)}</span>
                     </div>
                     <strong style={{ color: '#0284c7' }}>+{formatMoney(extAmount)}</strong>
@@ -505,12 +544,14 @@ function BookingDetailModal({ detail, loading, error, actionLoading, actionError
   const [housekeepingTask, setHousekeepingTask] = useState(null)
   const [invoiceLoading, setInvoiceLoading] = useState(false)
   const [invoicePreview, setInvoicePreview] = useState(null)
+  const [changeRoomModalOpen, setChangeRoomModalOpen] = useState(false)
 
   // Reset khi detail thay đổi
   useEffect(() => {
     setStayOpen(false)
     setEditCustomer(false)
     setEditBooking(false)
+    setChangeRoomModalOpen(false)
     setCustError('')
     setBookError('')
     setServiceForm({ type: 'FACILITY', serviceId: '', quantity: 1 })
@@ -763,12 +804,22 @@ function BookingDetailModal({ detail, loading, error, actionLoading, actionError
                   {canCheckOut && (
                     <button
                       type="button"
-                      className="abk-action-primary"
+                      className={`abk-action-primary ${inspectionComplete ? 'is-ready' : 'is-disabled'}`}
                       disabled={actionLoading || checkoutLoading || !inspectionComplete}
-                      title={!inspectionComplete ? 'Chờ housekeeping gửi chi phí kiểm tra phòng' : undefined}
+                      title={!inspectionComplete ? 'Chờ housekeeping gửi chi phí kiểm tra phòng' : 'Phòng đã kiểm tra xong, sẵn sàng check-out'}
                       onClick={prepareCheckOut}
                     >
-                      {checkoutLoading ? 'Đang kiểm tra...' : 'Check out'}
+                      {checkoutLoading ? 'Đang kiểm tra...' : inspectionComplete ? ' Check out' : 'Check out'}
+                    </button>
+                  )}
+                  {detail && !['CANCELLED', 'COMPLETED'].includes(String(detail.bookingStatus).toUpperCase()) && (
+                    <button
+                      type="button"
+                      className="abk-action-secondary"
+                      style={{ borderColor: '#0284c7', color: '#0284c7' }}
+                      onClick={() => setChangeRoomModalOpen(true)}
+                    >
+                      Đổi phòng
                     </button>
                   )}
                   <button type="button" className="abk-action-secondary" onClick={() => setStayOpen(v => !v)}>
@@ -787,7 +838,7 @@ function BookingDetailModal({ detail, loading, error, actionLoading, actionError
                   <h4>Thông tin khách hàng</h4>
                   {canEdit && !editCustomer && (
                     <button type="button" className="abk-edit-btn" onClick={() => { setEditCustomer(true); setEditBooking(false) }}>
-                      ✏️ Chỉnh sửa
+                      ️ Chỉnh sửa
                     </button>
                   )}
                   {editCustomer && (
@@ -849,7 +900,7 @@ function BookingDetailModal({ detail, loading, error, actionLoading, actionError
                   <h4>Thông tin đặt phòng</h4>
                   {canEdit && !editBooking && (
                     <button type="button" className="abk-edit-btn" onClick={() => { setEditBooking(true); setEditCustomer(false) }}>
-                      ✏️ Chỉnh sửa
+                      ️ Chỉnh sửa
                     </button>
                   )}
                   {editBooking && (
@@ -864,7 +915,7 @@ function BookingDetailModal({ detail, loading, error, actionLoading, actionError
                     {extHours > 0 && (
                       <div className="abk-extension-callout" style={{ background: '#f0f9ff', border: '1px solid #bae6fd', padding: '12px 14px', borderRadius: '8px', marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: '#0369a1' }}>
                         <div>
-                          <strong style={{ fontSize: '14px' }}>⏰ Khách đã thuê thêm {extHours} giờ lưu trú</strong>
+                          <strong style={{ fontSize: '14px' }}> Khách đã thuê thêm {extHours} giờ lưu trú</strong>
                           <div style={{ fontSize: '13px', marginTop: '2px', color: '#0284c7' }}>
                             Phụ phí thuê thêm: <b>+{formatMoney(extAmount)}</b> · Giờ trả phòng gia hạn: <b>{formatAppDateTime(detail.checkOutTarget)}</b>
                           </div>
@@ -1193,6 +1244,16 @@ function BookingDetailModal({ detail, loading, error, actionLoading, actionError
           onClose={() => setCheckoutPayment(null)}
         />
       )}
+      {changeRoomModalOpen && (
+        <AdminChangeRoomModal
+          bookingDetailId={detail.bookingDetailId}
+          onClose={() => setChangeRoomModalOpen(false)}
+          onSuccess={(updatedDetail) => {
+            setChangeRoomModalOpen(false)
+            onAction('__refresh__', null, updatedDetail)
+          }}
+        />
+      )}
     </>
   )
 }
@@ -1425,7 +1486,7 @@ function DirectBookingModal({ onClose, onCreated }) {
       }))
       setOcrNotice('✓ Đã trích xuất thông tin CCCD thành công! Vui lòng kiểm tra lại họ tên, số CCCD, ngày sinh và địa chỉ.')
     } catch (err) {
-      setError(`⚠️ Lỗi quét CCCD: ${err.message}. Bạn vẫn có thể tự nhập thông tin vào các ô bên dưới.`)
+      setError(`️ Lỗi quét CCCD: ${err.message}. Bạn vẫn có thể tự nhập thông tin vào các ô bên dưới.`)
     } finally {
       setOcrLoading(false)
     }
@@ -1718,7 +1779,7 @@ function DirectBookingModal({ onClose, onCreated }) {
                     {ocrImagePreviews.front ? (
                       <img src={ocrImagePreviews.front} alt="Mặt trước" className="abk-ocr-thumb" />
                     ) : (
-                      <span className="abk-ocr-icon">📷</span>
+                      <span className="abk-ocr-icon"></span>
                     )}
                     <div className="abk-ocr-label-text">
                       <strong>{ocrImages.front ? 'Mặt trước: Đã chọn ✓' : 'Tải mặt trước CCCD'}</strong>
@@ -1737,7 +1798,7 @@ function DirectBookingModal({ onClose, onCreated }) {
                     {ocrImagePreviews.back ? (
                       <img src={ocrImagePreviews.back} alt="Mặt sau" className="abk-ocr-thumb" />
                     ) : (
-                      <span className="abk-ocr-icon">📷</span>
+                      <span className="abk-ocr-icon"></span>
                     )}
                     <div className="abk-ocr-label-text">
                       <strong>{ocrImages.back ? 'Mặt sau: Đã chọn ✓' : 'Tải mặt sau CCCD'}</strong>
@@ -1815,13 +1876,13 @@ function DirectBookingModal({ onClose, onCreated }) {
                     {selectedPolicy.limitHours ? ` · ${selectedPolicy.limitHours} giờ` : ''}
                   </span>
                   {selectedPolicy.standardCheckIn && (
-                    <span>🕐 Nhận phòng chuẩn: {selectedPolicy.standardCheckIn}</span>
+                    <span> Nhận phòng chuẩn: {selectedPolicy.standardCheckIn}</span>
                   )}
                   {selectedPolicy.standardCheckOut && (
-                    <span>🕐 Trả phòng chuẩn: {selectedPolicy.standardCheckOut}</span>
+                    <span> Trả phòng chuẩn: {selectedPolicy.standardCheckOut}</span>
                   )}
                   <span className={`abk-day-type${isWeekend ? ' abk-day-type--weekend' : ''}`}>
-                    {isWeekend ? '📅 Cuối tuần' : '📅 Ngày thường'}
+                    {isWeekend ? ' Cuối tuần' : ' Ngày thường'}
                   </span>
                 </div>
               )}
@@ -1838,7 +1899,7 @@ function DirectBookingModal({ onClose, onCreated }) {
                     onChange={() => updateForm('paymentMethod', 'CASH')}
                   />
                   <div className="abk-pm-content">
-                    <span className="abk-pm-icon">💵</span>
+                    <span className="abk-pm-icon"></span>
                     <div className="abk-pm-text">
                       <strong>Tiền mặt tại quầy (Khuyên dùng)</strong>
                       <p>Khách thanh toán tiền mặt trực tiếp cho lễ tân. Đơn chuyển ngay sang Đã xác nhận (CONFIRMED).</p>
@@ -1855,7 +1916,7 @@ function DirectBookingModal({ onClose, onCreated }) {
                     onChange={() => updateForm('paymentMethod', 'SEPAY')}
                   />
                   <div className="abk-pm-content">
-                    <span className="abk-pm-icon">📲</span>
+                    <span className="abk-pm-icon"></span>
                     <div className="abk-pm-text">
                       <strong>Chuyển khoản QR VietQR</strong>
                       <p>Hiển thị mã QR SePay tự động cho khách quét thanh toán ngay tại quầy lễ tân.</p>
@@ -1872,7 +1933,7 @@ function DirectBookingModal({ onClose, onCreated }) {
                     onChange={() => updateForm('paymentMethod', 'PAY_AT_CHECKIN')}
                   />
                   <div className="abk-pm-content">
-                    <span className="abk-pm-icon">🕒</span>
+                    <span className="abk-pm-icon"></span>
                     <div className="abk-pm-text">
                       <strong>Thanh toán sau khi nhận phòng</strong>
                       <p>Giữ phòng cho khách trước, thanh toán tiền phòng/cọc khi khách đến check-in hoặc trả phòng.</p>
@@ -2059,7 +2120,7 @@ function DirectBookingModal({ onClose, onCreated }) {
       {pendingCreatedBooking && (
         <div className="abk-overlay abk-pending-overlay">
           <div className="abk-modal abk-pending-modal" role="dialog" aria-modal="true">
-            <div className="abk-pending-icon">📋</div>
+            <div className="abk-pending-icon"></div>
             <h3>Đã tạo đơn đặt phòng #{bookingDisplay(pendingCreatedBooking)}</h3>
             <p className="abk-pending-subtitle">
               Đơn đặt phòng đã được lưu trong hệ thống ở trạng thái <strong>Chờ thanh toán</strong>.
@@ -2093,7 +2154,7 @@ function DirectBookingModal({ onClose, onCreated }) {
                     setPendingCreatedBooking(null)
                   }}
                 >
-                  📲 Mở lại mã QR thanh toán
+                   Mở lại mã QR thanh toán
                 </button>
               )}
               <button
@@ -2118,7 +2179,7 @@ function DirectBookingModal({ onClose, onCreated }) {
                   }
                 }}
               >
-                {confirmCashLoading ? 'Đang xử lý...' : '💵 Khách đã trả tiền mặt tại quầy (Xác nhận)'}
+                {confirmCashLoading ? 'Đang xử lý...' : ' Khách đã trả tiền mặt tại quầy (Xác nhận)'}
               </button>
               <button
                 type="button"
@@ -2233,7 +2294,7 @@ function DayRevenueDetailModal({ day, bookings = [], rooms = [], onClose, onOpen
       <div className="abk-day-modal">
         <div className="abk-day-modal-head">
           <div>
-            <span className="abk-day-modal-badge">📊 Báo cáo ngày</span>
+            <span className="abk-day-modal-badge"> Báo cáo ngày</span>
             <h3>{dayTitle}</h3>
             <p>Tổng quan doanh thu và danh sách khách hàng đặt phòng trong ngày</p>
           </div>
@@ -2244,7 +2305,7 @@ function DayRevenueDetailModal({ day, bookings = [], rooms = [], onClose, onOpen
           {/* Thẻ chỉ số tổng quan */}
           <div className="abk-day-kpi-grid">
             <div className="abk-day-kpi-card abk-day-kpi-card--revenue">
-              <div className="abk-day-kpi-icon">💰</div>
+              <div className="abk-day-kpi-icon"></div>
               <div>
                 <span>Doanh thu ngày</span>
                 <strong>{formatMoney(totalCheckInRevenue)}</strong>
@@ -2253,7 +2314,7 @@ function DayRevenueDetailModal({ day, bookings = [], rooms = [], onClose, onOpen
             </div>
 
             <div className="abk-day-kpi-card">
-              <div className="abk-day-kpi-icon">🏠</div>
+              <div className="abk-day-kpi-icon"></div>
               <div>
                 <span>Phòng có khách</span>
                 <strong>{assignedRooms.size + unassignedCount} phòng</strong>
@@ -2262,7 +2323,7 @@ function DayRevenueDetailModal({ day, bookings = [], rooms = [], onClose, onOpen
             </div>
 
             <div className="abk-day-kpi-card">
-              <div className="abk-day-kpi-icon">📋</div>
+              <div className="abk-day-kpi-icon"></div>
               <div>
                 <span>Tổng đơn trong ngày</span>
                 <strong>{activeBookings.length} đơn</strong>
@@ -2271,7 +2332,7 @@ function DayRevenueDetailModal({ day, bookings = [], rooms = [], onClose, onOpen
             </div>
 
             <div className="abk-day-kpi-card">
-              <div className="abk-day-kpi-icon">👥</div>
+              <div className="abk-day-kpi-icon"></div>
               <div>
                 <span>Số lượng khách</span>
                 <strong>{totalGuests} khách</strong>
@@ -2289,7 +2350,7 @@ function DayRevenueDetailModal({ day, bookings = [], rooms = [], onClose, onOpen
 
             {activeBookings.length === 0 ? (
               <div className="abk-day-booking-empty">
-                <span>🍃</span>
+                
                 <p>Không có đơn đặt phòng nào trong ngày này.</p>
                 <small>Doanh thu: 0đ</small>
               </div>
@@ -2310,15 +2371,15 @@ function DayRevenueDetailModal({ day, bookings = [], rooms = [], onClose, onOpen
                       <div className="abk-day-booking-main">
                         <div className="abk-day-booking-header-row">
                           <span className={`abk-day-room-pill${isUnassigned ? ' is-unassigned' : ''}`}>
-                            {isUnassigned ? '⚡ Chờ gán phòng' : `🚪 ${roomName}`}
+                            {isUnassigned ? ' Chờ gán phòng' : ` ${roomName}`}
                           </span>
                           <span className="abk-day-type-text">
                             {houseTypeName(b, room?.roomTypeName || 'Loại phòng')}
                           </span>
                           {isNewCheckIn ? (
-                            <span className="abk-day-checkin-tag">✨ Nhận phòng hôm nay</span>
+                            <span className="abk-day-checkin-tag"> Nhận phòng hôm nay</span>
                           ) : (
-                            <span className="abk-day-stay-tag">🛌 Đang lưu trú</span>
+                            <span className="abk-day-stay-tag"> Đang lưu trú</span>
                           )}
                           <span className={`abk-status-pill abk-status-pill--${String(b.bookingStatus || '').toLowerCase()}`}>
                             {statusLabel(b.bookingStatus)}
@@ -2332,7 +2393,7 @@ function DayRevenueDetailModal({ day, bookings = [], rooms = [], onClose, onOpen
                               {b.customerName || 'Khách vãng lai'}
                             </strong>
                             {b.customerPhone && (
-                              <span className="abk-day-phone">📞 {b.customerPhone}</span>
+                              <span className="abk-day-phone"> {b.customerPhone}</span>
                             )}
                           </div>
 
@@ -2340,7 +2401,7 @@ function DayRevenueDetailModal({ day, bookings = [], rooms = [], onClose, onOpen
                             <span className="abk-day-label">Mã booking & Khách</span>
                             <span className="abk-day-code">{bookingDisplay(b)}</span>
                             <span className="abk-day-guests">
-                              👥 {b.numberOfAdults || 1} NL {b.numberOfChildren > 0 ? `· ${b.numberOfChildren} TE` : ''}
+                               {b.numberOfAdults || 1} NL {b.numberOfChildren > 0 ? `· ${b.numberOfChildren} TE` : ''}
                             </span>
                           </div>
 
@@ -2350,7 +2411,7 @@ function DayRevenueDetailModal({ day, bookings = [], rooms = [], onClose, onOpen
                               {formatAppDateTime(b.checkInTarget)}
                             </span>
                             <span className="abk-day-time-arrow">
-                              ➔ {formatAppDateTime(b.checkOutTarget)}
+                               {formatAppDateTime(b.checkOutTarget)}
                             </span>
                           </div>
 
@@ -2618,41 +2679,86 @@ function AdminBookingsPage() {
       {unassignedWeek.length > 0 && (
         <div className="abk-unassigned-alert-banner">
           <div className="abk-unassigned-alert-left">
-            <span className="abk-unassigned-alert-icon">⚡</span>
-            <div>
-              <strong>Có {unassignedWeek.length} phòng đặt trực tuyến chưa được gán phòng trong tuần này!</strong>
-              <p>Các đơn này đang hiển thị ở hàng <em>"Chờ gán phòng"</em> trên lịch hoặc có thể gán tại <em>Nhật ký lưu trú</em>.</p>
+            <div className="abk-unassigned-alert-icon-box">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+              </svg>
+            </div>
+            <div className="abk-unassigned-alert-text">
+              <div className="abk-unassigned-alert-title">
+                <strong>Có {unassignedWeek.length} phòng đặt trực tuyến chưa gán phòng trong tuần</strong>
+                <span className="abk-unassigned-alert-chip">Chờ xếp phòng</span>
+              </div>
+              <p>Các đơn này đang hiển thị ở hàng <em>"Chờ gán phòng"</em> trên lịch. Bạn có thể xếp phòng nhanh tại <em>Nhật ký check-in</em>.</p>
             </div>
           </div>
           <a href="/admin/check-in-logs" className="abk-unassigned-alert-link">
-            Mở Nhật ký check-in →
+            <span>Mở Nhật ký check-in</span>
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M5 12h14" />
+              <path d="M12 5l7 7-7 7" />
+            </svg>
           </a>
         </div>
       )}
 
       <div className="abk-toolbar">
-        <input
-          className="abk-search"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          placeholder="Tìm phòng, loại phòng, khách hàng, số điện thoại..."
-        />
-        <input
-          className="abk-date"
-          type="date"
-          value={weekStart}
-          onChange={e => setWeekStart(toDateKey(startOfWeek(toDate(e.target.value))))}
-        />
-        <select className="abk-select" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
-          <option value="">Tất cả trạng thái</option>
-          <option value="CONFIRMED">Đã xác nhận</option>
-          <option value="CHECKED_IN">Check in thành công</option>
-          <option value="COMPLETED">Hoàn tất</option>
-          <option value="CANCELLED">Đã hủy</option>
-        </select>
-        <select className="abk-select" value={pageSize} onChange={e => setPageSize(Number(e.target.value))}>
-          {PAGE_SIZE_OPTIONS.map(size => <option key={size} value={size}>{size} phòng/trang</option>)}
-        </select>
+        <div className="abk-search-wrap">
+          <div className="abk-search-input-box">
+            <svg className="abk-search-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+            <input
+              className="abk-search"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Tìm phòng, loại phòng, khách hàng, số điện thoại..."
+            />
+            {search && (
+              <button
+                type="button"
+                className="abk-search-clear-btn"
+                onClick={() => setSearch('')}
+                title="Xóa tìm kiếm"
+              >
+                
+              </button>
+            )}
+          </div>
+          <button
+            type="button"
+            className="abk-search-btn"
+            onClick={() => {}}
+            title="Tìm kiếm"
+          >
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+            <span>Tìm kiếm</span>
+          </button>
+        </div>
+
+        <div className="abk-toolbar-controls">
+          <input
+            className="abk-date"
+            type="date"
+            value={weekStart}
+            onChange={e => setWeekStart(toDateKey(startOfWeek(toDate(e.target.value))))}
+          />
+          <select className="abk-select" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+            <option value="">Tất cả trạng thái</option>
+            <option value="CONFIRMED">Đã xác nhận</option>
+            <option value="CHECKED_IN">Check in thành công</option>
+            <option value="COMPLETED">Hoàn tất</option>
+            <option value="CANCELLED">Đã hủy</option>
+          </select>
+          <select className="abk-select" value={pageSize} onChange={e => setPageSize(Number(e.target.value))}>
+            {PAGE_SIZE_OPTIONS.map(size => <option key={size} value={size}>{size} phòng/trang</option>)}
+          </select>
+        </div>
       </div>
 
       <section className="abk-schedule">
@@ -2712,7 +2818,7 @@ function AdminBookingsPage() {
                           dayBookings.map(booking => (
                             <div key={booking.bookingDetailId} className="abk-unassigned-booking-wrapper">
                               <span className="abk-unassigned-type-pill">
-                                🏠 {houseTypeName(booking, 'Loại phòng')}
+                                 {houseTypeName(booking, 'Loại phòng')}
                               </span>
                               <BookingCard booking={booking} onOpenDetail={openDetail} />
                             </div>

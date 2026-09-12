@@ -99,11 +99,11 @@ const NAV_ITEMS = [
     icon: ICONS.marketing,
     children: [
       { key: 'ai-post-agent', label: 'AI Agent Đăng bài', path: '/admin/marketing/ai-agent' },
-      { key: 'remotion-studio', label: '🎬 Remotion Video Studio', path: '/admin/marketing/video-editor' },
+      { key: 'remotion-studio', label: ' Remotion Video Studio', path: '/admin/marketing/video-editor' },
       { key: 'post-logs', label: 'Nhật ký Bài đăng', path: '/admin/marketing/post-logs' },
       { key: 'vouchers', label: 'Mã giảm giá (Vouchers)', path: '/admin/marketing/vouchers' },
       { key: 'travel-articles', label: 'Điểm đến & Bài review Sa Pa', path: '/admin/marketing/travel-articles' },
-      { key: 'giveaway-leads', label: '🎁 Khách hàng tiềm năng & Minigame', path: '/admin/marketing/giveaway-leads' },
+      { key: 'giveaway-leads', label: ' Khách hàng tiềm năng & Minigame', path: '/admin/marketing/giveaway-leads' },
     ],
   },
 ]
@@ -504,6 +504,9 @@ function AdminLayoutInner({ activePage, children }) {
                             className={`admin-nav-subitem${activePage === child.key ? ' admin-nav-subitem--active' : ''}`}
                             onClick={() => {
                               clearAlert(child.key)
+                              if (child.key === 'remotion-studio') {
+                                window.open('/remotion-app/index.html', '_blank')
+                              }
                               navigate(child.path)
                             }}
                           >
@@ -604,7 +607,7 @@ function AdminLayoutInner({ activePage, children }) {
                   transition: 'all 0.2s',
                 }}
               >
-                <span style={{ fontSize: 15 }}>📋</span>
+                <span style={{ fontSize: 15 }}></span>
                 <span>Báo cáo cuối ngày</span>
               </button>
             )}
@@ -635,7 +638,7 @@ function AdminLayoutInner({ activePage, children }) {
                 <div className="admin-notification-dropdown" onClick={(e) => e.stopPropagation()}>
                   <div className="admin-notif-header">
                     <div className="admin-notif-title">
-                      <span>🔔 Thông báo tương tác</span>
+                      <span> Thông báo tương tác</span>
                       {marketingUnreadCount > 0 && (
                         <span className="admin-notif-pill">{marketingUnreadCount} mới</span>
                       )}
@@ -656,7 +659,7 @@ function AdminLayoutInner({ activePage, children }) {
                       <div className="admin-notif-empty">Đang tải thông báo...</div>
                     ) : marketingNotifications.length === 0 ? (
                       <div className="admin-notif-empty">
-                        <span style={{ fontSize: 24, display: 'block', marginBottom: 4 }}>☕</span>
+                        <span style={{ fontSize: 24, display: 'block', marginBottom: 4 }}></span>
                         Chưa có thông báo tương tác mới nào.
                       </div>
                     ) : (
@@ -670,7 +673,7 @@ function AdminLayoutInner({ activePage, children }) {
                           }}
                         >
                           <span className="admin-notif-icon">
-                            {item.type === 'LIKE' ? '❤️' : item.type === 'COMMENT' ? '💬' : item.type === 'SHARE' ? '🔄' : '⚡'}
+                            {item.type === 'LIKE' ? '️' : item.type === 'COMMENT' ? '' : item.type === 'SHARE' ? '' : ''}
                           </span>
                           <div className="admin-notif-content">
                             <div className="admin-notif-item-title">{item.title}</div>

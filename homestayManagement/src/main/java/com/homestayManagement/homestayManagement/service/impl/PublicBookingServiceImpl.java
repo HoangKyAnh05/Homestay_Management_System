@@ -296,8 +296,8 @@ public class PublicBookingServiceImpl implements PublicBookingService {
                 .findFirst()
                 .orElse(null);
         boolean hourlyPrepaymentRequired = pricePolicy != null && isHourlyPolicy(pricePolicy);
-        boolean requiresDeposit = hourlyPrepaymentRequired || depositPolicy != null;
-        String bookingStatus = requiresDeposit ? "PENDING" : "CONFIRMED";
+        boolean requiresDeposit = true;
+        String bookingStatus = "PENDING";
 
         LocalDateTime bookingDate = LocalDateTime.now();
         Booking booking = bookingRepository.save(Booking.builder()
@@ -347,7 +347,7 @@ public class PublicBookingServiceImpl implements PublicBookingService {
         BigDecimal totalAmount = roomCharge.add(serviceCharge);
         BigDecimal depositAmount = hourlyPrepaymentRequired
                 ? roomCharge
-                : requiresDeposit ? calculateDepositAmount(depositPolicy, totalAmount) : BigDecimal.ZERO;
+                : depositPolicy != null ? calculateDepositAmount(depositPolicy, totalAmount) : totalAmount;
         savePrimaryBookingGuest(booking, firstDetail, customer, request.identityDocumentNumber());
         int earnedMemberPoints = memberBooking ? calculateEarnedMemberPoints(totalAmount) : 0;
         if (memberBooking) {
@@ -408,9 +408,9 @@ public class PublicBookingServiceImpl implements PublicBookingService {
                 totalAmount,
                 savedDetails.stream().map(this::toPublicBookingRoomResponse).toList(),
                 requiresDeposit,
-                hourlyPrepaymentRequired ? "Thanh toan 100% gio dau tien" : depositPolicy != null ? depositPolicy.getPolicyName() : null,
-                hourlyPrepaymentRequired ? "PERCENTAGE" : depositPolicy != null ? depositPolicy.getCalculationType() : null,
-                hourlyPrepaymentRequired ? BigDecimal.valueOf(100) : depositPolicy != null ? depositPolicy.getPolicyValue() : null,
+                hourlyPrepaymentRequired ? "Thanh toan 100% gio dau tien" : depositPolicy != null ? depositPolicy.getPolicyName() : "Thanh toan 100% don dat phong",
+                hourlyPrepaymentRequired ? "PERCENTAGE" : depositPolicy != null ? depositPolicy.getCalculationType() : "PERCENTAGE",
+                hourlyPrepaymentRequired ? BigDecimal.valueOf(100) : depositPolicy != null ? depositPolicy.getPolicyValue() : BigDecimal.valueOf(100),
                 depositAmount,
                 luckyCode,
                 luckyCode != null ? BigDecimal.valueOf(luckyPercent) : null,

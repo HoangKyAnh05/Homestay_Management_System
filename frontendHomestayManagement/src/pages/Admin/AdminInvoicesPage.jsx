@@ -74,7 +74,7 @@ function InvoiceDetailModal({ invoice, onClose, onExportExcel, exporting }) {
               onClick={() => onExportExcel({ invoiceId: invoice.id })}
               disabled={exporting}
             >
-              {exporting ? 'Đang tải...' : '📊 Tải hóa đơn Excel'}
+              {exporting ? 'Đang tải...' : ' Tải hóa đơn Excel'}
             </button>
             <button type="button" className="ain-modal-close" onClick={onClose}>×</button>
           </div>
@@ -396,7 +396,7 @@ function AdminInvoicesPage() {
               disabled={exporting}
               title="Xuất dữ liệu hóa đơn ra file Excel"
             >
-              {exporting ? 'Đang xuất...' : '📊 Xuất Excel ▾'}
+              {exporting ? 'Đang xuất...' : ' Xuất Excel ▾'}
             </button>
             {showExportMenu && (
               <div className="ain-export-menu">
@@ -408,7 +408,7 @@ function AdminInvoicesPage() {
                     handleExportExcel({ fromDate, toDate })
                   }}
                 >
-                  <strong>📅 Xuất theo bộ lọc ngày</strong>
+                  <strong> Xuất theo bộ lọc ngày</strong>
                   <span>
                     {fromDate && toDate
                       ? `Từ ${fromDate} đến ${toDate}`
@@ -427,7 +427,7 @@ function AdminInvoicesPage() {
                     handleExportExcel()
                   }}
                 >
-                  <strong>📂 Xuất toàn bộ tất cả hóa đơn</strong>
+                  <strong> Xuất toàn bộ tất cả hóa đơn</strong>
                   <span>Tải xuống danh sách toàn bộ lịch sử hóa đơn</span>
                 </button>
               </div>
@@ -489,12 +489,12 @@ function AdminInvoicesPage() {
           title="Lọc nhanh thời gian: Tuần này, tháng này, năm nay..."
         >
           <option value="">Tùy chọn ngày</option>
-          <option value="THIS_WEEK">📆 Tuần này</option>
-          <option value="THIS_MONTH">📅 Tháng này</option>
-          <option value="LAST_MONTH">⏪ Tháng trước</option>
-          <option value="THIS_YEAR">🗓️ Năm nay</option>
-          <option value="LAST_YEAR">⏮️ Năm trước</option>
-          <option value="TODAY">⚡ Hôm nay</option>
+          <option value="THIS_WEEK"> Tuần này</option>
+          <option value="THIS_MONTH"> Tháng này</option>
+          <option value="LAST_MONTH"> Tháng trước</option>
+          <option value="THIS_YEAR">️ Năm nay</option>
+          <option value="LAST_YEAR">️ Năm trước</option>
+          <option value="TODAY"> Hôm nay</option>
         </select>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <input
@@ -598,7 +598,7 @@ function AdminInvoicesPage() {
                         onClick={() => handleExportExcel({ invoiceId: invoice.id })}
                         disabled={exporting}
                       >
-                        📊 Excel
+                         Excel
                       </button>
                     </div>
                   </td>

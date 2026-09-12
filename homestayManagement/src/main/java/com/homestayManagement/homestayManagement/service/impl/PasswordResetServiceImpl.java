@@ -7,6 +7,7 @@ import com.homestayManagement.homestayManagement.entity.Account;
 import com.homestayManagement.homestayManagement.repository.AccountRepository;
 import com.homestayManagement.homestayManagement.repository.OtpTokenRepository;
 import com.homestayManagement.homestayManagement.repository.OtpTokenRepository.OtpToken;
+import com.homestayManagement.homestayManagement.security.OtpLockedException;
 import com.homestayManagement.homestayManagement.service.PasswordResetService;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
@@ -71,21 +72,52 @@ public class PasswordResetServiceImpl implements PasswordResetService {
     }
 
     @Override
+    @Transactional
     public void verifyOtp(VerifyOtpRequest request) {
-        OtpToken token = getValidToken(request.email(), request.otp());
+        OtpToken token = tokenRepository.findTopByEmailOrderByExpiresAtDesc(request.email())
+                .filter(t -> !t.isUsed())
+                .filter(t -> t.getExpiresAt().isAfter(LocalDateTime.now()))
+                .orElseThrow(() -> new IllegalArgumentException("Mã OTP không đúng hoặc đã hết hạn"));
 
-        if (token == null) {
-            throw new IllegalArgumentException("Mã OTP không đúng hoặc đã hết hạn");
+        if (token.isLocked()) {
+            throw new OtpLockedException("Mã OTP đã bị khóa do nhập sai quá 5 lần. Vui lòng nhấn gửi lại mã mới.");
+        }
+
+        if (!token.getOtp().equals(request.otp())) {
+            int attempts = token.incrementFailedAttempts();
+            if (attempts >= 5) {
+                token.lock();
+                tokenRepository.save(token);
+                throw new OtpLockedException("Mã OTP đã bị khóa do nhập sai quá 5 lần. Vui lòng nhấn gửi lại mã mới.");
+            }
+            tokenRepository.save(token);
+            int remaining = 5 - attempts;
+            throw new IllegalArgumentException("Mã OTP không đúng. Bạn còn " + remaining + " lần thử.");
         }
     }
 
     @Override
     @Transactional
     public void resetPassword(ResetPasswordRequest request) {
-        OtpToken token = getValidToken(request.email(), request.otp());
+        OtpToken token = tokenRepository.findTopByEmailOrderByExpiresAtDesc(request.email())
+                .filter(t -> !t.isUsed())
+                .filter(t -> t.getExpiresAt().isAfter(LocalDateTime.now()))
+                .orElseThrow(() -> new IllegalArgumentException("Mã OTP không đúng hoặc đã hết hạn"));
 
-        if (token == null) {
-            throw new IllegalArgumentException("Mã OTP không đúng hoặc đã hết hạn");
+        if (token.isLocked()) {
+            throw new OtpLockedException("Mã OTP đã bị khóa do nhập sai quá 5 lần. Vui lòng nhấn gửi lại mã mới.");
+        }
+
+        if (!token.getOtp().equals(request.otp())) {
+            int attempts = token.incrementFailedAttempts();
+            if (attempts >= 5) {
+                token.lock();
+                tokenRepository.save(token);
+                throw new OtpLockedException("Mã OTP đã bị khóa do nhập sai quá 5 lần. Vui lòng nhấn gửi lại mã mới.");
+            }
+            tokenRepository.save(token);
+            int remaining = 5 - attempts;
+            throw new IllegalArgumentException("Mã OTP không đúng. Bạn còn " + remaining + " lần thử.");
         }
 
         Account account = accountRepository.findByEmail(request.email())
@@ -95,14 +127,6 @@ public class PasswordResetServiceImpl implements PasswordResetService {
         accountRepository.save(account);
 
         tokenRepository.deleteAllByEmail(request.email());
-    }
-
-    private OtpToken getValidToken(String email, String otp) {
-        return tokenRepository.findTopByEmailOrderByExpiresAtDesc(email)
-                .filter(t -> !t.isUsed())
-                .filter(t -> t.getExpiresAt().isAfter(LocalDateTime.now()))
-                .filter(t -> t.getOtp().equals(otp))
-                .orElse(null);
     }
 
     private String generateOtp() {

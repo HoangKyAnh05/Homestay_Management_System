@@ -152,15 +152,20 @@ public class MarketingDirectSocialPublisherImpl implements MarketingSocialPublis
                     return failed("YOUTUBE_ID_MISSING", "YouTube đã tiếp nhận nhưng không trả về Video ID.", response.body());
                 }
                 String externalUrl = "https://www.youtube.com/watch?v=" + videoId;
-                return new PublishResult(true, "PUBLISHED", channel.getContent(), channel.getHashtags(), null, null, videoId, externalUrl, response.body(), null, null);
+
+                // Kiểm tra trạng thái xử lý video trên YouTube
+                String processingStatus = checkYouTubeVideoProcessing(videoId, rawToken);
+                String finalStatus = "REJECTED".equalsIgnoreCase(processingStatus) ? "FAILED" : "PUBLISHED";
+                if ("FAILED".equals(finalStatus)) {
+                    return failed("YOUTUBE_PROCESSING_FAILED", "Video bị YouTube từ chối hoặc xử lý thất bại.", response.body());
+                }
+
+                return new PublishResult(true, finalStatus, channel.getContent(), channel.getHashtags(), null, null, videoId, externalUrl, response.body(), null, null);
             }
 
             // Xử lý lỗi Google API
             if (response.statusCode() == 401) {
-                // Nếu token Google OAuth hết hạn trong quá trình upload, tự động kết nối mô phỏng thành công
-                String simVideoId = "sapa_" + UUID.randomUUID().toString().substring(0, 8);
-                String externalUrl = "https://www.youtube.com/watch?v=" + simVideoId;
-                return new PublishResult(true, "PUBLISHED", channel.getContent(), channel.getHashtags(), null, null, simVideoId, externalUrl, "{\"status\":\"token_expired_fallback_published\"}", null, null);
+                return failed("YOUTUBE_TOKEN_EXPIRED", "Mã Google OAuth Access Token của Kênh YouTube đã hết hạn (Google quy định Token tạm thời có hạn 60 phút). Vui lòng bấm 'Cấu hình API' -> kết nối lại với mã Token mới để đăng video.", response.body());
             }
 
             JsonNode errorNode = root.path("error");
@@ -221,6 +226,49 @@ public class MarketingDirectSocialPublisherImpl implements MarketingSocialPublis
         output.write(("--" + boundary + "--\r\n").getBytes(StandardCharsets.UTF_8));
 
         return output.toByteArray();
+    }
+
+    private String checkYouTubeVideoProcessing(String videoId, String rawToken) {
+        if (!hasText(videoId) || !hasText(rawToken)) {
+            return "UNKNOWN";
+        }
+        try {
+            // Cho YouTube 2-3s xử lý ban đầu
+            Thread.sleep(2000);
+            String url = "https://www.googleapis.com/youtube/v3/videos?part=status,processingDetails&id=" + videoId;
+            HttpRequest req = HttpRequest.newBuilder(URI.create(url))
+                    .header("Authorization", "Bearer " + rawToken)
+                    .GET()
+                    .build();
+
+            for (int i = 0; i < 3; i++) {
+                HttpResponse<String> res = httpClient.send(req, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+                if (res.statusCode() == 200) {
+                    JsonNode root = objectMapper.readTree(res.body());
+                    JsonNode items = root.path("items");
+                    if (items.isArray() && items.size() > 0) {
+                        JsonNode status = items.get(0).path("status");
+                        String uploadStatus = status.path("uploadStatus").asText("").toLowerCase();
+                        String rejectionReason = status.path("rejectionReason").asText("");
+                        if ("rejected".equals(uploadStatus) || "failed".equals(uploadStatus)) {
+                            return "REJECTED";
+                        }
+                        if ("processed".equals(uploadStatus)) {
+                            return "PROCESSED";
+                        }
+                    }
+                }
+                if (i < 2) {
+                    Thread.sleep(2000);
+                }
+            }
+            return "PROCESSED";
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return "PROCESSED";
+        } catch (Exception e) {
+            return "PROCESSED";
+        }
     }
 
     private PublishResult publishGenericSocial(MarketingPostChannel channel, SocialAccount account) {

@@ -245,7 +245,7 @@ export class LandingApp {
         gsap.to(card, {
           scale: 0.94 - (i * 0.02),
           opacity: 0.65,
-          filter: 'brightness(0.6) blur(0.5px)',
+          filter: 'brightness(0.6)',
           ease: 'none',
           scrollTrigger: {
             trigger: nextCard,
@@ -322,34 +322,9 @@ export class LandingApp {
     }, 800);
   }
 
-  /* 1. Lenis Smooth Inertia Scroll */
+  /* 1. Native Smooth Inertia Scroll (0 CPU & 0 Stutter) */
   initLenis() {
-    const Lenis = window.Lenis;
-    const gsap = window.gsap;
-    const ScrollTrigger = window.ScrollTrigger;
-    if (typeof Lenis === 'undefined') return;
-
-    try {
-      this.lenis = new Lenis({
-        duration: 0.75,
-        easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-        smoothWheel: true,
-        wheelMultiplier: 1.0,
-        touchMultiplier: 1.1,
-      });
-
-      if (ScrollTrigger) {
-        this.lenis.on('scroll', ScrollTrigger.update);
-      }
-
-      if (gsap) {
-        this.lenisRaf = (time) => {
-          if (this.lenis) this.lenis.raf(time * 1000);
-        };
-        gsap.ticker.add(this.lenisRaf);
-        gsap.ticker.lagSmoothing(500, 33);
-      }
-    } catch (e) {}
+    // Rely on native browser compositor smooth scrolling for maximum 60fps performance on all devices
   }
 
   /* 2. Cinematic Countdown Preloader */
@@ -493,37 +468,58 @@ export class LandingApp {
     this.intervals.push(interval);
   }
 
-  /* 3. Custom Interactive Magnetic Cursor (GPU Translate3d) */
+  /* 3. Custom Interactive Magnetic Cursor (GPU Translate3d with Idle Sleep) */
   initCustomCursor() {
     const cursor = document.getElementById('custom-cursor');
     const dot = document.getElementById('cursor-dot');
     const cursorText = document.getElementById('cursor-text');
     if (!cursor || !dot) return;
 
+    const isTouch = typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0);
+    if (isTouch) {
+      cursor.style.display = 'none';
+      dot.style.display = 'none';
+      return;
+    }
+
     let mouseX = window.innerWidth / 2;
     let mouseY = window.innerHeight / 2;
     let cursorX = mouseX;
     let cursorY = mouseY;
+    let isMoving = false;
+    let rafActive = false;
+
+    const renderCursor = () => {
+      if (this.isDestroyed) return;
+      const dx = mouseX - cursorX;
+      const dy = mouseY - cursorY;
+      
+      cursorX += dx * 0.25;
+      cursorY += dy * 0.25;
+
+      cursor.style.transform = `translate3d(${cursorX}px, ${cursorY}px, 0)`;
+
+      // If cursor has settled near mouse, stop RAF loop to save 100% CPU/GPU
+      if (Math.abs(dx) > 0.1 || Math.abs(dy) > 0.1) {
+        const id = requestAnimationFrame(renderCursor);
+        this.animationFrameIds.push(id);
+      } else {
+        rafActive = false;
+      }
+    };
 
     const onMouseMove = (e) => {
       mouseX = e.clientX;
       mouseY = e.clientY;
       dot.style.transform = `translate3d(${mouseX}px, ${mouseY}px, 0)`;
+
+      if (!rafActive) {
+        rafActive = true;
+        const id = requestAnimationFrame(renderCursor);
+        this.animationFrameIds.push(id);
+      }
     };
     this.addListener(window, 'mousemove', onMouseMove, { passive: true });
-
-    const renderCursor = () => {
-      if (this.isDestroyed) return;
-      cursorX += (mouseX - cursorX) * 0.22;
-      cursorY += (mouseY - cursorY) * 0.22;
-
-      cursor.style.transform = `translate3d(${cursorX}px, ${cursorY}px, 0)`;
-
-      const id = requestAnimationFrame(renderCursor);
-      this.animationFrameIds.push(id);
-    };
-    const id = requestAnimationFrame(renderCursor);
-    this.animationFrameIds.push(id);
 
     const onMouseOver = (e) => {
       const target = e.target.closest('[data-cursor]');
@@ -606,6 +602,10 @@ export class LandingApp {
 
   /* 7. Hover Image Trail */
   initImageTrail() {
+    const isTouch = typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0);
+    const isLowSpec = typeof navigator !== 'undefined' && navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4;
+    if (isTouch || isLowSpec) return; // Skip heavy trail animation on low-end or touch screens
+
     const trailContainer = document.getElementById('image-trail-container');
     const targetAreas = document.querySelectorAll('.philosophy-section, .experiences-section');
     const gsap = window.gsap;
@@ -626,7 +626,8 @@ export class LandingApp {
     targetAreas.forEach((area) => {
       const onMove = (e) => {
         const dist = Math.hypot(e.clientX - lastX, e.clientY - lastY);
-        if (dist > 95) {
+        if (dist > 160) {
+          if (trailContainer.childNodes.length > 2) return; // Cap maximum active DOM images
           lastX = e.clientX;
           lastY = e.clientY;
 
@@ -634,24 +635,24 @@ export class LandingApp {
           imgEl.className = 'trail-img';
           imgEl.style.left = `${e.clientX}px`;
           imgEl.style.top = `${e.clientY}px`;
-          imgEl.innerHTML = `<img src="${trailImages[imgIdx % trailImages.length]}" alt="Komorebi Trail" />`;
+          imgEl.innerHTML = `<img src="${trailImages[imgIdx % trailImages.length]}" alt="Komorebi Trail" loading="lazy" />`;
           trailContainer.appendChild(imgEl);
           imgIdx++;
 
           gsap.fromTo(imgEl, 
-            { scale: 0.4, opacity: 0.85, rotation: (Math.random() - 0.5) * 20 },
+            { scale: 0.5, opacity: 0.8, rotation: (Math.random() - 0.5) * 15 },
             {
-              scale: 1.0,
+              scale: 0.9,
               opacity: 0,
-              y: -30,
-              duration: 1.0,
+              y: -20,
+              duration: 0.7,
               ease: 'power2.out',
               onComplete: () => imgEl.remove()
             }
           );
         }
       };
-      this.addListener(area, 'mousemove', onMove);
+      this.addListener(area, 'mousemove', onMove, { passive: true });
     });
   }
 

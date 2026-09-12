@@ -113,14 +113,14 @@ function MetricInspectPopover({ info, position, onClose }) {
         </div>
         {onClose && (
           <button type="button" className="dash-inspect-close" onClick={onClose} title="Đóng">
-            ✕
+            
           </button>
         )}
       </div>
 
       {info.formula && (
         <div className="dash-inspect-section">
-          <div className="dash-inspect-label">📐 Công thức tính toán:</div>
+          <div className="dash-inspect-label">Công thức tính toán:</div>
           <div className="dash-inspect-formula">
             <code>{info.formula}</code>
           </div>
@@ -129,7 +129,7 @@ function MetricInspectPopover({ info, position, onClose }) {
 
       {info.calculation && (
         <div className="dash-inspect-section">
-          <div className="dash-inspect-label">📊 Minh họa phép tính với số liệu thực tế:</div>
+          <div className="dash-inspect-label">Minh họa phép tính với số liệu thực tế:</div>
           <div className="dash-inspect-calc">
             {info.calculation}
           </div>
@@ -138,12 +138,11 @@ function MetricInspectPopover({ info, position, onClose }) {
 
       {Array.isArray(info.breakdown) && info.breakdown.length > 0 && (
         <div className="dash-inspect-section">
-          <div className="dash-inspect-label">📋 Chi tiết các thành phần cấu thành:</div>
+          <div className="dash-inspect-label">Chi tiết các thành phần cấu thành:</div>
           <div className="dash-inspect-table">
             {info.breakdown.map((item, idx) => (
               <div className="dash-inspect-row" key={idx}>
                 <div className="dash-inspect-row-left">
-                  {item.icon && <span className="dash-inspect-icon">{item.icon}</span>}
                   <div>
                     <strong>{item.label}</strong>
                     {item.desc && <small>{item.desc}</small>}
@@ -161,7 +160,7 @@ function MetricInspectPopover({ info, position, onClose }) {
 
       {info.source && (
         <div className="dash-inspect-footer">
-          <span>💡 <strong>Nguồn dữ liệu:</strong> {info.source}</span>
+          <span><strong>Nguồn dữ liệu:</strong> {info.source}</span>
         </div>
       )}
     </div>
@@ -179,7 +178,7 @@ function MetricInspectModal({ info, onClose }) {
       <div className="dash-inspect-modal" onClick={(e) => e.stopPropagation()}>
         <div className="dash-inspect-modal-header">
           <div>
-            <span className="dash-inspect-badge">📐 BẢNG GIẢI TRÌNH SỐ LIỆU CHI TIẾT</span>
+            <span className="dash-inspect-badge">BẢNG GIẢI TRÌNH SỐ LIỆU CHI TIẾT</span>
             <h3>{info.title}</h3>
             {info.subtitle && <p>{info.subtitle}</p>}
           </div>
@@ -189,7 +188,7 @@ function MetricInspectModal({ info, onClose }) {
         <div className="dash-inspect-modal-body">
           {info.formula && (
             <div className="dash-inspect-section">
-              <div className="dash-inspect-label">📐 Công thức tính toán:</div>
+              <div className="dash-inspect-label">Công thức tính toán:</div>
               <div className="dash-inspect-formula dash-inspect-formula--lg">
                 <code>{info.formula}</code>
               </div>
@@ -198,7 +197,7 @@ function MetricInspectModal({ info, onClose }) {
 
           {info.calculation && (
             <div className="dash-inspect-section">
-              <div className="dash-inspect-label">📊 Diễn giải phép tính cụ thể:</div>
+              <div className="dash-inspect-label">Diễn giải phép tính cụ thể:</div>
               <div className="dash-inspect-calc dash-inspect-calc--lg">
                 {info.calculation}
               </div>
@@ -207,12 +206,11 @@ function MetricInspectModal({ info, onClose }) {
 
           {Array.isArray(info.breakdown) && info.breakdown.length > 0 && (
             <div className="dash-inspect-section">
-              <div className="dash-inspect-label">📋 Bảng phân rã chi tiết từng hạng mục:</div>
+              <div className="dash-inspect-label">Bảng phân rã chi tiết từng hạng mục:</div>
               <div className="dash-inspect-table dash-inspect-table--bordered">
                 {info.breakdown.map((item, idx) => (
                   <div className="dash-inspect-row" key={idx}>
                     <div className="dash-inspect-row-left">
-                      {item.icon && <span className="dash-inspect-icon">{item.icon}</span>}
                       <div>
                         <strong>{item.label}</strong>
                         {item.desc && <small>{item.desc}</small>}
@@ -230,7 +228,7 @@ function MetricInspectModal({ info, onClose }) {
 
           {info.source && (
             <div className="dash-inspect-source-box">
-              <strong>💡 Nguồn dữ liệu & Cơ sở đối soát:</strong>
+              <strong>Nguồn dữ liệu & Cơ sở đối soát:</strong>
               <p>{info.source}</p>
             </div>
           )}
@@ -301,21 +299,21 @@ function RevenueChart({ data, onInspectHover, onInspectLeave, onInspectClick }) 
                 calculation: `${formatExactMoney(room)} (Phòng) + ${formatExactMoney(service)} (Dịch vụ) + ${formatExactMoney(penalty)} (Phạt) = ${formatExactMoney(total)}`,
                 breakdown: [
                   {
-                    icon: '🏠',
+                    icon: '',
                     label: 'Tiền phòng',
                     value: formatExactMoney(room),
                     percent: total > 0 ? `${((room / total) * 100).toFixed(1)}%` : '0%',
                     desc: 'Doanh thu thuê phòng trong ngày',
                   },
                   {
-                    icon: '🛎️',
+                    icon: '️',
                     label: 'Dịch vụ',
                     value: formatExactMoney(service),
                     percent: total > 0 ? `${((service / total) * 100).toFixed(1)}%` : '0%',
                     desc: 'Minibar, ăn uống, thuê đồ',
                   },
                   {
-                    icon: '⚠️',
+                    icon: '️',
                     label: 'Phạt & Phụ thu',
                     value: formatExactMoney(penalty),
                     percent: total > 0 ? `${((penalty / total) * 100).toFixed(1)}%` : '0%',
@@ -373,14 +371,14 @@ function OccupancyChart({ data, totalRooms, onInspectHover, onInspectLeave, onIn
             calculation: `${occRooms} phòng có khách / ${roomsCount} phòng tổng × 100% = ${occRate.toFixed(1)}%`,
             breakdown: [
               {
-                icon: '🟢',
+                icon: '',
                 label: 'Phòng đang có khách',
                 value: `${occRooms} phòng`,
                 percent: `${occRate.toFixed(1)}%`,
                 desc: 'Phòng đang có booking lưu trú qua ngày này',
               },
               {
-                icon: '⚪',
+                icon: '',
                 label: 'Phòng còn trống',
                 value: `${freeRooms} phòng`,
                 percent: `${(100 - occRate).toFixed(1)}%`,
@@ -434,7 +432,7 @@ function DonutChart({ title, subtitle, items, type = 'money', palette = REVENUE_
       const val = Number(item.value || item.count || 0)
       const pct = total > 0 ? ((val / total) * 100).toFixed(1) : 0
       return {
-        icon: '🔹',
+        icon: '',
         label: type === 'status' ? statusLabel(item.name) : item.name,
         value: type === 'money' ? formatExactMoney(val) : `${formatNumber(val)} lượt`,
         percent: `${pct}%`,
@@ -476,7 +474,7 @@ function DonutChart({ title, subtitle, items, type = 'money', palette = REVENUE_
               calculation: `${type === 'money' ? formatExactMoney(val) : `${formatNumber(val)} lượt`} / ${type === 'money' ? formatExactMoney(total) : `${formatNumber(total)} lượt`} × 100% = ${pct}%`,
               breakdown: [
                 {
-                  icon: '📌',
+                  icon: '',
                   label: itemLabel,
                   value: type === 'money' ? formatExactMoney(val) : `${formatNumber(val)} lượt`,
                   percent: `${pct}%`,
@@ -534,7 +532,7 @@ function RankingPanel({ title, subtitle, items, valueType = 'money', totalBasis 
               : `${formatNumber(value)} lượt đặt (chiếm ${sharePct}% tổng lượt đặt trong danh sách)`,
             breakdown: [
               {
-                icon: '🏆',
+                icon: '',
                 label: `Vị trí #${index + 1}`,
                 value: valueType === 'money' ? formatExactMoney(value) : `${formatNumber(value)} lượt`,
                 percent: `${sharePct}%`,
@@ -582,11 +580,11 @@ function WeeklyReportsModal({
       <div className="dash-inspect-modal dash-weekly-modal" onClick={(e) => e.stopPropagation()}>
         <div className="dash-inspect-modal-header">
           <div>
-            <span className="dash-inspect-badge">📅 BÁO CÁO TUẦN TỰ ĐỘNG</span>
+            <span className="dash-inspect-badge"> BÁO CÁO TUẦN TỰ ĐỘNG</span>
             <h3>Bản Báo Cáo Excel Tự Động Hàng Tuần</h3>
             <p>Hệ thống tự động tổng hợp số liệu 7 ngày và sinh file Excel vào lúc 06:00 sáng Thứ Hai hàng tuần.</p>
           </div>
-          <button type="button" className="dash-inspect-modal-close-btn" onClick={onClose}>✕</button>
+          <button type="button" className="dash-inspect-modal-close-btn" onClick={onClose}></button>
         </div>
 
         <div className="dash-inspect-modal-body">
@@ -597,7 +595,7 @@ function WeeklyReportsModal({
               onClick={onGenerateNow}
               disabled={generating}
             >
-              {generating ? '⏳ Đang tạo bản tuần này...' : '⚡ Tạo ngay báo cáo tuần này'}
+              {generating ? ' Đang tạo bản tuần này...' : ' Tạo ngay báo cáo tuần này'}
             </button>
             {message && <span className="dash-weekly-msg">{message}</span>}
           </div>
@@ -613,7 +611,7 @@ function WeeklyReportsModal({
             <div className="dash-weekly-list">
               {reports.map((report) => (
                 <div className="dash-weekly-item" key={report.fileName}>
-                  <div className="dash-weekly-item-icon">📊</div>
+                  <div className="dash-weekly-item-icon"></div>
                   <div className="dash-weekly-item-info">
                     <strong>{report.dateRangeLabel || report.fileName}</strong>
                     <span>
@@ -749,10 +747,10 @@ function triggerFileDownload(blob, fileName) {
       })
       const data = await response.json()
       if (!response.ok) throw new Error(data.message || 'Không thể tạo báo cáo tuần.')
-      setWeeklyMessage('✅ Đã tạo thành công bản báo cáo tuần mới nhất!')
+      setWeeklyMessage(' Đã tạo thành công bản báo cáo tuần mới nhất!')
       loadWeeklyReports()
     } catch (err) {
-      setWeeklyMessage('❌ ' + err.message)
+      setWeeklyMessage(' ' + err.message)
     } finally {
       setGeneratingWeekly(false)
     }
@@ -838,21 +836,21 @@ function triggerFileDownload(blob, fileName) {
       calculation: `${formatExactMoney(roomRev)} (Tiền phòng) + ${formatExactMoney(servRev)} (Dịch vụ) + ${formatExactMoney(penRev)} (Phạt) = ${formatExactMoney(totalRev)}`,
       breakdown: [
         {
-          icon: '🏠',
+          icon: '',
           label: 'Doanh thu Tiền phòng',
           value: formatExactMoney(roomRev),
           percent: totalRev > 0 ? `${((roomRev / totalRev) * 100).toFixed(1)}%` : '0%',
           desc: 'Tổng tiền thuê phòng thực thu từ các hóa đơn',
         },
         {
-          icon: '🛎️',
+          icon: '️',
           label: 'Doanh thu Dịch vụ',
           value: formatExactMoney(servRev),
           percent: totalRev > 0 ? `${((servRev / totalRev) * 100).toFixed(1)}%` : '0%',
           desc: 'Tiện ích, đồ uống, giặt là, thuê xe máy',
         },
         {
-          icon: '⚠️',
+          icon: '️',
           label: 'Phạt & Phụ phí',
           value: formatExactMoney(penRev),
           percent: totalRev > 0 ? `${((penRev / totalRev) * 100).toFixed(1)}%` : '0%',
@@ -872,7 +870,7 @@ function triggerFileDownload(blob, fileName) {
       formula: 'Tổng Booking = COUNT(DISTINCT Booking ID có ngày lưu trú giao thoa với kỳ lọc)',
       calculation: `Ghi nhận ${bookingCount} đơn đặt phòng duy nhất với các trạng thái lưu trú bên dưới`,
       breakdown: statusItems.map((item) => ({
-        icon: '📋',
+        icon: '',
         label: statusLabel(item.name),
         value: `${formatNumber(item.count || item.value)} lượt phòng`,
         desc: statusDescription(item.name),
@@ -893,19 +891,19 @@ function triggerFileDownload(blob, fileName) {
       calculation: `${formatNumber(occupiedNights)} phòng·ngày / (${totalRooms} phòng × ${daysInPeriod} ngày) × 100% = ${avgRate.toFixed(1)}%`,
       breakdown: [
         {
-          icon: '🛏️',
+          icon: '️',
           label: 'Số phòng-đêm đã sử dụng',
           value: `${formatNumber(occupiedNights)} phòng·ngày`,
           desc: 'Tổng số đêm có khách lưu trú tại các phòng',
         },
         {
-          icon: '🏢',
+          icon: '',
           label: 'Tổng công suất tối đa khả dụng',
           value: `${formatNumber(totalCapacityNights)} phòng·ngày`,
           desc: `${totalRooms} phòng × ${daysInPeriod} ngày trong kỳ`,
         },
         {
-          icon: '📊',
+          icon: '',
           label: 'Tỉ lệ khai thác đạt được',
           value: `${avgRate.toFixed(1)}%`,
           desc: 'Mức độ lấp đầy thực tế so với tiềm năng tối đa',
@@ -923,7 +921,7 @@ function triggerFileDownload(blob, fileName) {
       formula: 'Tổng phòng = COUNT(Phòng trong hệ thống Homestay)',
       calculation: `Hệ thống hiện có ${totalRooms} phòng đang sẵn sàng tiếp đón khách lưu trú`,
       breakdown: (summary?.topRooms || []).map((item) => ({
-        icon: '🚪',
+        icon: '',
         label: item.name,
         value: 'Đang hoạt động',
         desc: `Doanh thu tạo ra trong kỳ: ${formatMoney(item.value)}`,
@@ -939,7 +937,7 @@ function triggerFileDownload(blob, fileName) {
           <h1>Tổng quan hệ thống</h1>
           <p>
             Phân tích doanh thu, công suất phòng, booking và hiệu quả khai thác phòng.
-            <span className="dash-inspect-hint-badge">💡 Rê chuột hoặc click vào bất kỳ mục nào để xem công thức & nguồn số liệu</span>
+            <span className="dash-inspect-hint-badge">Rê chuột hoặc click vào bất kỳ mục nào để xem công thức & nguồn số liệu</span>
           </p>
         </div>
         <div className="dash-actions">
@@ -954,7 +952,7 @@ function triggerFileDownload(blob, fileName) {
             title="Xuất toàn bộ số liệu tổng quan ra file Excel (.xlsx)"
           >
             {exporting ? (
-              <>⏳ Đang xuất Excel...</>
+              <>Đang xuất Excel...</>
             ) : (
               <>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -967,17 +965,6 @@ function triggerFileDownload(blob, fileName) {
                 Xuất Excel báo cáo
               </>
             )}
-          </button>
-          <button
-            type="button"
-            className="dash-btn-weekly"
-            onClick={() => {
-              setShowWeeklyModal(true)
-              loadWeeklyReports()
-            }}
-            title="Xem và tải các bản báo cáo Excel tự động tạo hàng tuần"
-          >
-            📅 Báo cáo tuần tự động
           </button>
         </div>
       </div>

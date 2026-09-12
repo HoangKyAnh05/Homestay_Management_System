@@ -11,10 +11,13 @@ import com.homestayManagement.homestayManagement.entity.DepositPolicy;
 import com.homestayManagement.homestayManagement.entity.Room;
 import com.homestayManagement.homestayManagement.entity.RoomImage;
 import com.homestayManagement.homestayManagement.entity.RoomType;
+import com.homestayManagement.homestayManagement.entity.PricePolicy;
+import com.homestayManagement.homestayManagement.entity.RoomPriceConfig;
 import com.homestayManagement.homestayManagement.repository.BookingDetailRepository;
 import com.homestayManagement.homestayManagement.repository.DepositPolicyRepository;
 import com.homestayManagement.homestayManagement.repository.HousekeepingChecklistTemplateRepository;
 import com.homestayManagement.homestayManagement.repository.HousekeepingTaskRepository;
+import com.homestayManagement.homestayManagement.repository.PricePolicyRepository;
 import com.homestayManagement.homestayManagement.repository.RoomImageRepository;
 import com.homestayManagement.homestayManagement.repository.RoomPriceConfigRepository;
 import com.homestayManagement.homestayManagement.repository.RoomRepository;
@@ -26,6 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -52,6 +56,7 @@ public class AdminRoomServiceImpl implements AdminRoomService {
     private final RoomScheduleRepository roomScheduleRepository;
     private final HousekeepingTaskRepository housekeepingTaskRepository;
     private final BookingDetailRepository bookingDetailRepository;
+    private final PricePolicyRepository pricePolicyRepository;
 
     public AdminRoomServiceImpl(
             DepositPolicyRepository depositPolicyRepository,
@@ -62,7 +67,8 @@ public class AdminRoomServiceImpl implements AdminRoomService {
             RoomPriceConfigRepository roomPriceConfigRepository,
             RoomScheduleRepository roomScheduleRepository,
             HousekeepingTaskRepository housekeepingTaskRepository,
-            BookingDetailRepository bookingDetailRepository
+            BookingDetailRepository bookingDetailRepository,
+            PricePolicyRepository pricePolicyRepository
     ) {
         this.depositPolicyRepository = depositPolicyRepository;
         this.roomTypeRepository = roomTypeRepository;
@@ -73,6 +79,7 @@ public class AdminRoomServiceImpl implements AdminRoomService {
         this.roomScheduleRepository = roomScheduleRepository;
         this.housekeepingTaskRepository = housekeepingTaskRepository;
         this.bookingDetailRepository = bookingDetailRepository;
+        this.pricePolicyRepository = pricePolicyRepository;
     }
 
     // ── DepositPolicy ─────────────────────────────────────────
@@ -138,7 +145,9 @@ public class AdminRoomServiceImpl implements AdminRoomService {
                 .description(request.description())
                 .videoUrl(request.videoUrl())
                 .build();
-        return toRoomTypeResponse(roomTypeRepository.save(roomType));
+        RoomType saved = roomTypeRepository.save(roomType);
+        saveOrUpdatePriceConfigs(saved, request.weekdayPrice(), request.weekendPrice(), request.pricePolicyId());
+        return toRoomTypeResponse(saved);
     }
 
     @Override
@@ -153,7 +162,9 @@ public class AdminRoomServiceImpl implements AdminRoomService {
         if (request.videoUrl() != null) {
             roomType.setVideoUrl(request.videoUrl().isBlank() ? null : request.videoUrl().trim());
         }
-        return toRoomTypeResponse(roomTypeRepository.save(roomType));
+        RoomType saved = roomTypeRepository.save(roomType);
+        saveOrUpdatePriceConfigs(saved, request.weekdayPrice(), request.weekendPrice(), request.pricePolicyId());
+        return toRoomTypeResponse(saved);
     }
 
     @Override
@@ -365,14 +376,91 @@ public class AdminRoomServiceImpl implements AdminRoomService {
         }
     }
 
+    private void saveOrUpdatePriceConfigs(RoomType roomType, BigDecimal weekdayPrice, BigDecimal weekendPrice, Long pricePolicyId) {
+        if (weekdayPrice == null && weekendPrice == null) {
+            return;
+        }
+
+        if (weekdayPrice != null && weekendPrice != null && weekendPrice.compareTo(weekdayPrice) <= 0) {
+            throw new IllegalArgumentException("Giá cuối tuần phải lớn hơn giá ngày thường");
+        }
+
+        PricePolicy policy = null;
+        if (pricePolicyId != null) {
+            policy = pricePolicyRepository.findById(pricePolicyId).orElse(null);
+        }
+        if (policy == null) {
+            policy = pricePolicyRepository.findAll().stream()
+                    .filter(p -> "OVERNIGHT".equalsIgnoreCase(p.getRentType()))
+                    .findFirst()
+                    .orElseGet(() -> pricePolicyRepository.findAll().stream().findFirst().orElse(null));
+        }
+
+        if (policy == null) {
+            policy = pricePolicyRepository.save(PricePolicy.builder()
+                    .policyName("Thuê qua đêm")
+                    .rentType("OVERNIGHT")
+                    .build());
+        }
+
+        final PricePolicy targetPolicy = policy;
+
+        if (weekdayPrice != null) {
+            RoomPriceConfig weekdayConfig = roomPriceConfigRepository
+                    .findByRoomTypeIdAndPricePolicyIdAndDayType(roomType.getId(), targetPolicy.getId(), "WEEKDAY")
+                    .orElseGet(() -> RoomPriceConfig.builder()
+                            .roomType(roomType)
+                            .pricePolicy(targetPolicy)
+                            .dayType("WEEKDAY")
+                            .build());
+            weekdayConfig.setPrice(weekdayPrice);
+            weekdayConfig.setPricePolicy(targetPolicy);
+            weekdayConfig.setRoomType(roomType);
+            roomPriceConfigRepository.save(weekdayConfig);
+        }
+
+        if (weekendPrice != null) {
+            RoomPriceConfig weekendConfig = roomPriceConfigRepository
+                    .findByRoomTypeIdAndPricePolicyIdAndDayType(roomType.getId(), targetPolicy.getId(), "WEEKEND")
+                    .orElseGet(() -> RoomPriceConfig.builder()
+                            .roomType(roomType)
+                            .pricePolicy(targetPolicy)
+                            .dayType("WEEKEND")
+                            .build());
+            weekendConfig.setPrice(weekendPrice);
+            weekendConfig.setPricePolicy(targetPolicy);
+            weekendConfig.setRoomType(roomType);
+            roomPriceConfigRepository.save(weekendConfig);
+        }
+    }
+
     private AdminRoomTypeResponse toRoomTypeResponse(RoomType rt) {
         int roomCount = roomRepository.findByRoomTypeId(rt.getId()).size();
         DepositPolicy policy = rt.getDepositPolicy();
+
+        List<RoomPriceConfig> configs = roomPriceConfigRepository.findByRoomTypeIdWithPolicy(rt.getId());
+        BigDecimal weekdayPrice = configs.stream()
+                .filter(c -> "WEEKDAY".equalsIgnoreCase(c.getDayType()))
+                .map(RoomPriceConfig::getPrice)
+                .findFirst()
+                .orElse(null);
+        BigDecimal weekendPrice = configs.stream()
+                .filter(c -> "WEEKEND".equalsIgnoreCase(c.getDayType()))
+                .map(RoomPriceConfig::getPrice)
+                .findFirst()
+                .orElse(null);
+        Long pricePolicyId = configs.stream()
+                .filter(c -> c.getPricePolicy() != null)
+                .map(c -> c.getPricePolicy().getId())
+                .findFirst()
+                .orElse(null);
+
         return new AdminRoomTypeResponse(rt.getId(), rt.getName(),
                 rt.getMaxAdults(), rt.getMaxChildren(),
                 policy != null ? policy.getId() : null,
                 policy != null ? policy.getPolicyName() : null,
-                rt.getDescription(), roomCount, rt.getVideoUrl());
+                rt.getDescription(), roomCount, rt.getVideoUrl(),
+                weekdayPrice, weekendPrice, pricePolicyId);
     }
 
     private DepositPolicyResponse toDepositPolicyResponse(DepositPolicy policy) {

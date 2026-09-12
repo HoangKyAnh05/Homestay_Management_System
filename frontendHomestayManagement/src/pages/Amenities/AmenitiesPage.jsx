@@ -213,9 +213,10 @@ function AmenitiesHeader() {
       <a className="home-logo" href="/home">Home Stays</a>
       <nav className="home-nav" aria-label="Điều hướng chính">
         <a href="/home">Trang chủ</a>
-        <a href="/landing" className="home-nav-landing-link" title="Khám phá không gian 3D Komorebi Sanctuary">✨ Komorebi 3D</a>
+        <a href="/landing" className="home-nav-landing-link" title="Khám phá không gian 3D Lá Đỏ Sanctuary">🍁 Lá Đỏ 3D</a>
         <a href="/rooms">Phòng</a>
         <a href="/wishlist">Yêu thích</a>
+        <a href="/amenities" className="home-nav-active">Tiện nghi</a>
         <a
           href="/giveaway"
           className="home-nav-lucky-wheel"

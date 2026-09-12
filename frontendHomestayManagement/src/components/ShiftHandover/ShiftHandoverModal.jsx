@@ -188,7 +188,7 @@ export default function ShiftHandoverModal({ isOpen, onClose, onSuccess }) {
             <p>Bàn giao quỹ tiền mặt, kiểm tra đối soát và xác nhận vào ca làm</p>
           </div>
           <button type="button" className="sh-modal-close" onClick={onClose} aria-label="Đóng">
-            ✕
+            
           </button>
         </div>
 
@@ -205,7 +205,7 @@ export default function ShiftHandoverModal({ isOpen, onClose, onSuccess }) {
             <div className="sh-staff-grid">
               {/* Người sau - Người nhận ca (Tài khoản hiện tại) */}
               <div className="sh-staff-card sh-staff-card--incoming">
-                <div className="sh-staff-tag">👤 Người sau (Vào ca làm)</div>
+                <div className="sh-staff-tag"> Người sau (Vào ca làm)</div>
                 <div className="sh-staff-body">
                   <strong>{currentUser?.fullName || currentUser?.email}</strong>
                   <span>{currentUser?.email}</span>
@@ -215,7 +215,7 @@ export default function ShiftHandoverModal({ isOpen, onClose, onSuccess }) {
 
               {/* Người trước - Người giao ca */}
               <div className="sh-staff-card sh-staff-card--outgoing">
-                <div className="sh-staff-tag">🤝 Người trước (Giao ca)</div>
+                <div className="sh-staff-tag"> Người trước (Giao ca)</div>
                 <div className="sh-staff-body">
                   <label className="sh-field-label" htmlFor="sh-outgoing-select">
                     Chọn nhân viên giao ca:
@@ -251,7 +251,7 @@ export default function ShiftHandoverModal({ isOpen, onClose, onSuccess }) {
                     required
                   />
                   <small className="sh-staff-hint">
-                    ⚠️ Người giao ca và người nhận ca phải là 2 nick khác nhau.
+                    ️ Người giao ca và người nhận ca phải là 2 nick khác nhau.
                   </small>
                 </div>
               </div>
@@ -297,9 +297,9 @@ export default function ShiftHandoverModal({ isOpen, onClose, onSuccess }) {
               {actualCash !== '' && (
                 <div className={`sh-diff-badge ${diffVal < 0 ? 'sh-diff-badge--shortage' : 'sh-diff-badge--ok'}`}>
                   {diffVal === 0 ? (
-                    '✅ Khớp 100% so với hệ thống'
+                    ' Khớp 100% so với hệ thống'
                   ) : diffVal < 0 ? (
-                    `⚠️ Chênh lệch thiếu: -${formatMoney(Math.abs(diffVal))}`
+                    `️ Chênh lệch thiếu: -${formatMoney(Math.abs(diffVal))}`
                   ) : (
                     `ℹ️ Thừa tiền: +${formatMoney(diffVal)}`
                   )}
@@ -307,7 +307,7 @@ export default function ShiftHandoverModal({ isOpen, onClose, onSuccess }) {
               )}
 
               <div className="sh-handover-transfer-note">
-                💡 <strong>Kế thừa quỹ ca làm:</strong> Toàn bộ số tiền thực tế bàn giao <strong>{formatMoney(actualCash || 0)}</strong> (gồm tiền quỹ đầu ca + doanh thu tiền mặt thu được trong ca này) sẽ được chuyển giao đầy đủ 100% làm <strong>Quỹ tiền mặt đầu ca</strong> cho nhân viên nhận ca tiếp theo ({currentUser?.fullName || 'bạn'}).
+                 <strong>Kế thừa quỹ ca làm:</strong> Toàn bộ số tiền thực tế bàn giao <strong>{formatMoney(actualCash || 0)}</strong> (gồm tiền quỹ đầu ca + doanh thu tiền mặt thu được trong ca này) sẽ được chuyển giao đầy đủ 100% làm <strong>Quỹ tiền mặt đầu ca</strong> cho nhân viên nhận ca tiếp theo ({currentUser?.fullName || 'bạn'}).
               </div>
             </div>
 
@@ -369,7 +369,7 @@ export default function ShiftHandoverModal({ isOpen, onClose, onSuccess }) {
             {isSufficient === false && (
               <div className="sh-shortage-panel">
                 <div className="sh-shortage-title">
-                  <span>⚠️ Chi tiết thiếu hụt & Cam kết hoàn bù</span>
+                  <span>️ Chi tiết thiếu hụt & Cam kết hoàn bù</span>
                 </div>
 
                 <div className="sh-shortage-grid">
@@ -391,7 +391,7 @@ export default function ShiftHandoverModal({ isOpen, onClose, onSuccess }) {
                     />
                     {Number(shortageAmount) > expectedCash ? (
                       <small style={{ color: '#dc2626', fontWeight: 600, display: 'block', marginTop: '4px' }}>
-                        ⚠️ Số tiền thiếu không được vượt quá số tiền của ca ({formatMoney(expectedCash)})!
+                        ️ Số tiền thiếu không được vượt quá số tiền của ca ({formatMoney(expectedCash)})!
                       </small>
                     ) : expectedCash > 0 ? (
                       <small style={{ color: '#64748b', fontSize: '11px', display: 'block', marginTop: '4px' }}>

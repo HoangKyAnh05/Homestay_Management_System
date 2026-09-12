@@ -102,7 +102,7 @@ export default function DailyClosingModal({ isOpen, onClose, onSuccess }) {
         {/* Header */}
         <div className="dcm-header">
           <div className="dcm-header-left">
-            <h2>📊 Tổng Kết Cuối Ngày & Báo Cáo Admin</h2>
+            <h2> Tổng Kết Cuối Ngày & Báo Cáo Admin</h2>
             <p>Tổng hợp doanh thu, các phòng đang lưu trú và gửi báo cáo cho Quản trị viên</p>
           </div>
           <div className="dcm-header-right">
@@ -114,15 +114,15 @@ export default function DailyClosingModal({ isOpen, onClose, onSuccess }) {
               title="Chọn ngày cần tổng kết"
             />
             <button type="button" className="dcm-close-btn" onClick={onClose} title="Đóng">
-              ✕
+              
             </button>
           </div>
         </div>
 
         {/* Body */}
         <div className="dcm-body">
-          {error && <div className="dcm-alert-error">⚠️ {error}</div>}
-          {successMsg && <div className="dcm-alert-success">✅ {successMsg}</div>}
+          {error && <div className="dcm-alert-error">️ {error}</div>}
+          {successMsg && <div className="dcm-alert-success"> {successMsg}</div>}
 
           {loading ? (
             <div style={{ textAlign: 'center', padding: '40px 0', color: '#64748b' }}>
@@ -133,7 +133,7 @@ export default function DailyClosingModal({ isOpen, onClose, onSuccess }) {
               {/* Thống kê nhanh */}
               <div className="dcm-stats-grid">
                 <div className="dcm-stat-card dcm-stat-card--occupied">
-                  <div className="dcm-stat-icon">🛏️</div>
+                  <div className="dcm-stat-icon">️</div>
                   <div className="dcm-stat-info">
                     <span className="dcm-stat-label">Phòng đang có khách</span>
                     <span className="dcm-stat-value">{previewData.occupiedRoomsCount} phòng</span>
@@ -141,7 +141,7 @@ export default function DailyClosingModal({ isOpen, onClose, onSuccess }) {
                 </div>
 
                 <div className="dcm-stat-card dcm-stat-card--checkin">
-                  <div className="dcm-stat-icon">📥</div>
+                  <div className="dcm-stat-icon"></div>
                   <div className="dcm-stat-info">
                     <span className="dcm-stat-label">Đã Check-in hôm nay</span>
                     <span className="dcm-stat-value">{previewData.checkInTodayCount} lượt</span>
@@ -149,7 +149,7 @@ export default function DailyClosingModal({ isOpen, onClose, onSuccess }) {
                 </div>
 
                 <div className="dcm-stat-card dcm-stat-card--checkout">
-                  <div className="dcm-stat-icon">📤</div>
+                  <div className="dcm-stat-icon"></div>
                   <div className="dcm-stat-info">
                     <span className="dcm-stat-label">Đã Check-out hôm nay</span>
                     <span className="dcm-stat-value">{previewData.checkOutTodayCount} lượt</span>
@@ -160,7 +160,7 @@ export default function DailyClosingModal({ isOpen, onClose, onSuccess }) {
               {/* Danh sách phòng đang có khách ở */}
               <div className="dcm-section">
                 <h3 className="dcm-section-title">
-                  <span>🏠 Danh sách các phòng đang có khách lưu trú ({previewData.occupiedRooms?.length || 0})</span>
+                  <span> Danh sách các phòng đang có khách lưu trú ({previewData.occupiedRooms?.length || 0})</span>
                 </h3>
                 <div className="dcm-table-wrapper">
                   <table className="dcm-table">
@@ -207,13 +207,13 @@ export default function DailyClosingModal({ isOpen, onClose, onSuccess }) {
               {/* Chi tiết Doanh thu */}
               <div className="dcm-section">
                 <h3 className="dcm-section-title">
-                  <span>💰 Chi tiết nguồn thu trong ngày</span>
+                  <span> Chi tiết nguồn thu trong ngày</span>
                 </h3>
 
                 <div className="dcm-revenue-grid">
                   <div className="dcm-rev-box">
                     <div className="dcm-rev-label">
-                      <span>💵 Tiền mặt thu tại quầy:</span>
+                      <span> Tiền mặt thu tại quầy:</span>
                     </div>
                     <div className="dcm-rev-amount" style={{ color: '#059669' }}>
                       {formatMoney(previewData.cashRevenue)}
@@ -222,7 +222,7 @@ export default function DailyClosingModal({ isOpen, onClose, onSuccess }) {
 
                   <div className="dcm-rev-box">
                     <div className="dcm-rev-label">
-                      <span>💳 Chuyển khoản / Ngân hàng:</span>
+                      <span> Chuyển khoản / Ngân hàng:</span>
                     </div>
                     <div className="dcm-rev-amount" style={{ color: '#2563eb' }}>
                       {formatMoney(previewData.transferRevenue)}
@@ -247,7 +247,7 @@ export default function DailyClosingModal({ isOpen, onClose, onSuccess }) {
               {/* Ghi chú của lễ tân dặn dò Admin */}
               <div className="dcm-section">
                 <h3 className="dcm-section-title">
-                  <span>📝 Ghi chú & Dặn dò gửi Quản trị viên (Admin)</span>
+                  <span> Ghi chú & Dặn dò gửi Quản trị viên (Admin)</span>
                 </h3>
                 <textarea
                   className="dcm-notes-textarea"
@@ -265,7 +265,7 @@ export default function DailyClosingModal({ isOpen, onClose, onSuccess }) {
           <div className="dcm-footer-status">
             {previewData?.alreadySubmitted && (
               <span className="dcm-badge-submitted">
-                ✅ Đã gửi báo cáo ngày này (Trạng thái: {previewData.existingReportStatus === 'ACKNOWLEDGED' ? 'Admin đã xem' : 'Chờ Admin duyệt'})
+                 Đã gửi báo cáo ngày này (Trạng thái: {previewData.existingReportStatus === 'ACKNOWLEDGED' ? 'Admin đã xem' : 'Chờ Admin duyệt'})
               </span>
             )}
           </div>
@@ -279,7 +279,7 @@ export default function DailyClosingModal({ isOpen, onClose, onSuccess }) {
               disabled={submitting || loading || !previewData}
               onClick={handleSubmit}
             >
-              <span>{submitting ? 'Đang gửi báo cáo...' : previewData?.alreadySubmitted ? '📤 Cập nhật & Gửi lại cho Admin' : '📤 Gửi Báo Cáo Cho Admin'}</span>
+              <span>{submitting ? 'Đang gửi báo cáo...' : previewData?.alreadySubmitted ? ' Cập nhật & Gửi lại cho Admin' : ' Gửi Báo Cáo Cho Admin'}</span>
             </button>
           </div>
         </div>
