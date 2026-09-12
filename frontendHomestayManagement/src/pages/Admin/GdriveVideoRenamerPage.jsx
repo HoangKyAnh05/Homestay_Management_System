@@ -626,7 +626,7 @@ export default function GdriveVideoRenamerPage() {
     return `${indexStr}${userPrefix}${title}${dateStr}${extension}`
   }
   const extractCleanTitleFromFilename = (rawName, hint = '', index = 0) => {
-    if (!rawName) return `video clip ${index + 1}`
+    if (!rawName) return `video số ${index + 1}`
 
     // 1. Remove file extension
     let clean = rawName.replace(/\.[0-9a-z]+$/i, '').trim()
@@ -652,13 +652,13 @@ export default function GdriveVideoRenamerPage() {
     clean = clean.replace(/^\s*(\d+[\.\-\s\]\)]+|\#\d+\s*)/, '').trim()
     clean = clean.replace(/^[0-9a-f]{4,}\s*/gi, '').trim()
 
-    // If the extracted description is meaningful, use it!
+    // If the extracted description is meaningful (has real letters and words), use it!
     const lettersOnly = clean.replace(/[^a-zA-Zàáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ]/gi, '')
     if (clean && clean.length >= 3 && lettersOnly.length >= 3) {
       return clean
     }
 
-    return `video ghi hinh clip ${index + 1}`
+    return `video số ${index + 1}`
   }
 
   // Analyze Single Video using Gemini AI Vision (Observes 10 frames from video)
@@ -674,7 +674,7 @@ export default function GdriveVideoRenamerPage() {
 
     try {
       const apiKey = apiConfig.geminiApiKey || DEFAULT_API_CONFIG.geminiApiKey
-      const model = apiConfig.geminiModel || 'gemini-2.5-flash'
+      const model = apiConfig.geminiModel || 'gemini-3.7-flash'
       const cleanContentName = extractCleanTitleFromFilename(video.originalName, renameConfig.contextHint, index)
 
       // Ensure 10 frames are ready for analysis
@@ -700,6 +700,32 @@ export default function GdriveVideoRenamerPage() {
         } catch (e) {}
       }
 
+      // If video has no visual preview / frames cannot be extracted -> Name as "video số {index + 1}"
+      if (framesToUse.length === 0) {
+        const rawTitle = cleanContentName.startsWith('video số')
+          ? cleanContentName
+          : cleanContentName.length >= 3 && !cleanContentName.toLowerCase().startsWith('video')
+          ? cleanContentName
+          : `video số ${index + 1}`
+        const proposedName = formatNameWithRules(rawTitle, ext, index)
+        const summary = `Video số ${index + 1} (chưa có hình ảnh xem trước)`
+
+        setVideos((prev) =>
+          prev.map((v) =>
+            v.id === video.id
+              ? {
+                  ...v,
+                  status: 'proposed',
+                  proposedName,
+                  summary,
+                }
+              : v
+          )
+        )
+        addLog('info', `[Không xem trước được] Video "${video.originalName}" -> "${proposedName}"`)
+        return
+      }
+
       const languageDesc =
         renameConfig.language === 'vi'
           ? 'Tiếng Việt có dấu tự nhiên, chuẩn xác, dễ hiểu'
@@ -708,26 +734,19 @@ export default function GdriveVideoRenamerPage() {
           : 'English'
 
       const promptText = `
-Bạn là AI chuyên gia phân tích thị giác và biên tập video hàng đầu thế giới.
-Nhiệm vụ: QUAN SÁT KỸ TOÀN BỘ CÁC HÌNH ẢNH TRÍCH XUẤT TỪ VIDEO (${framesToUse.length} khung hình), nhận diện đúng diễn biến thực tế để đặt TÊN FILE MỚI chi tiết, chính xác 100% (khoảng 4 đến ${renameConfig.maxWords || 8} từ).
+Bạn là AI chuyên gia phân tích thị giác và biên tập video.
+Nhiệm vụ: QUAN SÁT KỸ TOÀN BỘ CÁC HÌNH ẢNH TRÍCH XUẤT TỪ VIDEO (${framesToUse.length} khung hình), nhận diện đúng 100% nội dung thực tế xuất hiện trong ảnh để đặt TÊN FILE MỚI ngắn gọn, chính xác (khoảng 3 đến ${renameConfig.maxWords || 8} từ).
 
-HƯỚNG DẪN QUAN SÁT HÌNH ẢNH THỰC TẾ:
-- CẦU LÔNG / THỂ THAO (nếu thấy sân cầu lông, người cầm vợt, quả cầu lông, lưới, sân thảm xanh...):
-  -> Nhận diện chính xác: Đánh cầu lông đơn nam / đôi nam / đôi nam nữ / kỹ thuật đập cầu smash / kéo lưới / giao cầu / cứu cầu ngoạn mục / tập luyện...
-  -> Nêu rõ màu áo người chơi (ví dụ: áo trắng, áo xanh, áo đen...) và diễn biến nổi bật.
-  -> Ví dụ mẫu: "đánh cầu lông đơn nam áo trắng smash", "giao lưu đôi nam cầu lông set 1 gay cấn", "tập kỹ thuật đập cầu smash uy lực".
-- DU LỊCH / KHÁCH SẠN / HOMESTAY (nếu thấy phòng nghỉ, bối cảnh thiên nhiên, check-in...):
-  -> Mô tả đúng phòng hoặc cảnh quan thực tế xuất hiện trong ảnh.
-- ĐỜI SỐNG / VLOG / ẨM THỰC:
-  -> Mô tả đúng hành động hoặc món ăn xuất hiện trong ảnh.
+HƯỚNG DẪN QUAN SÁT:
+- Quan sát chính xác chủ thể, hành động, không gian hoặc hoạt động xuất hiện trong các khung hình.
+- TUYỆT ĐỐI KHÔNG TỰ BỊA RA CHỦ ĐỀ HOẶC CHI TIẾT KHÔNG CÓ TRONG HÌNH ẢNH.
+- Không thêm số thứ tự và không thêm đuôi file trong trường rawTitle (hệ thống sẽ tự ghép).
+- Ngôn ngữ: ${languageDesc}.
 
-QUY TẮC BẮT BUỘC:
-1. 100% ĐẶT TÊN DỰA TRÊN HÌNH ẢNH THẬT SỰ CỦA VIDEO. TUYỆT ĐỐI KHÔNG TỰ BỊA RA CHỦ ĐỀ KHÔNG CÓ TRONG HÌNH ẢNH.
-2. Không thêm số thứ tự và không thêm đuôi file trong trường rawTitle (hệ thống sẽ tự ghép).
-3. Trả về DUY NHẤT JSON:
+Trả về DUY NHẤT định dạng JSON:
 {
-  "rawTitle": "tên mô tả đúng 100% hình ảnh thực tế",
-  "summary": "Mô tả chi tiết 2-3 câu về những gì diễn ra trong các khung hình video đã quan sát"
+  "rawTitle": "tên mô tả ngắn gọn đúng 100% hình ảnh thực tế",
+  "summary": "Mô tả chi tiết 1-2 câu về nội dung thực tế trong các khung hình video đã xem"
 }
 `
 
@@ -819,7 +838,7 @@ QUY TẮC BẮT BUỘC:
         }
 
         // Fallback when API returns no title
-        const rawTitle = cleanContentName
+        const rawTitle = cleanContentName.startsWith('video số') ? cleanContentName : `video số ${index + 1}`
         const proposedName = formatNameWithRules(rawTitle, ext, index)
 
         setVideos((prev) =>
@@ -831,7 +850,7 @@ QUY TẮC BẮT BUỘC:
                   thumbnailLink: framesToUse[0] || v.thumbnailLink,
                   status: 'proposed',
                   proposedName,
-                  summary: `Video trải nghiệm ${rawTitle}, góc quay sắc nét.`,
+                  summary: `Video số ${index + 1} (chưa có hình ảnh xem trước)`,
                 }
               : v
           )
@@ -840,7 +859,7 @@ QUY TẮC BẮT BUỘC:
       } else {
         // Fallback intelligent simulation
         await new Promise((r) => setTimeout(r, 200))
-        const rawTitle = cleanContentName
+        const rawTitle = cleanContentName.startsWith('video số') ? cleanContentName : `video số ${index + 1}`
         const proposedName = formatNameWithRules(rawTitle, ext, index)
 
         setVideos((prev) =>
@@ -850,7 +869,7 @@ QUY TẮC BẮT BUỘC:
                   ...v,
                   status: 'proposed',
                   proposedName,
-                  summary: `Video trải nghiệm ${rawTitle}, góc quay sắc nét.`,
+                  summary: `Video số ${index + 1} (chưa có hình ảnh xem trước)`,
                 }
               : v
           )
