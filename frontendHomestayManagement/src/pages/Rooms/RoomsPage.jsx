@@ -1116,15 +1116,16 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
     return () => window.removeEventListener('keydown', closeOnEscape)
   }, [serviceDialogRoomKey])
 
-  const startPayment = () => {
+  const startPayment = (targetSummary = null) => {
+    const activeSummary = targetSummary || paymentSummary
+    if (!activeSummary) return
     const token = getStoredToken()
-    if (!paymentSummary) return
     const guestEmail = form.email.trim()
     setPaymentLoading(true)
     setError('')
     fetch(token
-      ? `${API_BASE_URL}/payments/sepay/bookings/${paymentSummary.bookingId}`
-      : `${API_BASE_URL}/payments/sepay/public/bookings/${paymentSummary.bookingId}`, {
+      ? `${API_BASE_URL}/payments/sepay/bookings/${activeSummary.bookingId}`
+      : `${API_BASE_URL}/payments/sepay/public/bookings/${activeSummary.bookingId}`, {
       method: 'POST',
       headers: {
         ...(token ? { Authorization: `Bearer ${token}` } : { 'Content-Type': 'application/json' }),
@@ -1635,8 +1636,8 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
           setVouchers((prev) => prev.filter((v) => normalizeCode(v.code) !== normalizeCode(usedCode)))
           setVoucherCode('')
         }
-        if (data.requiresDeposit) setPaymentSummary(data)
-        else onCreated(data)
+        setPaymentSummary(data)
+        startPayment(data)
       })
       .catch((err) => setError(err.message))
       .finally(() => setSubmitting(false))
@@ -1702,8 +1703,8 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
           </div>
           <div className="public-booking-actions">
             {error && <span className="public-booking-error">{error}</span>}
-            <button type="button" onClick={() => onCreated(paymentSummary)}>Để sau</button>
-            <button type="button" disabled={paymentLoading} onClick={startPayment}>
+            <button type="button" onClick={() => onCreated({ ...paymentSummary, isSavedForLater: true })}>Để sau</button>
+            <button type="button" disabled={paymentLoading} onClick={() => startPayment(paymentSummary)}>
               {paymentLoading ? 'Đang tạo QR...' : 'Thanh toán'}
             </button>
           </div>
@@ -1717,7 +1718,7 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
               : `${API_BASE_URL}/payments/sepay/public/bookings/${paymentSummary.bookingId}/status?email=${encodeURIComponent(form.email.trim())}`}
             headers={getStoredToken() ? { Authorization: `Bearer ${getStoredToken()}` } : {}}
             successStatus="CONFIRMED"
-            onSuccess={(booking) => onCreated({ ...paymentSummary, ...booking, requiresDeposit: false })}
+            onSuccess={(booking) => onCreated({ ...paymentSummary, ...booking, requiresDeposit: false, isPaid: true })}
             onClose={() => setSePayPayment(null)}
           />
         )}
@@ -2363,7 +2364,8 @@ function RoomsPage() {
               setBookingModalOpen(false)
               setSelectedRooms([])
               clearBookingCart()
-              if (booking?.luckyVoucherCode) {
+              const isPaymentConfirmed = !booking?.isSavedForLater && (booking?.isPaid || String(booking?.status).toUpperCase() === 'CONFIRMED')
+              if (isPaymentConfirmed && booking?.luckyVoucherCode) {
                 setLuckyReward({
                   code: booking.luckyVoucherCode,
                   discountPercent: Number(booking.luckyVoucherDiscountPercent || 8),
