@@ -92,6 +92,17 @@ export default function GdriveVideoRenamerPage() {
   const folderInputRef = useRef(null)
   const tokenClientRef = useRef(null)
 
+  // Kho Lưu Trữ Tên Video Đã Đổi States
+  const [savedNameHistory, setSavedNameHistory] = useState(() => {
+    try {
+      const saved = localStorage.getItem('homestay_renamed_video_history')
+      if (saved) return JSON.parse(saved)
+    } catch (e) {}
+    return []
+  })
+  const [isRepoModalOpen, setIsRepoModalOpen] = useState(false)
+  const [activeRepoTab, setActiveRepoTab] = useState('current') // 'current' | 'history'
+
   // Show Toast
   const showToast = (text, type = 'success') => {
     setToastMsg({ text, type })
@@ -108,6 +119,49 @@ export default function GdriveVideoRenamerPage() {
       message,
     }
     setLogs((prev) => [newEntry, ...prev.slice(0, 99)])
+  }
+
+  // Tự động lưu danh sách tên video vào Kho Lưu Trữ
+  const saveToRenamedRepo = (itemsToSave, customLabel) => {
+    if (!itemsToSave || itemsToSave.length === 0) return
+
+    const validItems = itemsToSave.filter((v) => v.proposedName || v.name)
+    if (validItems.length === 0) return
+
+    const formattedLines = validItems.map((v, idx) => {
+      const name = v.proposedName || v.name
+      return /^\d+[.\-\]]/.test(name) ? name : `${idx + 1}. ${name}`
+    })
+    const namesText = formattedLines.join('\n')
+
+    const newBatch = {
+      id: `batch_${Date.now()}`,
+      createdAt: new Date().toLocaleString('vi-VN'),
+      source:
+        customLabel ||
+        (selectedFolderId && driveFolders.find((f) => f.id === selectedFolderId)?.name
+          ? `Google Drive: ${driveFolders.find((f) => f.id === selectedFolderId)?.name}`
+          : driveInput
+          ? `Google Drive: ${driveInput.substring(0, 35)}...`
+          : 'Tệp video tải lên'),
+      count: validItems.length,
+      namesText,
+      items: validItems.map((v, idx) => ({
+        index: idx + 1,
+        originalName: v.originalName,
+        newName: v.proposedName || v.name,
+        duration: v.duration || '00:00',
+        summary: v.summary || '',
+      })),
+    }
+
+    setSavedNameHistory((prev) => {
+      const updated = [newBatch, ...prev.slice(0, 49)]
+      localStorage.setItem('homestay_renamed_video_history', JSON.stringify(updated))
+      return updated
+    })
+
+    addLog('success', `[Kho Lưu Trữ] Đã tự động lưu ${validItems.length} tên video vào Kho Lưu Trữ.`)
   }
 
   // Load Google GIS Script dynamically
@@ -783,8 +837,9 @@ Quy tắc:
     }
 
     setIsProcessing(false)
-    showToast(`Đã hoàn tất phân tích cho ${targets.length} video!`)
+    showToast(`Đã hoàn tất phân tích cho ${targets.length} video! Đã lưu vào Kho Tên.`)
     addLog('success', `Đã hoàn tất xử lý hàng loạt ${targets.length} video.`)
+    saveToRenamedRepo(videos)
   }
 
   // Rename single file on Google Drive via API
@@ -845,8 +900,9 @@ Quy tắc:
     setIsProcessing(false)
 
     if (count > 0) {
-      showToast(`Đã áp dụng đổi tên thành công cho ${count} video!`)
+      showToast(`Đã áp dụng đổi tên thành công cho ${count} video! Tự động lưu vào Kho Tên.`)
       addLog('success', `Đã hoàn tất đổi tên cho ${count} video.`)
+      saveToRenamedRepo(updatedVideos)
     } else {
       showToast('Chưa có tên AI đề xuất nào mới để áp dụng', 'info')
     }
@@ -903,11 +959,22 @@ Quy tắc:
       (v.proposedName && v.proposedName.toLowerCase().includes(searchTerm.toLowerCase()))
   )
 
-  // Stats
+  // Stats & Formatted Lists
   const statTotal = videos.length
   const statProposed = videos.filter((v) => v.status === 'proposed').length
   const statRenamed = videos.filter((v) => v.status === 'success').length
   const statError = videos.filter((v) => v.status === 'error').length
+
+  const namedVideos = videos.filter((v) => v.proposedName || v.name)
+  const currentRenamedCount = namedVideos.length
+  const currentFormattedList = namedVideos
+    .map((v, idx) => {
+      const name = v.proposedName || v.name
+      return /^\d+[.\-\]]/.test(name) ? name : `${idx + 1}. ${name}`
+    })
+    .join('\n')
+
+  const totalSavedCount = savedNameHistory.reduce((sum, b) => sum + (b.count || 0), 0)
 
   return (
     <AdminLayout activePage="gdrive-video-renamer">
@@ -986,6 +1053,18 @@ Quy tắc:
               </button>
             )}
 
+            <button
+              className="gvr-btn gvr-btn-secondary"
+              onClick={() => setIsRepoModalOpen(true)}
+              style={{
+                borderColor: '#059669',
+                color: '#065f46',
+                backgroundColor: '#f0fdf4',
+                fontWeight: 700,
+              }}
+            >
+              📂 Kho Tên Đã Đổi ({totalSavedCount || currentRenamedCount})
+            </button>
             <button
               className="gvr-btn gvr-btn-secondary"
               onClick={() => setIsSettingsModalOpen(true)}
@@ -1478,6 +1557,77 @@ Quy tắc:
           </div>
         </div>
 
+        {/* Quick Numbered List Preview Card */}
+        {currentRenamedCount > 0 && (
+          <div className="gvr-repo-card">
+            <div className="gvr-repo-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span style={{ fontSize: '20px' }}>📂</span>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 800, color: '#0f172a' }}>
+                    Kho Tên Video Vừa Xử Lý ({currentRenamedCount} video)
+                  </h3>
+                  <span style={{ fontSize: '12px', color: '#64748b' }}>
+                    Tự động lưu và định dạng sẵn dạng danh sách số thứ tự 1., 2. để bạn sao chép ngay
+                  </span>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <button
+                  className="gvr-btn gvr-btn-primary"
+                  onClick={() => {
+                    navigator.clipboard.writeText(currentFormattedList)
+                    showToast('Đã sao chép toàn bộ danh sách tên (1..., 2...) vào Clipboard!')
+                  }}
+                >
+                  📋 Sao Chép Toàn Bộ (1..., 2...)
+                </button>
+                <button
+                  className="gvr-btn gvr-btn-secondary"
+                  onClick={() => {
+                    const onlyNames = namedVideos
+                      .map((v) => (v.proposedName || v.name).replace(/^\d+[.\-\]]\s*/, ''))
+                      .join('\n')
+                    navigator.clipboard.writeText(onlyNames)
+                    showToast('Đã sao chép danh sách chỉ gồm tên (không số thứ tự)!')
+                  }}
+                >
+                  📋 Sao Chép Chỉ Tên (Không Số)
+                </button>
+                <button
+                  className="gvr-btn gvr-btn-secondary"
+                  onClick={() => {
+                    const blob = new Blob([currentFormattedList], { type: 'text/plain;charset=utf-8' })
+                    const url = URL.createObjectURL(blob)
+                    const a = document.createElement('a')
+                    a.href = url
+                    a.download = `danh_sach_ten_video_${new Date().toISOString().split('T')[0]}.txt`
+                    a.click()
+                    URL.revokeObjectURL(url)
+                    showToast('Đã tải xuống file .txt danh sách tên!')
+                  }}
+                >
+                  💾 Tải File .TXT
+                </button>
+                <button
+                  className="gvr-btn gvr-btn-secondary"
+                  onClick={() => setIsRepoModalOpen(true)}
+                  style={{ color: '#059669', borderColor: '#a7f3d0' }}
+                >
+                  📂 Xem Toàn Bộ Lịch Sử Lưu ➔
+                </button>
+              </div>
+            </div>
+
+            <div style={{ padding: '16px 20px' }}>
+              <div className="gvr-repo-preview-box">
+                {currentFormattedList}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Real-time Logs Panel */}
         <div className="gvr-logs-panel">
           <div className="gvr-logs-header" onClick={() => setShowLogs(!showLogs)}>
@@ -1767,6 +1917,199 @@ Quy tắc:
                   }}
                 >
                   Lưu Quy Tắc
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Kho Lưu Trữ Tên Video Modal */}
+        {isRepoModalOpen && (
+          <div className="gvr-modal-backdrop" onClick={() => setIsRepoModalOpen(false)}>
+            <div
+              className="gvr-modal-card"
+              style={{ maxWidth: '820px' }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="gvr-modal-header">
+                <h3 className="gvr-modal-title">
+                  <span>📂</span> Kho Lưu Trữ & Sao Chép Tên Video Đã Đổi
+                </h3>
+                <button
+                  className="gvr-btn gvr-btn-subtle"
+                  onClick={() => setIsRepoModalOpen(false)}
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="gvr-modal-body">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
+                  <div className="gvr-source-tabs" style={{ margin: 0, padding: 0, border: 'none' }}>
+                    <button
+                      className={`gvr-tab-btn ${activeRepoTab === 'current' ? 'active' : ''}`}
+                      onClick={() => setActiveRepoTab('current')}
+                    >
+                      <span>⚡</span> Phiên Hiện Tại ({currentRenamedCount})
+                    </button>
+                    <button
+                      className={`gvr-tab-btn ${activeRepoTab === 'history' ? 'active' : ''}`}
+                      onClick={() => setActiveRepoTab('history')}
+                    >
+                      <span>📜</span> Lịch Sử Các Phiên Trước ({savedNameHistory.length} đợt)
+                    </button>
+                  </div>
+
+                  {savedNameHistory.length > 0 && activeRepoTab === 'history' && (
+                    <button
+                      className="gvr-btn gvr-btn-danger"
+                      style={{ padding: '6px 12px', fontSize: '12px' }}
+                      onClick={() => {
+                        if (window.confirm('Bạn có chắc chắn muốn xóa toàn bộ lịch sử các phiên đã lưu?')) {
+                          setSavedNameHistory([])
+                          localStorage.removeItem('homestay_renamed_video_history')
+                          showToast('Đã xóa sạch lịch sử kho lưu trữ!')
+                        }
+                      }}
+                    >
+                      🗑 Xóa Lịch Sử
+                    </button>
+                  )}
+                </div>
+
+                {activeRepoTab === 'current' ? (
+                  <div>
+                    {currentRenamedCount === 0 ? (
+                      <div className="gvr-empty-state" style={{ padding: '30px 10px' }}>
+                        <div className="gvr-empty-icon" style={{ fontSize: '36px' }}>📝</div>
+                        <h4 className="gvr-empty-title">Chưa có video nào có tên mới trong phiên hiện tại</h4>
+                        <p className="gvr-empty-desc">
+                          Hãy phân tích AI hoặc tải video ở màn hình chính để tự động lưu tên vào đây.
+                        </p>
+                      </div>
+                    ) : (
+                      <div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                          <span style={{ fontSize: '13px', fontWeight: 700, color: '#334155' }}>
+                            Danh sách tên video theo định dạng số thứ tự (1..., 2...):
+                          </span>
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <button
+                              className="gvr-btn gvr-btn-primary"
+                              style={{ padding: '6px 14px', fontSize: '13px' }}
+                              onClick={() => {
+                                navigator.clipboard.writeText(currentFormattedList)
+                                showToast('Đã sao chép toàn bộ danh sách tên (1..., 2...)!')
+                              }}
+                            >
+                              📋 Sao Chép (1..., 2...)
+                            </button>
+                            <button
+                              className="gvr-btn gvr-btn-secondary"
+                              style={{ padding: '6px 14px', fontSize: '13px' }}
+                              onClick={() => {
+                                const onlyNames = namedVideos
+                                  .map((v) => (v.proposedName || v.name).replace(/^\d+[.\-\]]\s*/, ''))
+                                  .join('\n')
+                                navigator.clipboard.writeText(onlyNames)
+                                showToast('Đã sao chép danh sách chỉ gồm tên!')
+                              }}
+                            >
+                              📋 Chỉ Tên File
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="gvr-repo-preview-box" style={{ maxHeight: '350px' }}>
+                          {currentFormattedList}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div>
+                    {savedNameHistory.length === 0 ? (
+                      <div className="gvr-empty-state" style={{ padding: '30px 10px' }}>
+                        <div className="gvr-empty-icon" style={{ fontSize: '36px' }}>📂</div>
+                        <h4 className="gvr-empty-title">Chưa có lịch sử phiên đổi tên nào</h4>
+                        <p className="gvr-empty-desc">
+                          Mỗi khi bạn phân tích hoặc áp dụng tên video mới, hệ thống sẽ tự động lưu lại vào đây.
+                        </p>
+                      </div>
+                    ) : (
+                      <div style={{ maxHeight: '420px', overflowY: 'auto' }}>
+                        {savedNameHistory.map((batch, bIdx) => (
+                          <div key={batch.id || bIdx} className="gvr-repo-batch-item">
+                            <div className="gvr-repo-batch-top">
+                              <div>
+                                <span style={{ fontWeight: 800, fontSize: '14px', color: '#0f172a' }}>
+                                  #{savedNameHistory.length - bIdx}. {batch.source}
+                                </span>
+                                <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
+                                  ⏱ {batch.createdAt} • <strong>{batch.count}</strong> video
+                                </div>
+                              </div>
+
+                              <div style={{ display: 'flex', gap: '6px' }}>
+                                <button
+                                  className="gvr-btn gvr-btn-primary"
+                                  style={{ padding: '5px 12px', fontSize: '12.5px' }}
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(batch.namesText)
+                                    showToast(`Đã sao chép ${batch.count} tên video của đợt này!`)
+                                  }}
+                                >
+                                  📋 Sao Chép ({batch.count} tên)
+                                </button>
+                                <button
+                                  className="gvr-btn gvr-btn-secondary"
+                                  style={{ padding: '5px 10px', fontSize: '12.5px' }}
+                                  onClick={() => {
+                                    const blob = new Blob([batch.namesText], { type: 'text/plain;charset=utf-8' })
+                                    const url = URL.createObjectURL(blob)
+                                    const a = document.createElement('a')
+                                    a.href = url
+                                    a.download = `danh_sach_video_dot_${batch.id}.txt`
+                                    a.click()
+                                    URL.revokeObjectURL(url)
+                                  }}
+                                  title="Tải file .txt"
+                                >
+                                  💾 .TXT
+                                </button>
+                                <button
+                                  className="gvr-btn gvr-btn-subtle"
+                                  style={{ padding: '5px 8px', color: '#dc2626' }}
+                                  onClick={() => {
+                                    const next = savedNameHistory.filter((_, i) => i !== bIdx)
+                                    setSavedNameHistory(next)
+                                    localStorage.setItem('homestay_renamed_video_history', JSON.stringify(next))
+                                    showToast('Đã xóa đợt này khỏi lịch sử!')
+                                  }}
+                                  title="Xóa đợt này"
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                            </div>
+
+                            <div className="gvr-repo-preview-box" style={{ maxHeight: '160px', fontSize: '12px' }}>
+                              {batch.namesText}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="gvr-modal-footer">
+                <button
+                  className="gvr-btn gvr-btn-primary"
+                  onClick={() => setIsRepoModalOpen(false)}
+                >
+                  Đóng Kho Tên
                 </button>
               </div>
             </div>
