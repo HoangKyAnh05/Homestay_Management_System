@@ -99,6 +99,7 @@ const NAV_ITEMS = [
     icon: ICONS.marketing,
     children: [
       { key: 'ai-post-agent', label: 'AI Agent Đăng bài', path: '/admin/marketing/ai-agent' },
+      { key: 'gdrive-video-renamer', label: 'AI Đổi tên Video Drive', path: '/admin/marketing/video-renamer' },
       { key: 'remotion-studio', label: ' Remotion Video Studio', path: '/admin/marketing/video-editor' },
       { key: 'post-logs', label: 'Nhật ký Bài đăng', path: '/admin/marketing/post-logs' },
       { key: 'vouchers', label: 'Mã giảm giá (Vouchers)', path: '/admin/marketing/vouchers' },

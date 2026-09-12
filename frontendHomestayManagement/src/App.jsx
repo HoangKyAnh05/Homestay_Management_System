@@ -18,6 +18,7 @@ import HousekeepingPage from './pages/Admin/HousekeepingPage'
 import AdminIncidentsPage from './pages/Admin/AdminIncidentsPage'
 import { MarketingAIAgentPage, MarketingPostLogsPage, MarketingVouchersPage } from './pages/Admin/MarketingPages'
 import RemotionStudioPage from './pages/Admin/RemotionStudioPage'
+import GdriveVideoRenamerPage from './pages/Admin/GdriveVideoRenamerPage'
 import AdminTravelArticlesPage from './pages/Admin/AdminTravelArticlesPage'
 import AdminGiveawayLeadsPage from './pages/Admin/AdminGiveawayLeadsPage'
 import GiveawayLuckyWheelPage from './pages/Giveaway/GiveawayLuckyWheelPage'
@@ -203,6 +204,7 @@ function App() {
     }
     if (currentPath === '/admin/receptionist') return <ReceptionistOverviewPage />
     if (currentPath === '/admin/marketing/ai-agent') return <MarketingAIAgentPage />
+    if (currentPath === '/admin/marketing/video-renamer' || currentPath === '/admin/video-renamer') return <GdriveVideoRenamerPage />
     if (currentPath === '/admin/marketing/video-editor' || currentPath === '/admin/marketing/remotion-studio') return <RemotionStudioPage />
     if (currentPath === '/admin/marketing/post-logs') return <MarketingPostLogsPage />
     if (currentPath === '/admin/marketing/vouchers') return <MarketingVouchersPage />

@@ -68,6 +68,7 @@ export function roleCanAccess(role, path) {
     ],
     ROLE_MARKETING: [
       '/admin/marketing/ai-agent',
+      '/admin/marketing/video-renamer',
       '/admin/marketing/video-editor',
       '/admin/marketing/remotion-studio',
       '/admin/marketing/post-logs',
