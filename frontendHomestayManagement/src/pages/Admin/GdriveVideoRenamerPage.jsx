@@ -5,7 +5,7 @@ import './GdriveVideoRenamerPage.css'
 // Default Configurations with User's Google Credentials & Gemini Key
 const DEFAULT_API_CONFIG = {
   geminiApiKey: import.meta.env.VITE_GEMINI_API_KEY || (typeof window !== 'undefined' ? localStorage.getItem('homestay_gdrive_ai_api_key') || '' : ''),
-  geminiModel: 'gemini-2.5-flash',
+  geminiModel: 'gemini-3.7-flash',
   googleClientId: import.meta.env.VITE_GOOGLE_CLIENT_ID || (typeof window !== 'undefined' ? localStorage.getItem('homestay_gdrive_client_id') || '' : ''),
   googleClientSecret: import.meta.env.VITE_GOOGLE_CLIENT_SECRET || '',
   googleApiKey: '',
@@ -21,7 +21,7 @@ const DEFAULT_RENAME_CONFIG = {
   indexFormat: '1.', // '1.' | '01.' | '1 -' | '[1]'
   prefix: '',
   maxWords: 8,
-  contextHint: 'Homestay Sa Pa, săn mây, view núi Fansipan, phòng bungalow ấm cúng, review du lịch và ẩm thực Tây Bắc',
+  contextHint: '',
 }
 
 const CONTEXT_PRESETS = [
@@ -750,11 +750,13 @@ QUY TẮC BẮT BUỘC:
         }
 
         const candidateModels = [
-          model === 'gemini-2.0-flash' ? 'gemini-2.5-flash' : model,
-          'gemini-2.5-flash',
-          'gemini-1.5-flash',
-          'gemini-flash-latest',
-          'gemini-1.5-pro',
+          model === 'gemini-2.0-flash' || model === 'gemini-2.5-flash' ? 'gemini-3.7-flash' : model,
+          'gemini-3.7-flash',
+          'gemini-3.6-flash',
+          'gemini-3.5-flash',
+          'gemini-3.5-flash-lite',
+          'gemini-3.1-flash-lite',
+          'gemini-flash-lite-latest',
         ].filter((m, idx, arr) => m && arr.indexOf(m) === idx)
 
         let success = false
@@ -886,6 +888,9 @@ QUY TẮC BẮT BUỘC:
       const v = targets[i]
       const actualIndex = videos.findIndex((item) => item.id === v.id)
       await analyzeVideoWithGemini(v, actualIndex >= 0 ? actualIndex : i)
+      if (i < targets.length - 1) {
+        await new Promise((r) => setTimeout(r, 600))
+      }
     }
 
     setIsProcessing(false)
