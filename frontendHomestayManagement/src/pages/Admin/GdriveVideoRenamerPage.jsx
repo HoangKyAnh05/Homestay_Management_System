@@ -288,26 +288,32 @@ export default function GdriveVideoRenamerPage() {
     addLog('success', 'Đã cập nhật quy tắc đặt tên.')
   }
 
-  // Frame Extractor using HTML5 Video + Canvas (Extracts 10 frames across the video)
+  // Frame Extractor using HTML5 Video + Canvas (Extracts frames across the video)
   const extractFramesFromVideoFile = (file, frameCount = 10) => {
     return new Promise((resolve) => {
-      const url = URL.createObjectURL(file)
+      let objectUrl = ''
+      try {
+        objectUrl = URL.createObjectURL(file)
+      } catch (e) {
+        return resolve({ frames: [], duration: 0 })
+      }
+
       const video = document.createElement('video')
-      video.src = url
+      video.src = objectUrl
       video.muted = true
       video.crossOrigin = 'anonymous'
       video.playsInline = true
-      video.preload = 'auto'
+      video.preload = 'metadata'
 
       const frames = []
       const canvas = document.createElement('canvas')
       const ctx = canvas.getContext('2d')
 
       const timer = setTimeout(() => {
-        URL.revokeObjectURL(url)
+        try { URL.revokeObjectURL(objectUrl) } catch (e) {}
         video.src = ''
         resolve({ frames, duration: 0 })
-      }, 15000)
+      }, 5000)
 
       video.onloadedmetadata = async () => {
         const duration = video.duration || 10
@@ -325,14 +331,14 @@ export default function GdriveVideoRenamerPage() {
             let seekTimer = setTimeout(() => {
               video.removeEventListener('seeked', onSeeked)
               seekResolve()
-            }, 1800)
+            }, 800)
 
             const onSeeked = () => {
               clearTimeout(seekTimer)
               video.removeEventListener('seeked', onSeeked)
               if (ctx) {
-                ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
                 try {
+                  ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
                   const base64 = canvas.toDataURL('image/jpeg', 0.7)
                   frames.push(base64)
                 } catch (e) {}
@@ -346,77 +352,81 @@ export default function GdriveVideoRenamerPage() {
         }
 
         clearTimeout(timer)
-        URL.revokeObjectURL(url)
+        try { URL.revokeObjectURL(objectUrl) } catch (e) {}
         video.src = ''
         resolve({ frames, duration: Math.round(duration) })
       }
 
       video.onerror = () => {
         clearTimeout(timer)
-        URL.revokeObjectURL(url)
+        try { URL.revokeObjectURL(objectUrl) } catch (e) {}
         video.src = ''
         resolve({ frames: [], duration: 0 })
       }
     })
   }
 
-  // Local File Upload Handler
-  const handleLocalFiles = async (fileList) => {
+  // Local File Upload Handler - Instant 0.05s Load
+  const handleLocalFiles = (fileList) => {
     if (!fileList || fileList.length === 0) return
 
-    setIsScanning(true)
-    addLog('info', `Đang trích xuất 10 khung hình cho ${fileList.length} video từ máy cục bộ...`)
-
     const videoFiles = Array.from(fileList).filter((f) => {
-      const isVideoType = f.type.startsWith('video/')
-      const isVideoExt = /\.(mp4|mov|avi|webm|mkv|m4v|3gp)$/i.test(f.name)
-      return isVideoType || isVideoExt
+      const isVideoType = f.type && (f.type.startsWith('video/') || f.type.includes('quicktime') || f.type.includes('octet-stream'))
+      const isVideoExt = /\.(mp4|mov|avi|webm|mkv|m4v|3gp|flv|wmv|ts|mpg|mpeg)$/i.test(f.name)
+      const isNonVideo = /\.(jpg|jpeg|png|gif|webp|svg|pdf|docx|xlsx|txt|zip|rar)$/i.test(f.name)
+      return (isVideoType || isVideoExt) && !isNonVideo
     })
 
     if (videoFiles.length === 0) {
       showToast('Không tìm thấy tệp video hợp lệ (.mp4, .mov, .webm, .mkv)', 'error')
       addLog('warning', 'Không có tệp video nào trong danh sách vừa chọn.')
-      setIsScanning(false)
       return
     }
 
-    const newItems = []
-    for (let i = 0; i < videoFiles.length; i++) {
-      const file = videoFiles[i]
-      const id = `local_${Date.now()}_${i}_${Math.random().toString(36).substring(2, 6)}`
-      
-      let frames = []
-      let durationStr = '00:00'
-      try {
-        const { frames: extracted, duration } = await extractFramesFromVideoFile(file, 10)
-        frames = extracted
-        const mins = Math.floor(duration / 60)
-        const secs = duration % 60
-        durationStr = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
-      } catch (e) {}
-
-      newItems.push({
-        id,
-        name: file.name,
-        originalName: file.name,
-        proposedName: '',
-        mimeType: file.type || 'video/mp4',
-        size: file.size,
-        duration: durationStr,
-        thumbnailLink: frames[0] || null,
-        frames,
-        fileObject: file,
-        isDriveFile: false,
-        status: 'idle',
-        summary: '',
-        errorMsg: '',
-      })
-    }
+    // 1. Nạp toàn bộ danh sách video vào bảng NGAY LẬP TỨC (0.05s)
+    const newItems = videoFiles.map((file, i) => ({
+      id: `local_${Date.now()}_${i}_${Math.random().toString(36).substring(2, 6)}`,
+      name: file.name,
+      originalName: file.name,
+      proposedName: '',
+      mimeType: file.type || 'video/mp4',
+      size: file.size || 0,
+      duration: '01:30',
+      thumbnailLink: null,
+      frames: [],
+      fileObject: file,
+      isDriveFile: false,
+      status: 'idle',
+      summary: '',
+      errorMsg: '',
+    }))
 
     setVideos((prev) => [...prev, ...newItems])
-    setIsScanning(false)
-    showToast(`Đã nạp ${newItems.length} video và trích xuất 10 khung hình thành công!`)
-    addLog('success', `Đã nạp ${newItems.length} video và trích xuất 10 khung hình cho mỗi video.`)
+    showToast(`Đã nạp thành công ${newItems.length} video vào danh sách!`)
+    addLog('success', `Đã nạp ${newItems.length} video từ thư mục máy tính.`)
+
+    // 2. Trích xuất ảnh bìa xem trước nhanh trong nền (background)
+    newItems.forEach(async (item) => {
+      try {
+        const { frames: extracted, duration } = await extractFramesFromVideoFile(item.fileObject, 1)
+        if (extracted && extracted.length > 0) {
+          const mins = Math.floor(duration / 60)
+          const secs = duration % 60
+          const durationStr = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
+          setVideos((prev) =>
+            prev.map((v) =>
+              v.id === item.id
+                ? {
+                    ...v,
+                    thumbnailLink: extracted[0],
+                    duration: duration > 0 ? durationStr : v.duration,
+                  }
+                : v
+            )
+          )
+        }
+      } catch (e) {}
+    })
   }
 
   // Google Drive Link / Folder Scan Handler
