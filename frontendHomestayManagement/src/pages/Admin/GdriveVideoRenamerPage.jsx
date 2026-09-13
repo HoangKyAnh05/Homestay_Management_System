@@ -1199,6 +1199,25 @@ Trả về DUY NHẤT định dạng JSON:
           </div>
         </div>
 
+        {/* Hidden Global File & Folder Pickers */}
+        <input
+          type="file"
+          ref={fileInputRef}
+          style={{ display: 'none' }}
+          multiple
+          accept="video/*,.mp4,.mov,.avi,.webm,.mkv"
+          onChange={(e) => handleLocalFiles(e.target.files)}
+        />
+        <input
+          type="file"
+          ref={folderInputRef}
+          style={{ display: 'none' }}
+          webkitdirectory="true"
+          directory="true"
+          multiple
+          onChange={(e) => handleLocalFiles(e.target.files)}
+        />
+
         {/* Source Card */}
         <div className="gvr-card">
           <div className="gvr-card-header">
@@ -1222,7 +1241,7 @@ Trả về DUY NHẤT định dạng JSON:
                 className={`gvr-tab-btn ${activeTab === 'drive' ? 'active' : ''}`}
                 onClick={() => setActiveTab('drive')}
               >
-                <span>☁️</span> Google Drive (Link / Thư mục)
+                <span>☁️</span> Google Drive (Link / Ổ Ảo G:\)
               </button>
               <button
                 className={`gvr-tab-btn ${activeTab === 'local' ? 'active' : ''}`}
@@ -1234,11 +1253,34 @@ Trả về DUY NHẤT định dạng JSON:
 
             {activeTab === 'drive' ? (
               <div>
+                {/* Direct Button to Pick Google Drive Virtual Drive (G:\) */}
+                <div style={{ marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    className="gvr-btn gvr-btn-primary"
+                    style={{
+                      backgroundColor: '#059669',
+                      color: '#ffffff',
+                      fontWeight: 700,
+                      padding: '10px 20px',
+                      fontSize: '13.5px',
+                      boxShadow: '0 2px 4px rgba(5, 150, 105, 0.2)',
+                    }}
+                    onClick={() => folderInputRef.current?.click()}
+                    title="Mở hộp thoại chọn thư mục Google Drive (Ổ ảo G:\) trên máy tính của bạn"
+                  >
+                    📂 Quét Thư Mục Google Drive Trên Máy (Ổ Ảo G:\)
+                  </button>
+                  <span style={{ fontSize: '13px', color: '#64748b' }}>
+                    hoặc dán đường link thư mục Google Drive trực tiếp bên dưới:
+                  </span>
+                </div>
+
                 {/* Folder Quick Select if logged in */}
                 {driveAccessToken && driveFolders.length > 0 && (
                   <div style={{ marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                     <span style={{ fontSize: '13px', fontWeight: 600, color: '#334155' }}>
-                      📁 Chọn nhanh thư mục Drive của bạn:
+                      📁 Thư mục đám mây của bạn:
                     </span>
                     <select
                       className="gvr-select"
@@ -1278,7 +1320,7 @@ Trả về DUY NHẤT định dạng JSON:
                     onClick={() => handleScanDrive()}
                     disabled={isScanning}
                   >
-                    {isScanning ? <span className="gvr-spinner"></span> : '🔍'} Quét Thư Mục Drive
+                    {isScanning ? <span className="gvr-spinner"></span> : '🔍'} Quét Link Drive
                   </button>
                 </div>
 
@@ -1316,7 +1358,7 @@ Trả về DUY NHẤT định dạng JSON:
                           fontSize: '12.5px',
                         }}
                       >
-                        Đăng nhập Google để quét và đổi tên trực tiếp trên Drive ➔
+                        Đăng nhập Google Cloud OAuth ➔
                       </button>
                     </div>
                   )}
@@ -1324,24 +1366,6 @@ Trả về DUY NHẤT định dạng JSON:
               </div>
             ) : (
               <div>
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  style={{ display: 'none' }}
-                  multiple
-                  accept="video/*,.mp4,.mov,.avi,.webm,.mkv"
-                  onChange={(e) => handleLocalFiles(e.target.files)}
-                />
-                <input
-                  type="file"
-                  ref={folderInputRef}
-                  style={{ display: 'none' }}
-                  webkitdirectory="true"
-                  directory="true"
-                  multiple
-                  onChange={(e) => handleLocalFiles(e.target.files)}
-                />
-
                 <div
                   className="gvr-dropzone"
                   onClick={() => fileInputRef.current?.click()}
@@ -1369,13 +1393,14 @@ Trả về DUY NHẤT định dạng JSON:
                     </button>
                     <button
                       type="button"
-                      className="gvr-btn gvr-btn-secondary"
+                      className="gvr-btn gvr-btn-primary"
+                      style={{ backgroundColor: '#059669', color: '#ffffff', fontWeight: 700 }}
                       onClick={(e) => {
                         e.stopPropagation()
                         folderInputRef.current?.click()
                       }}
                     >
-                      Chọn Cả Thư Mục Video
+                      📂 Chọn Cả Thư Mục Video (Ổ G:\, D:\, E:\...)
                     </button>
                   </div>
                 </div>
