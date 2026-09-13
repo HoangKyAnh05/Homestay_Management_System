@@ -77,6 +77,7 @@ export default function GdriveVideoRenamerPage() {
   // UI States
   const [activeTab, setActiveTab] = useState('drive') // 'drive' | 'local'
   const [driveInput, setDriveInput] = useState('')
+  const driveInputRef = useRef('')
   const [videos, setVideos] = useState([])
   const [selectedIds, setSelectedIds] = useState(new Set())
   const [searchTerm, setSearchTerm] = useState('')
@@ -207,6 +208,10 @@ export default function GdriveVideoRenamerPage() {
             // Fetch user info and folders
             fetchDriveUserInfo(token)
             fetchDriveFolders(token)
+
+            if (driveInputRef.current) {
+              handleScanDrive(driveInputRef.current, token)
+            }
           },
         })
       } catch (e) {
@@ -430,8 +435,10 @@ export default function GdriveVideoRenamerPage() {
   }
 
   // Google Drive Link / Folder Scan Handler
-  const handleScanDrive = async (customFolderId) => {
+  const handleScanDrive = async (customFolderId, overrideToken) => {
     const rawInput = (customFolderId || driveInput).trim()
+    driveInputRef.current = rawInput
+    const currentToken = overrideToken || driveAccessToken
 
     // Khi không có link -> Mở ngay hộp thoại chọn thư mục của máy tính (ổ ảo G:\ hoặc bất kỳ thư mục nào)
     if (!rawInput && !customFolderId) {
@@ -460,7 +467,7 @@ export default function GdriveVideoRenamerPage() {
 
     try {
       // 1. Thử quét bằng OAuth Access Token nếu đã đăng nhập
-      if (driveAccessToken) {
+      if (currentToken) {
         let query = `'${folderId}' in parents and trashed = false`
         if (folderId === 'root') {
           query = `'root' in parents and trashed = false`
@@ -468,7 +475,7 @@ export default function GdriveVideoRenamerPage() {
 
         const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id,name,mimeType,size,thumbnailLink,webContentLink,videoMediaMetadata)&pageSize=1000&supportsAllDrives=true&includeItemsFromAllDrives=true`
         const res = await fetch(url, {
-          headers: { Authorization: `Bearer ${driveAccessToken}` },
+          headers: { Authorization: `Bearer ${currentToken}` },
         })
 
         if (res.ok) {
@@ -1306,7 +1313,10 @@ Trả về DUY NHẤT định dạng JSON:
                     className="gvr-text-input"
                     placeholder="Dán link thư mục Google Drive (hoặc để trống rồi bấm Quét để chọn thư mục/ổ ảo G:\ trên máy)"
                     value={driveInput}
-                    onChange={(e) => setDriveInput(e.target.value)}
+                    onChange={(e) => {
+                      setDriveInput(e.target.value)
+                      driveInputRef.current = e.target.value
+                    }}
                     onKeyDown={(e) => e.key === 'Enter' && handleScanDrive()}
                   />
                   <button
