@@ -443,17 +443,13 @@ export default function GdriveVideoRenamerPage() {
       }
     }
 
-    if (!driveAccessToken && !apiConfig.googleApiKey) {
-      addLog('info', 'Bạn chưa đăng nhập Google Drive. Đang mở hộp thoại đăng nhập để kết nối...')
-      showToast('Vui lòng bấm Đăng Nhập Google Drive để tải video thật từ tài khoản của bạn!', 'info')
-      handleGoogleLogin()
-      return
-    }
+    const effectiveKey = apiConfig.googleApiKey || apiConfig.geminiApiKey || DEFAULT_API_CONFIG.geminiApiKey
 
     setIsScanning(true)
     addLog('info', `Bắt đầu quét toàn bộ dữ liệu từ Google Drive (Thư mục: ${folderId})...`)
 
     try {
+      // 1. Thử quét bằng OAuth Access Token nếu đã đăng nhập
       if (driveAccessToken) {
         let query = `'${folderId}' in parents and trashed = false`
         if (folderId === 'root') {
@@ -511,59 +507,66 @@ export default function GdriveVideoRenamerPage() {
             setIsScanning(false)
             return
           }
-        } else {
-          const errData = await res.json().catch(() => ({}))
-          if (res.status === 401) {
-            addLog('warning', 'Phiên đăng nhập Google Drive đã hết hạn. Đang mở đăng nhập lại...')
-            setDriveAccessToken('')
-            sessionStorage.removeItem('homestay_gdrive_access_token')
-            handleGoogleLogin()
-          } else {
-            throw new Error(errData.error?.message || `Lỗi Google Drive HTTP ${res.status}`)
-          }
         }
-      } else if (apiConfig.googleApiKey) {
-        const query = `'${folderId}' in parents and trashed=false`
-        const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id,name,mimeType,size,thumbnailLink,webContentLink,videoMediaMetadata)&pageSize=1000&key=${apiConfig.googleApiKey}`
-        const res = await fetch(url)
-        const data = await res.json()
+      }
 
-        if (data.files && data.files.length > 0) {
-          const videoFiles = data.files.filter((f) => {
-            const isVideoType = f.mimeType && (f.mimeType.startsWith('video/') || f.mimeType.includes('quicktime'))
-            const isVideoExt = /\.(mp4|mov|avi|webm|mkv|m4v|3gp|flv|wmv|ts|mpg|mpeg)$/i.test(f.name)
-            return isVideoType || isVideoExt
-          })
+      // 2. Thử quét trực tiếp qua Google Drive API Key (Không cần đăng nhập nếu thư mục công khai)
+      if (effectiveKey) {
+        try {
+          const query = `'${folderId}' in parents and trashed=false`
+          const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id,name,mimeType,size,thumbnailLink,webContentLink,videoMediaMetadata)&pageSize=1000&key=${effectiveKey}`
+          const res = await fetch(url)
+          if (res.ok) {
+            const data = await res.json()
+            if (data.files && data.files.length > 0) {
+              const videoFiles = data.files.filter((f) => {
+                const isVideoType = f.mimeType && (f.mimeType.startsWith('video/') || f.mimeType.includes('quicktime') || f.mimeType.includes('octet-stream'))
+                const isVideoExt = /\.(mp4|mov|avi|webm|mkv|m4v|3gp|flv|wmv|ts|mpg|mpeg)$/i.test(f.name)
+                const isNonVideo = /\.(jpg|jpeg|png|gif|webp|svg|pdf|docx|xlsx|txt|zip|rar)$/i.test(f.name) || f.mimeType === 'application/vnd.google-apps.folder'
+                return (isVideoType || isVideoExt) && !isNonVideo
+              })
 
-          const driveItems = videoFiles.map((f) => {
-            const durMs = f.videoMediaMetadata?.durationMillis || 0
-            const totalSec = Math.round(durMs / 1000)
-            const mins = Math.floor(totalSec / 60)
-            const secs = totalSec % 60
-            const durationStr = durMs ? `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}` : '01:30'
+              if (videoFiles.length > 0) {
+                const driveItems = videoFiles.map((f) => {
+                  const durMs = f.videoMediaMetadata?.durationMillis || 0
+                  const totalSec = Math.round(durMs / 1000)
+                  const mins = Math.floor(totalSec / 60)
+                  const secs = totalSec % 60
+                  const durationStr = durMs ? `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}` : '01:30'
 
-            return {
-              id: f.id,
-              name: f.name,
-              originalName: f.name,
-              proposedName: '',
-              mimeType: f.mimeType || 'video/mp4',
-              size: parseInt(f.size || '0', 10),
-              duration: durationStr,
-              thumbnailLink: f.thumbnailLink ? f.thumbnailLink.replace(/=s\d+/, '=s400') : null,
-              frames: [],
-              isDriveFile: true,
-              status: 'idle',
-              summary: '',
+                  return {
+                    id: f.id,
+                    name: f.name,
+                    originalName: f.name,
+                    proposedName: '',
+                    mimeType: f.mimeType || 'video/mp4',
+                    size: parseInt(f.size || '0', 10),
+                    duration: durationStr,
+                    thumbnailLink: f.thumbnailLink ? f.thumbnailLink.replace(/=s\d+/, '=s400') : null,
+                    frames: [],
+                    isDriveFile: true,
+                    status: 'idle',
+                    summary: '',
+                  }
+                })
+
+                setVideos(driveItems)
+                showToast(`Đã quét thành công ${driveItems.length} video từ Google Drive!`)
+                addLog('success', `Đã tải ${driveItems.length} video từ Google Drive link: ${folderId}.`)
+                setIsScanning(false)
+                return
+              }
             }
-          })
+          }
+        } catch (e) {}
+      }
 
-          setVideos(driveItems)
-          showToast(`Tìm thấy ${driveItems.length} video trên Google Drive!`)
-          addLog('success', `Đã tải ${driveItems.length} video từ Google Drive Folder ID: ${folderId}.`)
-          setIsScanning(false)
-          return
-        }
+      // 3. Nếu chưa đăng nhập và link riêng tư cần quyền -> Mới mở đăng nhập OAuth
+      if (!driveAccessToken) {
+        addLog('info', 'Thư mục Drive này yêu cầu xác thực tài khoản Google để truy cập. Đang mở hộp thoại đăng nhập...')
+        handleGoogleLogin()
+        setIsScanning(false)
+        return
       }
     } catch (err) {
       addLog('error', `Lỗi khi quét Google Drive: ${err.message}`)
