@@ -422,8 +422,12 @@ export default function GdriveVideoRenamerPage() {
   // Google Drive Link / Folder Scan Handler
   const handleScanDrive = async (customFolderId) => {
     const rawInput = (customFolderId || driveInput).trim()
+
+    // Khi không có link -> Mở ngay hộp thoại chọn thư mục của máy tính (ổ ảo G:\ hoặc bất kỳ thư mục nào)
     if (!rawInput && !customFolderId) {
-      showToast('Vui lòng nhập link hoặc Folder ID của Google Drive', 'error')
+      if (folderInputRef.current) {
+        folderInputRef.current.click()
+      }
       return
     }
 
@@ -1241,7 +1245,7 @@ Trả về DUY NHẤT định dạng JSON:
                 className={`gvr-tab-btn ${activeTab === 'drive' ? 'active' : ''}`}
                 onClick={() => setActiveTab('drive')}
               >
-                <span>☁️</span> Google Drive (Link / Ổ Ảo G:\)
+                <span>☁️</span> Google Drive (Link / Thư mục)
               </button>
               <button
                 className={`gvr-tab-btn ${activeTab === 'local' ? 'active' : ''}`}
@@ -1253,29 +1257,6 @@ Trả về DUY NHẤT định dạng JSON:
 
             {activeTab === 'drive' ? (
               <div>
-                {/* Direct Button to Pick Google Drive Virtual Drive (G:\) */}
-                <div style={{ marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-                  <button
-                    type="button"
-                    className="gvr-btn gvr-btn-primary"
-                    style={{
-                      backgroundColor: '#059669',
-                      color: '#ffffff',
-                      fontWeight: 700,
-                      padding: '10px 20px',
-                      fontSize: '13.5px',
-                      boxShadow: '0 2px 4px rgba(5, 150, 105, 0.2)',
-                    }}
-                    onClick={() => folderInputRef.current?.click()}
-                    title="Mở hộp thoại chọn thư mục Google Drive (Ổ ảo G:\) trên máy tính của bạn"
-                  >
-                    📂 Quét Thư Mục Google Drive Trên Máy (Ổ Ảo G:\)
-                  </button>
-                  <span style={{ fontSize: '13px', color: '#64748b' }}>
-                    hoặc dán đường link thư mục Google Drive trực tiếp bên dưới:
-                  </span>
-                </div>
-
                 {/* Folder Quick Select if logged in */}
                 {driveAccessToken && driveFolders.length > 0 && (
                   <div style={{ marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
@@ -1310,7 +1291,7 @@ Trả về DUY NHẤT định dạng JSON:
                   <input
                     type="text"
                     className="gvr-text-input"
-                    placeholder="Dán link thư mục Google Drive (Ví dụ: https://drive.google.com/drive/folders/1ABCxyz...)"
+                    placeholder="Dán link thư mục Google Drive (hoặc để trống rồi bấm Quét để chọn thư mục/ổ ảo G:\ trên máy)"
                     value={driveInput}
                     onChange={(e) => setDriveInput(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleScanDrive()}
@@ -1319,8 +1300,9 @@ Trả về DUY NHẤT định dạng JSON:
                     className="gvr-btn gvr-btn-primary"
                     onClick={() => handleScanDrive()}
                     disabled={isScanning}
+                    title={driveInput.trim() ? 'Quét video từ đường link Google Drive này' : 'Mở hộp thoại chọn thư mục/ổ ảo Google Drive G:\\ trên máy'}
                   >
-                    {isScanning ? <span className="gvr-spinner"></span> : '🔍'} Quét Link Drive
+                    {isScanning ? <span className="gvr-spinner"></span> : '🔍'} Quét Thư Mục Drive
                   </button>
                 </div>
 
