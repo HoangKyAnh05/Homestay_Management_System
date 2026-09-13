@@ -371,6 +371,19 @@ export default function GdriveVideoRenamerPage() {
     })
   }
 
+  // Helper to format seconds to mm:ss or hh:mm:ss
+  const formatDuration = (sec) => {
+    if (!sec || isNaN(sec) || sec <= 0) return ''
+    const s = Math.round(sec)
+    const hours = Math.floor(s / 3600)
+    const mins = Math.floor((s % 3600) / 60)
+    const secs = s % 60
+    if (hours > 0) {
+      return `${hours}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
+    }
+    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
+  }
+
   // Local File Upload Handler - Instant 0.05s Load
   const handleLocalFiles = (fileList) => {
     if (!fileList || fileList.length === 0) return
@@ -396,7 +409,7 @@ export default function GdriveVideoRenamerPage() {
       proposedName: '',
       mimeType: file.type || 'video/mp4',
       size: file.size || 0,
-      duration: '01:30',
+      duration: '',
       thumbnailLink: null,
       frames: [],
       fileObject: file,
@@ -410,26 +423,22 @@ export default function GdriveVideoRenamerPage() {
     showToast(`Đã nạp thành công ${newItems.length} video vào danh sách!`)
     addLog('success', `Đã nạp ${newItems.length} video từ thư mục máy tính.`)
 
-    // 2. Trích xuất ảnh bìa xem trước nhanh trong nền (background)
+    // 2. Trích xuất ảnh bìa & thời lượng thật trong nền (background)
     newItems.forEach(async (item) => {
       try {
         const { frames: extracted, duration } = await extractFramesFromVideoFile(item.fileObject, 1)
-        if (extracted && extracted.length > 0) {
-          const mins = Math.floor(duration / 60)
-          const secs = duration % 60
-          const durationStr = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
-          setVideos((prev) =>
-            prev.map((v) =>
-              v.id === item.id
-                ? {
-                    ...v,
-                    thumbnailLink: extracted[0],
-                    duration: duration > 0 ? durationStr : v.duration,
-                  }
-                : v
-            )
+        const durationStr = duration > 0 ? formatDuration(duration) : ''
+        setVideos((prev) =>
+          prev.map((v) =>
+            v.id === item.id
+              ? {
+                  ...v,
+                  thumbnailLink: extracted && extracted.length > 0 ? extracted[0] : v.thumbnailLink,
+                  duration: durationStr || v.duration,
+                }
+              : v
           )
-        }
+        )
       } catch (e) {}
     })
   }
@@ -491,11 +500,8 @@ export default function GdriveVideoRenamerPage() {
 
           if (videoFiles.length > 0) {
             const driveItems = videoFiles.map((f) => {
-              const durMs = f.videoMediaMetadata?.durationMillis || 0
-              const totalSec = Math.round(durMs / 1000)
-              const mins = Math.floor(totalSec / 60)
-              const secs = totalSec % 60
-              const durationStr = durMs ? `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}` : '01:30'
+              const durMs = f.videoMediaMetadata?.durationMillis ? parseInt(f.videoMediaMetadata.durationMillis, 10) : 0
+              const durationStr = durMs > 0 ? formatDuration(durMs / 1000) : ''
 
               return {
                 id: f.id,
@@ -545,11 +551,8 @@ export default function GdriveVideoRenamerPage() {
 
               if (videoFiles.length > 0) {
                 const driveItems = videoFiles.map((f) => {
-                  const durMs = f.videoMediaMetadata?.durationMillis || 0
-                  const totalSec = Math.round(durMs / 1000)
-                  const mins = Math.floor(totalSec / 60)
-                  const secs = totalSec % 60
-                  const durationStr = durMs ? `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}` : '01:30'
+                  const durMs = f.videoMediaMetadata?.durationMillis ? parseInt(f.videoMediaMetadata.durationMillis, 10) : 0
+                  const durationStr = durMs > 0 ? formatDuration(durMs / 1000) : ''
 
                   return {
                     id: f.id,
@@ -1529,8 +1532,8 @@ Trả về DUY NHẤT định dạng JSON:
                                 {video.originalName}
                               </span>
                               <div className="gvr-video-sub">
-                                <span>⏱ {video.duration || '00:00'}</span>
-                                <span>•</span>
+                                {video.duration ? <span>⏱ {video.duration}</span> : null}
+                                {video.duration ? <span>•</span> : null}
                                 <span>
                                   {video.size
                                     ? `${(video.size / (1024 * 1024)).toFixed(1)} MB`
