@@ -16,15 +16,19 @@ function AdminLoginPage() {
     setIsSubmitting(true)
 
     try {
-      // Try adminLogin first, fallback to standard login if appropriate
+      // Try standard login first which works for both customer and staff
       let data
       try {
-        data = await adminLogin(email, password)
-      } catch (err) {
         data = await login(email, password)
+      } catch (err) {
+        data = await adminLogin(email, password)
       }
 
-      window.location.assign(roleDefaultPath(data.user?.role))
+      if (data?.user?.role && STAFF_ROLES.has(data.user.role)) {
+        window.location.assign(roleDefaultPath(data.user.role))
+      } else {
+        window.location.assign('/home')
+      }
     } catch (error) {
       setErrorMessage(error.message)
     } finally {
