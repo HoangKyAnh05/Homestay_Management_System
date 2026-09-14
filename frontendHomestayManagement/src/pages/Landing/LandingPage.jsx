@@ -494,6 +494,11 @@ function LandingPage() {
                 <span>Trải Nghiệm 3D View</span>
               </button>
 
+              <a href="/explore" className="ghost-btn" style={{ border: '1.5px solid rgba(225, 29, 72, 0.6)', background: 'rgba(225, 29, 72, 0.15)', color: '#ffffff' }} title="Khám phá xung quanh Lá Đỏ">
+                <i data-lucide="map-pin"></i>
+                <span>🗺️ Khám Phá Xung Quanh</span>
+              </a>
+
               <a href="/rooms" className="ghost-btn" style={{ border: '1.5px solid rgba(226, 177, 115, 0.5)' }}>
                 <i data-lucide="list"></i>
                 <span>Xem Toàn Bộ Phòng</span>
@@ -987,13 +992,19 @@ function LandingPage() {
                 </div>
               </div>
 
-              <div className="location-map-card">
+              <div className="location-map-card" style={{ position: 'relative' }}>
                 <iframe
                   title="Google Map Komorebi Sanctuary"
                   src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d118598.63664797816!2d103.78453488667537!3d22.336362547141517!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x36cd410c59e74249%3A0xbbe0a7fb0d63ba42!2zU2EgUGEsIEzDoG8gQ2FpLCBWaeG7h3QgTmFt!5e0!3m2!1svi!2s!4v1700000000000!5m2!1svi!2s"
                   loading="lazy"
                   referrerPolicy="no-referrer-when-downgrade"
                 ></iframe>
+                <div style={{ position: 'absolute', bottom: '16px', right: '16px', zIndex: 10 }}>
+                  <a href="/explore" className="liquid-btn" style={{ padding: '8px 16px', fontSize: '0.85rem', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                    <span className="btn-text">🗺️ Mở Bản Đồ Khám Phá Xung Quanh</span>
+                    <span className="liquid-glow"></span>
+                  </a>
+                </div>
               </div>
             </div>
           </div>
@@ -1242,6 +1253,24 @@ function LandingPage() {
           <div className="tour-canvas-wrap" id="tour-canvas-wrap">
             <div className="tour-controls-hud">
               <button className="hud-btn" id="hud-camera-toggle"><i data-lucide="rotate-3d"></i> Đổi Góc Nhìn</button>
+              <a
+                href="/explore"
+                className="hud-btn"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  textDecoration: 'none',
+                  background: 'linear-gradient(135deg, #881337, #e11d48)',
+                  color: '#ffffff',
+                  border: '1px solid rgba(255, 255, 255, 0.25)',
+                  boxShadow: '0 4px 14px rgba(225, 29, 72, 0.4)'
+                }}
+                title="Khám phá bản đồ xung quanh Lá Đỏ"
+              >
+                <i data-lucide="map-pin"></i>
+                <span>🗺️ Khám Phá Xung Quanh</span>
+              </a>
               <span className="hud-info">Kéo thả chuột để quay 360°</span>
             </div>
           </div>

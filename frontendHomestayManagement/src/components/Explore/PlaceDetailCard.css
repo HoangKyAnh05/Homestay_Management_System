@@ -1,0 +1,207 @@
+/* PlaceDetailCard Floating Card */
+.place-detail-floating-card {
+  position: absolute;
+  top: 1.25rem;
+  right: 1.25rem;
+  width: 320px;
+  max-width: calc(100% - 2.5rem);
+  background: #ffffff;
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.2), 0 4px 12px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  z-index: 999;
+  animation: slideInFade 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transition: all 0.25s ease;
+}
+
+@keyframes slideInFade {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.place-detail-close-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(8px);
+  color: #ffffff;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  cursor: pointer;
+  z-index: 10;
+  transition: all 0.15s ease;
+}
+
+.place-detail-close-btn:hover {
+  background: rgba(225, 29, 72, 0.9);
+  transform: scale(1.08);
+}
+
+.place-detail-img-wrap {
+  position: relative;
+  width: 100%;
+  height: 145px;
+  background: #e2e8f0;
+}
+
+.place-detail-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.place-detail-category-badge {
+  position: absolute;
+  bottom: 8px;
+  left: 10px;
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(6px);
+  padding: 0.2rem 0.55rem;
+  border-radius: 6px;
+  color: #f1f5f9;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.place-detail-body {
+  padding: 0.85rem 1rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.place-detail-title {
+  font-size: 1.0625rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+  line-height: 1.25;
+}
+
+.place-detail-rating-row {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8125rem;
+}
+
+.place-detail-star {
+  font-size: 0.8125rem;
+}
+
+.place-detail-score {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.place-detail-reviews {
+  color: #64748b;
+  font-size: 0.75rem;
+}
+
+.place-detail-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  color: #475569;
+  margin-top: 0.1rem;
+}
+
+.place-detail-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.place-detail-meta-divider {
+  color: #cbd5e1;
+}
+
+.place-detail-desc {
+  font-size: 0.775rem;
+  color: #475569;
+  line-height: 1.45;
+  margin: 0.35rem 0 0.65rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.place-detail-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.2rem;
+}
+
+.place-detail-btn-view {
+  flex: 1;
+  padding: 0.5rem 0.75rem;
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  color: #334155;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.2s;
+}
+
+.place-detail-btn-view:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+  color: #0f172a;
+}
+
+.place-detail-btn-directions {
+  flex: 1.1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.5rem 0.75rem;
+  background: linear-gradient(135deg, #be123c, #9f1239);
+  color: #ffffff;
+  border-radius: 10px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-decoration: none;
+  box-shadow: 0 4px 12px rgba(190, 18, 60, 0.3);
+  transition: all 0.2s;
+}
+
+.place-detail-btn-directions:hover {
+  background: linear-gradient(135deg, #e11d48, #be123c);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(190, 18, 60, 0.45);
+}
+
+@media (max-width: 640px) {
+  .place-detail-floating-card {
+    top: auto;
+    bottom: 1rem;
+    left: 1rem;
+    right: 1rem;
+    width: calc(100% - 2rem);
+    max-width: none;
+  }
+}

@@ -36,6 +36,7 @@ import WishlistPage from './pages/Wishlist/WishlistPage'
 import LandingPage from './pages/Landing/LandingPage'
 import CustomerVouchersPage from './pages/Vouchers/CustomerVouchersPage'
 import CalendarShowcasePage from './pages/Test/CalendarShowcasePage'
+import ExplorePage from './pages/Explore/ExplorePage'
 import FloatingContactWidget from './components/FloatingContact/FloatingContactWidget'
 import { getStoredUser } from './services/authService'
 import { STAFF_ROLES, roleCanAccess, roleDefaultPath } from './utils/roleUtils'
@@ -134,6 +135,9 @@ function App() {
   }
   if (currentPath === '/test-calendars') {
     return <CalendarShowcasePage />
+  }
+  if (currentPath === '/explore' || currentPath === '/kham-pha' || currentPath === '/map') {
+    return <CustomerSurface><ExplorePage /></CustomerSurface>
   }
   if (currentPath === '/stay/activate') return <StayActivationPage />
   if (currentPath === '/stay') return <CustomerSurface><StayPage /></CustomerSurface>

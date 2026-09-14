@@ -1,0 +1,129 @@
+/* PlaceSidebar Styles */
+.explore-sidebar {
+  width: 380px;
+  min-width: 340px;
+  max-width: 420px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  padding: 1rem 1.25rem;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  border-right: 1px solid #e2e8f0;
+}
+
+.explore-sidebar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0.5rem 0 0.75rem;
+  padding: 0 0.125rem;
+}
+
+.explore-sidebar-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.explore-sidebar-count {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #64748b;
+  background: #f1f5f9;
+  padding: 0.2rem 0.55rem;
+  border-radius: 9999px;
+}
+
+.explore-sidebar-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  padding-right: 0.25rem;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+.explore-sidebar-list::-webkit-scrollbar {
+  width: 5px;
+}
+
+.explore-sidebar-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.explore-sidebar-list::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+
+/* Empty State */
+.explore-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 3rem 1.5rem;
+  background: #f8fafc;
+  border-radius: 14px;
+  border: 1px dashed #cbd5e1;
+  margin-top: 1rem;
+}
+
+.explore-empty-icon {
+  font-size: 2rem;
+  margin-bottom: 0.75rem;
+}
+
+.explore-empty-title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0 0 0.35rem;
+}
+
+.explore-empty-desc {
+  font-size: 0.8125rem;
+  color: #64748b;
+  margin: 0 0 1rem;
+  line-height: 1.4;
+}
+
+.explore-empty-reset-btn {
+  padding: 0.45rem 1rem;
+  background: #881337;
+  color: #ffffff;
+  border: none;
+  border-radius: 9999px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.explore-empty-reset-btn:hover {
+  background: #9f1239;
+  transform: translateY(-1px);
+}
+
+@media (max-width: 960px) {
+  .explore-sidebar {
+    width: 100%;
+    max-width: 100%;
+    min-width: 100%;
+    height: auto;
+    border-right: none;
+    border-bottom: 1px solid #e2e8f0;
+    padding: 0.75rem 1rem;
+  }
+
+  .explore-sidebar-list {
+    max-height: 380px;
+  }
+}

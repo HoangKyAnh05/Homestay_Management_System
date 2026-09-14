@@ -1,0 +1,99 @@
+/* ExploreFooter Styles */
+.explore-footer {
+  width: 100%;
+  background: #111827;
+  color: #94a3b8;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 1.75rem 1.5rem;
+  box-sizing: border-box;
+}
+
+.explore-footer-inner {
+  max-width: 1440px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2rem;
+  flex-wrap: wrap;
+}
+
+.explore-footer-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.explore-footer-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #ffffff;
+  font-size: 1rem;
+}
+
+.explore-footer-leaf {
+  font-size: 1.25rem;
+}
+
+.explore-footer-text {
+  font-size: 0.8125rem;
+  color: #cbd5e1;
+  margin: 0;
+}
+
+.explore-footer-contact {
+  gap: 0.5rem;
+}
+
+.explore-footer-contact-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+  color: #e2e8f0;
+}
+
+.explore-footer-contact-item a {
+  color: #fda4af;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.15s;
+}
+
+.explore-footer-contact-item a:hover {
+  color: #ffffff;
+  text-decoration: underline;
+}
+
+.explore-footer-slogan {
+  align-items: flex-end;
+  text-align: right;
+}
+
+.explore-footer-signature {
+  font-family: 'Playfair Display', Georgia, cursive, serif;
+  font-style: italic;
+  font-size: 0.9375rem;
+  color: #fef08a;
+  letter-spacing: 0.02em;
+}
+
+.explore-footer-copy {
+  font-size: 0.75rem;
+  color: #64748b;
+  margin: 0.25rem 0 0;
+}
+
+@media (max-width: 768px) {
+  .explore-footer-inner {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1.25rem;
+  }
+
+  .explore-footer-slogan {
+    align-items: flex-start;
+    text-align: left;
+  }
+}

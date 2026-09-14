@@ -1,0 +1,71 @@
+/* PlaceSearch Styles */
+.place-search-container {
+  width: 100%;
+  margin: 0.75rem 0;
+}
+
+.place-search-input-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 9999px;
+  padding: 0.45rem 0.85rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.place-search-input-box:focus-within {
+  border-color: #881337;
+  box-shadow: 0 0 0 3px rgba(136, 19, 55, 0.12), 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.place-search-icon {
+  color: #94a3b8;
+  margin-right: 0.5rem;
+  flex-shrink: 0;
+}
+
+.place-search-input-box:focus-within .place-search-icon {
+  color: #881337;
+}
+
+.place-search-input {
+  width: 100%;
+  border: none;
+  background: transparent;
+  font-size: 0.845rem;
+  color: #1e293b;
+  outline: none;
+  font-family: inherit;
+}
+
+.place-search-input::placeholder {
+  color: #94a3b8;
+  font-size: 0.8125rem;
+}
+
+.place-search-clear-btn {
+  background: #f1f5f9;
+  border: none;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  font-size: 1rem;
+  line-height: 1;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  margin-left: 0.25rem;
+  transition: background 0.15s;
+}
+
+.place-search-clear-btn:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}

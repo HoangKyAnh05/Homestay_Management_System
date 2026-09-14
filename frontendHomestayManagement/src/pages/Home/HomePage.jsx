@@ -1197,6 +1197,7 @@ function HomePage() {
             Trang chủ
           </a>
           <a href="/landing" className="home-nav-landing-link" title="Khám phá không gian 3D Lá Đỏ Sanctuary">🍁 Lá Đỏ 3D</a>
+          <a href="/explore" className="home-nav-explore-link" title="Khám phá xung quanh Lá Đỏ Homestay & Sa Pa">Khám phá xung quanh</a>
           <a href="/rooms">Phòng</a>
           <a href="/wishlist">Yêu thích</a>
           <a href="/amenities">Tiện nghi</a>

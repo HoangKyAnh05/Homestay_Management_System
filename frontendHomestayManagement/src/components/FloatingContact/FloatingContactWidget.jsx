@@ -30,30 +30,19 @@ export default function FloatingContactWidget() {
 
       {/* Buttons List */}
       <div className="fcw-buttons-list">
-        {/* Nút Vòng Quay May Mắn */}
+        {/* Nút Khám Phá Xung Quanh Lá Đỏ (Bản đồ Sa Pa tương tác) */}
         <a
-          href="/giveaway"
-          className="fcw-btn fcw-btn--wheel"
-          aria-label="Vòng quay may mắn trúng thưởng"
-          title="Vòng quay may mắn nhận voucher"
+          href="/explore"
+          className="fcw-btn fcw-btn--explore fcw-btn--blinking"
+          aria-label="Khám phá bản đồ xung quanh Lá Đỏ"
+          title="Khám phá xung quanh Lá Đỏ Homestay"
         >
-          <div className="fcw-pulse-ring fcw-pulse-ring--wheel"></div>
-          <span className="fcw-tooltip">Vòng quay may mắn</span>
-          <svg viewBox="0 0 24 24" className="fcw-icon fcw-wheel-icon-svg" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="9.5" stroke="#ffffff" strokeWidth="1.8" />
-            <circle cx="12" cy="12" r="2.8" fill="#fef08a" stroke="#ffffff" strokeWidth="1.2" />
-            <line x1="12" y1="2.5" x2="12" y2="9.2" stroke="#ffffff" strokeWidth="1.6" />
-            <line x1="12" y1="14.8" x2="12" y2="21.5" stroke="#ffffff" strokeWidth="1.6" />
-            <line x1="2.5" y1="12" x2="9.2" y2="12" stroke="#ffffff" strokeWidth="1.6" />
-            <line x1="14.8" y1="12" x2="21.5" y2="12" stroke="#ffffff" strokeWidth="1.6" />
-            <line x1="5.28" y1="5.28" x2="10.02" y2="10.02" stroke="#fef08a" strokeWidth="1.4" />
-            <line x1="13.98" y1="13.98" x2="18.72" y2="18.72" stroke="#fef08a" strokeWidth="1.4" />
-            <line x1="5.28" y1="18.72" x2="10.02" y2="13.98" stroke="#fef08a" strokeWidth="1.4" />
-            <line x1="13.98" y1="10.02" x2="18.72" y2="5.28" stroke="#fef08a" strokeWidth="1.4" />
-            <circle cx="12" cy="3.8" r="0.9" fill="#fef08a" />
-            <circle cx="12" cy="20.2" r="0.9" fill="#fef08a" />
-            <circle cx="3.8" cy="12" r="0.9" fill="#fef08a" />
-            <circle cx="20.2" cy="12" r="0.9" fill="#fef08a" />
+          <div className="fcw-pulse-ring fcw-pulse-ring--explore"></div>
+          <span className="fcw-tooltip">Khám phá xung quanh Lá Đỏ</span>
+          <svg viewBox="0 0 24 24" className="fcw-icon fcw-explore-icon-svg" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon>
+            <line x1="8" y1="2" x2="8" y2="18"></line>
+            <line x1="16" y1="6" x2="16" y2="22"></line>
           </svg>
         </a>
 

@@ -38,24 +38,35 @@
   display: block;
 }
 
-/* Lucky Wheel Button */
-.fcw-btn--wheel {
-  background: linear-gradient(135deg, #e11d48 0%, #f97316 50%, #f59e0b 100%);
-  animation: fcw-wheel-pulse 2.4s infinite ease-in-out;
+/* Map Explorer Button */
+.fcw-btn--explore {
+  background: linear-gradient(135deg, #881337 0%, #be123c 50%, #e11d48 100%);
+  animation: fcw-explore-pulse 2.2s infinite ease-in-out;
 }
 
-.fcw-wheel-icon,
-.fcw-wheel-icon-svg {
-  width: 28px;
-  height: 28px;
+.fcw-explore-icon-svg {
+  width: 26px;
+  height: 26px;
   display: block;
-  animation: fcw-icon-rotate 7s linear infinite;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.25));
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
 }
 
-.fcw-pulse-ring--wheel {
-  border-color: rgba(249, 115, 22, 0.7);
+.fcw-pulse-ring--explore {
+  border-color: rgba(225, 29, 72, 0.75);
   animation: fcw-ripple 2s cubic-bezier(0.1, 0.8, 0.3, 1) infinite;
+}
+
+@keyframes fcw-explore-pulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 6px 18px rgba(190, 18, 60, 0.4), 0 0 0 0 rgba(225, 29, 72, 0.6);
+    filter: brightness(1);
+  }
+  50% {
+    transform: scale(1.12);
+    box-shadow: 0 10px 26px rgba(190, 18, 60, 0.65), 0 0 16px 4px rgba(225, 29, 72, 0.5);
+    filter: brightness(1.15);
+  }
 }
 
 /* Facebook Fanpage Theme */
