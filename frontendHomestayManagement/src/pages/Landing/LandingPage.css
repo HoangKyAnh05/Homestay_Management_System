@@ -1032,24 +1032,22 @@ body {
 .villas-stack-container {
   position: relative;
   width: 100%;
-  max-width: 1140px;
+  max-width: 1060px;
   margin: 0 auto;
-  padding-bottom: 8rem;
+  padding-bottom: 6rem;
   display: flex;
   flex-direction: column;
   transform-origin: center center;
-  max-width: 1160px;
-  margin: 0 auto;
 }
 
 .villa-card.stack-card {
   position: sticky;
-  top: calc(75px + (var(--card-index, 1) - 1) * 8px);
-  margin-bottom: 40px;
+  top: calc(70px + (var(--card-index, 1) - 1) * 7px);
+  margin-bottom: 24px;
   background: rgba(13, 20, 16, 0.98);
   border: 1.5px solid var(--border-active);
-  border-radius: 20px;
-  box-shadow: 0 -8px 25px rgba(0, 0, 0, 0.5), 0 16px 36px rgba(0, 0, 0, 0.85);
+  border-radius: 16px;
+  box-shadow: 0 -6px 20px rgba(0, 0, 0, 0.5), 0 12px 30px rgba(0, 0, 0, 0.85);
   overflow: hidden;
   transition: transform 0.4s var(--ease-out), filter 0.4s var(--ease-out), border-color 0.3s ease;
   transform-origin: center top;
@@ -1062,21 +1060,21 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.65rem 1.6rem;
+  padding: 0.4rem 1.3rem;
   background: rgba(226, 177, 115, 0.1);
   border-bottom: 1px solid var(--border-subtle);
-  min-height: 44px;
+  min-height: 38px;
 }
 
 .stack-card-identity {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 0.75rem;
 }
 
 .stack-number {
   font-family: var(--font-serif-display);
-  font-size: 1.15rem;
+  font-size: 1.05rem;
   font-weight: 700;
   color: var(--accent-gold);
   letter-spacing: 0.08em;
@@ -1084,62 +1082,148 @@ body {
 
 .stack-villa-name {
   font-family: var(--font-serif-display);
-  font-size: 0.88rem;
+  font-size: 0.82rem;
   font-weight: 600;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.12em;
   color: #fffbeb;
 }
 
 .stack-pill-tag {
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   font-weight: 500;
   letter-spacing: 0.04em;
   color: rgba(253, 230, 138, 0.9);
   background: rgba(226, 177, 115, 0.12);
   border: 1px solid rgba(226, 177, 115, 0.3);
-  padding: 0.22rem 0.7rem;
+  padding: 0.18rem 0.65rem;
   border-radius: 999px;
   text-transform: uppercase;
 }
 
 .stack-card-inner {
   display: grid;
-  grid-template-columns: 1.1fr 1fr;
-  min-height: 310px;
+  grid-template-columns: 1fr 1.05fr;
+  min-height: auto;
 }
 
 .stack-card .villa-image-wrapper {
   position: relative;
   width: 100%;
-  height: 100%;
-  min-height: 310px;
+  height: 245px;
+  min-height: 245px;
   overflow: hidden;
 }
 
+.stack-card .villa-price-tag {
+  bottom: 0.65rem;
+  right: 0.65rem;
+  padding: 0.3rem 0.75rem;
+  border-radius: 8px;
+  background: rgba(7, 12, 9, 0.94);
+  border: 1px solid rgba(226, 177, 115, 0.4);
+}
+
+.stack-card .villa-price-tag .price {
+  font-size: 1.05rem;
+}
+
+.stack-card .villa-price-tag .unit {
+  font-size: 0.72rem;
+}
+
 .stack-card .villa-body {
-  padding: 1.2rem 1.6rem;
+  padding: 0.85rem 1.3rem;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
 }
 
+.stack-card .villa-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  margin-bottom: 0.25rem;
+  font-size: 0.78rem;
+  color: #d4d4d8;
+}
+
+.stack-card .villa-meta svg {
+  width: 13px;
+  height: 13px;
+}
+
 .stack-card .villa-title {
   font-family: var(--font-serif-display);
-  font-size: 1.55rem;
-  margin-bottom: 0.3rem;
+  font-size: 1.3rem;
+  margin-bottom: 0.2rem;
   color: #fffbeb;
   line-height: 1.2;
 }
 
 .stack-card .villa-excerpt {
-  font-size: 0.85rem;
-  line-height: 1.48;
+  font-size: 0.8rem;
+  line-height: 1.38;
   color: #e2e8f0;
-  margin-bottom: 0.65rem;
+  margin-bottom: 0.35rem;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+.stack-card .villa-amenities {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.35rem;
+}
+
+.stack-card .amenity-chip {
+  padding: 0.2rem 0.55rem;
+  border-radius: 6px;
+  font-size: 0.72rem;
+}
+
+.stack-card .villa-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding-top: 0.45rem;
+  border-top: 1px solid var(--border-subtle);
+  margin-top: auto;
+}
+
+.stack-card .detail-btn {
+  font-size: 0.78rem;
+  padding: 0.25rem 0.55rem;
+}
+
+.stack-card .liquid-btn.book-villa-btn {
+  padding: 0.38rem 0.95rem;
+  font-size: 0.78rem;
+}
+
+@media (max-height: 820px) {
+  .villa-card.stack-card {
+    top: calc(58px + (var(--card-index, 1) - 1) * 6px);
+    margin-bottom: 18px;
+  }
+  .stack-card .villa-image-wrapper {
+    height: 215px;
+    min-height: 215px;
+  }
+  .stack-card .villa-body {
+    padding: 0.7rem 1.1rem;
+  }
+  .stack-card .villa-title {
+    font-size: 1.2rem;
+  }
+  .stack-card .villa-excerpt {
+    font-size: 0.76rem;
+    line-height: 1.3;
+    margin-bottom: 0.25rem;
+  }
 }
 
 @media (max-width: 992px) {
@@ -1147,14 +1231,14 @@ body {
     grid-template-columns: 1fr;
   }
   .stack-card .villa-image-wrapper {
-    min-height: 220px;
-    height: 220px;
+    min-height: 200px;
+    height: 200px;
   }
   .stack-card .villa-body {
-    padding: 1.2rem;
+    padding: 1rem;
   }
   .villa-card.stack-card {
-    top: calc(65px + (var(--card-index, 1) - 1) * 6px);
+    top: calc(60px + (var(--card-index, 1) - 1) * 5px);
   }
 }
 
