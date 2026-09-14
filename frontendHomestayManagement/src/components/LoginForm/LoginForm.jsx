@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { getRememberedEmail, login, loginWithGoogle } from '../../services/authService'
+import { STAFF_ROLES, roleDefaultPath } from '../../utils/roleUtils'
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID
 const hasGoogleClientId = GOOGLE_CLIENT_ID && !GOOGLE_CLIENT_ID.includes('YOUR_GOOGLE_CLIENT_ID')
@@ -53,8 +54,16 @@ function LoginForm() {
     }
 
     try {
-      await loginWithGoogle(response.access_token)
-      window.location.assign(nextPath)
+      const data = await loginWithGoogle(response.access_token)
+      if (data?.user?.role && STAFF_ROLES.has(data.user.role)) {
+        if (nextPath && nextPath.startsWith('/admin')) {
+          window.location.assign(nextPath)
+        } else {
+          window.location.assign(roleDefaultPath(data.user.role))
+        }
+      } else {
+        window.location.assign(nextPath)
+      }
     } catch (error) {
       setErrorMessage(error.message)
     } finally {
@@ -140,7 +149,7 @@ function LoginForm() {
     setIsSubmitting(true)
 
     try {
-      await login(email, password, remember)
+      const data = await login(email, password, remember)
 
       // Báo cho trình duyệt lưu credentials (trigger password manager)
       if (window.PasswordCredential && navigator.credentials) {
@@ -150,7 +159,15 @@ function LoginForm() {
         })
       }
 
-      window.location.assign(nextPath)
+      if (data?.user?.role && STAFF_ROLES.has(data.user.role)) {
+        if (nextPath && nextPath.startsWith('/admin')) {
+          window.location.assign(nextPath)
+        } else {
+          window.location.assign(roleDefaultPath(data.user.role))
+        }
+      } else {
+        window.location.assign(nextPath)
+      }
     } catch (error) {
       setErrorMessage(error.message)
     } finally {

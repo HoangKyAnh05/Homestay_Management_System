@@ -462,7 +462,7 @@ function AdminLayoutInner({ activePage, children }) {
 
   const handleLogout = () => {
     logout()
-    window.location.assign('/admin/login')
+    window.location.assign('/login')
   }
 
   const toggleGroup = (key) => {
