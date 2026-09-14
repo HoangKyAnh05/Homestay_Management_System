@@ -350,13 +350,6 @@ export default function AIChatWidget({ userName }) {
           : <ChatIcon />}
         {!isOpen && <span className="ai-chat-notification">AI</span>}
       </button>
-
-      {!isOpen && (
-        <button className="ai-chat-invitation" type="button" onClick={() => setIsOpen(true)}>
-          <strong>Trợ lý AI Admin</strong>
-          <span>Hỗ trợ vận hành & Marketing</span>
-        </button>
-      )}
     </div>
   )
 }

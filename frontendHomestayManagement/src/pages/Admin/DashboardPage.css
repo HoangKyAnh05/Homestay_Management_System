@@ -965,20 +965,26 @@
 }
 
 .btn-dash-inspect-done {
-  padding: 10px 20px;
+  padding: 10px 24px;
   border-radius: 8px;
   border: none;
-  background: #0f172a;
-  color: #ffffff;
-  font-size: 13.5px;
+  background: #1e3a2b !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  font-size: 14px;
   font-weight: 700;
   cursor: pointer;
   transition: all 0.15s ease;
+  box-shadow: 0 2px 8px rgba(30, 58, 43, 0.25);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .btn-dash-inspect-done:hover {
-  background: #1e293b;
+  background: #14281e !important;
   transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(30, 58, 43, 0.35);
 }
 
 @media (max-width: 1180px) {

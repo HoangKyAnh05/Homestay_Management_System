@@ -131,8 +131,6 @@ textarea,
 select {
   font-family: var(--font-body);
   font-size: inherit;
-  color: #0f172a !important;
-  -webkit-text-fill-color: #0f172a !important;
 }
 
 input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]):not([type="submit"]):not([type="button"]):not([type="reset"]),

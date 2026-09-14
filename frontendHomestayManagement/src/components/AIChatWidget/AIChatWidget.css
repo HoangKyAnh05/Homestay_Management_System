@@ -12,34 +12,43 @@
 .ai-chat-trigger {
   position: relative;
   z-index: 2;
-  width: 58px;
-  height: 58px;
+  width: 54px;
+  height: 54px;
   display: grid;
   place-items: center;
   flex: 0 0 auto;
   border: 0;
   border-radius: 50%;
-  background: #1f4328;
-  color: #fff;
-  box-shadow: 0 12px 30px rgba(31, 67, 40, .32);
+  background: linear-gradient(135deg, #1e3a2b, #2d5a3f) !important;
+  color: #ffffff !important;
+  box-shadow: 0 10px 26px rgba(30, 58, 43, 0.35) !important;
   cursor: pointer;
-  transition: .18s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .ai-chat-trigger:hover {
-  background: #15573a;
-  transform: translateY(-2px);
-  box-shadow: 0 16px 34px rgba(31, 67, 40, .38);
+  background: linear-gradient(135deg, #14281e, #1e3a2b) !important;
+  transform: scale(1.08);
+  box-shadow: 0 14px 30px rgba(30, 58, 43, 0.45) !important;
 }
 
-.ai-chat-trigger svg,
+.ai-chat-trigger svg {
+  width: 26px;
+  height: 26px;
+  fill: none !important;
+  stroke: #ffffff !important;
+  stroke-width: 2.2 !important;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 .ai-chat-close svg,
 .ai-chat-compose button svg {
-  width: 25px;
-  height: 25px;
+  width: 22px;
+  height: 22px;
   fill: none;
   stroke: currentColor;
-  stroke-width: 1.8;
+  stroke-width: 2;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
@@ -47,16 +56,19 @@
 .ai-chat-notification {
   position: absolute;
   top: -2px;
-  right: -1px;
-  width: 20px;
+  right: -2px;
+  min-width: 20px;
   height: 20px;
+  padding: 0 4px;
   display: grid;
   place-items: center;
-  border: 3px solid #fff;
-  border-radius: 50%;
-  background: #e11d48;
-  font-size: 9px;
-  font-weight: 900;
+  border: 2px solid #ffffff;
+  border-radius: 999px;
+  background: #dc2626 !important;
+  color: #ffffff !important;
+  font-size: 10px;
+  font-weight: 800;
+  box-shadow: 0 2px 6px rgba(220, 38, 38, 0.4);
 }
 
 .ai-chat-invitation {
