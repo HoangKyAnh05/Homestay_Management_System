@@ -582,14 +582,6 @@ export default function AdminGiveawayLeadsPage() {
                             >
                               ✏️ Cập nhật
                             </button>
-                            <button
-                              type="button"
-                              className="gw-action-btn gw-action-btn--book"
-                              onClick={() => handleQuickBooking(cust, topPrize)}
-                              title="Tạo đặt phòng mới cho khách này"
-                            >
-                              🏨 Đặt phòng
-                            </button>
                           </div>
                         </td>
                       </tr>
