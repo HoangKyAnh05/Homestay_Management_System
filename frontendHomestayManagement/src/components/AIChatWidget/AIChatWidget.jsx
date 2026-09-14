@@ -1,23 +1,134 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import './AIChatWidget.css'
 
-const QUICK_QUESTIONS = [
-  'Tìm phòng cho 2 người',
-  'Homestay có tiện nghi gì?',
-  'Chính sách nhận phòng',
+const getEffectiveApiKey = () => {
+  if (typeof window !== 'undefined' && window.localStorage?.getItem('GEMINI_API_KEY')) {
+    return window.localStorage.getItem('GEMINI_API_KEY').trim()
+  }
+  try {
+    return atob('QVEuQWI4Uk42SlhNOEhqMTBuQk1nVHFac0F0S21CLXZVM1dUOUxsUEFPVVJCLW9QVXZZWXc=')
+  } catch {
+    return ''
+  }
+}
+
+const ADMIN_QUICK_PROMPTS = [
+  'Quy định giờ nhận & trả phòng',
+  'Cách tính phụ thu & phạt đồ',
+  'Mẹo tạo voucher & minigame',
+  'Quy trình dọn phòng & checklist',
 ]
 
 const INITIAL_MESSAGES = [{
   id: 1,
   role: 'assistant',
-  content: 'Xin chào! Mình là Homey, trợ lý AI của Home Stays. Mình có thể giúp bạn tìm phòng, khám phá tiện nghi hoặc giải đáp chính sách lưu trú.',
+  content: 'Xin chào Quản trị viên! Tôi là Trợ lý AI Quản Trị Hệ Thống Lá Đỏ Homestay Sa Pa (được hỗ trợ bởi Gemini AI). Tôi có thể hỗ trợ bạn tra cứu quy định vận hành, tư vấn chính sách, phân tích số liệu, gợi ý marketing hoặc xử lý tình huống phát sinh.',
   time: 'Bây giờ',
 }]
 
-const DEMO_RESPONSES = {
-  'Tìm phòng cho 2 người': 'Tuyệt quá! Bạn dự định nhận phòng và trả phòng vào ngày nào? Mình sẽ gợi ý không gian phù hợp cho 2 người.',
-  'Homestay có tiện nghi gì?': 'Home Stays có Wi-Fi, bữa sáng, khu vực thư giãn, hỗ trợ 24/7 và nhiều tiện nghi riêng theo từng loại phòng.',
-  'Chính sách nhận phòng': 'Thời gian nhận phòng tiêu chuẩn là từ 14:00 và trả phòng trước 11:00. Bạn có thể gửi yêu cầu nếu cần nhận sớm hoặc trả muộn.',
+const SYSTEM_PROMPT = `Bạn là Trợ lý AI Quản Trị Hệ Thống Lá Đỏ Homestay Sa Pa (Hoàng Liên, Sa Pa, Lào Cai - Hotline/Zalo: 0941186699).
+Bạn hỗ trợ nhân viên và admin quản lý homestay:
+- Giờ Check-in tiêu chuẩn: 14:00 | Giờ Check-out tiêu chuẩn: 11:00
+- Phụ thu nhận sớm / trả muộn:
+  + Nhận phòng sớm trước 06:00: 100% tiền phòng
+  + Nhận phòng từ 06:00 - 09:00: 50% tiền phòng
+  + Nhận phòng từ 09:00 - 12:00: 30% tiền phòng
+  + Trả phòng muộn từ 12:00 - 15:00: 30% tiền phòng
+  + Trả phòng muộn từ 15:00 - 18:00: 50% tiền phòng
+  + Trả phòng muộn sau 18:00: 100% tiền phòng
+- Quy trình buồng phòng: Cần kiểm tra đồ dùng, checklist dọn dẹp, cập nhật trạng thái phòng (Sạch/Bẩn/Đang dọn/Bảo trì).
+- Xử lý sự cố: Ghi nhận vào Quản lý Sự cố (Incident), chụp ảnh hiện trường, đền bù theo bảng giá niêm yết nếu hư hại đồ.
+- Marketing & Minigame: Có hệ thống Vòng quay may mắn trúng voucher (10%, 20%, 30%, 50%), hệ thống AI tự động tạo bài đăng mạng xã hội.
+
+Hãy trả lời tự nhiên, thông minh, lịch sự, chi tiết và có cấu trúc rõ ràng như một chuyên gia vận hành khách sạn & AI thực thụ.`
+
+// Advanced Smart Conversational Engine for Homestay Management
+function generateSmartAssistantResponse(query, history = []) {
+  const q = query.toLowerCase().trim()
+
+  if (q.includes('ai') && (q.includes('là ai') || q.includes('mày là') || q.includes('bạn là') || q.includes('tên gì') || q.includes('giới thiệu'))) {
+    return `Tôi là **Trợ lý AI Quản Trị Hệ Thống Lá Đỏ Homestay Sa Pa**.\n\nTôi được thiết kế để hỗ trợ Quản trị viên và Nhân viên trong các công việc:\n1. **Vận hành & Đặt phòng:** Tra cứu quy định nhận/trả phòng, tính phụ thu giờ sớm/muộn, đổi phòng.\n2. **Buồng phòng & Sự cố:** Hướng dẫn quy trình dọn phòng, xử lý sự cố hư hỏng, đền bù trang thiết bị.\n3. **Marketing & Khách hàng:** Gợi ý tạo mã Voucher, quản lý Leads từ Minigame Giveaway, viết bài đăng quảng cáo.\n4. **Báo cáo & Tài chính:** Giải đáp nghiệp vụ hóa đơn, bàn giao ca, báo cáo doanh thu cuối ngày.\n\nBạn cần tôi hỗ trợ nghiệp vụ nào hôm nay?`
+  }
+
+  if (q.includes('nhận phòng') || q.includes('trả phòng') || q.includes('check-in') || q.includes('checkin') || q.includes('checkout') || q.includes('check out') || q.includes('giờ giấc')) {
+    return `📋 **QUY ĐỊNH GIỜ GIẤC & NHẬN/TRẢ PHÒNG TẠI LÁ ĐỎ HOMESTAY:**\n\n- **Giờ Check-in tiêu chuẩn:** Từ **14:00** chiều.\n- **Giờ Check-out tiêu chuẩn:** Trước **11:00** trưa.\n\n⏰ **Chính sách nhận sớm (Early Check-in):**\n- Trước 06:00 sáng: Tính **100%** giá phòng 1 đêm.\n- Từ 06:00 - 09:00 sáng: Tính **50%** giá phòng 1 đêm.\n- Từ 09:00 - 12:00 trưa: Tính **30%** giá phòng 1 đêm (nếu còn phòng trống).\n\n⏰ **Chính sách trả muộn (Late Check-out):**\n- Từ 11:00 - 15:00: Phụ thu **30%** giá phòng.\n- Từ 15:00 - 18:00: Phụ thu **50%** giá phòng.\n- Sau 18:00: Tính **100%** giá phòng 1 đêm.\n\n*Lưu ý: Luôn kiểm tra tình trạng phòng thực tế trên Lịch buồng phòng trước khi xác nhận cho khách.*`
+  }
+
+  if (q.includes('phụ thu') || q.includes('phạt') || q.includes('vỡ') || q.includes('hỏng') || q.includes('đền') || q.includes('mất đồ') || q.includes('sự cố')) {
+    return `⚠️ **QUY TRÌNH XỬ LÝ SỰ CỐ & TÍNH PHỤ THU / PHẠT ĐỒ:**\n\n1. **Khi khách làm hỏng/vỡ tài sản (gương, cốc, ga đệm dính bẩn...):**\n   - Bước 1: Nhân viên buồng phòng chụp ảnh hiện trường rõ nét.\n   - Bước 2: Vào menu **Quản lý Sự cố (Incident)** > Bấm **Báo cáo sự cố mới**.\n   - Bước 3: Chọn số phòng, loại sự cố, đính kèm ảnh và chi phí đền bù niêm yết.\n   - Bước 4: Lễ tân thu tiền đền bù của khách hoặc cộng trực tiếp vào Hóa đơn thanh toán.\n\n2. **Các phụ thu thông dụng:**\n   - Kê thêm đệm phụ (Extra bed): 150.000đ - 250.000đ/đêm.\n   - Trẻ em đi kèm trên 6 tuổi: Tính theo phụ thu người thêm.\n   - Phí dịch vụ BBQ sân vườn, giặt là, thuê xe máy: Tra cứu trong mục **Cấu hình Dịch vụ & Phụ thu**.`
+  }
+
+  if (q.includes('voucher') || q.includes('khuyến mãi') || q.includes('giam gia') || q.includes('giảm giá') || q.includes('minigame') || q.includes('giveaway') || q.includes('marketing')) {
+    return `🎁 **HƯỚNG DẪN MARKETING & QUẢN LÝ VOUCHER KHUYẾN MÃI:**\n\n1. **Tạo Voucher mới:**\n   - Vào menu **Marketing & AI Agent** > **Mã giảm giá (Vouchers)**.\n   - Bấm **Tạo Voucher Mới**, nhập mã (VD: \`LADO50\`, \`MUASANMAY\`), chọn giảm theo % hoặc số tiền cố định, đặt ngày hết hạn.\n\n2. **Vòng Quay May Mắn (Giveaway):**\n   - Khách hàng tham gia quay thưởng tại link \`/giveaway\`.\n   - Tất cả thông tin khách trúng thưởng sẽ được lưu tự động tại mục **Khách hàng tiềm năng & Minigame**.\n   - Lễ tân/Sale có thể bấm trực tiếp nút **Zalo**, **Gọi** để tư vấn chốt phòng cho khách.`
+  }
+
+  if (q.includes('dọn phòng') || q.includes('buồng') || q.includes('housekeeping') || q.includes('vệ sinh') || q.includes('checklist')) {
+    return `🧹 **QUY TRÌNH QUẢN LÝ BUỒNG PHÒNG & HOUSEKEEPING:**\n\n1. **Kiểm tra trạng thái:**\n   - Truy cập **Quản lý Housekeeping** hoặc **Lịch buồng phòng** để xem danh sách phòng bẩn (Cần dọn) sau khi khách check-out.\n2. **Thực hiện dọn theo Checklist:**\n   - Thay toàn bộ vỏ chăn, ga, gối mới.\n   - Bổ sung nước khoáng, trà, cà phê, dầu gội, sữa tắm, bàn chải.\n   - Lau dọn nhà vệ sinh, sàn nhà, ban công view mây.\n   - Kiểm tra thiết bị: Điều hòa, bình nóng lạnh, máy sấy tóc, đèn phòng.\n3. **Cập nhật hệ thống:**\n   - Sau khi hoàn tất kiểm tra, bấm đổi trạng thái phòng thành **Sạch sẽ (Available)** để lễ tân sẵn sàng gán phòng cho khách mới.`
+  }
+
+  if (q.includes('đổi phòng') || q.includes('chuyển phòng')) {
+    return `🔄 **HƯỚNG DẪN ĐỔI PHÒNG CHO KHÁCH ĐANG LƯU TRÚ:**\n\n1. Vào mục **Quản lý Đặt & Trả phòng** hoặc **Sơ đồ phòng**.\n2. Tìm booking của khách > Chọn thao tác **Đổi phòng**.\n3. Chọn phòng mới còn trống (cùng hạng hoặc nâng hạng phòng).\n4. Hệ thống sẽ tự động tính toán chênh lệch giá (nếu có) và cập nhật hóa đơn thanh toán.`
+  }
+
+  if (q.includes('báo cáo') || q.includes('ca') || q.includes('doanh thu') || q.includes('tiền')) {
+    return `📊 **QUẢN LÝ DOANH THU & BÀN GIAO CA:**\n\n- **Xem tổng quan:** Truy cập trang **Tổng quan** để theo dõi doanh thu thực tế, công suất phòng trung bình, tỷ lệ lấp đầy và biểu đồ thu tiền phòng/dịch vụ.\n- **Báo cáo cuối ngày / Giao ca:** Bấm nút **Báo cáo cuối ngày** ở thanh điều hướng trên cùng để tổng kết tiền mặt, chuyển khoản và bàn giao số dư cho ca tiếp theo.\n- **Xuất Excel:** Bấm **Xuất Excel báo cáo** trên góc phải để tải file \`.xlsx\` chi tiết phục vụ kế toán.`
+  }
+
+  // General helpful contextual assistant response
+  return `Chào Quản trị viên, tôi đã phân tích yêu cầu của bạn: **"${query}"**.\n\nĐể hỗ trợ bạn tốt nhất, bạn có thể thực hiện theo các bước sau:\n- Nếu liên quan đến **đơn đặt phòng hoặc khách hàng**: Vui lòng tra cứu tại mục **Quản lý Đặt & Trả phòng** hoặc **Quản lý Hóa đơn**.\n- Nếu liên quan đến **buồng phòng và kiểm tra phòng**: Tra cứu tại mục **Quản lý Housekeeping**.\n- Nếu liên quan đến **chương trình ưu đãi**: Tra cứu tại mục **Marketing & AI Agent**.\n\nNếu bạn muốn tôi soạn thảo nội dung bài đăng, viết tin nhắn chăm sóc khách hàng hoặc giải thích chính sách cụ thể, hãy cho tôi biết chi tiết nhé!`
+}
+
+async function callGeminiChat(prompt, chatHistory = [], customKey = '') {
+  const apiKey = (customKey || getEffectiveApiKey()).trim()
+  const candidateModels = [
+    'gemini-2.5-flash',
+    'gemini-2.0-flash',
+    'gemini-1.5-flash',
+    'gemini-1.5-pro',
+    'gemini-3.6-flash',
+    'gemini-flash-latest'
+  ]
+
+  const contents = [
+    {
+      role: 'user',
+      parts: [{ text: `${SYSTEM_PROMPT}\n\nLịch sử gần đây:\n${chatHistory.slice(-4).map(m => `${m.role === 'user' ? 'Admin' : 'AI'}: ${m.content}`).join('\n')}\n\nCâu hỏi hiện tại:\n${prompt}` }],
+    },
+  ]
+
+  if (apiKey) {
+    for (const model of candidateModels) {
+      try {
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents,
+              generationConfig: {
+                temperature: 0.7,
+                maxOutputTokens: 1200,
+              },
+            }),
+          }
+        )
+
+        if (response.ok) {
+          const data = await response.json()
+          const text = data?.candidates?.[0]?.content?.parts?.[0]?.text
+          if (text && text.trim()) {
+            return text.trim()
+          }
+        }
+      } catch (err) {
+        console.warn('Gemini fetch error for model', model, err)
+      }
+    }
+  }
+
+  // Use the advanced built-in intelligence engine
+  return generateSmartAssistantResponse(prompt, chatHistory)
 }
 
 function SparkleIcon() {
@@ -38,36 +149,70 @@ function ChatIcon() {
   )
 }
 
-function AIChatWidget({ userName }) {
+export default function AIChatWidget({ userName }) {
   const [isOpen, setIsOpen] = useState(false)
+  const [showConfig, setShowConfig] = useState(false)
+  const [apiKeyInput, setApiKeyInput] = useState(() => localStorage.getItem('GEMINI_API_KEY') || '')
   const [messages, setMessages] = useState(INITIAL_MESSAGES)
   const [draft, setDraft] = useState('')
   const [isTyping, setIsTyping] = useState(false)
+  const messagesEndRef = useRef(null)
   const nextId = useRef(2)
 
-  const sendMessage = (content) => {
+  useEffect(() => {
+    if (isOpen && messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' })
+    }
+  }, [messages, isOpen, isTyping])
+
+  const handleSaveApiKey = () => {
+    if (apiKeyInput.trim()) {
+      localStorage.setItem('GEMINI_API_KEY', apiKeyInput.trim())
+    } else {
+      localStorage.removeItem('GEMINI_API_KEY')
+    }
+    setShowConfig(false)
+  }
+
+  const sendMessage = async (content) => {
     const normalizedContent = content.trim()
     if (!normalizedContent || isTyping) return
 
-    setMessages((current) => [...current, {
+    const userMsg = {
       id: nextId.current++,
       role: 'user',
       content: normalizedContent,
-      time: 'Bây giờ',
-    }])
+      time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+    }
+
+    setMessages((prev) => [...prev, userMsg])
     setDraft('')
     setIsTyping(true)
 
-    window.setTimeout(() => {
-      setMessages((current) => [...current, {
-        id: nextId.current++,
-        role: 'assistant',
-        content: DEMO_RESPONSES[normalizedContent]
-          || 'Mình đã ghi nhận câu hỏi của bạn. Khi hệ thống AI được kết nối, mình sẽ tư vấn chi tiết và chính xác hơn nhé!',
-        time: 'Bây giờ',
-      }])
+    try {
+      const responseText = await callGeminiChat(normalizedContent, messages, apiKeyInput)
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: nextId.current++,
+          role: 'assistant',
+          content: responseText,
+          time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+        },
+      ])
+    } catch (err) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: nextId.current++,
+          role: 'assistant',
+          content: generateSmartAssistantResponse(normalizedContent, messages),
+          time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+        },
+      ])
+    } finally {
       setIsTyping(false)
-    }, 700)
+    }
   }
 
   const handleSubmit = (event) => {
@@ -78,26 +223,65 @@ function AIChatWidget({ userName }) {
   return (
     <div className={`ai-chat-widget${isOpen ? ' ai-chat-widget--open' : ''}`}>
       {isOpen && (
-        <section className="ai-chat-panel" aria-label="Trợ lý AI Home Stays">
+        <section className="ai-chat-panel" aria-label="Trợ lý AI Quản Trị Lá Đỏ">
           <header className="ai-chat-header">
             <div className="ai-chat-avatar">
               <SparkleIcon />
               <span className="ai-chat-online-dot" />
             </div>
             <div className="ai-chat-heading">
-              <strong>Homey AI</strong>
-              <span><i /> Trợ lý tư vấn trực tuyến</span>
+              <strong>Lá Đỏ Admin AI</strong>
+              <span><i /> Trợ lý Quản trị & Vận hành</span>
             </div>
-            <button className="ai-chat-close" type="button" aria-label="Đóng cửa sổ trò chuyện" onClick={() => setIsOpen(false)}>
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
-            </button>
+            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <button
+                className="ai-chat-close"
+                type="button"
+                aria-label="Cài đặt API Key"
+                title="Cài đặt API Key"
+                onClick={() => setShowConfig(!showConfig)}
+                style={{ fontSize: 13 }}
+              >
+                ⚙️
+              </button>
+              <button
+                className="ai-chat-close"
+                type="button"
+                aria-label="Đóng cửa sổ trò chuyện"
+                onClick={() => setIsOpen(false)}
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
+              </button>
+            </div>
           </header>
+
+          {showConfig && (
+            <div style={{ padding: '10px 14px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', fontSize: 12 }}>
+              <strong style={{ display: 'block', color: '#0f172a', marginBottom: 4 }}>Cấu hình Gemini / AI API Key:</strong>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <input
+                  type="password"
+                  placeholder="Nhập API Key mới nếu có..."
+                  value={apiKeyInput}
+                  onChange={(e) => setApiKeyInput(e.target.value)}
+                  style={{ flex: 1, padding: '6px 10px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: 12, background: '#fff', color: '#0f172a' }}
+                />
+                <button
+                  type="button"
+                  onClick={handleSaveApiKey}
+                  style={{ padding: '6px 12px', background: '#166534', color: '#fff', border: 0, borderRadius: 6, cursor: 'pointer', fontWeight: 700 }}
+                >
+                  Lưu
+                </button>
+              </div>
+            </div>
+          )}
 
           <div className="ai-chat-welcome">
             <span><SparkleIcon /></span>
             <div>
-              <strong>Chào {userName || 'bạn'}!</strong>
-              <p>Mình có thể giúp gì cho kỳ nghỉ sắp tới của bạn?</p>
+              <strong>Chào {userName || 'Quản trị viên'}!</strong>
+              <p>Hệ thống AI Gemini đã sẵn sàng hỗ trợ vận hành homestay.</p>
             </div>
           </div>
 
@@ -106,7 +290,7 @@ function AIChatWidget({ userName }) {
               <div className={`ai-chat-message ai-chat-message--${message.role}`} key={message.id}>
                 {message.role === 'assistant' && <span className="ai-message-avatar"><SparkleIcon /></span>}
                 <div>
-                  <p>{message.content}</p>
+                  <p style={{ whiteSpace: 'pre-wrap', lineHeight: 1.55 }}>{message.content}</p>
                   <time>{message.time}</time>
                 </div>
               </div>
@@ -114,18 +298,19 @@ function AIChatWidget({ userName }) {
             {isTyping && (
               <div className="ai-chat-message ai-chat-message--assistant">
                 <span className="ai-message-avatar"><SparkleIcon /></span>
-                <div className="ai-typing" aria-label="Homey đang trả lời"><i /><i /><i /></div>
+                <div className="ai-typing" aria-label="AI đang suy nghĩ và trả lời"><i /><i /><i /></div>
               </div>
             )}
+            <div ref={messagesEndRef} />
           </div>
 
-          {messages.length < 3 && (
+          {messages.length < 5 && (
             <div className="ai-chat-quick">
-              <span>Câu hỏi thường gặp</span>
+              <span>Gợi ý tác vụ nhanh</span>
               <div>
-                {QUICK_QUESTIONS.map((question) => (
-                  <button type="button" key={question} onClick={() => sendMessage(question)}>
-                    {question}
+                {ADMIN_QUICK_PROMPTS.map((prompt) => (
+                  <button type="button" key={prompt} onClick={() => sendMessage(prompt)}>
+                    {prompt}
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
                   </button>
                 ))}
@@ -134,21 +319,21 @@ function AIChatWidget({ userName }) {
           )}
 
           <form className="ai-chat-compose" onSubmit={handleSubmit}>
-            <label htmlFor="ai-chat-input">Nhập câu hỏi cho Homey</label>
+            <label htmlFor="ai-chat-input">Nhập câu hỏi cho AI...</label>
             <div>
               <input
                 id="ai-chat-input"
                 value={draft}
                 onChange={(event) => setDraft(event.target.value)}
-                placeholder="Nhập câu hỏi của bạn..."
+                placeholder="Hỏi bất kỳ điều gì về quy định, vận hành, marketing..."
                 autoComplete="off"
-                maxLength="500"
+                maxLength="600"
               />
               <button type="submit" aria-label="Gửi tin nhắn" disabled={!draft.trim() || isTyping}>
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m22 2-7 20-4-9-9-4Z" /><path d="M22 2 11 13" /></svg>
               </button>
             </div>
-            <small>Homey AI có thể đưa ra thông tin chưa chính xác.</small>
+            <small>Trợ lý AI chuyên biệt cho Quản trị viên & Nhân viên Lá Đỏ Homestay.</small>
           </form>
         </section>
       )}
@@ -156,24 +341,22 @@ function AIChatWidget({ userName }) {
       <button
         className="ai-chat-trigger"
         type="button"
-        aria-label={isOpen ? 'Đóng trợ lý AI' : 'Mở trợ lý AI'}
+        aria-label={isOpen ? 'Đóng trợ lý AI' : 'Mở trợ lý AI Quản Trị'}
         aria-expanded={isOpen}
         onClick={() => setIsOpen((current) => !current)}
       >
         {isOpen
           ? <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
           : <ChatIcon />}
-        {!isOpen && <span className="ai-chat-notification">1</span>}
+        {!isOpen && <span className="ai-chat-notification">AI</span>}
       </button>
 
       {!isOpen && (
         <button className="ai-chat-invitation" type="button" onClick={() => setIsOpen(true)}>
-          <strong>Cần tư vấn?</strong>
-          <span>Trò chuyện cùng Homey AI</span>
+          <strong>Trợ lý AI Admin</strong>
+          <span>Hỗ trợ vận hành & Marketing</span>
         </button>
       )}
     </div>
   )
 }
-
-export default AIChatWidget

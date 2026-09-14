@@ -131,13 +131,31 @@ textarea,
 select {
   font-family: var(--font-body);
   font-size: inherit;
+  color: #0f172a !important;
+  -webkit-text-fill-color: #0f172a !important;
 }
 
 input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]):not([type="submit"]):not([type="button"]):not([type="reset"]),
 textarea,
 select {
-  background-color: #ffffff;
-  color: var(--text-primary);
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  -webkit-text-fill-color: #0f172a !important;
+}
+
+.mkt-search,
+.gw-search-box,
+.hkr-search,
+.search-box,
+.rsheet-search-input,
+.arm-search,
+.abk-search-wrap,
+.ain-search,
+.arv-search,
+.aum-search {
+  border: 1.5px solid #cbd5e1 !important;
+  color: #334155 !important;
+  background-color: #ffffff !important;
 }
 
 .mkt-search input,
@@ -146,16 +164,46 @@ select {
 .search-box input,
 .rsheet-search-input input,
 .rsheet-excel-search-input input,
+.arm-search,
+.abk-search,
+.ain-search,
+.arv-search,
+.aum-search,
 .input-with-icon input {
   background: transparent !important;
   background-color: transparent !important;
   color: #0f172a !important;
+  -webkit-text-fill-color: #0f172a !important;
+  font-weight: 600 !important;
+}
+
+.mkt-search svg,
+.gw-search-box svg,
+.hkr-search svg,
+.search-box svg,
+.search-icon,
+.mkt-search i {
+  color: #334155 !important;
+  stroke: #334155 !important;
+  opacity: 0.9 !important;
 }
 
 input::placeholder,
-textarea::placeholder {
+textarea::placeholder,
+.mkt-search input::placeholder,
+.hkr-search input::placeholder,
+.gw-search-box input::placeholder,
+.search-box input::placeholder,
+.arm-search::placeholder,
+.abk-search::placeholder,
+.ain-search::placeholder,
+.arv-search::placeholder,
+.aum-search::placeholder {
   font-family: var(--font-body);
-  color: var(--text-light);
+  color: #475569 !important;
+  -webkit-text-fill-color: #475569 !important;
+  opacity: 1 !important;
+  font-weight: 500 !important;
 }
 
 /* Global utility classes for pill badges */

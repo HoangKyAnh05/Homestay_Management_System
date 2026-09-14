@@ -31,19 +31,40 @@
 .dash-actions input,
 .dash-actions button {
   height: 40px;
-  border: 1px solid #d1d5db;
+  border: 1px solid #cbd5e1;
   border-radius: 8px;
-  background: #ffffff;
-  color: #111827;
+  background-color: #ffffff !important;
+  color: #0f172a !important;
   font: inherit;
-  font-size: 13px;
-  font-weight: 800;
+  font-size: 13.5px;
+  font-weight: 700;
   white-space: nowrap;
   flex-shrink: 0;
+  -webkit-text-fill-color: #0f172a !important;
 }
 
 .dash-actions input {
   padding: 0 12px;
+  min-width: 140px;
+  cursor: pointer;
+  color: #0f172a !important;
+}
+
+.dash-actions input::-webkit-datetime-edit,
+.dash-actions input::-webkit-datetime-edit-fields-wrapper,
+.dash-actions input::-webkit-datetime-edit-text,
+.dash-actions input::-webkit-datetime-edit-month-field,
+.dash-actions input::-webkit-datetime-edit-day-field,
+.dash-actions input::-webkit-datetime-edit-year-field {
+  color: #0f172a !important;
+  -webkit-text-fill-color: #0f172a !important;
+  font-weight: 700 !important;
+}
+
+.dash-actions input::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.75;
+  filter: contrast(1.2);
 }
 
 .dash-actions button {
