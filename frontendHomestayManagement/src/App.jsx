@@ -12,7 +12,6 @@ import AdminServiceCategoriesPage from './pages/Admin/AdminServiceCategoriesPage
 import AdminSurchargesPage from './pages/Admin/AdminSurchargesPage'
 import AdminUsersPage from './pages/Admin/AdminUsersPage'
 import AdminReviewsPage from './pages/Admin/AdminReviewsPage'
-import CustomerAiChat from './components/CustomerAiChat/CustomerAiChat'
 import DashboardPage from './pages/Admin/DashboardPage'
 import HousekeepingPage from './pages/Admin/HousekeepingPage'
 import AdminIncidentsPage from './pages/Admin/AdminIncidentsPage'
@@ -47,7 +46,6 @@ function CustomerSurface({ children }) {
   return (
     <>
       {children}
-      <CustomerAiChat />
       <FloatingContactWidget />
     </>
   )
