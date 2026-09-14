@@ -4,6 +4,7 @@ import { getStoredUser, getStoredToken, logout } from '../../services/authServic
 import { houseTypeName } from '../../utils/houseType'
 import { resolveImageUrl } from '../../utils/imageUrl'
 import PolicyModal from '../../components/PolicyModal/PolicyModal'
+import MiniMap from '../../components/MiniMap/MiniMap'
 import './HomePage.css'
 
 const API_BASE_URL = (import.meta.env.VITE_API_URL || '') + '/api'
@@ -624,43 +625,43 @@ function FeaturesSection() {
   )
 }
 
-// Section: Giới thiệu Không gian Komorebi 3D Sanctuary
+// Section: Giới thiệu Vị trí & Bản đồ Khám phá Xung quanh Lá Đỏ
 function KomorebiSanctuarySection() {
   return (
-    <section className="home-section komorebi-showcase-section" aria-label="Komorebi 3D Sanctuary">
+    <section className="home-section komorebi-showcase-section" aria-label="Bản đồ khám phá Lá Đỏ Homestay">
       <div className="home-section-inner">
-        <div className="komorebi-showcase-card">
-          <div className="komorebi-showcase-bg">
-            <img src="/landing/images/check-in-canh-dep/nhung-toa-do-song-ao-dep-nhu-troi-tay-o-viet-nam-hut-khach-checkindocx-1615078910396.webp" alt="Komorebi 3D Sanctuary" />
-            <div className="komorebi-showcase-overlay" />
-          </div>
-          <div className="komorebi-showcase-content">
+        <div className="komorebi-showcase-card" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', alignItems: 'center', padding: '2rem', background: '#111827', borderRadius: '20px' }}>
+          <div className="komorebi-showcase-content" style={{ padding: 0 }}>
             <div className="komorebi-badge">
               <span className="komorebi-badge-dot" />
-              <span>TRẢI NGHIỆM ĐỘC QUYỀN • WEBGL 3D & THÍNH ÂM THIÊN NHIÊN</span>
+              <span>✦ VỊ TRÍ ĐẮC ĐỊA • 31A HOÀNG LIÊN, SA PA</span>
             </div>
-            <h2 className="komorebi-title">
-              <span className="komorebi-kanji">紅葉</span>
-              <span>Lá Đỏ Mist Sanctuary</span>
+            <h2 className="komorebi-title" style={{ fontSize: '1.85rem' }}>
+              <span className="komorebi-kanji">🍁</span>
+              <span>Lá Đỏ Homestay & Coffee</span>
             </h2>
-            <p className="komorebi-desc">
-              Khám phá không gian nghỉ dưỡng ẩn mình giữa sương mây ngàn Hoàng Liên Sơn. Trải nghiệm mô phỏng 3D thời gian thực với dãy núi sương mờ, đom đóm phát sáng, âm thanh suối rừng và 04 căn biệt thự Wabi-Sabi độc bản.
+            <p className="komorebi-desc" style={{ fontSize: '0.9rem', lineHeight: '1.6' }}>
+              Tọa lạc tại vị trí trung tâm thị trấn Sa Pa, Lá Đỏ Homestay & Coffee là điểm xuất phát lý tưởng giúp bạn dễ dàng kết nối tới Nhà thờ Đá, Quảng trường Sa Pa, Cáp treo Fansipan, Bản Cát Cát và những quán cafe săn mây tuyệt đẹp.
             </p>
-            <div className="komorebi-features-list">
-              <span className="komorebi-pill">✦ 3D WebGL Realtime</span>
-              <span className="komorebi-pill">✦ Onsen khoáng nóng ngoài trời</span>
-              <span className="komorebi-pill">✦ Thính âm suối, gió & lò sưởi</span>
-              <span className="komorebi-pill">✦ Chuyển đổi Ngày / Đêm / Hoàng hôn</span>
+            <div className="komorebi-features-list" style={{ marginBottom: '1.5rem' }}>
+              <span className="komorebi-pill">📍 31A Hoàng Liên, Sa Pa</span>
+              <span className="komorebi-pill">🚶 5 phút đi bộ ra Nhà thờ Đá</span>
+              <span className="komorebi-pill">☕ Cafe ngắm thung lũng mây</span>
+              <span className="komorebi-pill">🚗 Đón trả xe tận nơi</span>
             </div>
             <div className="komorebi-actions">
-              <a href="/landing" className="komorebi-cta-btn">
-                <span>Khám Phá Không Gian 3D Ngay</span>
+              <a href="/explore" className="komorebi-cta-btn" style={{ background: 'linear-gradient(135deg, #881337, #be123c)' }}>
+                <span>🗺️ Khám Phá Xung Quanh</span>
                 <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
               </a>
               <a href="/rooms" className="komorebi-ghost-btn">
                 Xem phòng nghỉ dưỡng
               </a>
             </div>
+          </div>
+
+          <div className="komorebi-minimap-wrap" style={{ width: '100%', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 10px 25px rgba(0,0,0,0.4)' }}>
+            <MiniMap height="330px" showExpandBtn={true} />
           </div>
         </div>
       </div>

@@ -1,0 +1,144 @@
+/* MiniMap Styles */
+.mini-map-container {
+  position: relative;
+  width: 100%;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: #e2e8f0;
+}
+
+.mini-map-canvas {
+  width: 100%;
+  height: 100%;
+}
+
+/* Custom Homestay Pin on MiniMap */
+.custom-minimap-homestay-pin {
+  background: transparent;
+  border: none;
+}
+
+.minimap-homestay-pin-wrap {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transform: translate(-50%, -50%);
+  cursor: pointer;
+}
+
+.minimap-pin-core {
+  position: relative;
+  width: 32px;
+  height: 32px;
+  background: linear-gradient(135deg, #e11d48, #9f1239);
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 4px 14px rgba(225, 29, 72, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.95rem;
+  z-index: 5;
+}
+
+.minimap-pin-pulse {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 50px;
+  height: 50px;
+  background: rgba(225, 29, 72, 0.35);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  animation: minimapPulse 2s infinite ease-out;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.minimap-pin-pulse.delay {
+  animation-delay: 1s;
+}
+
+@keyframes minimapPulse {
+  0% { transform: translate(-50%, -50%) scale(0.6); opacity: 0.9; }
+  100% { transform: translate(-50%, -50%) scale(1.6); opacity: 0; }
+}
+
+.minimap-pin-title {
+  margin-top: 3px;
+  background: #881337;
+  color: #ffffff;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  padding: 0.2rem 0.5rem;
+  border-radius: 9999px;
+  border: 1px solid #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  white-space: nowrap;
+  z-index: 6;
+}
+
+/* Place Bubble */
+.custom-minimap-place-pin {
+  background: transparent;
+  border: none;
+}
+
+.minimap-place-bubble {
+  position: relative;
+  transform: translate(-50%, -50%);
+  padding: 0.2rem 0.5rem;
+  border-radius: 9999px;
+  color: #ffffff;
+  font-size: 0.625rem;
+  font-weight: 600;
+  border: 1px solid #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.minimap-place-bubble:hover {
+  transform: translate(-50%, -60%) scale(1.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+
+/* Floating Expand Button */
+.mini-map-expand-btn {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  z-index: 1000;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: linear-gradient(135deg, #881337, #be123c);
+  color: #ffffff;
+  padding: 0.5rem 1rem;
+  border-radius: 10px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-decoration: none;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 0 4px 16px rgba(136, 19, 55, 0.45);
+  transition: all 0.2s ease;
+}
+
+.mini-map-expand-btn:hover {
+  background: linear-gradient(135deg, #be123c, #e11d48);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(136, 19, 55, 0.6);
+}
+
+.mini-map-expand-arrow {
+  transition: transform 0.2s ease;
+}
+
+.mini-map-expand-btn:hover .mini-map-expand-arrow {
+  transform: translateX(3px);
+}

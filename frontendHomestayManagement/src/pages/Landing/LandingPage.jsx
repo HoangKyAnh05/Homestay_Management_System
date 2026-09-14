@@ -6,6 +6,7 @@ import FloatingContactWidget from '../../components/FloatingContact/FloatingCont
 import ArticleReviewModal from './ArticleReviewModal';
 import RoomScheduleCalendarModal from '../../components/RoomScheduleCalendar/RoomScheduleCalendarModal';
 import PolicyModal from '../../components/PolicyModal/PolicyModal';
+import MiniMap from '../../components/MiniMap/MiniMap';
 import { SCENERY_ARTICLES } from './sceneryArticles';
 
 const API_BASE_URL = (import.meta.env.VITE_API_URL || '') + '/api';
@@ -479,7 +480,7 @@ function LandingPage() {
             </h1>
 
             <p className="hero-description">
-              Lấy cảm hứng từ triết lý <em>Komorebi</em> — những vệt nắng lung linh lọc qua kẽ lá râm ran. Khu nghỉ dưỡng homestay sinh thái với vật liệu gỗ tuyết tùng, đá bazan tự nhiên và suối khoáng nóng ôm trọn thung lũng Mường Hoa.
+              Lấy cảm hứng từ không gian nghỉ dưỡng sương mờ Hoàng Liên Sơn — nơi những vệt nắng ban mai len lỏi qua ngọn thông hùng vĩ. Khu nghỉ dưỡng homestay sinh thái với vật liệu gỗ tuyết tùng, đá bazan tự nhiên và suối khoáng nóng ôm trọn thung lũng Sa Pa.
             </p>
 
             <div className="hero-actions">
@@ -489,9 +490,9 @@ function LandingPage() {
                 <span className="liquid-glow"></span>
               </button>
 
-              <a href="/explore" className="ghost-btn" style={{ border: '1.5px solid rgba(226, 177, 115, 0.5)' }} title="Khám phá xung quanh Lá Đỏ">
+              <a href="/explore" className="ghost-btn" style={{ border: '1.5px solid rgba(225, 29, 72, 0.6)', background: 'rgba(225, 29, 72, 0.15)', color: '#ffffff' }} title="Khám phá xung quanh Lá Đỏ">
                 <i data-lucide="map-pin"></i>
-                <span>Khám Phá Xung Quanh</span>
+                <span>🗺️ Khám Phá Xung Quanh</span>
               </a>
 
               <a href="/rooms" className="ghost-btn" style={{ border: '1.5px solid rgba(226, 177, 115, 0.5)' }}>
@@ -955,17 +956,17 @@ function LandingPage() {
                   <i data-lucide="map-pin"></i>
                   <span>ĐỊA ĐIỂM & ĐƯỜNG ĐI</span>
                 </div>
-                <h2 className="section-title">Ẩn Mình Giữa Thung Lũng Mây Mường Hoa</h2>
+                <h2 className="section-title">Vị Trí Đắc Địa Tại Thị Trấn Sa Pa</h2>
                 <p className="section-subtitle">
-                  Komorebi Sanctuary tọa lạc tại mỏm đồi biệt lập cao 1,650m, cách trung tâm thị xã Sa Pa khoảng 8.5km về phía Đông Nam.
+                  Lá Đỏ Homestay & Coffee tọa lạc tại số 31A Hoàng Liên, ngay trung tâm thị xã Sa Pa, ngắm trọn thung lũng mây và thuận tiện kết nối tới tất cả các điểm tham quan nổi tiếng.
                 </p>
 
                 <div className="location-details-grid">
                   <div className="location-detail-card">
                     <i data-lucide="navigation"></i>
                     <div>
-                      <h4>Tọa Độ Bản Đồ</h4>
-                      <p>22°20'08.4"N 103°50'42.1"E • Thôn Hầu Thào, Sa Pa, Lào Cai</p>
+                      <h4>Tọa Độ & Địa Chỉ</h4>
+                      <p>22°20'01.7"N 103°50'39.1"E • 31A Hoàng Liên, Sa Pa, Lào Cai</p>
                     </div>
                   </div>
 
@@ -987,19 +988,8 @@ function LandingPage() {
                 </div>
               </div>
 
-              <div className="location-map-card" style={{ position: 'relative' }}>
-                <iframe
-                  title="Google Map Komorebi Sanctuary"
-                  src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d118598.63664797816!2d103.78453488667537!3d22.336362547141517!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x36cd410c59e74249%3A0xbbe0a7fb0d63ba42!2zU2EgUGEsIEzDoG8gQ2FpLCBWaeG7h3QgTmFt!5e0!3m2!1svi!2s!4v1700000000000!5m2!1svi!2s"
-                  loading="lazy"
-                  referrerPolicy="no-referrer-when-downgrade"
-                ></iframe>
-                <div style={{ position: 'absolute', bottom: '16px', right: '16px', zIndex: 10 }}>
-                  <a href="/explore" className="liquid-btn" style={{ padding: '8px 16px', fontSize: '0.85rem', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                    <span className="btn-text">Khám Phá Xung Quanh Lá Đỏ</span>
-                    <span className="liquid-glow"></span>
-                  </a>
-                </div>
+              <div className="location-map-card">
+                <MiniMap height="380px" showExpandBtn={true} />
               </div>
             </div>
           </div>
@@ -1131,7 +1121,7 @@ function LandingPage() {
 
         <div className="footer-bottom">
           <div className="container footer-bottom-inner">
-            <p>© 2026 Lá Đỏ Homestay • Komorebi Sanctuary Retreat. Mọi quyền được bảo lưu.</p>
+            <p>© 2026 Lá Đỏ Homestay & Coffee • Mountain & Cloud Retreat in Sa Pa. Mọi quyền được bảo lưu.</p>
             <p className="design-credit">Thiết kế & Tương tác 3D WebGL theo chuẩn ThreeUI & GSAP</p>
           </div>
         </div>
@@ -1242,7 +1232,7 @@ function LandingPage() {
           <button className="modal-close-btn" id="tour-modal-close-btn"><i data-lucide="x"></i></button>
           <div className="tour-header">
             <span className="badge-dot"></span>
-            <h3>Trải Nghiệm Toàn Cảnh 3D Komorebi Sanctuary</h3>
+            <h3>Trải Nghiệm Toàn Cảnh 3D Lá Đỏ Sanctuary</h3>
             <p>Di chuột hoặc kéo thả để tương tác với bầu không khí và sương mù 3D thực tế ảo.</p>
           </div>
           <div className="tour-canvas-wrap" id="tour-canvas-wrap">
@@ -1264,7 +1254,7 @@ function LandingPage() {
                 title="Khám phá bản đồ xung quanh Lá Đỏ"
               >
                 <i data-lucide="map-pin"></i>
-                <span>Khám Phá Xung Quanh</span>
+                <span>🗺️ Khám Phá Xung Quanh</span>
               </a>
               <span className="hud-info">Kéo thả chuột để quay 360°</span>
             </div>
