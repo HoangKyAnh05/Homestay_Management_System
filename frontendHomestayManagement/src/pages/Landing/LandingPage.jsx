@@ -488,15 +488,10 @@ function LandingPage() {
                 <i data-lucide="arrow-down" className="btn-icon"></i>
                 <span className="liquid-glow"></span>
               </button>
-              
-              <button className="ghost-btn virtual-tour-btn" id="virtual-tour-btn">
-                <i data-lucide="compass" className="btn-icon"></i>
-                <span>Trải Nghiệm 3D View</span>
-              </button>
 
-              <a href="/explore" className="ghost-btn" style={{ border: '1.5px solid rgba(225, 29, 72, 0.6)', background: 'rgba(225, 29, 72, 0.15)', color: '#ffffff' }} title="Khám phá xung quanh Lá Đỏ">
+              <a href="/explore" className="ghost-btn" style={{ border: '1.5px solid rgba(226, 177, 115, 0.5)' }} title="Khám phá xung quanh Lá Đỏ">
                 <i data-lucide="map-pin"></i>
-                <span>🗺️ Khám Phá Xung Quanh</span>
+                <span>Khám Phá Xung Quanh</span>
               </a>
 
               <a href="/rooms" className="ghost-btn" style={{ border: '1.5px solid rgba(226, 177, 115, 0.5)' }}>
@@ -1001,7 +996,7 @@ function LandingPage() {
                 ></iframe>
                 <div style={{ position: 'absolute', bottom: '16px', right: '16px', zIndex: 10 }}>
                   <a href="/explore" className="liquid-btn" style={{ padding: '8px 16px', fontSize: '0.85rem', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                    <span className="btn-text">🗺️ Mở Bản Đồ Khám Phá Xung Quanh</span>
+                    <span className="btn-text">Khám Phá Xung Quanh Lá Đỏ</span>
                     <span className="liquid-glow"></span>
                   </a>
                 </div>
@@ -1269,7 +1264,7 @@ function LandingPage() {
                 title="Khám phá bản đồ xung quanh Lá Đỏ"
               >
                 <i data-lucide="map-pin"></i>
-                <span>🗺️ Khám Phá Xung Quanh</span>
+                <span>Khám Phá Xung Quanh</span>
               </a>
               <span className="hud-info">Kéo thả chuột để quay 360°</span>
             </div>
