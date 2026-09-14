@@ -776,7 +776,7 @@ function RoomCard({ room, selected, onToggle, criteria }) {
       <div className="public-room-body">
         <div className="public-room-title-row">
           <h3>{title}</h3>
-          <span> {room.averageRating || 4.9}</span>
+          <span> {room.averageRating ? Number(room.averageRating).toFixed(1) : '5.0'}</span>
         </div>
         <p>{room.description || 'Không gian nghỉ dưỡng tiện nghi, phù hợp cho kỳ lưu trú của bạn.'}</p>
         <div className="public-room-meta">

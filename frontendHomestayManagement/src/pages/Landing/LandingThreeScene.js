@@ -39,13 +39,26 @@ export class KomorebiScene {
 
     this.lastFrameTime = 0;
     this.maxFps = 30; // Solid smooth 30 FPS for background ambient 3D scene (prevents GPU throttle)
+    this.intersectionObserver = null;
 
     this.init();
     this.createAtmosphere();
     this.createTerrain();
     this.createFireflies();
     this.bindEvents();
+    this.initObserver();
     this.animate();
+  }
+
+  initObserver() {
+    if (typeof window !== 'undefined' && 'IntersectionObserver' in window && this.canvas) {
+      this.intersectionObserver = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          this.isPaused = !entry.isIntersecting;
+        });
+      }, { threshold: 0.05 });
+      this.intersectionObserver.observe(this.canvas);
+    }
   }
 
   init() {
@@ -301,13 +314,37 @@ export class KomorebiScene {
     if (this.animationFrameId) {
       cancelAnimationFrame(this.animationFrameId);
     }
+    if (this.intersectionObserver) {
+      this.intersectionObserver.disconnect();
+    }
     window.removeEventListener('resize', this.onResizeHandler);
     window.removeEventListener('mousemove', this.onMouseMoveHandler);
     document.removeEventListener('visibilitychange', this.onVisibilityHandler);
 
+    if (this.terrain) {
+      this.terrain.geometry?.dispose();
+      this.terrain.material?.dispose();
+    }
+    if (this.terrainWire) {
+      this.terrainWire.geometry?.dispose();
+      this.terrainWire.material?.dispose();
+    }
+    if (this.mistPlanes) {
+      this.mistPlanes.forEach((mist) => {
+        mist.geometry?.dispose();
+        mist.material?.dispose();
+      });
+    }
+    if (this.particles) {
+      this.particles.geometry?.dispose();
+      if (this.particles.material?.map) this.particles.material.map.dispose();
+      this.particles.material?.dispose();
+    }
+
     if (this.renderer) {
       try {
         this.renderer.dispose();
+        this.renderer.forceContextLoss?.();
       } catch (e) {}
     }
   }

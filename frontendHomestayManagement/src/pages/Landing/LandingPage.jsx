@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import './LandingPage.css';
 import { LandingApp, VILLAS_DATA } from './LandingController';
 import { resolveImageUrl } from '../../utils/imageUrl';
@@ -11,6 +11,55 @@ import ItinerarySection from '../../components/Explore/ItinerarySection';
 import { SCENERY_ARTICLES } from './sceneryArticles';
 
 const API_BASE_URL = (import.meta.env.VITE_API_URL || '') + '/api';
+
+const weekdays = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN']
+
+function buildMonth(baseDate, offset) {
+  const firstDay = new Date(baseDate.getFullYear(), baseDate.getMonth() + offset, 1)
+  const lastDay = new Date(firstDay.getFullYear(), firstDay.getMonth() + 1, 0)
+  return {
+    title: new Intl.DateTimeFormat('vi-VN', { month: 'long', year: 'numeric' }).format(firstDay),
+    year: firstDay.getFullYear(),
+    monthIndex: firstDay.getMonth(),
+    leading: (firstDay.getDay() + 6) % 7,
+    days: lastDay.getDate(),
+  }
+}
+
+function formatMainDate(date) {
+  if (!date) return 'Chọn ngày'
+  return new Intl.DateTimeFormat('vi-VN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  }).format(date)
+}
+
+function formatWeekday(date) {
+  if (!date) return 'Ngày lưu trú'
+  return new Intl.DateTimeFormat('vi-VN', { weekday: 'long' }).format(date)
+}
+
+function toDateKey(date) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function isSameDate(firstDate, secondDate) {
+  if (!firstDate || !secondDate) return false
+  return (
+    firstDate.getFullYear() === secondDate.getFullYear() &&
+    firstDate.getMonth() === secondDate.getMonth() &&
+    firstDate.getDate() === secondDate.getDate()
+  )
+}
+
+function isBetweenDates(date, startDate, endDate) {
+  if (!startDate || !endDate) return false
+  return date > startDate && date < endDate
+}
 
 function formatVND(num) {
   return new Intl.NumberFormat('vi-VN').format(Number(num) || 0) + '₫';
@@ -25,10 +74,11 @@ function getFallbackRoomImage(roomTypeName, roomTypeId) {
   if (name.includes('connecting') || name.includes('kết nối')) return '/home_5/image_1.jpg';
 
   const fallbacks = [
-    '/landing/images/homestay/homestay-quan-1-2.png',
-    '/landing/images/homestay/homestay-vinh-hy-2.png',
-    '/landing/images/homestay/images-2.jpg',
-    '/landing/images/homestay/mau-nha-homestay-dep-22.jpg',
+    '/home_1/image.png',
+    '/home_2/image_1.jpg',
+    '/home_3/image_3.jpg',
+    '/home_4/image_1.jpg',
+    '/home_5/image_1.jpg'
   ];
   const idNum = Math.max(1, Number(roomTypeId) || 1);
   const idx = (idNum - 1) % fallbacks.length;
@@ -36,6 +86,7 @@ function getFallbackRoomImage(roomTypeName, roomTypeId) {
 }
 
 function getRoomPrice(room) {
+  if (!room) return 3850000;
   if (room.price != null && Number(room.price) > 0) return Number(room.price);
   if (room.weekdayPrice != null && Number(room.weekdayPrice) > 0) return Number(room.weekdayPrice);
   if (room.weekendPrice != null && Number(room.weekendPrice) > 0) return Number(room.weekendPrice);
@@ -55,8 +106,65 @@ function LandingPage() {
   const [policyModal, setPolicyModal] = useState({ isOpen: false, tab: 'checkin' });
   const [liveArticles, setLiveArticles] = useState([]);
 
-  const today = new Date().toISOString().split('T')[0];
-  const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+  // Luxury Custom Date Picker State for Booking Dock
+  const dockRef = useRef(null);
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [activeDateField, setActiveDateField] = useState('checkin');
+  const [checkInDate, setCheckInDate] = useState(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  });
+  const [checkOutDate, setCheckOutDate] = useState(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() + 1);
+    return d;
+  });
+
+  const visibleMonths = useMemo(() => {
+    const baseDate = checkInDate || new Date();
+    return [buildMonth(baseDate, 0), buildMonth(baseDate, 1)];
+  }, [checkInDate]);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (dockRef.current && !dockRef.current.contains(e.target)) {
+        setIsCalendarOpen(false);
+      }
+    };
+    document.addEventListener('pointerdown', handleClickOutside);
+    return () => document.removeEventListener('pointerdown', handleClickOutside);
+  }, []);
+
+  const handleSelectDockDate = (date) => {
+    const todayZero = new Date();
+    todayZero.setHours(0, 0, 0, 0);
+    if (date < todayZero) return;
+
+    if (activeDateField === 'checkin') {
+      setCheckInDate(date);
+      const nextOut = new Date(date);
+      nextOut.setDate(nextOut.getDate() + 1);
+      setCheckOutDate(nextOut);
+      setActiveDateField('checkout');
+    } else {
+      if (date <= checkInDate) {
+        setCheckInDate(date);
+        const nextOut = new Date(date);
+        nextOut.setDate(nextOut.getDate() + 1);
+        setCheckOutDate(nextOut);
+        setActiveDateField('checkout');
+        return;
+      }
+      setCheckOutDate(date);
+      setIsCalendarOpen(false);
+      setActiveDateField('checkin');
+    }
+  };
+
+  const today = toDateKey(checkInDate);
+  const tomorrow = toDateKey(checkOutDate);
 
   useEffect(() => {
     dbRoomsRef.current = dbRooms;
@@ -522,16 +630,95 @@ function LandingPage() {
           </div>
 
           {/* Floating Quick Booking Bar */}
-          <div className="booking-dock" id="booking-dock">
+          <div className="booking-dock" id="booking-dock" ref={dockRef}>
+            {/* Custom 2-Month Calendar Dropdown */}
+            {isCalendarOpen && (
+              <div className="dock-calendar-wrapper">
+                <div className="dock-calendar-months">
+                  {visibleMonths.map((m) => {
+                    const todayZero = new Date();
+                    todayZero.setHours(0, 0, 0, 0);
+
+                    const cells = [
+                      ...Array.from({ length: m.leading }, (_, index) => ({ key: `empty-${index}` })),
+                      ...Array.from({ length: m.days }, (_, index) => ({ key: index + 1, day: index + 1 })),
+                    ];
+
+                    return (
+                      <div key={`${m.year}-${m.monthIndex}`} className="dock-cal-month">
+                        <div className="dock-cal-month-title">{m.title}</div>
+                        <div className="dock-cal-weekdays">
+                          {weekdays.map((wd) => (
+                            <span key={wd}>{wd}</span>
+                          ))}
+                        </div>
+                        <div className="dock-cal-days-grid">
+                          {cells.map((cell) => {
+                            if (!cell.day) return <span key={cell.key} className="dock-cal-empty" />;
+                            const d = new Date(m.year, m.monthIndex, cell.day);
+                            const isStart = isSameDate(d, checkInDate);
+                            const isEnd = isSameDate(d, checkOutDate);
+                            const isInRange = isBetweenDates(d, checkInDate, checkOutDate);
+                            const isPast = d < todayZero;
+                            const isBeforeIn = activeDateField === 'checkout' && checkInDate && d <= checkInDate;
+                            const isDisabled = isPast || isBeforeIn;
+
+                            return (
+                              <button
+                                key={cell.key}
+                                type="button"
+                                className={[
+                                  'dock-cal-day-btn',
+                                  isStart ? 'is-selected is-start' : '',
+                                  isEnd ? 'is-selected is-end' : '',
+                                  isInRange ? 'is-in-range' : '',
+                                ].filter(Boolean).join(' ')}
+                                disabled={isDisabled}
+                                onClick={() => handleSelectDockDate(d)}
+                              >
+                                {cell.day}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             <div className="booking-dock-inner">
               <div className="dock-col">
-                <label htmlFor="dock-checkin"><i data-lucide="calendar"></i> Ngày Đến</label>
-                <input type="date" id="dock-checkin" defaultValue={today} />
+                <label><i data-lucide="calendar"></i> Ngày Đến</label>
+                <button
+                  type="button"
+                  className="dock-date-trigger-btn"
+                  onClick={() => {
+                    setActiveDateField('checkin');
+                    setIsCalendarOpen((c) => !c);
+                  }}
+                >
+                  <span className="dock-date-main">{formatMainDate(checkInDate)}</span>
+                  <span className="dock-date-sub">{formatWeekday(checkInDate)}</span>
+                </button>
+                <input type="hidden" id="dock-checkin" value={today} />
               </div>
               <div className="dock-divider"></div>
               <div className="dock-col">
-                <label htmlFor="dock-checkout"><i data-lucide="calendar-check"></i> Ngày Đi</label>
-                <input type="date" id="dock-checkout" defaultValue={tomorrow} />
+                <label><i data-lucide="calendar-check"></i> Ngày Đi</label>
+                <button
+                  type="button"
+                  className="dock-date-trigger-btn"
+                  onClick={() => {
+                    setActiveDateField('checkout');
+                    setIsCalendarOpen(true);
+                  }}
+                >
+                  <span className="dock-date-main">{formatMainDate(checkOutDate)}</span>
+                  <span className="dock-date-sub">{formatWeekday(checkOutDate)}</span>
+                </button>
+                <input type="hidden" id="dock-checkout" value={tomorrow} />
               </div>
               <div className="dock-divider"></div>
               <div className="dock-col">

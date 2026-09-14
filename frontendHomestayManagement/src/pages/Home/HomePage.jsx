@@ -5,6 +5,7 @@ import { houseTypeName } from '../../utils/houseType'
 import { resolveImageUrl } from '../../utils/imageUrl'
 import PolicyModal from '../../components/PolicyModal/PolicyModal'
 import MiniMap from '../../components/MiniMap/MiniMap'
+import ItinerarySection from '../../components/Explore/ItinerarySection'
 import './HomePage.css'
 
 const API_BASE_URL = (import.meta.env.VITE_API_URL || '') + '/api'
@@ -305,7 +306,7 @@ function RoomCard({ room, criteria }) {
 
         <span className="room-card-badge">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-          4.9
+          {room.averageRating ? Number(room.averageRating).toFixed(1) : '5.0'}
         </span>
         <button
           type="button"
@@ -689,7 +690,7 @@ function ReviewsSection() {
 
   const displayReviews = useMemo(() => {
     if (realReviews.length > 0) {
-      return realReviews.map((r) => {
+      return realReviews.slice(0, 3).map((r) => {
         const name = r.customerName || 'Khách lưu trú'
         const initials = name.split(' ').map((w) => w[0]).join('').slice(-2).toUpperCase() || 'KH'
         return {
@@ -1291,6 +1292,7 @@ function HomePage() {
       <RoomsSection rooms={rooms} loading={loading} />
       <FeaturesSection />
       <KomorebiSanctuarySection />
+      <ItinerarySection isLandingPageMode={false} onSelectItinerary={() => window.location.assign('/explore')} />
       <ReviewsSection />
       <GallerySection rooms={rooms} />
       <HomeFooter />

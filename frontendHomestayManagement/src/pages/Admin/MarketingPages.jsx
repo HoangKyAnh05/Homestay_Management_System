@@ -130,8 +130,10 @@ function Icon({ name, size = 18 }) {
     externalLink: <><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="m10 14 11-11"/></>,
     comment: <><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></>,
     refresh: <><path d="M21.5 2v6h-6"/><path d="M21.34 15.57a10 10 0 1 1-.57-8.38l6.73-6.19"/></>,
+    'chevron-down': <path d="m6 9 6 6 6-6"/>,
+    'chevron-up': <path d="m18 15-6-6-6 6"/>,
   }
-  return <svg className="mkt-icon" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>
+  return <svg className="mkt-icon" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name] || paths.arrow}</svg>
 }
 
 function StatusBadge({ value }) {
@@ -2074,6 +2076,7 @@ export function MarketingAIAgentPage() {
 
   const [testingAccounts, setTestingAccounts] = useState({})
   const [accountStatusMessages, setAccountStatusMessages] = useState({})
+  const [isSocialChannelsCollapsed, setIsSocialChannelsCollapsed] = useState(false)
 
   const handleTestAccount = async (account) => {
     setTestingAccounts((prev) => ({ ...prev, [account.id]: true }))
@@ -2305,12 +2308,8 @@ export function MarketingAIAgentPage() {
     const topic = multiPostModal.title || 'Lá Đỏ Homestay Sa Pa - Trải nghiệm săn mây thung lũng Mường Hoa';
     setMultiPostModal((c) => ({ ...c, generatingAi: true, errorMsg: '' }));
 
-    const openAiApiKey = (
-      localStorage.getItem('OPENAI_API_KEY') ||
-      localStorage.getItem('AI_API_KEY') ||
-      ''
-    ).trim();
-    const geminiApiKey = (localStorage.getItem('GEMINI_API_KEY') || '').trim();
+    const geminiApiKey = (localStorage.getItem('GEMINI_API_KEY') || import.meta.env.VITE_GEMINI_API_KEY || '').trim();
+    const openAiApiKey = (localStorage.getItem('OPENAI_API_KEY') || localStorage.getItem('AI_API_KEY') || import.meta.env.VITE_OPENAI_API_KEY || '').trim();
 
     const topicLabelMap = {
       SAN_MAY: 'Săn mây bồng bềnh & View thung lũng Mường Hoa',
@@ -2371,6 +2370,38 @@ BẮT BUỘC trả về đúng 1 JSON duy nhất, không giải thích ngoài:
 }`;
 
     try {
+      if (geminiApiKey && !geminiApiKey.startsWith('sk-')) {
+        const candidateModels = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-2.5-pro'];
+        for (const model of candidateModels) {
+          try {
+            const res = await axios.post(
+              `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`,
+              {
+                contents: [{ parts: [{ text: prompt }] }],
+                generationConfig: { responseMimeType: 'application/json', temperature: 0.7 }
+              },
+              { timeout: 15000 }
+            );
+            const raw = res.data?.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (raw) {
+              const aiResult = JSON.parse(raw);
+              if (aiResult?.caption) {
+                setMultiPostModal((c) => ({
+                  ...c,
+                  title: aiResult.title || c.title,
+                  caption: aiResult.caption,
+                  hashtags: aiResult.hashtags || c.hashtags,
+                  generatingAi: false,
+                }));
+                return;
+              }
+            }
+          } catch (geminiErr) {
+            console.warn(`Gemini (${model}) caption gen error:`, geminiErr);
+          }
+        }
+      }
+
       if (openAiApiKey) {
         try {
           const res = await axios.post(
@@ -2407,37 +2438,7 @@ BẮT BUỘC trả về đúng 1 JSON duy nhất, không giải thích ngoài:
             }
           }
         } catch (openAiErr) {
-          console.warn('OpenAI caption gen error, trying Gemini fallback:', openAiErr);
-        }
-      }
-
-      if (geminiApiKey && !geminiApiKey.startsWith('sk-')) {
-        const candidateModels = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-flash-latest'];
-        for (const model of candidateModels) {
-          try {
-            const res = await axios.post(
-              `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`,
-              {
-                contents: [{ parts: [{ text: prompt }] }],
-                generationConfig: { responseMimeType: 'application/json', temperature: 0.7 }
-              },
-              { timeout: 15000 }
-            );
-            const raw = res.data?.candidates?.[0]?.content?.parts?.[0]?.text;
-            if (raw) {
-              const aiResult = JSON.parse(raw);
-              if (aiResult?.caption) {
-                setMultiPostModal((c) => ({
-                  ...c,
-                  title: aiResult.title || c.title,
-                  caption: aiResult.caption,
-                  hashtags: aiResult.hashtags || c.hashtags,
-                  generatingAi: false,
-                }));
-                return;
-              }
-            }
-          } catch {}
+          console.warn('OpenAI caption gen error, fallback to template:', openAiErr);
         }
       }
     } catch (e) {
@@ -2764,7 +2765,32 @@ BẮT BUỘC trả về đúng 1 JSON duy nhất, không giải thích ngoài:
               <h2>Kênh Mạng Xã Hội Đã Kết Nối</h2>
               <p>Quản lý Fanpage Facebook & Kênh YouTube của Lá Đỏ Homestay để tự động xuất bản nội dung</p>
             </div>
-            <div className="mkt-social-manager-actions">
+            <div className="mkt-social-manager-actions" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <button
+                type="button"
+                className="mkt-btn--collapse-channels"
+                onClick={() => setIsSocialChannelsCollapsed((prev) => !prev)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '7px 14px',
+                  borderRadius: '8px',
+                  border: '1px solid #cbd5e1',
+                  background: '#ffffff',
+                  color: '#334155',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+                }}
+                title={isSocialChannelsCollapsed ? 'Hiển thị danh sách kênh kết nối' : 'Ẩn danh sách kênh cho gọn màn hình'}
+              >
+                <Icon name={isSocialChannelsCollapsed ? 'chevron-down' : 'chevron-up'} size={15} />
+                <span>{isSocialChannelsCollapsed ? `Hiện danh sách kênh (${socialAccounts.length || 2})` : 'Ẩn các kênh'}</span>
+              </button>
+
               <button
                 type="button"
                 className="mkt-btn--add-account"
@@ -2776,149 +2802,149 @@ BẮT BUỘC trả về đúng 1 JSON duy nhất, không giải thích ngoài:
             </div>
           </div>
 
-          <div className="mkt-social-cards-grid">
-            {socialAccounts.length > 0 ? (
-              socialAccounts.map((acc) => {
-                const isFb = acc.platform === 'FACEBOOK'
-                const isYt = acc.platform === 'YOUTUBE'
-                const isTesting = testingAccounts[acc.id]
-                const statusMsg = accountStatusMessages[acc.id]
+          {!isSocialChannelsCollapsed && (
+            <div className="mkt-social-cards-grid animate-fade-in">
+              {socialAccounts.length > 0 ? (
+                socialAccounts.map((acc) => {
+                  const isFb = acc.platform === 'FACEBOOK'
+                  const isYt = acc.platform === 'YOUTUBE'
+                  const isTesting = testingAccounts[acc.id]
+                  const statusMsg = accountStatusMessages[acc.id]
 
-                return (
-                  <article className="mkt-social-card-item" key={acc.id}>
+                  return (
+                    <article className="mkt-social-card-item" key={acc.id}>
+                      <div className="mkt-social-card-top">
+                        <div className="mkt-social-card-profile">
+                          <div
+                            className="mkt-social-card-avatar"
+                            style={{
+                              background: isFb ? '#1877f2' : isYt ? '#ff0000' : '#0284c7'
+                            }}
+                          >
+                            {acc.accountName?.charAt(0)?.toUpperCase() || (isFb ? 'F' : 'Y')}
+                          </div>
+                          <div className="mkt-social-card-info">
+                            <strong>{acc.accountName}</strong>
+                            <small>ID: {acc.externalAccountId || acc.id}</small>
+                          </div>
+                        </div>
+                        <span className="mkt-social-card-platform-icon" title={isFb ? 'Facebook Page' : isYt ? 'YouTube Channel' : 'Social'}>
+                          {isFb && (
+                            <svg viewBox="0 0 24 24" width="24" height="24" fill="#1877F2">
+                              <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                            </svg>
+                          )}
+                          {isYt && (
+                            <svg viewBox="0 0 24 24" width="24" height="24" fill="#FF0000">
+                              <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                            </svg>
+                          )}
+                        </span>
+                      </div>
+
+                      <div className="mkt-social-card-badges">
+                        <span className={`mkt-platform-pill ${isFb ? 'mkt-platform-pill--facebook' : isYt ? 'mkt-platform-pill--youtube' : ''}`}>
+                          {isFb ? 'Facebook Fanpage' : isYt ? 'YouTube Channel' : 'Social API'}
+                        </span>
+                        <span className="mkt-security-tag">
+                          <Icon name="check" size={13} />
+                          Token vĩnh viễn (Đã kích hoạt)
+                        </span>
+                      </div>
+
+                      {statusMsg && (
+                        <div style={{ fontSize: '12px', color: statusMsg.success ? '#15803d' : '#b91c1c', background: statusMsg.success ? '#f0fdf4' : '#fef2f2', padding: '6px 10px', borderRadius: '6px', border: `1px solid ${statusMsg.success ? '#bbf7d0' : '#fecaca'}` }}>
+                          {statusMsg.text}
+                        </div>
+                      )}
+
+                      <div className="mkt-social-card-bottom">
+                        <button
+                          type="button"
+                          className="mkt-btn--test-connection"
+                          onClick={() => handleTestAccount(acc)}
+                          disabled={isTesting}
+                        >
+                          <Icon name="refresh-cw" size={14} className={isTesting ? 'spin' : ''} />
+                          <span>{isTesting ? 'Đang kiểm tra...' : 'Kiểm tra kết nối'}</span>
+                        </button>
+                        <div className="mkt-btn--active-check" title="Token sẵn sàng"><Icon name="check" size={16} /></div>
+                        <button
+                          type="button"
+                          className="mkt-btn--delete-account"
+                          onClick={() => handleDeleteSocialAccount(acc.id)}
+                          title="Xóa tài khoản này"
+                        >
+                          <Icon name="trash" size={15} />
+                        </button>
+                      </div>
+                    </article>
+                  )
+                })
+              ) : (
+                // Gợi ý thẻ mẫu khi chưa có tài khoản nào
+                <>
+                  <article className="mkt-social-card-item">
                     <div className="mkt-social-card-top">
                       <div className="mkt-social-card-profile">
-                        <div
-                          className="mkt-social-card-avatar"
-                          style={{
-                            background: isFb ? '#1877f2' : isYt ? '#ff0000' : '#0284c7'
-                          }}
-                        >
-                          {acc.accountName?.charAt(0)?.toUpperCase() || (isFb ? 'F' : 'Y')}
+                        <div className="mkt-social-card-avatar" style={{ background: '#1877f2' }}>
+                          L
                         </div>
                         <div className="mkt-social-card-info">
-                          <strong>{acc.accountName}</strong>
-                          <small>ID: {acc.externalAccountId || acc.id}</small>
+                          <strong>Lá Đỏ Homestay Sa Pa</strong>
+                          <small>ID: 290099357528057</small>
                         </div>
                       </div>
-                      <span className="mkt-social-card-platform-icon" title={isFb ? 'Facebook Page' : isYt ? 'YouTube Channel' : 'Social'}>
-                        {isFb && (
-                          <svg viewBox="0 0 24 24" width="24" height="24" fill="#1877F2">
-                            <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-                          </svg>
-                        )}
-                        {isYt && (
-                          <svg viewBox="0 0 24 24" width="24" height="24" fill="#FF0000">
-                            <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
-                          </svg>
-                        )}
+                      <span className="mkt-social-card-platform-icon">
+                        <svg viewBox="0 0 24 24" width="24" height="24" fill="#1877F2">
+                          <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                        </svg>
                       </span>
                     </div>
-
                     <div className="mkt-social-card-badges">
-                      <span className={`mkt-platform-pill ${isFb ? 'mkt-platform-pill--facebook' : isYt ? 'mkt-platform-pill--youtube' : ''}`}>
-                        {isFb ? 'Facebook Fanpage' : isYt ? 'YouTube Channel' : 'Social API'}
-                      </span>
-                      <span className="mkt-security-tag">
-                        <Icon name="check" size={13} />
-                        Token vĩnh viễn (Đã kích hoạt)
-                      </span>
+                      <span className="mkt-platform-pill mkt-platform-pill--facebook">Facebook Fanpage</span>
+                      <span className="mkt-security-tag"><Icon name="check" size={13} />Đã kết nối</span>
                     </div>
-
-                    {statusMsg && (
-                      <div style={{ fontSize: '12px', color: statusMsg.success ? '#15803d' : '#b91c1c', background: statusMsg.success ? '#f0fdf4' : '#fef2f2', padding: '6px 10px', borderRadius: '6px', border: `1px solid ${statusMsg.success ? '#bbf7d0' : '#fecaca'}` }}>
-                        {statusMsg.text}
-                      </div>
-                    )}
-
                     <div className="mkt-social-card-bottom">
-                      <button
-                        type="button"
-                        className="mkt-btn--test-connection"
-                        onClick={() => handleTestAccount(acc)}
-                        disabled={isTesting}
-                      >
-                        {isTesting ? <span className="mkt-spinner" /> : <Icon name="refresh" size={14} />}
-                        {isTesting ? 'Đang kiểm tra kết nối...' : 'Kiểm tra kết nối'}
+                      <button type="button" className="mkt-btn--test-connection" onClick={() => setApiConfigModal((c) => ({ ...c, open: true, platform: 'FACEBOOK' }))}>
+                        Kiểm tra kết nối
                       </button>
-                      <div className="mkt-btn--active-check" title="Tài khoản đang hoạt động ổn định">
-                        <Icon name="check" size={16} />
-                      </div>
-                      <button
-                        type="button"
-                        className="mkt-btn--delete-account"
-                        onClick={() => handleDeleteSocialAccount(acc.id)}
-                        title="Xóa tài khoản này"
-                      >
-                        <Icon name="trash" size={15} />
-                      </button>
+                      <div className="mkt-btn--active-check"><Icon name="check" size={16} /></div>
                     </div>
                   </article>
-                )
-              })
-            ) : (
-              // Gợi ý thẻ mẫu khi chưa có tài khoản nào
-              <>
-                <article className="mkt-social-card-item">
-                  <div className="mkt-social-card-top">
-                    <div className="mkt-social-card-profile">
-                      <div className="mkt-social-card-avatar" style={{ background: '#1877f2' }}>
-                        L
-                      </div>
-                      <div className="mkt-social-card-info">
-                        <strong>Lá Đỏ Homestay Sa Pa</strong>
-                        <small>ID: 290099357528057</small>
-                      </div>
-                    </div>
-                    <span className="mkt-social-card-platform-icon">
-                      <svg viewBox="0 0 24 24" width="24" height="24" fill="#1877F2">
-                        <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-                      </svg>
-                    </span>
-                  </div>
-                  <div className="mkt-social-card-badges">
-                    <span className="mkt-platform-pill mkt-platform-pill--facebook">Facebook Fanpage</span>
-                    <span className="mkt-security-tag"><Icon name="check" size={13} />Đã kết nối</span>
-                  </div>
-                  <div className="mkt-social-card-bottom">
-                    <button type="button" className="mkt-btn--test-connection" onClick={() => setApiConfigModal((c) => ({ ...c, open: true, platform: 'FACEBOOK' }))}>
-                      Kiểm tra kết nối
-                    </button>
-                    <div className="mkt-btn--active-check"><Icon name="check" size={16} /></div>
-                  </div>
-                </article>
 
-                <article className="mkt-social-card-item">
-                  <div className="mkt-social-card-top">
-                    <div className="mkt-social-card-profile">
-                      <div className="mkt-social-card-avatar" style={{ background: '#ff0000' }}>
-                        Y
+                  <article className="mkt-social-card-item">
+                    <div className="mkt-social-card-top">
+                      <div className="mkt-social-card-profile">
+                        <div className="mkt-social-card-avatar" style={{ background: '#ff0000' }}>
+                          Y
+                        </div>
+                        <div className="mkt-social-card-info">
+                          <strong>Kênh YouTube Lá Đỏ Official</strong>
+                          <small>ID: UC_9Z9REZF</small>
+                        </div>
                       </div>
-                      <div className="mkt-social-card-info">
-                        <strong>Kênh YouTube Lá Đỏ Official</strong>
-                        <small>ID: UC_9Z9REZF</small>
-                      </div>
+                      <span className="mkt-social-card-platform-icon">
+                        <svg viewBox="0 0 24 24" width="24" height="24" fill="#FF0000">
+                          <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                        </svg>
+                      </span>
                     </div>
-                    <span className="mkt-social-card-platform-icon">
-                      <svg viewBox="0 0 24 24" width="24" height="24" fill="#FF0000">
-                        <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
-                      </svg>
-                    </span>
-                  </div>
-                  <div className="mkt-social-card-badges">
-                    <span className="mkt-platform-pill mkt-platform-pill--youtube">YouTube Channel</span>
-                    <span className="mkt-security-tag"><Icon name="check" size={13} />Đã kết nối</span>
-                  </div>
-                  <div className="mkt-social-card-bottom">
-                    <button type="button" className="mkt-btn--test-connection" onClick={() => setApiConfigModal((c) => ({ ...c, open: true, platform: 'YOUTUBE' }))}>
-                      Kiểm tra kết nối
-                    </button>
-                    <div className="mkt-btn--active-check"><Icon name="check" size={16} /></div>
-                  </div>
-                </article>
-              </>
-            )}
-          </div>
+                    <div className="mkt-social-card-badges">
+                      <span className="mkt-platform-pill mkt-platform-pill--youtube">YouTube Channel</span>
+                      <span className="mkt-security-tag"><Icon name="check" size={13} />Đã kết nối</span>
+                    </div>
+                    <div className="mkt-social-card-bottom">
+                      <button type="button" className="mkt-btn--test-connection" onClick={() => setApiConfigModal((c) => ({ ...c, open: true, platform: 'YOUTUBE' }))}>
+                        Kiểm tra kết nối
+                      </button>
+                      <div className="mkt-btn--active-check"><Icon name="check" size={16} /></div>
+                    </div>
+                  </article>
+                </>
+              )}
+            </div>
+          )}
         </section>
 
         {/*  Hàng Đợi Đăng Tải (Queue Section - Placed ABOVE Video Library) */}

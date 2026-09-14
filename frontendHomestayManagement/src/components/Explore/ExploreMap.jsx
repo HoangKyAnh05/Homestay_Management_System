@@ -336,11 +336,37 @@ export default function ExploreMap({
   };
 
   const toggleFullscreen = () => {
-    setIsFullscreen(!isFullscreen);
-    setTimeout(() => {
+    setIsFullscreen((prev) => !prev);
+  };
+
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      if (isFullscreen) {
+        document.body.classList.add('map-fullscreen-active');
+      } else {
+        document.body.classList.remove('map-fullscreen-active');
+      }
+    }
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && isFullscreen) {
+        setIsFullscreen(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    const timer = setTimeout(() => {
       if (mapInstanceRef.current) mapInstanceRef.current.invalidateSize();
     }, 250);
-  };
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      clearTimeout(timer);
+      if (typeof document !== 'undefined') {
+        document.body.classList.remove('map-fullscreen-active');
+      }
+    };
+  }, [isFullscreen]);
 
   if (mapError) {
     return (
@@ -391,6 +417,22 @@ export default function ExploreMap({
             </button>
           </div>
         </div>
+      )}
+
+      {/* Fullscreen Exit Pill Button */}
+      {isFullscreen && (
+        <button
+          type="button"
+          className="map-fullscreen-exit-pill"
+          onClick={toggleFullscreen}
+          title="Thu nhỏ bản đồ (hoặc bấm phím Esc)"
+        >
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M4 14h6v6m10-10h-6V4m0 6l7-7M10 14l-7 7"></path>
+          </svg>
+          <span>Thu nhỏ bản đồ</span>
+          <span className="map-exit-kbd">Esc</span>
+        </button>
       )}
 
       {/* Floating Control Buttons */}

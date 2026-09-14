@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { getStoredToken, getStoredUser, logout } from '../../services/authService'
-import AIChatWidget from '../../components/AIChatWidget/AIChatWidget'
 import { ShiftGuardProvider } from '../../context/ShiftGuardContext'
 import AdminDailyReportsModal from '../../components/DailyClosingReport/AdminDailyReportsModal'
 import { NAV_KEYS_BY_ROLE } from '../../utils/roleUtils'
@@ -791,8 +790,6 @@ function AdminLayoutInner({ activePage, children }) {
         isOpen={showAdminReportsModal}
         onClose={() => setShowAdminReportsModal(false)}
       />
-
-      <AIChatWidget userName={user?.fullName} />
     </div>
   )
 }

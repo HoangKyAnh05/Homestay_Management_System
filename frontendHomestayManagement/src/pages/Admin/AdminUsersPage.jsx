@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { getStoredToken } from '../../services/authService'
 import { houseTypeName } from '../../utils/houseType'
 import AdminLayout from './AdminLayout'
@@ -544,8 +544,35 @@ function AdminUsersPage({ userType = 'employees' }) {
       </div>
 
       <div className="aum-table-wrap">
-        {loading ? (
-          <div className="aum-empty">Đang tải...</div>
+        {loading && users.length === 0 ? (
+          <table className="aum-table">
+            <thead>
+              <tr>
+                <th>Người dùng</th>
+                <th>Email</th>
+                <th>Số điện thoại</th>
+                {isCustomerPage && <th>CCCD</th>}
+                <th>Role</th>
+                <th>Trạng thái</th>
+                <th>Ngày tạo</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {[1, 2, 3, 4, 5, 6].map((k) => (
+                <tr key={k}>
+                  <td><div className="ain-skeleton-bar" style={{ width: '120px', height: '16px' }} /></td>
+                  <td><div className="ain-skeleton-bar" style={{ width: '140px', height: '16px' }} /></td>
+                  <td><div className="ain-skeleton-bar" style={{ width: '90px', height: '16px' }} /></td>
+                  {isCustomerPage && <td><div className="ain-skeleton-bar" style={{ width: '100px', height: '16px' }} /></td>}
+                  <td><div className="ain-skeleton-bar" style={{ width: '75px', height: '16px' }} /></td>
+                  <td><div className="ain-skeleton-bar" style={{ width: '85px', height: '16px' }} /></td>
+                  <td><div className="ain-skeleton-bar" style={{ width: '90px', height: '16px' }} /></td>
+                  <td><div className="ain-skeleton-bar" style={{ width: '60px', height: '16px' }} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         ) : filtered.length === 0 ? (
           <div className="aum-empty">Không tìm thấy {entityLabel} nào.</div>
         ) : (

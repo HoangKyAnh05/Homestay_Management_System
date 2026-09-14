@@ -280,10 +280,10 @@ export const ITINERARIES_DATA = [
     bestTime: 'Bình minh 06:30 - 08:30',
     image: '/landing/images/sapa_real/la_do_cafe_balcony.jpg',
     stops: [
-      { name: 'Lá Đỏ Homestay & Coffee', lat: 22.3338, lng: 103.8442, icon: 'home', note: 'Điểm xuất phát 31A Hoàng Liên, đón sương sớm' },
-      { name: 'Cafe The Haven / Viettrekking', lat: 22.3298, lng: 103.8375, icon: 'coffee', note: 'Thưởng thức cafe sáng ngắm biển mây & tàu hỏa leo núi' },
-      { name: 'Nhà thờ Đá Sa Pa', lat: 22.3346, lng: 103.8409, icon: 'map-pin', note: 'Check-in kiến trúc Pháp cổ kính' },
-      { name: 'Chợ Sa Pa', lat: 22.3385, lng: 103.8488, icon: 'shopping-bag', note: 'Mua sắm đặc sản mận, đào & hạt dẻ nóng hổi' }
+      { name: 'Lá Đỏ Homestay & Coffee', googleQuery: 'Lá Đỏ Homestay, 31A Hoàng Liên, Sa Pa', lat: 22.3338, lng: 103.8442, icon: 'home', note: 'Điểm xuất phát 31A Hoàng Liên, đón sương sớm' },
+      { name: 'Cafe Viettrekking Sa Pa', googleQuery: 'Viettrekking Coffee Sa Pa, 33 Hoàng Liên, Sa Pa', lat: 22.3315, lng: 103.8428, icon: 'coffee', note: 'Thưởng thức cafe sáng ngắm biển mây & tàu hỏa leo núi' },
+      { name: 'Nhà thờ Đá Sa Pa', googleQuery: 'Nhà thờ Đá Sa Pa, Phường Sa Pa, Sa Pa', lat: 22.3346, lng: 103.8409, icon: 'map-pin', note: 'Check-in kiến trúc Pháp cổ kính' },
+      { name: 'Chợ Sa Pa', googleQuery: 'Chợ Sa Pa, Sa Pa, Lào Cai', lat: 22.3385, lng: 103.8488, icon: 'shopping-bag', note: 'Mua sắm đặc sản mận, đào & hạt dẻ nóng hổi' }
     ],
     summary: 'Khởi đầu ngày mới tràn đầy năng lượng với ly cafe ngắm trọn biển mây Mường Hoa từ ban công, check-in Nhà thờ Đá biểu tượng và dạo quanh chợ Sa Pa nhộn nhịp.'
   },
@@ -300,10 +300,10 @@ export const ITINERARIES_DATA = [
     bestTime: 'Trưa & Chiều 13:00 - 16:30',
     image: '/landing/images/sapa_real/sapa_fansipan_peak.jpg',
     stops: [
-      { name: 'Lá Đỏ Homestay', lat: 22.3338, lng: 103.8442, icon: 'home', note: 'Xuất phát đi ga cáp treo Fansipan Legend' },
-      { name: 'Sun World Fansipan Legend', lat: 22.3275, lng: 103.8290, icon: 'sparkles', note: 'Đi cáp treo băng qua thung lũng mây Hoàng Liên' },
-      { name: 'Đỉnh Fansipan 3.143 m', lat: 22.3033, lng: 103.7753, icon: 'mountain', note: 'Chạm tay vào cột mốc Nóc nhà Đông Dương' },
-      { name: 'Quảng trường Sa Pa', lat: 22.3341, lng: 103.8415, icon: 'map-pin', note: 'Dạo mát chiều tà ngắm phố núi lên đèn' }
+      { name: 'Lá Đỏ Homestay', googleQuery: 'Lá Đỏ Homestay, 31A Hoàng Liên, Sa Pa', lat: 22.3338, lng: 103.8442, icon: 'home', note: 'Xuất phát đi ga cáp treo Fansipan Legend' },
+      { name: 'Ga Cáp Treo Fansipan Legend', googleQuery: 'Sun World Fansipan Legend, Đường Nguyễn Chí Thanh, Sa Pa', lat: 22.3275, lng: 103.8290, icon: 'sparkles', note: 'Đi cáp treo băng qua thung lũng mây Hoàng Liên' },
+      { name: 'Đỉnh Fansipan 3.143m', googleQuery: 'Đỉnh Fansipan, Sa Pa, Lào Cai', lat: 22.3033, lng: 103.7753, icon: 'mountain', note: 'Chạm tay vào cột mốc Nóc nhà Đông Dương' },
+      { name: 'Quảng trường Sa Pa', googleQuery: 'Quảng trường Sa Pa, Sa Pa, Lào Cai', lat: 22.3341, lng: 103.8415, icon: 'map-pin', note: 'Dạo mát chiều tà ngắm phố núi lên đèn' }
     ],
     summary: 'Trải nghiệm cáp treo ngắm toàn cảnh thung lũng Hoàng Liên Sơn kỳ vĩ, chiêm bái đại tượng Phật A Di Đà và chạm tay vào đỉnh Fansipan 3.143m huyền thoại.'
   },
@@ -320,10 +320,10 @@ export const ITINERARIES_DATA = [
     bestTime: 'Tối 18:30 - 21:30',
     image: '/landing/images/sapa_real/sapa_bbq_hotpot.jpg',
     stops: [
-      { name: 'Nhà hàng Ô Quý Hồ', lat: 22.3355, lng: 103.8420, icon: 'utensils', note: 'Thưởng thức gà nướng tiêu rừng & lẩu ấm cúng' },
-      { name: 'Dạo mát Hồ Sa Pa', lat: 22.3372, lng: 103.8436, icon: 'sparkles', note: 'Tận hưởng cái lạnh ngọt ngào bên mặt hồ lung linh' },
-      { name: 'Chợ đêm Sa Pa', lat: 22.3392, lng: 103.8502, icon: 'shopping-bag', note: 'Ăn đồ nướng than hồng, xôi ngũ sắc & mua quà' },
-      { name: 'Trở về Lá Đỏ Homestay', lat: 22.3338, lng: 103.8442, icon: 'home', note: 'Nghỉ ngơi bên phòng gỗ ấm cúng' }
+      { name: 'Lá Đỏ Homestay', googleQuery: 'Lá Đỏ Homestay, 31A Hoàng Liên, Sa Pa', lat: 22.3338, lng: 103.8442, icon: 'home', note: 'Khởi hành từ phòng nghỉ 31A Hoàng Liên' },
+      { name: 'Nhà hàng Ô Quý Hồ', googleQuery: 'Nhà hàng Ô Quý Hồ, 08 Thạch Sơn, Sa Pa', lat: 22.3355, lng: 103.8420, icon: 'utensils', note: 'Thưởng thức gà nướng tiêu rừng & lẩu cá tầm ấm cúng' },
+      { name: 'Dạo mát Hồ Sa Pa', googleQuery: 'Hồ Sa Pa, Sa Pa, Lào Cai', lat: 22.3372, lng: 103.8436, icon: 'sparkles', note: 'Tận hưởng cái lạnh ngọt ngào bên mặt hồ lung linh' },
+      { name: 'Chợ đêm Sa Pa - Phố nướng', googleQuery: 'Chợ đêm Sa Pa, Đường Điện Biên Phủ, Sa Pa', lat: 22.3392, lng: 103.8502, icon: 'shopping-bag', note: 'Ăn đồ nướng than hồng, xôi ngũ sắc & mua quà' }
     ],
     summary: 'Tận hưởng cái lạnh se se ngọt ngào của Sa Pa bên nồi lẩu cá tầm nghi ngút khói, dạo quanh hồ nước phẳng lặng và thưởng thức đồ nướng than hồng thơm lừng.'
   },
@@ -340,10 +340,10 @@ export const ITINERARIES_DATA = [
     bestTime: 'Sáng sớm 06:00 - 09:00',
     image: '/landing/images/sapa_real/la_do_muong_hoa_train.jpg',
     stops: [
-      { name: 'Lá Đỏ Homestay Ban Công', lat: 22.3338, lng: 103.8442, icon: 'home', note: 'Săn mây ngay tại phòng ngủ & bồn tắm kính' },
-      { name: 'Viettrekking Coffee', lat: 22.3315, lng: 103.8428, icon: 'coffee', note: 'Bắt trọn khoảnh khắc tàu hỏa leo núi đỏ chạy qua' },
-      { name: 'Bản Cát Cát (Thác nước)', lat: 22.3292, lng: 103.8305, icon: 'sparkles', note: 'Thuê váy thổ cẩm chụp ảnh guồng nước khổng lồ' },
-      { name: 'Cafe The Haven', lat: 22.3298, lng: 103.8375, icon: 'coffee', note: 'Ngắm thung lũng mây 360 độ từ đồi Vọng Cảnh' }
+      { name: 'Lá Đỏ Homestay Ban Công', googleQuery: 'Lá Đỏ Homestay, 31A Hoàng Liên, Sa Pa', lat: 22.3338, lng: 103.8442, icon: 'home', note: 'Săn mây ngay tại phòng ngủ & bồn tắm kính' },
+      { name: 'Viettrekking Coffee Sa Pa', googleQuery: 'Viettrekking Coffee Sa Pa, 33 Hoàng Liên, Sa Pa', lat: 22.3315, lng: 103.8428, icon: 'coffee', note: 'Bắt trọn khoảnh khắc tàu hỏa leo núi đỏ chạy qua' },
+      { name: 'Bản Cát Cát (Thác Tiên Sa)', googleQuery: 'Bản Cát Cát, Sa Pa, Lào Cai', lat: 22.3292, lng: 103.8305, icon: 'sparkles', note: 'Thuê váy thổ cẩm chụp ảnh guồng nước khổng lồ' },
+      { name: 'The Haven Sapa Camp Site', googleQuery: 'The Haven Sapa Camp Site, Đồi Vọng Cảnh, Sa Pa', lat: 22.3298, lng: 103.8375, icon: 'coffee', note: 'Ngắm thung lũng mây 360 độ từ đồi Vọng Cảnh' }
     ],
     summary: 'Cung đường check-in sống ảo đẹp nhất Sa Pa: thức giấc cùng biển mây tràn vào phòng tại Lá Đỏ, chụp ảnh đoàn tàu Mường Hoa và hóa thân thành thiếu nữ vùng cao tại Cát Cát.'
   },
@@ -360,13 +360,13 @@ export const ITINERARIES_DATA = [
     bestTime: 'Trưa & Tối',
     image: '/landing/images/sapa_real/am_thuc_tay_bac.jpg',
     stops: [
-      { name: 'Bữa sáng cốn sủi / Phở chua', lat: 22.3346, lng: 103.8409, icon: 'utensils', note: 'Đặc sản phở cốn sủi phố cổ nức tiếng' },
-      { name: 'Nhà hàng Cá Hồi Vua', lat: 22.3370, lng: 103.8460, icon: 'utensils', note: 'Lẩu cá tầm măng chua cay & sashimi cá hồi tươi' },
-      { name: 'Lá Đỏ Cafe Thảo Dược', lat: 22.3338, lng: 103.8442, icon: 'coffee', note: 'Trà Shan Tuyết cổ thụ 300 năm ấm bụng' },
-      { name: 'Nhà hàng Ô Quý Hồ', lat: 22.3355, lng: 103.8420, icon: 'utensils', note: 'Gà đen nướng tiêu rừng ướp mắc khén' },
-      { name: 'Chợ đêm đồ nướng', lat: 22.3392, lng: 103.8502, icon: 'shopping-bag', note: 'Tráng miệng hạt dẻ nướng bơ & thịt xiên que' }
+      { name: 'Lá Đỏ Homestay', googleQuery: 'Lá Đỏ Homestay, 31A Hoàng Liên, Sa Pa', lat: 22.3338, lng: 103.8442, icon: 'home', note: 'Khởi hành tour ẩm thực Tây Bắc' },
+      { name: 'Cốn Sủi Ông Há', googleQuery: 'Cốn Sủi Ông Há, 591 Điện Biên Phủ, Sa Pa', lat: 22.3346, lng: 103.8409, icon: 'utensils', note: 'Bữa sáng cốn sủi gia truyền nức tiếng phố núi' },
+      { name: 'Nhà hàng Cá Hồi Vua Sa Pa', googleQuery: 'Nhà hàng Cá Hồi Vua Sa Pa, 039 Xuân Viên, Sa Pa', lat: 22.3370, lng: 103.8460, icon: 'utensils', note: 'Bữa trưa lẩu cá tầm măng chua cay & gỏi cá hồi tươi rói' },
+      { name: 'Nhà hàng Ô Quý Hồ Sa Pa', googleQuery: 'Nhà hàng Ô Quý Hồ, 08 Thạch Sơn, Sa Pa', lat: 22.3355, lng: 103.8420, icon: 'utensils', note: 'Bữa tối gà đen nướng tiêu rừng ướp mắc khén thơm lừng' },
+      { name: 'Chợ đêm Sa Pa - Phố đồ nướng', googleQuery: 'Chợ đêm Sa Pa, Đường Điện Biên Phủ, Sa Pa', lat: 22.3392, lng: 103.8502, icon: 'shopping-bag', note: 'Tráng miệng hạt dẻ nướng bơ & thịt xiên que nướng than hoa' }
     ],
-    summary: 'Hành trình đánh thức vị giác với toàn bộ tinh hoa ẩm thực Tây Bắc: từ cá tầm suối lạnh, gà đồi nướng than hoa đến trà thảo mộc cổ thụ và đồ nướng phố đêm.'
+    summary: 'Hành trình đánh thức vị giác với toàn bộ tinh hoa ẩm thực Tây Bắc: từ cá tầm suối lạnh, gà đồi nướng than hoa đến cốn sủi phố cổ và đồ nướng than hồng.'
   },
   {
     id: 'trekking-ban-lang',
@@ -381,10 +381,10 @@ export const ITINERARIES_DATA = [
     bestTime: 'Cả ngày (mùa lúa chín hoặc mùa nước đổ)',
     image: '/landing/images/sapa_real/sapa_cat_cat_village.jpg',
     stops: [
-      { name: 'Lá Đỏ Homestay', lat: 22.3338, lng: 103.8442, icon: 'home', note: 'Chuẩn bị giày trekking & nước uống xuất phát' },
-      { name: 'Bản Cát Cát', lat: 22.3292, lng: 103.8305, icon: 'sparkles', note: 'Chiêm ngưỡng nếp nhà gỗ H\'Mông và cầu mây' },
-      { name: 'Thung lũng Mường Hoa', lat: 22.2980, lng: 103.8745, icon: 'trees', note: 'Ngắm ruộng bậc thang di sản & bãi đá cổ' },
-      { name: 'Trở về Lá Đỏ Homestay', lat: 22.3338, lng: 103.8442, icon: 'home', note: 'Thư giãn ngâm chân nước nóng lá thảo dược' }
+      { name: 'Lá Đỏ Homestay', googleQuery: 'Lá Đỏ Homestay, 31A Hoàng Liên, Sa Pa', lat: 22.3338, lng: 103.8442, icon: 'home', note: 'Chuẩn bị giày trekking & nước uống xuất phát' },
+      { name: 'Bản Cát Cát', googleQuery: 'Bản Cát Cát, Sa Pa, Lào Cai', lat: 22.3292, lng: 103.8305, icon: 'sparkles', note: 'Chiêm ngưỡng nếp nhà gỗ H\'Mông và cầu mây' },
+      { name: 'Thung lũng Mường Hoa', googleQuery: 'Thung lũng Mường Hoa, Hầu Thào, Sa Pa', lat: 22.2980, lng: 103.8745, icon: 'trees', note: 'Ngắm ruộng bậc thang di sản & bãi đá cổ' },
+      { name: 'Trở về Lá Đỏ Homestay', googleQuery: 'Lá Đỏ Homestay, 31A Hoàng Liên, Sa Pa', lat: 22.3338, lng: 103.8442, icon: 'home', note: 'Thư giãn ngâm chân nước nóng lá thảo dược' }
     ],
     summary: 'Cung đường trekking hòa mình vào thiên nhiên hoang sơ, lắng nghe tiếng suối reo giữa thung lũng Mường Hoa và trải nghiệm văn hóa bản địa mộc mạc.'
   },
@@ -401,10 +401,10 @@ export const ITINERARIES_DATA = [
     bestTime: 'Chiều & Tối',
     image: '/landing/images/sapa_real/tam_la_thuoc_dao_do.jpg',
     stops: [
-      { name: 'Lá Đỏ Homestay', lat: 22.3338, lng: 103.8442, icon: 'home', note: 'Nghỉ ngơi tại phòng gỗ thông view thung lũng' },
-      { name: 'Tắm lá thuốc thảo dược người Dao Đỏ', lat: 22.3360, lng: 103.8430, icon: 'sparkles', note: 'Đả thông kinh mạch, xua tan căng thẳng mệt mỏi' },
-      { name: 'Trà chiều ngắm hoàng hôn tại The Haven', lat: 22.3298, lng: 103.8375, icon: 'coffee', note: 'Ngắm ráng chiều nhuộm vàng dãy Hoàng Liên Sơn' },
-      { name: 'Bữa tối nến lãng mạn tại Lá Đỏ', lat: 22.3338, lng: 103.8442, icon: 'utensils', note: 'Set up tiệc nướng BBQ riêng tư ban công' }
+      { name: 'Lá Đỏ Homestay', googleQuery: 'Lá Đỏ Homestay, 31A Hoàng Liên, Sa Pa', lat: 22.3338, lng: 103.8442, icon: 'home', note: 'Nghỉ ngơi tại phòng gỗ thông view thung lũng' },
+      { name: 'Tắm lá thuốc Dao Đỏ', googleQuery: 'Tắm lá thuốc Dao Đỏ Lý Dao, Sa Pa, Lào Cai', lat: 22.3360, lng: 103.8430, icon: 'sparkles', note: 'Đả thông kinh mạch, xua tan căng thẳng mệt mỏi' },
+      { name: 'The Haven Sapa Camp Site', googleQuery: 'The Haven Sapa Camp Site, Đồi Vọng Cảnh, Sa Pa', lat: 22.3298, lng: 103.8375, icon: 'coffee', note: 'Trà chiều ngắm hoàng hôn nhuộm vàng thung lũng' },
+      { name: 'Tiệc BBQ Ban Công Lá Đỏ', googleQuery: 'Lá Đỏ Homestay, 31A Hoàng Liên, Sa Pa', lat: 22.3338, lng: 103.8442, icon: 'utensils', note: 'Set up tiệc nướng BBQ riêng tư ban công' }
     ],
     summary: 'Kỳ nghỉ chữa lành tâm hồn dành riêng cho các cặp đôi: ngâm mình trong bồn gỗ Pơ-mu thảo dược quý giá, ngắm hoàng hôn buông xuống thung lũng và thưởng thức bữa tối riêng tư ấm cúng.'
   },
@@ -421,36 +421,56 @@ export const ITINERARIES_DATA = [
     bestTime: 'Bất kỳ thời điểm nào',
     image: '/landing/images/sapa_real/la_do_homestay_real.jpg',
     stops: [
-      { name: 'Lá Đỏ Homestay', lat: 22.3338, lng: 103.8442, icon: 'home', note: 'Xuất phát từ 31A Hoàng Liên' },
-      { name: 'Nhà thờ Đá Sa Pa (5 phút đi bộ)', lat: 22.3346, lng: 103.8409, icon: 'map-pin', note: 'Chụp ảnh lưu niệm kiến trúc cổ' },
-      { name: 'Quảng trường Sa Pa', lat: 22.3341, lng: 103.8415, icon: 'map-pin', note: 'Dạo quanh trung tâm ngắm phố' },
-      { name: 'Cafe Viettrekking ngắm mây', lat: 22.3315, lng: 103.8428, icon: 'coffee', note: 'Thưởng thức cafe view tàu hỏa leo núi' },
-      { name: 'Trở về Lá Đỏ Homestay', lat: 22.3338, lng: 103.8442, icon: 'home', note: 'Nghỉ ngơi sẵn sàng cho chuyến đi tiếp theo' }
+      { name: 'Lá Đỏ Homestay', googleQuery: 'Lá Đỏ Homestay, 31A Hoàng Liên, Sa Pa', lat: 22.3338, lng: 103.8442, icon: 'home', note: 'Xuất phát từ 31A Hoàng Liên' },
+      { name: 'Nhà thờ Đá Sa Pa', googleQuery: 'Nhà thờ Đá Sa Pa, Phường Sa Pa, Sa Pa', lat: 22.3346, lng: 103.8409, icon: 'map-pin', note: 'Chụp ảnh lưu niệm kiến trúc cổ (5 phút đi bộ)' },
+      { name: 'Quảng trường Sa Pa', googleQuery: 'Quảng trường Sa Pa, Sa Pa, Lào Cai', lat: 22.3341, lng: 103.8415, icon: 'map-pin', note: 'Dạo quanh trung tâm ngắm phố' },
+      { name: 'Viettrekking Coffee Sa Pa', googleQuery: 'Viettrekking Coffee Sa Pa, 33 Hoàng Liên, Sa Pa', lat: 22.3315, lng: 103.8428, icon: 'coffee', note: 'Thưởng thức cafe view tàu hỏa leo núi ngắm mây' }
     ],
     summary: 'Lộ trình ngắn tối ưu cho du khách có ít thời gian: di chuyển hoàn toàn bằng đi bộ trong bán kính 1km từ Lá Đỏ, không lo tắc đường hay mệt mỏi.'
   }
 ];
 
 /**
- * Generate Google Maps Multi-Stop Navigation URL
+ * Generate Google Maps Multi-Stop Navigation URL with real verified location queries
  */
 export function getGoogleMapsMultiStopUrl(stops = []) {
   if (!stops || stops.length === 0) {
-    return 'https://www.google.com/maps/dir/?api=1&destination=22.3338,103.8442';
+    return 'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent('Lá Đỏ Homestay, 31A Hoàng Liên, Sa Pa, Lào Cai');
   }
-  const origin = `${HOMESTAY_LOCATION.lat},${HOMESTAY_LOCATION.lng}`;
-  const lastStop = stops[stops.length - 1];
-  const destination = lastStop.lat && lastStop.lng ? `${lastStop.lat},${lastStop.lng}` : `${HOMESTAY_LOCATION.lat},${HOMESTAY_LOCATION.lng}`;
-  
-  const waypoints = stops
-    .slice(0, stops.length - 1)
-    .filter(s => s.lat && s.lng)
-    .map(s => `${s.lat},${s.lng}`)
-    .join('|');
 
-  let url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}`;
-  if (waypoints) {
-    url += `&waypoints=${encodeURIComponent(waypoints)}`;
+  // Deduplicate consecutive identical destinations and format exact query
+  const formattedQueries = [];
+  stops.forEach((s) => {
+    const q = s.googleQuery || (s.name.includes('Sa Pa') ? s.name : `${s.name}, Sa Pa, Lào Cai`);
+    if (formattedQueries.length === 0 || formattedQueries[formattedQueries.length - 1] !== q) {
+      formattedQueries.push(q);
+    }
+  });
+
+  if (formattedQueries.length === 1) {
+    return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(formattedQueries[0])}&travelmode=driving`;
   }
-  return url;
+
+  const origin = encodeURIComponent(formattedQueries[0]);
+  const destination = encodeURIComponent(formattedQueries[formattedQueries.length - 1]);
+  
+  const midStops = formattedQueries.slice(1, formattedQueries.length - 1);
+  if (midStops.length === 0) {
+    return `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&travelmode=driving`;
+  }
+
+  const waypoints = midStops.map(q => encodeURIComponent(q)).join('|');
+  return `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&waypoints=${waypoints}&travelmode=driving`;
 }
+
+/**
+ * Generate a direct Google Maps search URL for an individual venue / stop
+ */
+export function getGoogleMapsPlaceUrl(stop) {
+  if (!stop) return 'https://www.google.com/maps';
+  const query = typeof stop === 'string' 
+    ? stop 
+    : (stop.googleQuery || (stop.name && stop.name.includes('Sa Pa') ? stop.name : `${stop.name || ''}, Sa Pa, Lào Cai`));
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+}
+

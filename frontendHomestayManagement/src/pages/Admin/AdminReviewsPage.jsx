@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { getStoredToken } from '../../services/authService'
 import { formatDateTime } from '../../utils/dateTimeFormat'
 import { houseTypeName } from '../../utils/houseType'
@@ -389,8 +389,33 @@ export default function AdminReviewsPage() {
 
       {/* Reviews Table */}
       <div className="arv-table-wrap">
-        {loading ? (
-          <div className="arv-empty">Đang tải danh sách đánh giá...</div>
+        {loading && reviews.length === 0 ? (
+          <table className="arv-table">
+            <thead>
+              <tr>
+                <th>Khách hàng</th>
+                <th>Hạng phòng</th>
+                <th>Đánh giá</th>
+                <th>Nội dung nhận xét</th>
+                <th>Ngày đăng</th>
+                <th>Trạng thái</th>
+                <th style={{ textAlign: 'right' }}>Thao tác</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[1, 2, 3, 4, 5, 6].map((k) => (
+                <tr key={k}>
+                  <td><div className="ain-skeleton-bar" style={{ width: '130px', height: '16px' }} /></td>
+                  <td><div className="ain-skeleton-bar" style={{ width: '110px', height: '16px' }} /></td>
+                  <td><div className="ain-skeleton-bar" style={{ width: '80px', height: '16px' }} /></td>
+                  <td><div className="ain-skeleton-bar" style={{ width: '200px', height: '16px' }} /></td>
+                  <td><div className="ain-skeleton-bar" style={{ width: '90px', height: '16px' }} /></td>
+                  <td><div className="ain-skeleton-bar" style={{ width: '70px', height: '16px' }} /></td>
+                  <td><div className="ain-skeleton-bar" style={{ width: '60px', height: '16px' }} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         ) : filteredReviews.length === 0 ? (
           <div className="arv-empty">Không tìm thấy bài đánh giá nào phù hợp với bộ lọc.</div>
         ) : (

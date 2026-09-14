@@ -9,6 +9,16 @@
   align-items: center;
   gap: 14px;
   pointer-events: auto;
+  transition: opacity 0.25s ease, visibility 0.25s ease, transform 0.25s ease;
+}
+
+.map-fullscreen-active .floating-contact-widget,
+body:has(.explore-map-wrapper.is-fullscreen) .floating-contact-widget {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  transform: scale(0.7) !important;
 }
 
 .fcw-btn {

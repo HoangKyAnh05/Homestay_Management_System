@@ -1796,9 +1796,7 @@ function AdminRoomsPage({ activePage = 'rooms' }) {
         ))}
       </div>
 
-      {loading ? (
-        <div className="arm-empty" style={{ padding:48 }}>Đang tải...</div>
-      ) : tab === 'deposit' ? (
+      {tab === 'deposit' ? (
         <DepositPoliciesTab depositPolicies={depositPolicies} setDepositPolicies={setDepositPolicies} showToast={showToast} />
       ) : tab === 'types' ? (
         <RoomTypesTab

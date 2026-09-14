@@ -163,7 +163,9 @@ public class RoomServiceImpl implements RoomService {
                 imageUrls,
                 prices,
                 busySlots,
-                roomType.getVideoUrl()
+                roomType.getVideoUrl(),
+                roomType.getAverageRating() != null ? roomType.getAverageRating() : 5.0,
+                roomType.getTotalReviews() != null ? roomType.getTotalReviews() : 0
         );
     }
 
@@ -178,14 +180,7 @@ public class RoomServiceImpl implements RoomService {
             BigDecimal maxPrice
     ) {
         validateSearch(checkInDate, checkOutDate, rooms, adults, children);
-
-        LocalDateTime startInclusive = checkInDate.atStartOfDay();
-        LocalDateTime endExclusive = checkOutDate.atStartOfDay();
-        Map<Long, Long> bookedCountByType = bookingDetailRepository.findOverlappingSchedule(startInclusive, endExclusive)
-                .stream()
-                .filter(this::isActiveBooking)
-                .filter(detail -> detail.getRoomType() != null)
-                .collect(Collectors.groupingBy(detail -> detail.getRoomType().getId(), Collectors.counting()));
+        Map<Long, Long> bookedCountByType = countBookedRoomsByRoomType(checkInDate, checkOutDate);
 
         int requestedRooms = rooms != null ? rooms : 1;
         int adultsPerRoom = (int) Math.ceil((adults != null ? adults : 1) / (double) requestedRooms);
@@ -209,6 +204,16 @@ public class RoomServiceImpl implements RoomService {
                 .sorted(Comparator.comparing(RoomSearchResponse::price)
                         .thenComparing(RoomSearchResponse::roomTypeName, Comparator.nullsLast(String::compareToIgnoreCase)))
                 .toList();
+    }
+
+    private Map<Long, Long> countBookedRoomsByRoomType(LocalDate checkInDate, LocalDate checkOutDate) {
+        LocalDateTime startInclusive = checkInDate.atStartOfDay();
+        LocalDateTime endExclusive = checkOutDate.atStartOfDay();
+        return bookingDetailRepository.findOverlappingSchedule(startInclusive, endExclusive)
+                .stream()
+                .filter(this::isActiveBooking)
+                .filter(detail -> detail.getRoomType() != null)
+                .collect(Collectors.groupingBy(detail -> detail.getRoomType().getId(), Collectors.counting()));
     }
 
     private void validateSearch(LocalDate checkInDate, LocalDate checkOutDate, Integer rooms, Integer adults, Integer children) {
@@ -273,7 +278,9 @@ public class RoomServiceImpl implements RoomService {
                 primaryImageUrl,
                 imageUrls,
                 prices,
-                roomType.getVideoUrl()
+                roomType.getVideoUrl(),
+                roomType.getAverageRating() != null ? roomType.getAverageRating() : 5.0,
+                roomType.getTotalReviews() != null ? roomType.getTotalReviews() : 0
         ));
     }
 
@@ -302,7 +309,9 @@ public class RoomServiceImpl implements RoomService {
                 imageUrls.isEmpty() ? null : imageUrls.get(0),
                 imageUrls,
                 prices,
-                roomType.getVideoUrl()
+                roomType.getVideoUrl(),
+                roomType.getAverageRating() != null ? roomType.getAverageRating() : 5.0,
+                roomType.getTotalReviews() != null ? roomType.getTotalReviews() : 0
         );
     }
 
@@ -369,7 +378,9 @@ public class RoomServiceImpl implements RoomService {
                 primaryUrl,
                 allUrls,
                 prices,
-                roomType.getVideoUrl()
+                roomType.getVideoUrl(),
+                roomType.getAverageRating() != null ? roomType.getAverageRating() : 5.0,
+                roomType.getTotalReviews() != null ? roomType.getTotalReviews() : 0
         );
     }
 

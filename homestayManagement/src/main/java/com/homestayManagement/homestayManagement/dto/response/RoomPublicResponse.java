@@ -22,6 +22,9 @@ public record RoomPublicResponse(
         String primaryImageUrl,
         List<String> imageUrls,
         List<RoomPublicPriceResponse> prices,
-        String videoUrl
+        String videoUrl,
+        Double averageRating,
+        Integer totalReviews
 ) {
 }
+

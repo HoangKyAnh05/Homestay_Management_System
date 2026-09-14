@@ -72,11 +72,11 @@
 }
 
 .explore-footer-signature {
-  font-family: 'Playfair Display', Georgia, cursive, serif;
+  font-family: 'Playfair Display', 'Cormorant Garamond', 'Be Vietnam Pro', Georgia, serif;
   font-style: italic;
-  font-size: 0.9375rem;
+  font-size: 0.95rem;
   color: #fef08a;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.01em;
 }
 
 .explore-footer-copy {

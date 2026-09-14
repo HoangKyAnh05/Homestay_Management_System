@@ -81,8 +81,10 @@ public class SecurityConfig {
                         .hasAnyAuthority("ROLE_ADMIN", "ROLE_RECEPTIONIST")
                         .requestMatchers("/api/admin/shifts/**")
                         .hasAnyAuthority("ROLE_ADMIN", "ROLE_RECEPTIONIST")
-                        // Hủy phòng & hoàn tiền: chỉ riêng Admin được truy cập và xác nhận
-                        .requestMatchers("/api/admin/bookings/cancellations/**", "/api/admin/bookings/*/confirm-refund")
+                        // Hủy phòng & hoàn tiền: Admin và Lễ tân đều xem được danh sách đơn hủy, Admin xác nhận hoàn tiền
+                        .requestMatchers("/api/admin/bookings/cancellations", "/api/admin/bookings/cancellations/**")
+                        .hasAnyAuthority("ROLE_ADMIN", "ROLE_RECEPTIONIST")
+                        .requestMatchers("/api/admin/bookings/*/confirm-refund")
                         .hasAuthority("ROLE_ADMIN")
                         .requestMatchers("/api/admin/bookings/**", "/api/admin/invoices/**", "/api/admin/sheets/**")
                         .hasAnyAuthority("ROLE_ADMIN", "ROLE_RECEPTIONIST")

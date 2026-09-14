@@ -3,13 +3,7 @@
 ======================================================================
 
  [1] LINK WEB HOMESTAY (Frontend + Backend API - VO HAN BANG THONG):
-     https://solaris-sapphire-desktop-frank.trycloudflare.com
-
- [2] LINK REMOTION VIDEO STUDIO (Truc tiep):
-     https://front-eastern-against-photographic.trycloudflare.com
-
- [3] LINK REMOTION TREN WEB HOMESTAY:
-     https://solaris-sapphire-desktop-frank.trycloudflare.com/remotion-app/
+     https://moments-olympic-inn-worked.trycloudflare.com
 
  * Uu diem: Dung luong vo han, xem video render thoai mai khong bi chan.
  * Moi may tinh, dien thoai deu co the truy cap duoc.

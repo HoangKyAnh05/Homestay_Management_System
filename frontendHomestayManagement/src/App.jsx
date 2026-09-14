@@ -1,4 +1,28 @@
 import { useEffect, useState } from 'react'
+import HomePage from './pages/Home/HomePage'
+import FloatingContactWidget from './components/FloatingContact/FloatingContactWidget'
+import { getStoredUser } from './services/authService'
+import { STAFF_ROLES, roleCanAccess, roleDefaultPath } from './utils/roleUtils'
+
+// Direct imported customer & shared pages
+import LandingPage from './pages/Landing/LandingPage'
+import GiveawayLuckyWheelPage from './pages/Giveaway/GiveawayLuckyWheelPage'
+import LoginPage from './pages/Login/LoginPage'
+import RegisterPage from './pages/Register/RegisterPage'
+import ForgotPasswordPage from './pages/ForgotPassword/ForgotPasswordPage'
+import ProfilePage from './pages/Profile/ProfilePage'
+import BookingHistoryPage from './pages/BookingHistory/BookingHistoryPage'
+import AmenitiesPage from './pages/Amenities/AmenitiesPage'
+import WishlistPage from './pages/Wishlist/WishlistPage'
+import CustomerVouchersPage from './pages/Vouchers/CustomerVouchersPage'
+import CalendarShowcasePage from './pages/Test/CalendarShowcasePage'
+import ExplorePage from './pages/Explore/ExplorePage'
+import StayActivationPage from './pages/Stay/StayActivationPage'
+import StayPage from './pages/Stay/StayPage'
+import RoomsPage from './pages/Rooms/RoomsPage'
+import RoomDetailPage from './pages/Rooms/RoomDetailPage'
+
+// Direct imported admin & staff pages
 import AdminRoomsPage from './pages/Admin/AdminRoomsPage'
 import AdminLoginPage from './pages/Admin/AdminLoginPage'
 import AdminInvoicesPage from './pages/Admin/AdminInvoicesPage'
@@ -15,31 +39,42 @@ import AdminReviewsPage from './pages/Admin/AdminReviewsPage'
 import DashboardPage from './pages/Admin/DashboardPage'
 import HousekeepingPage from './pages/Admin/HousekeepingPage'
 import AdminIncidentsPage from './pages/Admin/AdminIncidentsPage'
-import { MarketingAIAgentPage, MarketingPostLogsPage, MarketingVouchersPage } from './pages/Admin/MarketingPages'
 import AdminTravelArticlesPage from './pages/Admin/AdminTravelArticlesPage'
 import AdminGiveawayLeadsPage from './pages/Admin/AdminGiveawayLeadsPage'
-import GiveawayLuckyWheelPage from './pages/Giveaway/GiveawayLuckyWheelPage'
 import ReceptionistOverviewPage from './pages/Admin/ReceptionistOverviewPage'
 import ReceptionistSheetsPage from './pages/Admin/ReceptionistSheetsPage'
-import BookingHistoryPage from './pages/BookingHistory/BookingHistoryPage'
-import ForgotPasswordPage from './pages/ForgotPassword/ForgotPasswordPage'
-import HomePage from './pages/Home/HomePage'
-import AmenitiesPage from './pages/Amenities/AmenitiesPage'
-import LoginPage from './pages/Login/LoginPage'
-import ProfilePage from './pages/Profile/ProfilePage'
-import RegisterPage from './pages/Register/RegisterPage'
-import RoomDetailPage from './pages/Rooms/RoomDetailPage'
-import RoomsPage from './pages/Rooms/RoomsPage'
-import StayPage from './pages/Stay/StayPage'
-import StayActivationPage from './pages/Stay/StayActivationPage'
-import WishlistPage from './pages/Wishlist/WishlistPage'
-import LandingPage from './pages/Landing/LandingPage'
-import CustomerVouchersPage from './pages/Vouchers/CustomerVouchersPage'
-import CalendarShowcasePage from './pages/Test/CalendarShowcasePage'
-import ExplorePage from './pages/Explore/ExplorePage'
-import FloatingContactWidget from './components/FloatingContact/FloatingContactWidget'
-import { getStoredUser } from './services/authService'
-import { STAFF_ROLES, roleCanAccess, roleDefaultPath } from './utils/roleUtils'
+
+import { MarketingAIAgentPage, MarketingPostLogsPage, MarketingVouchersPage } from './pages/Admin/MarketingPages'
+
+function PageLoadingFallback() {
+  return (
+    <div style={{
+      minHeight: '60vh',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: '12px',
+      color: '#64748b',
+      fontFamily: 'inherit'
+    }}>
+      <div style={{
+        width: '36px',
+        height: '36px',
+        border: '3px solid #e2e8f0',
+        borderTopColor: '#b91c1c',
+        borderRadius: '50%',
+        animation: 'appSpin 0.7s linear infinite'
+      }} />
+      <span style={{ fontSize: '13px', fontWeight: 500, letterSpacing: '0.02em' }}>Đang tải trải nghiệm Lá Đỏ...</span>
+      <style>{`
+        @keyframes appSpin {
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
+    </div>
+  )
+}
 
 const AUTH_STORAGE_KEYS = new Set(['homeStayAccessToken', 'homeStayUser'])
 
@@ -78,6 +113,13 @@ function App() {
     const handleSharedAuthChange = (event) => {
       if (AUTH_STORAGE_KEYS.has(event.key)) {
         setAuthVersion((version) => version + 1)
+        const currentUser = getStoredUser()
+        const path = window.location.pathname
+        if (path.startsWith('/admin') && path !== '/admin/login') {
+          if (!currentUser || !STAFF_ROLES.has(currentUser.role)) {
+            window.location.replace('/admin/login')
+          }
+        }
       }
     }
 
@@ -117,103 +159,107 @@ function App() {
     return () => document.removeEventListener('click', handleInternalLink)
   }, [])
 
-  if (currentPath === '/landing' || currentPath === '/sanctuary' || currentPath === '/komorebi') {
-    return <LandingPage />
-  }
-  if (currentPath === '/giveaway' || currentPath === '/minigame' || currentPath === '/vong-quay-may-man') {
-    return <GiveawayLuckyWheelPage />
-  }
-  if (currentPath === '/login') return <LoginPage />
-  if (currentPath === '/register') return <RegisterPage />
-  if (currentPath === '/forgot') return <ForgotPasswordPage />
-  if (currentPath === '/profile') return <CustomerSurface><ProfilePage /></CustomerSurface>
-  if (currentPath === '/booking-history') return <CustomerSurface><BookingHistoryPage /></CustomerSurface>
-  if (currentPath === '/amenities') return <CustomerSurface><AmenitiesPage /></CustomerSurface>
-  if (currentPath === '/wishlist') return <CustomerSurface><WishlistPage /></CustomerSurface>
-  if (currentPath === '/vouchers' || currentPath === '/my-vouchers') {
-    return <CustomerSurface><CustomerVouchersPage /></CustomerSurface>
-  }
-  if (currentPath === '/test-calendars') {
-    return <CalendarShowcasePage />
-  }
-  if (currentPath === '/explore' || currentPath === '/kham-pha' || currentPath === '/map') {
-    return <CustomerSurface><ExplorePage /></CustomerSurface>
-  }
-  if (currentPath === '/stay/activate') return <StayActivationPage />
-  if (currentPath === '/stay') return <CustomerSurface><StayPage /></CustomerSurface>
-  if (currentPath === '/rooms') return <CustomerSurface><RoomsPage /></CustomerSurface>
-  if (currentPath.startsWith('/rooms/')) {
-    const roomId = currentPath.split('/').filter(Boolean).at(-1)
-    return <CustomerSurface><RoomDetailPage roomId={roomId} /></CustomerSurface>
-  }
-  if (currentPath === '/admin/login') {
-    const user = getStoredUser()
-    if (user && STAFF_ROLES.has(user.role)) {
-      window.location.replace(roleDefaultPath(user.role))
-      return null
+  const renderContent = () => {
+    if (currentPath === '/landing' || currentPath === '/sanctuary' || currentPath === '/komorebi') {
+      return <LandingPage />
     }
-    return <AdminLoginPage />
-  }
-
-  if (currentPath.startsWith('/admin')) {
-    const user = getStoredUser()
-    if (!user || !STAFF_ROLES.has(user.role)) {
+    if (currentPath === '/giveaway' || currentPath === '/minigame' || currentPath === '/vong-quay-may-man') {
+      return <GiveawayLuckyWheelPage />
+    }
+    if (currentPath === '/login') return <LoginPage />
+    if (currentPath === '/register') return <RegisterPage />
+    if (currentPath === '/forgot') return <ForgotPasswordPage />
+    if (currentPath === '/profile') return <CustomerSurface><ProfilePage /></CustomerSurface>
+    if (currentPath === '/booking-history') return <CustomerSurface><BookingHistoryPage /></CustomerSurface>
+    if (currentPath === '/amenities') return <CustomerSurface><AmenitiesPage /></CustomerSurface>
+    if (currentPath === '/wishlist') return <CustomerSurface><WishlistPage /></CustomerSurface>
+    if (currentPath === '/vouchers' || currentPath === '/my-vouchers') {
+      return <CustomerSurface><CustomerVouchersPage /></CustomerSurface>
+    }
+    if (currentPath === '/test-calendars') {
+      return <CalendarShowcasePage />
+    }
+    if (currentPath === '/explore' || currentPath === '/kham-pha' || currentPath === '/map') {
+      return <CustomerSurface><ExplorePage /></CustomerSurface>
+    }
+    if (currentPath === '/stay/activate') return <StayActivationPage />
+    if (currentPath === '/stay') return <CustomerSurface><StayPage /></CustomerSurface>
+    if (currentPath === '/rooms') return <CustomerSurface><RoomsPage /></CustomerSurface>
+    if (currentPath.startsWith('/rooms/')) {
+      const roomId = currentPath.split('/').filter(Boolean).at(-1)
+      return <CustomerSurface><RoomDetailPage roomId={roomId} /></CustomerSurface>
+    }
+    if (currentPath === '/admin/login') {
+      const user = getStoredUser()
+      if (user && STAFF_ROLES.has(user.role)) {
+        window.location.replace(roleDefaultPath(user.role))
+        return null
+      }
       return <AdminLoginPage />
     }
 
-    const role = user.role
+    if (currentPath.startsWith('/admin')) {
+      const user = getStoredUser()
+      if (!user || !STAFF_ROLES.has(user.role)) {
+        return <AdminLoginPage />
+      }
 
-    // Nếu vào /admin (root) → redirect đến trang mặc định theo role
-    if (currentPath === '/admin' && role !== 'ROLE_ADMIN') {
-      window.location.replace(roleDefaultPath(role))
-      return null
+      const role = user.role
+
+      // Nếu vào /admin (root) → redirect đến trang mặc định theo role
+      if (currentPath === '/admin' && role !== 'ROLE_ADMIN') {
+        window.location.replace(roleDefaultPath(role))
+        return null
+      }
+
+      // Kiểm tra quyền truy cập route — non-admin không được vào route ngoài phạm vi
+      if (role !== 'ROLE_ADMIN' && !roleCanAccess(role, currentPath)) {
+        window.location.replace(roleDefaultPath(role))
+        return null
+      }
+
+      if (currentPath === '/admin/users' || currentPath === '/admin/users/employees') {
+        return <AdminUsersPage userType="employees" />
+      }
+      if (currentPath === '/admin/users/customers') return <AdminUsersPage userType="customers" />
+      if (currentPath === '/admin/rooms') return <AdminRoomsPage />
+      if (currentPath === '/admin/bookings') return <AdminBookingsPage />
+      if (currentPath === '/admin/check-in-logs') return <AdminCheckInLogsPage />
+      if (currentPath === '/admin/cancellations') return <AdminCancellationsPage />
+      if (currentPath === '/admin/services/categories') return <AdminServiceCategoriesPage />
+      if (currentPath === '/admin/services/surcharges') return <AdminSurchargesPage />
+      if (currentPath === '/admin/rules-penalties') return <AdminRulesPenaltiesPage />
+      if (currentPath === '/admin/invoices') return <AdminInvoicesPage />
+      if (currentPath === '/admin/reviews') return <AdminReviewsPage />
+      if (currentPath === '/admin/housekeeping') {
+        window.location.replace('/admin/housekeeping/tasks')
+        return null
+      }
+      if (currentPath === '/admin/housekeeping/tasks') return <HousekeepingPage />
+      if (currentPath === '/admin/housekeeping/room-calendar') {
+        return <AdminHousekeepingCalendarPage />
+      }
+      if (currentPath === '/admin/housekeeping/checklists') {
+        return <AdminHousekeepingChecklistsPage />
+      }
+      if (currentPath === '/admin/housekeeping/incidents' || currentPath === '/admin/incidents') {
+        return <AdminIncidentsPage />
+      }
+      if (currentPath === '/admin/receptionist') return <ReceptionistOverviewPage />
+      if (currentPath === '/admin/sheets') return <ReceptionistSheetsPage />
+      if (currentPath === '/admin/marketing/ai-agent') return <MarketingAIAgentPage />
+      if (currentPath === '/admin/marketing/post-logs') return <MarketingPostLogsPage />
+      if (currentPath === '/admin/marketing/vouchers') return <MarketingVouchersPage />
+      if (currentPath === '/admin/marketing/travel-articles') return <AdminTravelArticlesPage />
+      if (currentPath === '/admin/marketing/giveaway-leads') return <AdminGiveawayLeadsPage />
+
+      return <DashboardPage />
     }
 
-    // Kiểm tra quyền truy cập route — non-admin không được vào route ngoài phạm vi
-    if (role !== 'ROLE_ADMIN' && !roleCanAccess(role, currentPath)) {
-      window.location.replace(roleDefaultPath(role))
-      return null
-    }
-
-    if (currentPath === '/admin/users' || currentPath === '/admin/users/employees') {
-      return <AdminUsersPage userType="employees" />
-    }
-    if (currentPath === '/admin/users/customers') return <AdminUsersPage userType="customers" />
-    if (currentPath === '/admin/rooms') return <AdminRoomsPage />
-    if (currentPath === '/admin/bookings') return <AdminBookingsPage />
-    if (currentPath === '/admin/check-in-logs') return <AdminCheckInLogsPage />
-    if (currentPath === '/admin/cancellations') return <AdminCancellationsPage />
-    if (currentPath === '/admin/services/categories') return <AdminServiceCategoriesPage />
-    if (currentPath === '/admin/services/surcharges') return <AdminSurchargesPage />
-    if (currentPath === '/admin/rules-penalties') return <AdminRulesPenaltiesPage />
-    if (currentPath === '/admin/invoices') return <AdminInvoicesPage />
-    if (currentPath === '/admin/reviews') return <AdminReviewsPage />
-    if (currentPath === '/admin/housekeeping') {
-      window.location.replace('/admin/housekeeping/tasks')
-      return null
-    }
-    if (currentPath === '/admin/housekeeping/tasks') return <HousekeepingPage />
-    if (currentPath === '/admin/housekeeping/room-calendar') {
-      return <AdminHousekeepingCalendarPage />
-    }
-    if (currentPath === '/admin/housekeeping/checklists') {
-      return <AdminHousekeepingChecklistsPage />
-    }
-    if (currentPath === '/admin/housekeeping/incidents' || currentPath === '/admin/incidents') {
-      return <AdminIncidentsPage />
-    }
-    if (currentPath === '/admin/receptionist') return <ReceptionistOverviewPage />
-    if (currentPath === '/admin/sheets') return <ReceptionistSheetsPage />
-    if (currentPath === '/admin/marketing/ai-agent') return <MarketingAIAgentPage />
-    if (currentPath === '/admin/marketing/post-logs') return <MarketingPostLogsPage />
-    if (currentPath === '/admin/marketing/vouchers') return <MarketingVouchersPage />
-    if (currentPath === '/admin/marketing/travel-articles') return <AdminTravelArticlesPage />
-    if (currentPath === '/admin/marketing/giveaway-leads') return <AdminGiveawayLeadsPage />
-
-    return <DashboardPage />
+    return <CustomerSurface><HomePage /></CustomerSurface>
   }
 
-  return <CustomerSurface><HomePage /></CustomerSurface>
+  return renderContent()
 }
 
 export default App

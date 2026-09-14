@@ -71,12 +71,13 @@ export default function MiniMap({ height = '360px', showExpandBtn = true }) {
         const placeIcon = L.divIcon({
           className: 'custom-minimap-place-pin',
           html: `
-            <div class="minimap-place-bubble" style="background: ${place.pinColor || '#7c3aed'}">
+            <div class="minimap-place-chip" style="background: ${place.pinColor || '#0d9488'};">
+              <span class="minimap-place-dot"></span>
               <span class="minimap-place-name">${place.name} · ${formattedDistance}</span>
             </div>
           `,
-          iconSize: [30, 30],
-          iconAnchor: [15, 15],
+          iconSize: null,
+          iconAnchor: [0, 0],
         });
 
         const marker = L.marker([place.latitude, place.longitude], {

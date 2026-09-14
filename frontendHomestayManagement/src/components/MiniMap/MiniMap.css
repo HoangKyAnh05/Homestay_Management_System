@@ -82,30 +82,54 @@
   z-index: 6;
 }
 
-/* Place Bubble */
+/* Place Chip Pin */
 .custom-minimap-place-pin {
-  background: transparent;
-  border: none;
+  background: transparent !important;
+  border: none !important;
+  width: auto !important;
+  height: auto !important;
 }
 
-.minimap-place-bubble {
-  position: relative;
+.minimap-place-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   transform: translate(-50%, -50%);
-  padding: 0.2rem 0.5rem;
+  padding: 4px 10px 4px 8px;
   border-radius: 9999px;
   color: #ffffff;
-  font-size: 0.625rem;
+  font-size: 11px;
   font-weight: 600;
-  border: 1px solid #ffffff;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  border: 1.5px solid rgba(255, 255, 255, 0.95);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
   white-space: nowrap;
   cursor: pointer;
-  transition: transform 0.2s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  letter-spacing: -0.01em;
+  user-select: none;
 }
 
-.minimap-place-bubble:hover {
-  transform: translate(-50%, -60%) scale(1.1);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+.minimap-place-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #ffffff;
+  display: inline-block;
+  flex-shrink: 0;
+  box-shadow: 0 0 4px rgba(255, 255, 255, 0.8);
+}
+
+.minimap-place-name {
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: #ffffff;
+}
+
+.minimap-place-chip:hover {
+  transform: translate(-50%, -55%) scale(1.08);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.45);
+  z-index: 1000;
 }
 
 /* Floating Expand Button */

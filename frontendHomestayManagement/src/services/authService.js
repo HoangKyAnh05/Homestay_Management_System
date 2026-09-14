@@ -78,6 +78,48 @@ function scheduleTokenExpiration(token) {
   return true
 }
 
+export function getRoleDisplayName(role) {
+  switch (role) {
+    case 'ROLE_ADMIN': return 'Quản trị viên (Admin)'
+    case 'ROLE_RECEPTIONIST': return 'Lễ tân (Receptionist)'
+    case 'ROLE_HOUSEKEEPING': return 'Buồng phòng (Housekeeping)'
+    case 'ROLE_MARKETING': return 'Marketing'
+    case 'ROLE_CUSTOMER':
+    case 'ROLE_USER':
+    default:
+      return 'Khách hàng (Customer)'
+  }
+}
+
+export function normalizeRole(role) {
+  if (!role || role === 'ROLE_USER' || role === 'ROLE_CUSTOMER') {
+    return 'ROLE_CUSTOMER'
+  }
+  return role
+}
+
+export function validateSingleRoleSession(incomingRole) {
+  const currentStoredUser = getStoredUser()
+  if (!currentStoredUser || !currentStoredUser.role) {
+    return true
+  }
+
+  const currentRoleNormalized = normalizeRole(currentStoredUser.role)
+  const incomingRoleNormalized = normalizeRole(incomingRole)
+
+  if (currentRoleNormalized !== incomingRoleNormalized) {
+    const currentName = getRoleDisplayName(currentStoredUser.role)
+    const incomingName = getRoleDisplayName(incomingRole)
+    throw new Error(
+      `Trình duyệt này đang có phiên đăng nhập với vai trò "${currentName}". ` +
+      `Mỗi phiên trình duyệt Chrome chỉ cho phép đăng nhập các tài khoản cùng một nhóm vai trò (Role). ` +
+      `Để đăng nhập tài khoản "${incomingName}", vui lòng Đăng xuất tài khoản hiện tại trước hoặc mở Cửa sổ Ẩn danh (Incognito) / Profile Chrome khác.`
+    )
+  }
+
+  return true
+}
+
 function saveAuthSession(data) {
   clearStoredAuth()
   // Write the user first so the token change is the atomic signal observed by other tabs.

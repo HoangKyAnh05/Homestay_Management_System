@@ -537,8 +537,35 @@ function AdminInvoicesPage() {
       {error && <div className="ain-error">{error}</div>}
 
       <div className="ain-table-wrap">
-        {loading ? (
-          <div className="ain-empty">Đang tải...</div>
+        {loading && invoices.length === 0 ? (
+          <table className="ain-table ain-skeleton-table">
+            <thead>
+              <tr>
+                <th>Hóa đơn</th>
+                <th>Khách hàng / đoàn</th>
+                <th>Tổng tiền</th>
+                <th>Voucher</th>
+                <th>Thanh toán</th>
+                <th>Trạng thái</th>
+                <th>Ngày lập</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {[1, 2, 3, 4, 5, 6].map((k) => (
+                <tr key={k} className="ain-skeleton-row">
+                  <td><div className="ain-skeleton-bar" style={{ width: '80px', height: '16px' }} /></td>
+                  <td><div className="ain-skeleton-bar" style={{ width: '130px', height: '16px' }} /></td>
+                  <td><div className="ain-skeleton-bar" style={{ width: '90px', height: '16px' }} /></td>
+                  <td><div className="ain-skeleton-bar" style={{ width: '60px', height: '16px' }} /></td>
+                  <td><div className="ain-skeleton-bar" style={{ width: '85px', height: '16px' }} /></td>
+                  <td><div className="ain-skeleton-bar" style={{ width: '70px', height: '16px' }} /></td>
+                  <td><div className="ain-skeleton-bar" style={{ width: '100px', height: '16px' }} /></td>
+                  <td><div className="ain-skeleton-bar" style={{ width: '60px', height: '16px' }} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         ) : filteredInvoices.length === 0 ? (
           <div className="ain-empty">Không tìm thấy hóa đơn nào.</div>
         ) : (

@@ -2637,16 +2637,6 @@ function IntuitiveBookingCardsView({
 
                 {/* Actions Footer */}
                 <div className="abk-easy-card-actions">
-                  {isUnassigned && (
-                    <button
-                      type="button"
-                      className="abk-easy-btn abk-easy-btn--assign"
-                      onClick={() => window.location.assign(`/admin/check-in-logs`)}
-                      title="Mở Nhật ký check-in để gán phòng"
-                    >
-                      Xếp phòng ngay
-                    </button>
-                  )}
 
                   {!isUnassigned && isCheckedIn && !isCompleted && (
                     <button

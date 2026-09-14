@@ -194,34 +194,40 @@ function AdminCancellationsPage() {
         </div>
 
         {/* Content Section */}
-        {loading ? (
-          <div className="ac-loading-state">
-            <span className="ac-spinner" /> Đang tải danh sách đơn hủy & hoàn tiền...
-          </div>
-        ) : filteredList.length === 0 ? (
-          <div className="ac-empty-state">
-            <div className="ac-empty-icon"></div>
-            <h3>Không tìm thấy đơn hủy nào</h3>
-            <p>Không có dữ liệu phù hợp với bộ lọc tìm kiếm hiện tại.</p>
-          </div>
-        ) : (
-          <div className="ac-table-container">
-            <table className="ac-table">
-              <thead>
+        <div className="ac-table-container">
+          <table className="ac-table">
+            <thead>
+              <tr>
+                <th>Mã Booking</th>
+                <th>Khách hàng</th>
+                <th>Lịch trình & Thời gian hủy</th>
+                <th>Lý do hủy</th>
+                <th>Đã thanh toán</th>
+                <th>Tỷ lệ & Hoàn tiền</th>
+                <th>Thông tin nhận hoàn</th>
+                <th>Trạng thái xử lý</th>
+                <th>Thao tác</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading && filteredList.length === 0 ? (
                 <tr>
-                  <th>Mã Booking</th>
-                  <th>Khách hàng</th>
-                  <th>Lịch trình & Thời gian hủy</th>
-                  <th>Lý do hủy</th>
-                  <th>Đã thanh toán</th>
-                  <th>Tỷ lệ & Hoàn tiền</th>
-                  <th>Thông tin nhận hoàn</th>
-                  <th>Trạng thái xử lý</th>
-                  <th>Thao tác</th>
+                  <td colSpan="9" style={{ textAlign: 'center', padding: '36px 16px', color: '#64748b' }}>
+                    <span className="ac-spinner" style={{ verticalAlign: 'middle', marginRight: '8px' }} /> Đang tải dữ liệu đơn hủy...
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {filteredList.map((item) => {
+              ) : filteredList.length === 0 ? (
+                <tr>
+                  <td colSpan="9" style={{ textAlign: 'center', padding: '48px 16px' }}>
+                    <div className="ac-empty-state" style={{ margin: 0, padding: 0 }}>
+                      <div className="ac-empty-icon"></div>
+                      <h3 style={{ fontSize: '15px', color: '#1e293b', marginTop: '8px' }}>Chưa có đơn hủy nào</h3>
+                      <p style={{ fontSize: '13px', color: '#64748b', marginTop: '4px' }}>Không có dữ liệu phù hợp với bộ lọc tìm kiếm hiện tại.</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                filteredList.map((item) => {
                   const isPending = item.refundStatus === 'PENDING_REFUND'
                   const isRefunded = item.refundStatus === 'REFUNDED'
                   return (
@@ -348,11 +354,11 @@ function AdminCancellationsPage() {
                       </td>
                     </tr>
                   )
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
 
         {/* Confirmation Modal */}
         {confirmModalData && (

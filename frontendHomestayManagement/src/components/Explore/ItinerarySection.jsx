@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { ITINERARIES_DATA, ITINERARY_VIBES, getGoogleMapsMultiStopUrl } from '../../data/places';
+import { ITINERARIES_DATA, ITINERARY_VIBES, getGoogleMapsMultiStopUrl, getGoogleMapsPlaceUrl } from '../../data/places';
 import './ItinerarySection.css';
 
 // SVG Icon for stops
@@ -86,26 +86,37 @@ export default function ItinerarySection({
     return ITINERARIES_DATA.filter((item) => item.vibe === selectedVibe);
   }, [selectedVibe]);
 
-  // Handle Quick Planner Generate
+  // Handle Quick Planner Generate - Smart Recommendation Logic
   const handleGenerateCustomPlan = () => {
     let matchedId = 'san-may-song-ao';
-    if (planTime === '2-3h') {
-      matchedId = 'chi-co-3-tieng';
-    } else if (planVibe === 'food') {
+    // 1. Primary priority: User's selected Vibe / Experiential Intent
+    if (planVibe === 'food') {
       matchedId = 'food-tour-tay-bac';
     } else if (planVibe === 'healing') {
       matchedId = 'healing-cap-doi';
     } else if (planVibe === 'trekking') {
       matchedId = 'trekking-ban-lang';
-    } else if (planTime === 'full-day') {
-      matchedId = 'buoi-chieu';
+    } else if (planVibe === 'san-may') {
+      if (planTime === '2-3h') {
+        matchedId = 'chi-co-3-tieng';
+      } else {
+        matchedId = 'san-may-song-ao';
+      }
     } else {
-      matchedId = 'buoi-sang';
+      // 2. Secondary priority: Time-based matching
+      if (planTime === '2-3h') {
+        matchedId = 'chi-co-3-tieng';
+      } else if (planTime === 'full-day') {
+        matchedId = 'buoi-chieu';
+      } else {
+        matchedId = 'buoi-sang';
+      }
     }
 
     const matched = ITINERARIES_DATA.find((i) => i.id === matchedId) || ITINERARIES_DATA[0];
     setCustomPlanResult(matched);
   };
+
 
   const handleViewOnMap = (itinerary) => {
     onSelectItinerary(itinerary);
@@ -276,13 +287,21 @@ export default function ItinerarySection({
               {/* Step Sequence Bar */}
               <div className="planner-result-steps-bar">
                 {customPlanResult.stops.map((stop, sIdx) => (
-                  <div key={sIdx} className="planner-result-step-item">
+                  <a
+                    key={sIdx}
+                    href={getGoogleMapsPlaceUrl(stop)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="planner-result-step-item is-clickable"
+                    title={`Bấm để mở địa điểm "${stop.name}" trên Google Maps`}
+                  >
                     <span className="planner-step-idx">{sIdx + 1}</span>
                     <span className="planner-step-text">{stop.name}</span>
+                    <span className="planner-step-ext">↗</span>
                     {sIdx < customPlanResult.stops.length - 1 && (
                       <span className="planner-step-arrow">➔</span>
                     )}
-                  </div>
+                  </a>
                 ))}
               </div>
 
@@ -305,6 +324,7 @@ export default function ItinerarySection({
                   target="_blank"
                   rel="noopener noreferrer"
                   className="planner-btn-gmaps"
+                  title="Mở Google Maps dẫn đường từng điểm trên điện thoại"
                 >
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                     <polygon points="3 11 22 2 13 21 11 13 3 11"></polygon>
@@ -396,10 +416,17 @@ export default function ItinerarySection({
                           {sIdx < item.stops.length - 1 && <span className="itinerary-step-line" />}
                         </div>
                         <div className="itinerary-stop-right">
-                          <div className="itinerary-stop-header">
+                          <a
+                            href={getGoogleMapsPlaceUrl(stop)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="itinerary-stop-header-link"
+                            title={`Bấm để mở địa điểm "${stop.name}" trên Google Maps`}
+                          >
                             <StopIcon type={stop.icon} />
                             <strong className="itinerary-stop-name">{stop.name}</strong>
-                          </div>
+                            <span className="itinerary-stop-link-icon">↗</span>
+                          </a>
                           {stop.note && <p className="itinerary-stop-note">{stop.note}</p>}
                         </div>
                       </div>
@@ -492,15 +519,23 @@ export default function ItinerarySection({
                   <div key={idx} className="itinerary-timeline-step">
                     <div className="itinerary-timeline-num">{idx + 1}</div>
                     <div className="itinerary-timeline-text">
-                      <div className="itinerary-timeline-stop-head">
+                      <a
+                        href={getGoogleMapsPlaceUrl(stop)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="itinerary-timeline-stop-head-link"
+                        title={`Bấm để mở địa điểm "${stop.name}" trên Google Maps`}
+                      >
                         <StopIcon type={stop.icon} />
                         <strong>{stop.name}</strong>
-                      </div>
+                        <span className="itinerary-stop-link-icon">↗</span>
+                      </a>
                       <p>{stop.note || 'Điểm dừng chân tham quan trải nghiệm'}</p>
                     </div>
                   </div>
                 ))}
               </div>
+
 
               <div className="itinerary-modal-actions">
                 <button
