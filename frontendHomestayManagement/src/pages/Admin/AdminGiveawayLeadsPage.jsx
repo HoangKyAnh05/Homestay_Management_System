@@ -556,7 +556,7 @@ export default function AdminGiveawayLeadsPage() {
                               onClick={() => setDetailCustomer(cust)}
                               title="Xem chi tiết khách hàng và lịch sử giải thưởng"
                             >
-                              👁️ Chi tiết
+                              Chi tiết
                             </button>
                             <a
                               href={`https://zalo.me/${cust.phone}`}
@@ -565,14 +565,14 @@ export default function AdminGiveawayLeadsPage() {
                               className="gw-action-btn gw-action-btn--zalo"
                               title="Nhắn tin Zalo với khách hàng"
                             >
-                              💬 Zalo
+                              Zalo
                             </a>
                             <a
                               href={`tel:${cust.phone}`}
                               className="gw-action-btn gw-action-btn--call"
                               title="Gọi điện thoại trực tiếp"
                             >
-                              📞 Gọi
+                              Gọi
                             </a>
                             <button
                               type="button"
@@ -580,7 +580,7 @@ export default function AdminGiveawayLeadsPage() {
                               onClick={() => handleOpenStatusModal(cust)}
                               title="Cập nhật trạng thái tư vấn & ghi chú"
                             >
-                              ✏️ Cập nhật
+                              Cập nhật
                             </button>
                           </div>
                         </td>
@@ -765,14 +765,14 @@ export default function AdminGiveawayLeadsPage() {
                     className="mkt-btn"
                     style={{ background: '#0284c7', color: '#fff', padding: '8px 14px', borderRadius: 6, fontSize: 13, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}
                   >
-                     Chat Zalo
+                    Chat Zalo
                   </a>
                   <a
                     href={`tel:${detailCustomer.phone}`}
                     className="mkt-btn"
                     style={{ background: '#166534', color: '#fff', padding: '8px 14px', borderRadius: 6, fontSize: 13, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}
                   >
-                     Gọi Ngay
+                    Gọi ngay
                   </a>
                 </div>
                 <button
@@ -782,7 +782,7 @@ export default function AdminGiveawayLeadsPage() {
                     handleOpenStatusModal(detailCustomer)
                   }}
                 >
-                  ️ Cập Nhật Trạng Thái
+                  Cập nhật trạng thái
                 </button>
               </div>
             </div>
