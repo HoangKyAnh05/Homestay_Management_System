@@ -234,6 +234,7 @@
 .hkr-search input {
   border: none;
   outline: none;
+  background: transparent;
   font-size: 13px;
   font-family: inherit;
   color: #1e293b;

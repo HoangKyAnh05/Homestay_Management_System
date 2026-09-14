@@ -831,7 +831,7 @@
 .mkt-table-card, .mkt-voucher-panel { overflow: hidden; }
 .mkt-toolbar { display: flex; align-items: center; gap: 12px; padding: 15px 17px; border-bottom: 1px solid #edf0f4; }
 .mkt-search { width: min(310px, 35%); height: 40px; display: flex; align-items: center; gap: 8px; padding: 0 11px; border: 1px solid #d9dee7; border-radius: 9px; color: #98a2b3; background: #fff; }
-.mkt-search input { min-width: 0; flex: 1; border: 0; outline: 0; color: #344054; font-size: 12px; }
+.mkt-search input { min-width: 0; flex: 1; border: 0; outline: 0; background: transparent; color: #1e293b; font-size: 13px; }
 .mkt-filter-tabs { display: flex; align-items: center; gap: 3px; padding: 3px; border-radius: 9px; background: #f2f4f7; }
 .mkt-filter-tabs button { height: 32px; padding: 0 11px; border: 0; border-radius: 7px; background: transparent; color: #667085; font-size: 10.5px; font-weight: 700; cursor: pointer; }
 .mkt-filter-tabs button.is-active { background: #fff; color: #2563eb; box-shadow: 0 1px 3px rgba(16, 24, 40, .1); }

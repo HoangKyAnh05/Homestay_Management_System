@@ -133,6 +133,25 @@ select {
   font-size: inherit;
 }
 
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]):not([type="submit"]):not([type="button"]):not([type="reset"]),
+textarea,
+select {
+  background-color: #ffffff;
+  color: var(--text-primary);
+}
+
+.mkt-search input,
+.hkr-search input,
+.gw-search-box input,
+.search-box input,
+.rsheet-search-input input,
+.rsheet-excel-search-input input,
+.input-with-icon input {
+  background: transparent !important;
+  background-color: transparent !important;
+  color: #0f172a !important;
+}
+
 input::placeholder,
 textarea::placeholder {
   font-family: var(--font-body);
