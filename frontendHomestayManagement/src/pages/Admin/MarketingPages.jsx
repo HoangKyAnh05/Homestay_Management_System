@@ -785,6 +785,11 @@ export function MarketingAIAgentPage() {
     caption: '',
     hashtags: '#shorts #reels #tiktok #fyp #LaDoHomestay #SaPa #DuLichSaPa',
     thumbnailUrl: '',
+    aiTopicTag: 'SAN_MAY',
+    aiFramework: 'HOOK_STORY_OFFER',
+    aiTone: 'POETIC_CHILL',
+    aiAudience: 'COUPLE',
+    aiCustomNote: '',
     platforms: {
       YOUTUBE: false,
       FACEBOOK: true,
@@ -2297,7 +2302,7 @@ export function MarketingAIAgentPage() {
   }
 
   const handleAutoGenerateModalCaption = async () => {
-    const currentTopic = multiPostModal.title || 'Lá Đỏ Homestay Sa Pa - Trải nghiệm săn mây thung lũng Mường Hoa';
+    const topic = multiPostModal.title || 'Lá Đỏ Homestay Sa Pa - Trải nghiệm săn mây thung lũng Mường Hoa';
     setMultiPostModal((c) => ({ ...c, generatingAi: true, errorMsg: '' }));
 
     const openAiApiKey = (
@@ -2307,13 +2312,62 @@ export function MarketingAIAgentPage() {
     ).trim();
     const geminiApiKey = (localStorage.getItem('GEMINI_API_KEY') || '').trim();
 
-    const prompt = `Bạn là chuyên gia Content Creator & Social Media Marketing cho Homestay và Du Lịch Sa Pa.
-Hãy viết tiêu đề hấp dẫn, nội dung caption lôi cuốn (có icon cảm xúc) và danh sách hashtag phù hợp cho bài viết/video ngắn về chủ đề: "${currentTopic}".
-BẮT BUỘC trả về đúng 1 JSON duy nhất:
+    const topicLabelMap = {
+      SAN_MAY: 'Săn mây bồng bềnh & View thung lũng Mường Hoa',
+      REVIEW_ROOM: 'Review phòng nghỉ view kính Panorama & Bồn tắm thư giãn',
+      VOUCHER_GIVEAWAY: 'Vòng quay may mắn trúng Voucher giảm 50% tiền phòng',
+      BBQ_SUNSET: 'Tiệc nướng BBQ hoàng hôn sân vườn & Cà phê chill ngắm mây',
+      FLASHSALE: 'Flash Sale ưu đãi đặt phòng giới hạn trong tuần',
+    };
+
+    const frameworkLabelMap = {
+      HOOK_STORY_OFFER: 'Hook 3s đầu giật tít -> Kể chuyện trải nghiệm chân thực -> Tung ưu đãi & Kêu gọi hành động',
+      AIDA: 'AIDA (Attention Gây chú ý -> Interest Tạo hứng thú -> Desire Khao khát -> Action Kêu gọi hành động)',
+      PAS: 'PAS (Problem Nỗi đau áp lực phố thị -> Agitate Đồng cảm mệt mỏi -> Solution Chữa lành tại Lá Đỏ)',
+      FOMO: 'FOMO (Tạo độ khan hiếm, giới hạn số lượng phòng view đẹp)',
+    };
+
+    const audienceLabelMap = {
+      COUPLE: 'Cặp đôi, tuần trăng mật lãng mạn',
+      YOUTH_FRIENDS: 'Nhóm bạn trẻ mê check-in, săn ảnh sống ảo',
+      FAMILY: 'Gia đình nghỉ dưỡng cuối tuần ấm cúng',
+    };
+
+    const toneLabelMap = {
+      POETIC_CHILL: 'Thơ mộng, chữa lành, bình yên, chạm đến cảm xúc',
+      EXCITED_TREND: 'Hào hứng, bắt trend, giật tít sôi nổi',
+      COZY_WARM: 'Gần gũi, chân tình, ấm áp như trở về nhà',
+    };
+
+    const topicDesc = topicLabelMap[multiPostModal.aiTopicTag] || topicLabelMap.SAN_MAY;
+    const frameworkDesc = frameworkLabelMap[multiPostModal.aiFramework] || frameworkLabelMap.HOOK_STORY_OFFER;
+    const audienceDesc = audienceLabelMap[multiPostModal.aiAudience] || audienceLabelMap.COUPLE;
+    const toneDesc = toneLabelMap[multiPostModal.aiTone] || toneLabelMap.POETIC_CHILL;
+    const customNote = multiPostModal.aiCustomNote ? `\nYÊU CẦU ĐẶC BIỆT TỪ NGƯỜI DÙNG: "${multiPostModal.aiCustomNote}"` : '';
+
+    const prompt = `Bạn là Giám đốc Sáng tạo Nội dung (Creative Content Director) & Chuyên gia Copywriting hàng đầu trong ngành Du lịch - Homestay, chuyên phụ trách phát triển nội dung Marketing cho "Lá Đỏ Homestay Sa Pa".
+
+Yêu cầu tạo bài đăng Marketing:
+- Chủ đề / Tiêu đề gốc: "${topic}"
+- Trọng tâm nội dung: "${topicDesc}"
+- Công thức Copywriting: "${frameworkDesc}"
+- Đối tượng độc giả: "${audienceDesc}"
+- Tone giọng chủ đạo: "${toneDesc}"${customNote}
+
+QUY TẮC BẮT BUỘC:
+1. Tiêu đề (Hook Title): Giật tít, tò mò, dưới 65 ký tự, hấp dẫn cho video ngắn / bài post mạng xã hội.
+2. Caption: Viết sâu sắc, giàu hình ảnh, dùng icon cảm xúc tinh tế, phân đoạn mạch lạc.
+3. PHẦN KẾT BÀI BẮT BUỘC PHẢI CÓ ĐẦY ĐỦ CÁC ĐƯỜNG LINK CHÍNH THỨC SAU:
+👉 Tham gia Vòng Quay May Mắn nhận ngay Voucher giảm đến 50%: https://homestay-sapa.myvnc.com/giveaway
+🌐 Khám phá & Đặt phòng trực tiếp: https://homestay-sapa.myvnc.com
+📞 Hotline / Zalo tư vấn 24/7: 0941186699
+📍 Địa chỉ: Đường Hoàng Liên, Sa Pa, Lào Cai
+
+BẮT BUỘC trả về đúng 1 JSON duy nhất, không giải thích ngoài:
 {
-  "title": "Tiêu đề ngắn gọn giật tít hấp dẫn",
-  "caption": "Đoạn văn caption cảm xúc, chạm đến trái tim người đọc, mô tả khung cảnh mây núi thơ mộng, kèm lời mời ghé Lá Đỏ Homestay",
-  "hashtags": "#shorts #reels #tiktok #fyp #LaDoHomestay #SaPa #DuLichSaPa #SanMaySaPa"
+  "title": "Tiêu đề ngắn gọn giật tít",
+  "caption": "Nội dung bài viết hoàn chỉnh có đầy đủ link website, link vòng quay may mắn và hotline",
+  "hashtags": "#LaDoHomestay #SaPa #SanMaySaPa #ReviewSaPa #DuLichSaPa #VoucherHomestay #shorts #reels #fyp"
 }`;
 
     try {
@@ -2390,17 +2444,32 @@ BẮT BUỘC trả về đúng 1 JSON duy nhất:
       console.warn('AI caption gen failed, fallback:', e);
     }
 
-    const titles = [
-      'Một sớm Sa Pa thức dậy giữa biển mây bồng bềnh tại Lá Đỏ',
-      'Hoàng hôn buông xuống thung lũng Mường Hoa - Góc chill cực đỉnh',
-      'Trải nghiệm lẩu cá tầm Tây Bắc bên bếp lửa hồng ấm áp',
-    ];
-    const randomTitle = titles[Math.floor(Math.random() * titles.length)];
+    // High-converting Intelligent Fallback Generator with mandatory links
+    const mandatoryFooter = `\n\n👉 Tham gia Vòng Quay May Mắn nhận ngay Voucher giảm đến 50%: https://homestay-sapa.myvnc.com/giveaway\n🌐 Khám phá & Đặt phòng trực tiếp: https://homestay-sapa.myvnc.com\n📞 Hotline / Zalo tư vấn 24/7: 0941186699\n📍 Địa chỉ: Đường Hoàng Liên, Sa Pa, Lào Cai`;
+
+    let generatedTitle = '';
+    let generatedCaption = '';
+    let generatedHashtags = '#LaDoHomestay #SaPa #SanMaySaPa #ReviewSaPa #DuLichSaPa #VoucherHomestay #shorts #reels #fyp';
+
+    if (multiPostModal.aiTopicTag === 'SAN_MAY') {
+      generatedTitle = 'Thức dậy giữa biển mây bồng bềnh tại Lá Đỏ Homestay Sa Pa ☁️';
+      generatedCaption = `🌿 Bạn có từng mơ về một sớm mai mở toang cánh cửa kính là cả biển mây trắng muốt tràn vào tận giường ngủ?\n\n✨ Tại Lá Đỏ Homestay Sa Pa, bạn không cần phải chen chúc dậy sớm đi xa. Chỉ cần pha một tách trà nóng, tựa lưng bên khung cửa Panorama, ngắm nhìn thung lũng Mường Hoa ẩn hiện trong sương sớm và mây bay lững lờ ngang tầm mắt.\n\n${multiPostModal.aiCustomNote ? `💡 Lưu ý đặc biệt: ${multiPostModal.aiCustomNote}\n\n` : ''}🍃 Chuyến đi Sa Pa trọn vẹn nhất là khi bạn tìm được chốn dừng chân bình yên cho tâm hồn.${mandatoryFooter}`;
+    } else if (multiPostModal.aiTopicTag === 'VOUCHER_GIVEAWAY') {
+      generatedTitle = '🎁 SĂN VOUCHER GIẢM 50% PHÒNG VIEW MÂY LÁ ĐỎ HOMESTAY!';
+      generatedCaption = `🎉 CƠ HỘI DU LỊCH SA PA TIẾT KIỆM TỚI 50% - DUY NHẤT HÔM NAY!\n\nLá Đỏ Homestay gửi tặng bạn cơ hội tham gia VÒNG QUAY MAY MẮN với 100% tỷ lệ trúng thưởng:\n- 🏆 Giải Đặc Biệt: Voucher Giảm 50% tiền phòng view thung lũng\n- 🌟 Voucher Giảm 30% & 20% đặt phòng trong tuần\n- ☕ Tặng miễn phí đồ uống ngắm hoàng hôn & set BBQ sân vườn\n\n${multiPostModal.aiCustomNote ? `🔥 Ưu đãi thêm: ${multiPostModal.aiCustomNote}\n\n` : ''}👇 Nhanh tay quay thưởng ngay để giữ voucher cho kỳ nghỉ sắp tới:${mandatoryFooter}`;
+    } else if (multiPostModal.aiTopicTag === 'BBQ_SUNSET') {
+      generatedTitle = 'Chiều hoàng hôn Sa Pa bên bếp nướng BBQ se lạnh 🥩🔥';
+      generatedCaption = `⛅ Khi ráng chiều đỏ rực buông xuống thung lũng Mường Hoa, không gì tuyệt vời hơn được quây quần cùng người thương bên bếp than hồng xèo xèo thịt nướng.\n\n🍃 Không gian sân vườn thoáng đãng, view trọn dãy Hoàng Liên Sơn hùng vĩ, tiếng nhạc acoustic nhẹ nhàng cùng ly rượu ngô ấm nồng. Đến Lá Đỏ Homestay để tận hưởng những phút giây chill đúng nghĩa nhất!\n\n${multiPostModal.aiCustomNote ? `📌 Ghi chú: ${multiPostModal.aiCustomNote}\n\n` : ''}📞 Đặt lịch trước để giữ bàn view hoàng hôn đẹp nhất nhé:${mandatoryFooter}`;
+    } else {
+      generatedTitle = 'Lá Đỏ Homestay Sa Pa - Trọn vẹn phút giây chữa lành giữa mây trời Tây Bắc ✨';
+      generatedCaption = `🌿 Tạm gác lại những ồn ào vội vã của phố thị, Sa Pa mùa này đón bạn bằng làn sương trong lành, tiếng gió reo qua sườn đồi và những căn phòng gỗ ấm cúng view thung lũng tuyệt đẹp.\n\n🏡 Phòng nghỉ tiện nghi đầy đủ, bồn tắm kính ngắm núi, ban công ngắm mây và đội ngũ phục vụ tận tâm chu đáo như ở nhà.\n\n${multiPostModal.aiCustomNote ? `💡 Yêu cầu: ${multiPostModal.aiCustomNote}\n\n` : ''}🌸 Đặt phòng ngay hôm nay để nhận trọn vẹn ưu đãi và dịch vụ tốt nhất:${mandatoryFooter}`;
+    }
+
     setMultiPostModal((c) => ({
       ...c,
-      title: randomTitle,
-      caption: `Sa Pa mùa này đẹp ngỡ ngàng, sương mờ bảng lảng qua từng nếp nhà gỗ. Cùng ghé Lá Đỏ Homestay để tận hưởng trọn vẹn sự tĩnh lặng và mây trời Tây Bắc nhé!`,
-      hashtags: '#shorts #reels #tiktok #fyp #LaDoHomestay #SaPa #DuLichSaPa #SanMaySaPa',
+      title: generatedTitle,
+      caption: generatedCaption,
+      hashtags: generatedHashtags,
       generatingAi: false,
     }));
   };
@@ -4005,31 +4074,120 @@ BẮT BUỘC trả về đúng 1 JSON duy nhất:
                     />
                   </div>
 
-                  {/* 3. Nội dung Caption */}
-                  <div className="mkt-dark-field">
-                    <label style={{ color: '#334155', fontWeight: 700, fontSize: '13px' }}>
-                      <span>Nội dung Caption:</span>
+                  {/* AI Marketing Studio Controls */}
+                  <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #e2e8f0', paddingBottom: '8px' }}>
+                      <span style={{ fontSize: '13px', fontWeight: 800, color: '#1e3a2b', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        ✨ AI Marketing Studio (Chọn phong cách & Công thức viết)
+                      </span>
                       <button
                         type="button"
-                        className="mkt-mini-btn"
                         onClick={handleAutoGenerateModalCaption}
                         disabled={multiPostModal.generatingAi}
-                        style={{ background: '#e0f2fe', color: '#0369a1', border: '1px solid #bae6fd', padding: '4px 12px', borderRadius: '6px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}
+                        style={{ background: '#166534', color: '#ffffff', border: 0, padding: '6px 14px', borderRadius: '8px', fontWeight: 700, fontSize: '12px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px', boxShadow: '0 2px 6px rgba(22, 101, 52, 0.25)' }}
                       >
                         {multiPostModal.generatingAi ? (
                           <span className="mkt-spinner" style={{ width: 12, height: 12, display: 'inline-block' }} />
                         ) : (
                           <Icon name="sparkles" size={13} />
                         )}
-                        <span>{multiPostModal.generatingAi ? ' Đang sinh bằng AI...' : ' Tự động sinh bằng AI'}</span>
+                        <span>{multiPostModal.generatingAi ? 'Đang viết bài...' : 'Tự động sinh bằng AI'}</span>
                       </button>
+                    </div>
+
+                    {/* 1. Chủ đề chính */}
+                    <div>
+                      <span style={{ fontSize: '12px', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '6px' }}>
+                        🎯 Chủ đề bài đăng:
+                      </span>
+                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                        {[
+                          { key: 'SAN_MAY', label: '☁️ Săn mây Mường Hoa' },
+                          { key: 'REVIEW_ROOM', label: '🛏️ Review phòng đẹp' },
+                          { key: 'VOUCHER_GIVEAWAY', label: '🎁 Minigame Voucher 50%' },
+                          { key: 'BBQ_SUNSET', label: '🥩 BBQ hoàng hôn' },
+                          { key: 'FLASHSALE', label: '⚡ Flash Sale trong tuần' },
+                        ].map((item) => (
+                          <button
+                            key={item.key}
+                            type="button"
+                            onClick={() => setMultiPostModal((c) => ({ ...c, aiTopicTag: item.key }))}
+                            style={{
+                              padding: '5px 10px',
+                              borderRadius: '6px',
+                              fontSize: '12px',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                              border: multiPostModal.aiTopicTag === item.key ? '1.5px solid #166534' : '1px solid #cbd5e1',
+                              background: multiPostModal.aiTopicTag === item.key ? '#f0fdf4' : '#ffffff',
+                              color: multiPostModal.aiTopicTag === item.key ? '#166534' : '#475569',
+                            }}
+                          >
+                            {item.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* 2. Công thức Marketing & Tone giọng */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                      <div>
+                        <span style={{ fontSize: '12px', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '4px' }}>
+                          📐 Công thức Marketing:
+                        </span>
+                        <select
+                          value={multiPostModal.aiFramework}
+                          onChange={(e) => setMultiPostModal({ ...multiPostModal, aiFramework: e.target.value })}
+                          style={{ width: '100%', padding: '6px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '12px', background: '#fff', color: '#0f172a', fontWeight: 600 }}
+                        >
+                          <option value="HOOK_STORY_OFFER">🎬 Hook - Story - Offer (Shorts/Reels)</option>
+                          <option value="AIDA">💎 AIDA (Attention - Interest - Desire - Action)</option>
+                          <option value="PAS">🌿 PAS (Chữa lành & Giải pháp)</option>
+                          <option value="FOMO">⏳ FOMO (Tạo độ khan hiếm)</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <span style={{ fontSize: '12px', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '4px' }}>
+                          🎨 Tone giọng & Phong cách:
+                        </span>
+                        <select
+                          value={multiPostModal.aiTone}
+                          onChange={(e) => setMultiPostModal({ ...multiPostModal, aiTone: e.target.value })}
+                          style={{ width: '100%', padding: '6px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '12px', background: '#fff', color: '#0f172a', fontWeight: 600 }}
+                        >
+                          <option value="POETIC_CHILL">🌿 Thơ mộng & Chill bình yên</option>
+                          <option value="EXCITED_TREND">🔥 Hào hứng, Bắt trend sôi nổi</option>
+                          <option value="COZY_WARM">☕ Gần gũi, Ấm cúng chân tình</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* 3. Ô Ghi chú yêu cầu riêng cho AI */}
+                    <div>
+                      <span style={{ fontSize: '12px', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '4px' }}>
+                        ✍️ Ghi chú yêu cầu riêng cho AI (Ý tưởng bổ sung, ưu đãi hôm nay...):
+                      </span>
+                      <input
+                        style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '12.5px', background: '#ffffff', color: '#0f172a' }}
+                        value={multiPostModal.aiCustomNote}
+                        onChange={(e) => setMultiPostModal({ ...multiPostModal, aiCustomNote: e.target.value })}
+                        placeholder="VD: Nhấn mạnh phòng bồn tắm kính tầng 3, tặng đĩa ngô nướng, chỉ áp dụng trước thứ 6..."
+                      />
+                    </div>
+                  </div>
+
+                  {/* 3. Nội dung Caption */}
+                  <div className="mkt-dark-field">
+                    <label style={{ color: '#334155', fontWeight: 700, fontSize: '13px' }}>
+                      <span>Nội dung Caption (Đã chèn tự động Link Website & Vòng quay):</span>
                     </label>
                     <textarea
-                      style={{ background: '#f8fafc', color: '#0f172a', border: '1px solid #cbd5e1', borderRadius: '10px', padding: '12px 16px' }}
-                      rows="3"
+                      style={{ background: '#f8fafc', color: '#0f172a', border: '1px solid #cbd5e1', borderRadius: '10px', padding: '12px 16px', lineHeight: 1.5 }}
+                      rows="6"
                       value={multiPostModal.caption}
                       onChange={(e) => setMultiPostModal({ ...multiPostModal, caption: e.target.value })}
-                      placeholder="Nhập mô tả / caption..."
+                      placeholder="Nhấp 'Tự động sinh bằng AI' hoặc tự nhập mô tả / caption..."
                       required
                     />
                   </div>
