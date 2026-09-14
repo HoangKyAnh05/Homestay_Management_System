@@ -1878,7 +1878,9 @@
   gap: 12px;
 }
 
-.footer-nav-list li a {
+.footer-nav-list li a,
+.footer-nav-list li button,
+.footer-link-btn {
   color: #4b5e52;
   font-size: 13.5px;
   text-decoration: none;
@@ -1887,9 +1889,18 @@
   gap: 6px;
   font-weight: 500;
   transition: all 0.2s ease;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
 }
 
-.footer-nav-list li a::before {
+.footer-nav-list li a::before,
+.footer-nav-list li button::before,
+.footer-link-btn::before {
   content: '›';
   font-size: 15px;
   font-weight: 700;
@@ -1898,13 +1909,17 @@
   transition: transform 0.2s ease, opacity 0.2s ease;
 }
 
-.footer-nav-list li a:hover {
+.footer-nav-list li a:hover,
+.footer-nav-list li button:hover,
+.footer-link-btn:hover {
   color: #174229;
   font-weight: 600;
   transform: translateX(4px);
 }
 
-.footer-nav-list li a:hover::before {
+.footer-nav-list li a:hover::before,
+.footer-nav-list li button:hover::before,
+.footer-link-btn:hover::before {
   opacity: 1;
   transform: translateX(2px);
 }

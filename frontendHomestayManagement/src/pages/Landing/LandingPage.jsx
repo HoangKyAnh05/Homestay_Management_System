@@ -5,6 +5,7 @@ import { resolveImageUrl } from '../../utils/imageUrl';
 import FloatingContactWidget from '../../components/FloatingContact/FloatingContactWidget';
 import ArticleReviewModal from './ArticleReviewModal';
 import RoomScheduleCalendarModal from '../../components/RoomScheduleCalendar/RoomScheduleCalendarModal';
+import PolicyModal from '../../components/PolicyModal/PolicyModal';
 import { SCENERY_ARTICLES } from './sceneryArticles';
 
 const API_BASE_URL = (import.meta.env.VITE_API_URL || '') + '/api';
@@ -49,6 +50,7 @@ function LandingPage() {
   const [loadingRooms, setLoadingRooms] = useState(true);
   const [selectedArticle, setSelectedArticle] = useState(null);
   const [scheduleModalVilla, setScheduleModalVilla] = useState(null);
+  const [policyModal, setPolicyModal] = useState({ isOpen: false, tab: 'checkin' });
   const [liveArticles, setLiveArticles] = useState([]);
 
   const today = new Date().toISOString().split('T')[0];
@@ -1048,7 +1050,7 @@ function LandingPage() {
                   <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
                 </svg>
               </a>
-              <a href="https://facebook.com" target="_blank" rel="noreferrer" aria-label="Facebook" title="Facebook">
+              <a href="https://www.facebook.com/ladohomestay" target="_blank" rel="noreferrer" aria-label="Facebook" title="Lá Đỏ Homestay Facebook Fanpage">
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
                 </svg>
@@ -1098,7 +1100,15 @@ function LandingPage() {
               <li><a href="/rooms">Danh Sách Tất Cả Phòng</a></li>
               <li><a href="/amenities">Dịch Vụ & Tiện Nghi</a></li>
               <li><a href="/booking-history">Tra Cứu Đặt Phòng</a></li>
-              <li><a href="#">Chính Sách Nhận & Trả Phòng</a></li>
+              <li>
+                <button
+                  type="button"
+                  style={{ background: 'none', border: 'none', padding: 0, color: 'inherit', font: 'inherit', cursor: 'pointer', textAlign: 'left', transition: 'color 0.2s' }}
+                  onClick={() => setPolicyModal({ isOpen: true, tab: 'checkin' })}
+                >
+                  Chính Sách Nhận & Trả Phòng
+                </button>
+              </li>
             </ul>
           </div>
 
@@ -1267,6 +1277,13 @@ function LandingPage() {
           onClose={() => setScheduleModalVilla(null)}
         />
       )}
+
+      {/* Policy Modal */}
+      <PolicyModal
+        isOpen={policyModal.isOpen}
+        initialTab={policyModal.tab}
+        onClose={() => setPolicyModal({ isOpen: false, tab: 'checkin' })}
+      />
 
       {/* Floating 3 Contact Buttons */}
       <FloatingContactWidget />

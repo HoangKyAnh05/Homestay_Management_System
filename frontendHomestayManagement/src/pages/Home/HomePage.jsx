@@ -3,6 +3,7 @@ import HomeSearch from '../../components/HomeSearch/HomeSearch'
 import { getStoredUser, getStoredToken, logout } from '../../services/authService'
 import { houseTypeName } from '../../utils/houseType'
 import { resolveImageUrl } from '../../utils/imageUrl'
+import PolicyModal from '../../components/PolicyModal/PolicyModal'
 import './HomePage.css'
 
 const API_BASE_URL = (import.meta.env.VITE_API_URL || '') + '/api'
@@ -867,132 +868,162 @@ function GallerySection({ rooms }) {
 
 // Footer
 function HomeFooter() {
+  const [policyModal, setPolicyModal] = useState({ open: false, tab: 'terms' })
+
+  const openPolicy = (tabKey) => {
+    setPolicyModal({ open: true, tab: tabKey })
+  }
+
   return (
-    <footer className="home-footer" id="about">
-      <div id="footpage" style={{ position: 'relative', top: '-70px' }} />
-      <div id="contact" style={{ position: 'relative', top: '-70px' }} />
-      <div className="home-footer-inner">
-        <div className="footer-brand">
-          <div className="footer-brand-header">
-            <h3>Lá Đỏ Homestay</h3>
-            <span className="footer-brand-tag">Mountain & Cloud Retreat in Sa Pa</span>
+    <>
+      <footer className="home-footer" id="about">
+        <div id="footpage" style={{ position: 'relative', top: '-70px' }} />
+        <div id="contact" style={{ position: 'relative', top: '-70px' }} />
+        <div className="home-footer-inner">
+          <div className="footer-brand">
+            <div className="footer-brand-header">
+              <h3>Lá Đỏ Homestay</h3>
+              <span className="footer-brand-tag">Mountain & Cloud Retreat in Sa Pa</span>
+            </div>
+            <p className="footer-brand-desc">
+              Nằm nép mình bên triền núi Hoàng Liên Sơn với tầm nhìn ôm trọn thung lũng Mường Hoa bồng bềnh mây trắng. Chốn dừng chân mộc mạc, bình yên giữa lòng Sa Pa sương mờ.
+            </p>
+            <div className="footer-social">
+              <a href="https://instagram.com" target="_blank" rel="noreferrer" aria-label="Instagram" title="Instagram" className="footer-social-btn">
+                <svg viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+              </a>
+              <a href="https://www.facebook.com/ladohomestay" target="_blank" rel="noreferrer" aria-label="Facebook Fanpage" title="Facebook Fanpage Lá Đỏ Homestay" className="footer-social-btn">
+                <svg viewBox="0 0 24 24"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+              </a>
+              <a href="https://youtube.com" target="_blank" rel="noreferrer" aria-label="Youtube" title="Youtube" className="footer-social-btn">
+                <svg viewBox="0 0 24 24"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"/><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02" fill="currentColor"/></svg>
+              </a>
+              <a href="mailto:ladohomestaysapa@gmail.com" aria-label="Mail" title="Gửi Email" className="footer-social-btn">
+                <svg viewBox="0 0 24 24"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+              </a>
+              <a
+                href={import.meta.env.VITE_DEPLOY_URL || 'https://reminder-strife-awoke.ngrok-free.dev'}
+                target="_blank"
+                rel="noreferrer"
+                aria-label="Deploy Link Co Dinh"
+                title="Truy cập hệ thống Online (Link Cố Định Vĩnh Viễn)"
+                className="footer-social-btn footer-deploy-btn"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z" />
+                  <polyline points="13 11 9 16 13 16 11 21 17 14 13 14 14 11" />
+                </svg>
+                <span className="deploy-pulse" title="Trạng thái: Trực tuyến (Link Cố Định Vĩnh Viễn)" />
+              </a>
+            </div>
           </div>
-          <p className="footer-brand-desc">
-            Nằm nép mình bên triền núi Hoàng Liên Sơn với tầm nhìn ôm trọn thung lũng Mường Hoa bồng bềnh mây trắng. Chốn dừng chân mộc mạc, bình yên giữa lòng Sa Pa sương mờ.
-          </p>
-          <div className="footer-social">
-            <a href="https://instagram.com" target="_blank" rel="noreferrer" aria-label="Instagram" title="Instagram" className="footer-social-btn">
-              <svg viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
-            </a>
-            <a href="https://facebook.com" target="_blank" rel="noreferrer" aria-label="Facebook" title="Facebook" className="footer-social-btn">
-              <svg viewBox="0 0 24 24"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
-            </a>
-            <a href="https://youtube.com" target="_blank" rel="noreferrer" aria-label="Youtube" title="Youtube" className="footer-social-btn">
-              <svg viewBox="0 0 24 24"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"/><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02" fill="currentColor"/></svg>
-            </a>
-            <a href="mailto:ladohomestaysapa@gmail.com" aria-label="Mail" title="Gửi Email" className="footer-social-btn">
-              <svg viewBox="0 0 24 24"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
-            </a>
-            <a
-              href={import.meta.env.VITE_DEPLOY_URL || 'https://reminder-strife-awoke.ngrok-free.dev'}
-              target="_blank"
-              rel="noreferrer"
-              aria-label="Deploy Link Co Dinh"
-              title="Truy cập hệ thống Online (Link Cố Định Vĩnh Viễn)"
-              className="footer-social-btn footer-deploy-btn"
-            >
+
+          <div className="footer-col footer-col-location">
+            <h4 className="footer-col-title">Vị Trí & Di Chuyển</h4>
+            <div className="footer-location-address">
               <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z" />
-                <polyline points="13 11 9 16 13 16 11 21 17 14 13 14 11" />
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                <circle cx="12" cy="10" r="3"/>
               </svg>
-              <span className="deploy-pulse" title="Trạng thái: Trực tuyến (Link Cố Định Vĩnh Viễn)" />
-            </a>
-          </div>
-        </div>
-
-        <div className="footer-col footer-col-location">
-          <h4 className="footer-col-title">Vị Trí & Di Chuyển</h4>
-          <div className="footer-location-address">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
-              <circle cx="12" cy="10" r="3"/>
-            </svg>
-            <span>Số 031 Hoàng Liên, Phường Sa Pa, Thị xã Sa Pa, Lào Cai</span>
-          </div>
-          <div className="footer-location-stats">
-            <div className="footer-stat-item">
-              <span className="stat-emoji"></span>
-              <div className="stat-info">
-                <strong>1.2 km</strong>
-                <span>Cách Nhà thờ đá Sa Pa</span>
-              </div>
+              <span>Số 031 Hoàng Liên, Phường Sa Pa, Thị xã Sa Pa, Lào Cai</span>
             </div>
-            <div className="footer-stat-item">
-              <span className="stat-emoji">️</span>
-              <div className="stat-info">
-                <strong>5 phút</strong>
-                <span>Thời gian lái xe / taxi</span>
+            <div className="footer-location-stats">
+              <div className="footer-stat-item">
+                <span className="stat-emoji">📍</span>
+                <div className="stat-info">
+                  <strong>1.2 km</strong>
+                  <span>Cách Nhà thờ đá Sa Pa</span>
+                </div>
+              </div>
+              <div className="footer-stat-item">
+                <span className="stat-emoji">🚕</span>
+                <div className="stat-info">
+                  <strong>5 phút</strong>
+                  <span>Thời gian lái xe / taxi</span>
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        <div className="footer-col footer-col-links">
-          <h4 className="footer-col-title">Chính Sách & Quy Định</h4>
-          <ul className="footer-nav-list">
-            <li><a href="#">Điều khoản đặt phòng</a></li>
-            <li><a href="#">Chính sách bảo mật</a></li>
-            <li><a href="#">Chính sách hủy phòng</a></li>
-            <li><a href="#">Hướng dẫn nhận phòng</a></li>
-          </ul>
-        </div>
+          <div className="footer-col footer-col-links">
+            <h4 className="footer-col-title">Chính Sách & Quy Định</h4>
+            <ul className="footer-nav-list">
+              <li>
+                <button type="button" className="footer-link-btn" onClick={() => openPolicy('terms')}>
+                  Điều khoản đặt phòng
+                </button>
+              </li>
+              <li>
+                <button type="button" className="footer-link-btn" onClick={() => openPolicy('privacy')}>
+                  Chính sách bảo mật
+                </button>
+              </li>
+              <li>
+                <button type="button" className="footer-link-btn" onClick={() => openPolicy('cancellation')}>
+                  Chính sách hủy phòng
+                </button>
+              </li>
+              <li>
+                <button type="button" className="footer-link-btn" onClick={() => openPolicy('checkin')}>
+                  Hướng dẫn nhận & trả phòng
+                </button>
+              </li>
+            </ul>
+          </div>
 
-        <div className="footer-col footer-col-contact">
-          <h4 className="footer-col-title">Liên Hệ Đặt Phòng</h4>
-          <div className="footer-contact-list">
-            <div className="footer-contact-item">
-              <span className="contact-icon-box">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 1.27h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.91a16 16 0 0 0 6 6l.91-.91a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.73 16.92z"/></svg>
-              </span>
-              <div className="contact-info-text">
-                <span className="contact-label">Hotline tư vấn</span>
-                <a href="tel:0941186699" className="contact-value contact-value-highlight">0941 186 699 (Lễ tân Sa Pa)</a>
+          <div className="footer-col footer-col-contact">
+            <h4 className="footer-col-title">Liên Hệ Đặt Phòng</h4>
+            <div className="footer-contact-list">
+              <div className="footer-contact-item">
+                <span className="contact-icon-box">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 1.27h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.91a16 16 0 0 0 6 6l.91-.91a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.73 16.92z"/></svg>
+                </span>
+                <div className="contact-info-text">
+                  <span className="contact-label">Hotline tư vấn</span>
+                  <a href="tel:0941186699" className="contact-value contact-value-highlight">0941 186 699 (Lễ tân Sa Pa)</a>
+                </div>
               </div>
-            </div>
 
-            <div className="footer-contact-item">
-              <span className="contact-icon-box">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-              </span>
-              <div className="contact-info-text">
-                <span className="contact-label">Email hỗ trợ</span>
-                <a href="mailto:ladohomestaysapa@gmail.com" className="contact-value">ladohomestaysapa@gmail.com</a>
+              <div className="footer-contact-item">
+                <span className="contact-icon-box">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                </span>
+                <div className="contact-info-text">
+                  <span className="contact-label">Email hỗ trợ</span>
+                  <a href="mailto:ladohomestaysapa@gmail.com" className="contact-value">ladohomestaysapa@gmail.com</a>
+                </div>
               </div>
-            </div>
 
-            <div className="footer-contact-item">
-              <span className="contact-icon-box">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
-              </span>
-              <div className="contact-info-text">
-                <span className="contact-label">Facebook Fanpage</span>
-                <a href="https://www.facebook.com" target="_blank" rel="noreferrer" className="contact-value">Lá Đỏ Homestay Sa Pa</a>
+              <div className="footer-contact-item">
+                <span className="contact-icon-box">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+                </span>
+                <div className="contact-info-text">
+                  <span className="contact-label">Facebook Fanpage</span>
+                  <a href="https://www.facebook.com/ladohomestay" target="_blank" rel="noreferrer" className="contact-value">Lá Đỏ Homestay Sa Pa</a>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <div className="home-footer-bottom">
-        <div className="home-footer-bottom-inner">
-          <p>© 2026 Lá Đỏ Homestay - Mountain & Cloud Retreat in Sa Pa. All rights reserved.</p>
-          <div className="footer-bottom-badge">
-            <span className="status-dot"></span>
-            <span>Hệ thống đặt phòng trực tuyến 24/7</span>
+        <div className="home-footer-bottom">
+          <div className="home-footer-bottom-inner">
+            <p>© 2026 Lá Đỏ Homestay - Mountain & Cloud Retreat in Sa Pa. All rights reserved.</p>
+            <div className="footer-bottom-badge">
+              <span className="status-dot"></span>
+              <span>Hệ thống đặt phòng trực tuyến 24/7</span>
+            </div>
           </div>
         </div>
-      </div>
-    </footer>
+      </footer>
+
+      <PolicyModal
+        isOpen={policyModal.open}
+        initialTab={policyModal.tab}
+        onClose={() => setPolicyModal({ open: false, tab: 'terms' })}
+      />
+    </>
   )
 }
 
