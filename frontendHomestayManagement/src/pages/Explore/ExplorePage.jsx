@@ -16,17 +16,18 @@ export default function ExplorePage() {
   const [selectedPlace, setSelectedPlace] = useState(null);
   const [hoveredPlaceId, setHoveredPlaceId] = useState(null);
   const [detailModalPlace, setDetailModalPlace] = useState(null);
+  const [activeItinerary, setActiveItinerary] = useState(null);
 
   // SEO: Page Title & Meta description
   useEffect(() => {
-    document.title = 'Khám phá Sa Pa | Lá Đỏ Homestay & Coffee';
+    document.title = 'Khám phá Sa Pa & Lịch trình | Lá Đỏ Homestay & Coffee';
     let metaDesc = document.querySelector('meta[name="description"]');
     if (!metaDesc) {
       metaDesc = document.createElement('meta');
       metaDesc.name = 'description';
       document.head.appendChild(metaDesc);
     }
-    metaDesc.content = 'Khám phá những địa điểm vui chơi, tham quan, ăn uống và cafe gần Lá Đỏ Homestay tại Sa Pa.';
+    metaDesc.content = 'Khám phá những địa điểm vui chơi, tham quan, ăn uống và bản đồ lịch trình thông minh xuất phát từ Lá Đỏ Homestay tại Sa Pa.';
   }, []);
 
   // Compute category counts
@@ -76,6 +77,16 @@ export default function ExplorePage() {
     setSearchQuery('');
   };
 
+  // Handler: Select Itinerary from section or quick planner
+  const handleSelectItinerary = (itinerary) => {
+    setActiveItinerary(itinerary);
+    setSelectedPlace(null); // Clear single place to focus on route
+  };
+
+  const handleClearItinerary = () => {
+    setActiveItinerary(null);
+  };
+
   return (
     <div className="explore-page-root">
       {/* 1. Header */}
@@ -111,10 +122,12 @@ export default function ExplorePage() {
                 selectedPlace={selectedPlace}
                 onSelectPlace={handleSelectPlace}
                 hoveredPlaceId={hoveredPlaceId}
+                activeItinerary={activeItinerary}
+                onClearItinerary={handleClearItinerary}
               />
 
               {/* Floating Place Detail Card on Top Right of Map */}
-              {selectedPlace && (
+              {selectedPlace && !activeItinerary && (
                 <PlaceDetailCard
                   place={selectedPlace}
                   onClose={handleCloseDetailCard}
@@ -127,7 +140,10 @@ export default function ExplorePage() {
       </main>
 
       {/* 4. Recommendation Itinerary Section */}
-      <ItinerarySection />
+      <ItinerarySection
+        onSelectItinerary={handleSelectItinerary}
+        activeItineraryId={activeItinerary?.id}
+      />
 
       {/* 5. Footer */}
       <ExploreFooter />

@@ -7,6 +7,7 @@ import ArticleReviewModal from './ArticleReviewModal';
 import RoomScheduleCalendarModal from '../../components/RoomScheduleCalendar/RoomScheduleCalendarModal';
 import PolicyModal from '../../components/PolicyModal/PolicyModal';
 import MiniMap from '../../components/MiniMap/MiniMap';
+import ItinerarySection from '../../components/Explore/ItinerarySection';
 import { SCENERY_ARTICLES } from './sceneryArticles';
 
 const API_BASE_URL = (import.meta.env.VITE_API_URL || '') + '/api';
@@ -420,7 +421,8 @@ function LandingPage() {
             <a href="#about" className="nav-link">Triết Lý</a>
             <a href="#villas" className="nav-link">Các Căn Villa</a>
             <a href="#experiences" className="nav-link">Trải Nghiệm</a>
-            <a href="#sensory" className="nav-link">Thính Âm Tự Nhiên</a>
+            <a href="#itinerary-section" className="nav-link">Lịch Trình</a>
+            <a href="/explore" className="nav-link" style={{ color: '#fda4af', fontWeight: '700' }}>🗺️ Khám Phá</a>
             <a href="#reviews" className="nav-link">Đánh Giá</a>
             <a href="#location" className="nav-link">Vị Trí</a>
           </nav>
@@ -881,6 +883,12 @@ function LandingPage() {
             </div>
           </div>
         </section>
+
+        {/* Interactive 1-Minute Itinerary Planner & Explore Section on Home */}
+        <ItinerarySection
+          isLandingPageMode={true}
+          onSelectItinerary={() => window.location.assign('/explore')}
+        />
 
         {/* Guest Reviews Section */}
         <section className="section reviews-section" id="reviews">
