@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { getStoredToken, getStoredUser } from '../../services/authService'
 import { readNdjsonStream } from '../../utils/readNdjsonStream'
 import './CustomerAiChat.css'
@@ -37,6 +37,12 @@ export default function CustomerAiChat() {
   const user = getStoredUser()
   const token = getStoredToken()
   const authenticated = user?.role === 'ROLE_CUSTOMER' && Boolean(token)
+
+  useEffect(() => {
+    const handleOpenChat = () => setOpen(true)
+    window.addEventListener('open-customer-ai-chat', handleOpenChat)
+    return () => window.removeEventListener('open-customer-ai-chat', handleOpenChat)
+  }, [])
 
   useEffect(() => {
     if (!open) return undefined

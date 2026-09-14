@@ -24,13 +24,6 @@ function toDateKey(date) {
   return `${d.getFullYear()}-${formatTwoDigits(d.getMonth() + 1)}-${formatTwoDigits(d.getDate())}`
 }
 
-function formatDisplayDate(date) {
-  if (!date) return ''
-  const d = new Date(date)
-  if (Number.isNaN(d.getTime())) return ''
-  return `${formatTwoDigits(d.getDate())}/${formatTwoDigits(d.getMonth() + 1)}/${d.getFullYear()}`
-}
-
 function formatDisplayDateTime(dateStr) {
   if (!dateStr) return ''
   const d = new Date(dateStr)
@@ -61,7 +54,6 @@ export default function RoomScheduleCalendarModal({
   const [activeMonth, setActiveMonth] = useState(() => initialDate.getMonth())
   const [busySlots, setBusySlots] = useState(() => initialBusySlots || [])
   const [loading, setLoading] = useState(false)
-  const [selectedDay, setSelectedDay] = useState(null)
 
   const targetId = room?.roomId || room?.roomTypeId || room?.id
 
@@ -99,7 +91,6 @@ export default function RoomScheduleCalendarModal({
     } else {
       setActiveMonth((m) => m - 1)
     }
-    setSelectedDay(null)
   }
 
   const handleNextMonth = () => {
@@ -109,14 +100,12 @@ export default function RoomScheduleCalendarModal({
     } else {
       setActiveMonth((m) => m + 1)
     }
-    setSelectedDay(null)
   }
 
   const handleGoToday = () => {
     const today = new Date()
     setActiveYear(today.getFullYear())
     setActiveMonth(today.getMonth())
-    setSelectedDay(null)
   }
 
   const calendarDays = useMemo(() => {
@@ -146,9 +135,9 @@ export default function RoomScheduleCalendarModal({
       const isPast = cellDate < today
       const isToday = cellDate.getTime() === today.getTime()
 
-      // Check overlapping with any busy slot
-      const dayStart = new Date(activeYear, activeMonth, day, 0, 0, 0)
-      const dayEnd = new Date(activeYear, activeMonth, day, 23, 59, 59)
+      // Check overlapping with standard homestay night window (14:00 to next day 11:00)
+      const dayStart = new Date(activeYear, activeMonth, day, 14, 0, 0)
+      const dayEnd = new Date(activeYear, activeMonth, day + 1, 11, 0, 0)
 
       const matchedSlots = busySlots.filter((slot) => {
         const slotStart = new Date(slot.checkInTarget)
@@ -157,6 +146,10 @@ export default function RoomScheduleCalendarModal({
       })
 
       const isBooked = matchedSlots.length > 0
+      const isMaintenance = matchedSlots.some((s) => s.status === 'MAINTENANCE' || s.bookingDetailId === -1)
+      const isDirty = matchedSlots.some((s) => s.status === 'DIRTY')
+      const isCheckedIn = matchedSlots.some((s) => s.status === 'CHECKED_IN')
+      const isPending = matchedSlots.some((s) => s.status === 'PENDING')
 
       const isCheckIn = checkInDayKey === dayKey
       const isCheckOut = checkOutDayKey === dayKey
@@ -176,36 +169,19 @@ export default function RoomScheduleCalendarModal({
         isPast,
         isToday,
         isBooked,
-        matchedSlots,
+        isMaintenance,
+        isDirty,
+        isCheckedIn,
+        isPending,
         isCheckIn,
         isCheckOut,
         isInSelectedRange,
+        matchedSlots,
       })
     }
 
     return days
   }, [activeYear, activeMonth, busySlots, currentCheckIn, currentCheckOut])
-
-  // Filter slots in the currently viewed month for the detailed list
-  const activeMonthSlots = useMemo(() => {
-    const monthStart = new Date(activeYear, activeMonth, 1, 0, 0, 0)
-    const monthEnd = new Date(activeYear, activeMonth + 1, 0, 23, 59, 59)
-
-    return busySlots
-      .filter((slot) => {
-        const slotStart = new Date(slot.checkInTarget)
-        const slotEnd = new Date(slot.checkOutTarget)
-        return slotStart <= monthEnd && slotEnd >= monthStart
-      })
-      .sort((a, b) => new Date(a.checkInTarget) - new Date(b.checkInTarget))
-  }, [busySlots, activeYear, activeMonth])
-
-  const displayedSlots = useMemo(() => {
-    if (selectedDay && selectedDay.matchedSlots) {
-      return selectedDay.matchedSlots
-    }
-    return activeMonthSlots
-  }, [selectedDay, activeMonthSlots])
 
   return (
     <div className="room-schedule-modal-backdrop" onClick={onClose}>
@@ -268,7 +244,11 @@ export default function RoomScheduleCalendarModal({
             </span>
             <span className="legend-item">
               <span className="legend-dot is-booked" />
-              Đã có khách đặt
+              Đã đặt
+            </span>
+            <span className="legend-item">
+              <span className="legend-dot is-maintenance" />
+              Bảo trì / Chờ dọn
             </span>
             {currentCheckIn && (
               <span className="legend-item">
@@ -297,93 +277,78 @@ export default function RoomScheduleCalendarModal({
                   return <div key={cell.key} className="vivid-day-cell is-empty" />
                 }
 
-                const isSelectedCell = selectedDay?.key === cell.key
-
+                const isConflict = cell.isBooked && (cell.isCheckIn || cell.isInSelectedRange)
                 const cellClasses = [
                   'vivid-day-cell',
-                  cell.isPast ? 'is-past' : cell.isBooked ? 'is-booked' : 'is-available',
+                  cell.isPast
+                    ? 'is-past'
+                    : cell.isMaintenance
+                    ? 'is-maintenance'
+                    : cell.isDirty
+                    ? 'is-dirty'
+                    : cell.isCheckedIn
+                    ? 'is-stay'
+                    : cell.isPending
+                    ? 'is-pending'
+                    : cell.isBooked
+                    ? 'is-booked'
+                    : 'is-available',
                   cell.isToday ? 'is-today' : '',
-                  cell.isInSelectedRange ? 'is-selected-range' : '',
-                  cell.isCheckIn ? 'is-selected-checkin' : '',
-                  cell.isCheckOut ? 'is-selected-checkout' : '',
-                  isSelectedCell ? 'is-inspecting' : '',
+                  isConflict ? 'is-booked-conflict' : cell.isInSelectedRange ? 'is-selected-range' : '',
+                  !cell.isBooked && cell.isCheckIn ? 'is-selected-checkin' : '',
+                  !cell.isBooked && cell.isCheckOut ? 'is-selected-checkout' : '',
                 ]
                   .filter(Boolean)
                   .join(' ')
 
+                let statusText = 'Trống'
+                if (cell.isPast) {
+                  statusText = ''
+                } else if (cell.isMaintenance) {
+                  statusText = 'Bảo trì'
+                } else if (cell.isDirty) {
+                  statusText = 'Chờ dọn'
+                } else if (cell.isCheckedIn) {
+                  statusText = 'Đang ở'
+                } else if (cell.isPending) {
+                  statusText = 'Giữ chỗ'
+                } else if (cell.isBooked) {
+                  statusText = isConflict ? '⚠️ Đã đặt' : 'Đã đặt'
+                } else if (cell.isCheckIn) {
+                  statusText = 'Nhận'
+                } else if (cell.isCheckOut) {
+                  statusText = 'Trả'
+                }
+
+                let cellTitle = 'Phòng còn trống'
+                if (cell.isPast) {
+                  cellTitle = 'Ngày đã qua'
+                } else if (cell.isMaintenance) {
+                  cellTitle = '🛠️ Phòng đang tạm khóa để bảo trì / sửa chữa kỹ thuật'
+                } else if (cell.isDirty) {
+                  cellTitle = '🧹 Phòng đang chờ buồng phòng dọn dẹp'
+                } else if (cell.isCheckedIn) {
+                  cellTitle = '👥 Phòng đang có khách lưu trú'
+                } else if (cell.isPending) {
+                  cellTitle = '⏳ Đang có khách giữ chỗ tạm thời (5 phút)'
+                } else if (cell.isBooked) {
+                  cellTitle = `Đã có khách đặt: ${cell.matchedSlots.map((s) => `${formatDisplayDateTime(s.checkInTarget)} - ${formatDisplayDateTime(s.checkOutTarget)}`).join(', ')}`
+                }
+
                 return (
-                  <button
+                  <div
                     key={cell.key}
-                    type="button"
                     className={cellClasses}
-                    onClick={() => {
-                      setSelectedDay(cell === selectedDay ? null : cell)
-                    }}
-                    title={
-                      cell.isBooked
-                        ? `Đã đặt: ${cell.matchedSlots.map((s) => `${formatDisplayDateTime(s.checkInTarget)} - ${formatDisplayDateTime(s.checkOutTarget)}`).join(', ')}`
-                        : cell.isPast
-                        ? 'Ngày đã qua'
-                        : 'Phòng còn trống'
-                    }
+                    title={cellTitle}
                   >
                     <span className="vivid-day-number">{cell.day}</span>
                     <span className="vivid-day-status">
-                      {cell.isCheckIn
-                        ? 'Nhận'
-                        : cell.isCheckOut
-                        ? 'Trả'
-                        : cell.isBooked
-                        ? 'Đã đặt'
-                        : cell.isPast
-                        ? ''
-                        : 'Trống'}
+                      {statusText}
                     </span>
-                  </button>
+                  </div>
                 )
               })}
             </div>
-          </div>
-
-          {/* Booked Slots List in this Month */}
-          <div className="room-schedule-details">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <h5 style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#334155' }}>
-                {selectedDay
-                  ? `Khung giờ đã đặt ngày ${selectedDay.day}/${activeMonth + 1}/${activeYear} (${displayedSlots.length})`
-                  : `Tất cả đợt khách đặt trong Tháng ${activeMonth + 1}/${activeYear} (${displayedSlots.length})`}
-              </h5>
-              {selectedDay && (
-                <button
-                  type="button"
-                  onClick={() => setSelectedDay(null)}
-                  style={{ fontSize: 12, color: '#0284c7', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}
-                >
-                  Xem toàn bộ tháng
-                </button>
-              )}
-            </div>
-
-            {displayedSlots.length > 0 ? (
-              <div className="busy-slots-list">
-                {displayedSlots.map((slot, index) => (
-                  <div key={slot.bookingDetailId || index} className="busy-slot-card">
-                    <div className="busy-slot-times">
-                      <strong>Đợt {index + 1}:</strong> Từ <strong>{formatDisplayDateTime(slot.checkInTarget)}</strong>
-                      <br />
-                      Đến <strong>{formatDisplayDateTime(slot.checkOutTarget)}</strong>
-                    </div>
-                    <span className="busy-slot-badge">Đã giữ chỗ</span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="empty-slots-state">
-                {selectedDay
-                  ? `Ngày ${selectedDay.day}/${activeMonth + 1}/${activeYear} hiện chưa có lượt đặt nào.`
-                  : `Toàn bộ Tháng ${activeMonth + 1}/${activeYear} đang trống.`}
-              </div>
-            )}
           </div>
         </div>
 

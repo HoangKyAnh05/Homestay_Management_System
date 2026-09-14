@@ -100,6 +100,7 @@ function PublicHeader() {
             <line x1="6" y1="21.5" x2="18" y2="21.5" />
           </svg>
         </a>
+
         <a href="/home#about">Giới thiệu</a>
       </nav>
 
@@ -113,6 +114,7 @@ function PublicHeader() {
           {isOpen && (
             <div className="home-user-dropdown">
               <a href="/wishlist" onClick={(e) => { e.preventDefault(); setIsOpen(false); window.location.assign('/wishlist'); }}>Danh sách yêu thích</a>
+              <a href="/vouchers" onClick={(e) => { e.preventDefault(); setIsOpen(false); window.location.assign('/vouchers'); }}>Kho mã giảm giá</a>
               <a href="/booking-history" onClick={(e) => { e.preventDefault(); setIsOpen(false); window.location.assign('/booking-history'); }}>Lịch sử đặt phòng</a>
               <a href="/profile" onClick={(e) => { e.preventDefault(); setIsOpen(false); window.location.assign('/profile'); }}>Thông tin cá nhân</a>
               <button type="button" onClick={handleLogout}>Đăng xuất</button>
@@ -166,6 +168,113 @@ function canExtendStay(booking) {
   return ['CONFIRMED', 'CHECKED_IN'].includes(status)
 }
 
+function parseRoomChangeNotes(notes) {
+  if (!notes) return null
+  const text = String(notes).trim()
+  const matchTransfer = text.match(/Đã đổi từ (?:Phòng\s*)?([^\s,]+) sang (?:Phòng\s*)?([^\s,]+)/i)
+  const matchTime = text.match(/lúc\s+([0-9]{1,2}:[0-9]{2}(?:\s+[0-9]{1,2}\/[0-9]{1,2}\/[0-9]{4})?)/i)
+  const matchReason = text.match(/-\s*Ghi chú:\s*([^\[]+)/i)
+  const matchEffective = text.match(/\[Áp dụng từ:\s*([^\]]+)\]/i)
+  const isComplimentary = text.includes('Miễn phí') || text.includes('nâng hạng')
+
+  if (matchTransfer) {
+    return {
+      isStructured: true,
+      fromRoom: matchTransfer[1],
+      toRoom: matchTransfer[2],
+      changeTime: matchTime ? matchTime[1] : null,
+      reason: matchReason ? matchReason[1].trim() : null,
+      effectiveTime: matchEffective ? matchEffective[1].trim() : null,
+      isComplimentary,
+      rawText: text,
+    }
+  }
+
+  return {
+    isStructured: false,
+    rawText: text,
+    isComplimentary,
+  }
+}
+
+function RoomChangeHistoryCard({ notes }) {
+  if (!notes) return null
+  const parsed = parseRoomChangeNotes(notes)
+  if (!parsed) return null
+
+  if (parsed.isStructured) {
+    return (
+      <div className="history-room-change-card">
+        <div className="history-room-change-header">
+          <div className="history-room-change-title">
+            <span className="history-room-change-icon">🔄</span>
+            <strong>Lịch Sử Đổi Phòng</strong>
+          </div>
+          {parsed.isComplimentary && (
+            <span className="history-room-change-free-badge">✨ Miễn phí đổi / nâng hạng</span>
+          )}
+        </div>
+
+        <div className="history-room-change-flow">
+          <div className="history-change-room-tag history-change-room-old">
+            <span className="history-change-label">Phòng ban đầu</span>
+            <span className="history-change-value">🚪 Phòng {parsed.fromRoom}</span>
+          </div>
+          <div className="history-change-arrow">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+              <polyline points="12 5 19 12 12 19"></polyline>
+            </svg>
+          </div>
+          <div className="history-change-room-tag history-change-room-new">
+            <span className="history-change-label">Phòng đã đổi</span>
+            <span className="history-change-value">✨ Phòng {parsed.toRoom}</span>
+          </div>
+        </div>
+
+        <div className="history-room-change-meta">
+          {parsed.changeTime && (
+            <div className="history-change-meta-item">
+              <span className="meta-icon">🕒</span>
+              <span className="meta-label">Thời điểm đổi:</span>
+              <span className="meta-value">{parsed.changeTime}</span>
+            </div>
+          )}
+          {parsed.effectiveTime && (
+            <div className="history-change-meta-item">
+              <span className="meta-icon">⏱️</span>
+              <span className="meta-label">Áp dụng từ:</span>
+              <span className="meta-value">{parsed.effectiveTime}</span>
+            </div>
+          )}
+          {parsed.reason && (
+            <div className="history-change-meta-item history-change-meta-reason">
+              <span className="meta-icon">📝</span>
+              <span className="meta-label">Lý do / Ghi chú:</span>
+              <span className="meta-value">{parsed.reason}</span>
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="history-room-change-card history-room-change-simple">
+      <div className="history-room-change-header">
+        <div className="history-room-change-title">
+          <span className="history-room-change-icon">🔄</span>
+          <strong>Lịch Sử Đổi Phòng / Ghi Chú:</strong>
+        </div>
+        {parsed.isComplimentary && (
+          <span className="history-room-change-free-badge">✨ Miễn phí đổi / nâng hạng</span>
+        )}
+      </div>
+      <p className="history-room-change-text">{parsed.rawText}</p>
+    </div>
+  )
+}
+
 function ExtendStayButton({ onClick, compact = false }) {
   const className = compact
     ? 'history-extend-btn history-extend-btn--compact'
@@ -178,9 +287,9 @@ function ExtendStayButton({ onClick, compact = false }) {
         event.stopPropagation()
         onClick()
       }}
-      title="Thuê thêm giờ / Gia hạn thời gian lưu trú"
+      title="Book thêm ngày / Gia hạn thời gian lưu trú"
     >
-       Thuê thêm giờ
+       Book thêm ngày
     </button>
   )
 }
@@ -216,7 +325,7 @@ function BookingExtensionModal({
   token,
   onExtensionSuccess,
 }) {
-  const [hours, setHours] = useState(2)
+  const [days, setDays] = useState(1)
   const [checking, setChecking] = useState(false)
   const [checkResult, setCheckResult] = useState(null)
   const [saving, setSaving] = useState(false)
@@ -225,7 +334,7 @@ function BookingExtensionModal({
 
   const detailId = roomDetail?.bookingDetailId || booking?.rooms?.[0]?.bookingDetailId
 
-  const checkAvailability = async (targetHours) => {
+  const checkAvailability = async (targetDays) => {
     if (!booking?.bookingId) return
     setChecking(true)
     setError('')
@@ -238,7 +347,8 @@ function BookingExtensionModal({
         },
         body: JSON.stringify({
           bookingDetailId: detailId,
-          additionalHours: targetHours,
+          additionalHours: null,
+          additionalDays: targetDays,
         }),
       })
       const data = await res.json().catch(() => ({}))
@@ -252,8 +362,8 @@ function BookingExtensionModal({
   }
 
   useEffect(() => {
-    checkAvailability(hours)
-  }, [hours])
+    checkAvailability(days)
+  }, [days])
 
   const handleConfirmExtend = async (switchRoomId = null) => {
     setSaving(true)
@@ -267,7 +377,8 @@ function BookingExtensionModal({
         },
         body: JSON.stringify({
           bookingDetailId: detailId,
-          additionalHours: hours,
+          additionalHours: null,
+          additionalDays: days,
           switchRoomId: switchRoomId,
         }),
       })
@@ -276,7 +387,7 @@ function BookingExtensionModal({
       setSuccessMsg(
         switchRoomId
           ? '✓ Đã chuyển đổi sang phòng mới thành công! Bạn có thể tiếp tục lưu trú.'
-          : `✓ Đã gia hạn thành công thêm ${hours} giờ! Chúc bạn có kỳ nghỉ tuyệt vời!`
+          : `✓ Đã gia hạn thành công thêm ${days} ngày! Chúc bạn có kỳ nghỉ tuyệt vời!`
       )
       onExtensionSuccess(data)
       setTimeout(() => {
@@ -289,18 +400,38 @@ function BookingExtensionModal({
     }
   }
 
+  const isMustBookFullDay = checkResult?.mustBookFullDay
+
   return (
     <div className="extend-modal-overlay" onClick={onClose}>
       <div className="extend-modal" onClick={(e) => e.stopPropagation()}>
         <div className="extend-modal-header">
           <div>
-            <h2> Thuê Thêm Giờ / Gia Hạn Lưu Trú</h2>
+            <h2>Book Thêm Ngày / Gia Hạn Lưu Trú</h2>
             <p>Booking {bookingDisplay(booking)} · {roomDetail?.roomNumber ? `Phòng ${roomDetail.roomNumber}` : 'Phòng đang ở'}</p>
           </div>
           <button type="button" className="extend-modal-close" onClick={onClose}>×</button>
         </div>
 
         <div className="extend-modal-body">
+          {checkResult?.warningNotice && (
+            <div
+              style={{
+                background: '#fffbeb',
+                border: '1px solid #fde68a',
+                color: '#92400e',
+                padding: '12px 16px',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: 600,
+                marginBottom: '14px',
+                lineHeight: '1.5'
+              }}
+            >
+              {checkResult.warningNotice}
+            </div>
+          )}
+
           {error && <div className="extend-alert extend-alert--error">{error}</div>}
           {successMsg && <div className="extend-alert extend-alert--success">{successMsg}</div>}
 
@@ -316,18 +447,18 @@ function BookingExtensionModal({
             </div>
           </div>
 
-          {/* Hour selection */}
+          {/* Selection options */}
           <div className="extend-hours-section">
-            <label className="extend-section-title">Chọn số giờ muốn thuê thêm:</label>
+            <label className="extend-section-title">Chọn số ngày muốn book thêm (trả phòng lúc 11:00 trưa):</label>
             <div className="extend-hour-presets">
-              {[1, 2, 3, 4, 6, 12].map((h) => (
+              {[1, 2, 3, 5, 7].map((d) => (
                 <button
-                  key={h}
+                  key={d}
                   type="button"
-                  className={`extend-hour-btn ${hours === h ? 'is-active' : ''}`}
-                  onClick={() => setHours(h)}
+                  className={`extend-hour-btn ${days === d ? 'is-active' : ''}`}
+                  onClick={() => setDays(d)}
                 >
-                  +{h} Giờ
+                  +{d} Ngày {d === 1 ? '(đến 11:00 ngày mai)' : ''}
                 </button>
               ))}
             </div>
@@ -351,15 +482,17 @@ function BookingExtensionModal({
                     <strong>{formatAppDateTime(checkResult.newCheckOut, { weekday: 'short' })}</strong>
                   </div>
                   <div className="extend-fee-row">
-                    <span>Số giờ thuê thêm:</span>
-                    <strong>+{checkResult.additionalHours} giờ</strong>
+                    <span>Thời gian gia hạn:</span>
+                      <strong>
+                        +{checkResult.additionalDays || days} ngày
+                      </strong>
                   </div>
                   <div className="extend-fee-row extend-fee-total">
-                    <span>Phí thuê thêm giờ:</span>
+                    <span>Phí gia hạn lưu trú:</span>
                     <strong style={{ color: '#16a34a', fontSize: '18px' }}>{formatMoney(checkResult.extensionFee)}</strong>
                   </div>
                 </div>
-                <p className="extend-hint-note">ℹ️ Phí thuê thêm sẽ được tự động cộng vào hóa đơn booking của bạn.</p>
+                <p className="extend-hint-note">ℹ️ Phí gia hạn sẽ được tự động cộng vào hóa đơn booking của bạn.</p>
 
                 <div className="extend-actions">
                   <button
@@ -368,7 +501,7 @@ function BookingExtensionModal({
                     disabled={saving}
                     onClick={() => handleConfirmExtend(null)}
                   >
-                    {saving ? 'Đang xử lý...' : `✓ Xác nhận thuê thêm (${formatMoney(checkResult.extensionFee)})`}
+                    {saving ? 'Đang xử lý...' : `✓ Xác nhận gia hạn (${formatMoney(checkResult.extensionFee)})`}
                   </button>
                   <button type="button" className="extend-cancel-btn" onClick={onClose}>
                     Đóng
@@ -380,7 +513,7 @@ function BookingExtensionModal({
               <div className="extend-result-box extend-result-box--busy">
                 <div className="extend-result-badge extend-result-badge--busy">️ Phòng đã có khách đặt trước</div>
                 <div className="extend-busy-desc">
-                  <strong>Phòng {checkResult.roomNumber || 'này'} đã được khách khác đặt trước cho khung giờ tiếp theo.</strong>
+                  <strong>Phòng {checkResult.roomNumber || 'này'} đã được khách khác đặt trước cho ngày/khung giờ tiếp theo.</strong>
                   <p>Hệ thống không thể gia hạn tiếp tại phòng hiện tại. Bạn có thể lựa chọn 1 trong 2 phương án dưới đây:</p>
                 </div>
 
@@ -399,7 +532,9 @@ function BookingExtensionModal({
                             <div className="extend-alt-info">
                               <strong>Phòng {alt.roomNumber}</strong>
                               <span className="extend-alt-type">{alt.roomTypeName} · Tối đa {alt.capacityAdults} người</span>
-                              <span className="extend-alt-price">{formatMoney(alt.totalPrice)} (+{hours}h)</span>
+                              <span className="extend-alt-price">
+                                {formatMoney(alt.totalPrice)} {checkResult.additionalDays > 0 ? `(+${checkResult.additionalDays} ngày)` : `(+${hours}h)`}
+                              </span>
                             </div>
                             <button
                               type="button"
@@ -413,7 +548,7 @@ function BookingExtensionModal({
                         ))}
                       </div>
                     ) : (
-                      <p className="extend-no-rooms">Hiện tại tất cả các phòng khác cũng đã kín lịch trong khung giờ này.</p>
+                      <p className="extend-no-rooms">Hiện tại tất cả các phòng khác cũng đã kín lịch trong khung giờ/ngày này.</p>
                     )}
                   </div>
 
@@ -686,6 +821,124 @@ function BookingCancelModal({
   )
 }
 
+function CustomerChangeRoomModal({ booking, room, onClose, currentUser }) {
+  const [reason, setReason] = useState('ROOM_ISSUE')
+  const [phone, setPhone] = useState(currentUser?.phoneNumber || booking?.customerPhone || '')
+  const [preferredRoomType, setPreferredRoomType] = useState('')
+  const [note, setNote] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState('')
+  const [successMsg, setSuccessMsg] = useState('')
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    if (!note.trim()) {
+      setError('Vui lòng nhập mô tả chi tiết yêu cầu / sự cố gặp phải')
+      return
+    }
+    setSubmitting(true)
+    setError('')
+    try {
+      const res = await fetch(`${API_BASE_URL}/bookings/request-room-change-public`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bookingCode: booking?.bookingCode || `#${booking?.bookingId}`,
+          phone: phone.trim() || undefined,
+          reason,
+          preferredRoomTypeName: preferredRoomType.trim() || undefined,
+          note: note.trim(),
+        }),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json.message || 'Không thể gửi yêu cầu đổi phòng')
+      setSuccessMsg('✓ Đã gửi yêu cầu đổi phòng đến Lễ tân & Quản trị viên! Lễ tân đã nhận được thông báo đỏ và sẽ liên hệ hỗ trợ bạn ngay.')
+      setTimeout(() => {
+        onClose()
+      }, 2500)
+    } catch (err) {
+      setError(err.message || 'Đã có lỗi xảy ra')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <div className="history-cancel-modal-overlay" onClick={onClose}>
+      <div className="history-cancel-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 540 }}>
+        <div className="history-cancel-modal-header">
+          <div>
+            <h2>🔄 Báo Sự Cố & Yêu Cầu Đổi Phòng</h2>
+            <p style={{ margin: '4px 0 0', fontSize: 13, color: '#64748b' }}>
+              Mã đơn: <strong>{booking?.bookingCode}</strong> · {room?.roomNumber ? `Phòng ${room.roomNumber}` : 'Chưa gán phòng'}
+            </p>
+          </div>
+          <button type="button" className="history-cancel-modal-close" onClick={onClose}>×</button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="history-cancel-modal-body" style={{ padding: '20px 24px' }}>
+          {error && <div className="extend-alert extend-alert--error">{error}</div>}
+          {successMsg && <div className="extend-alert extend-alert--success">{successMsg}</div>}
+
+          <div className="history-cancel-field">
+            <label>Lý do yêu cầu đổi phòng <span className="field-required">*</span></label>
+            <select
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              className="history-modal-select"
+            >
+              <option value="ROOM_ISSUE">🛠️ Phòng gặp sự cố kỹ thuật (Máy lạnh, nước, thiết bị hỏng...)</option>
+              <option value="CUSTOMER_UPGRADE">✨ Muốn đổi loại phòng / Nâng hạng phòng cao cấp hơn</option>
+              <option value="CUSTOMER_PREFERENCE">🪟 Muốn đổi tầng / Hướng view / Vị trí yên tĩnh hơn</option>
+              <option value="OTHER">📝 Lý do cá nhân khác</option>
+            </select>
+          </div>
+
+          <div className="history-cancel-field" style={{ marginTop: 12 }}>
+            <label>Loại phòng mong muốn đổi sang (nếu có)</label>
+            <input
+              type="text"
+              value={preferredRoomType}
+              onChange={(e) => setPreferredRoomType(e.target.value)}
+              placeholder="VD: VIP King, Deluxe View Núi, Cùng loại phòng khác..."
+            />
+          </div>
+
+          <div className="history-cancel-field" style={{ marginTop: 12 }}>
+            <label>Mô tả chi tiết sự cố / Ghi chú <span className="field-required">*</span></label>
+            <textarea
+              rows={3}
+              required
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="Ví dụ: Máy lạnh phòng phát tiếng kêu to và không mát. Mong Lễ tân hỗ trợ chuyển sang phòng khác..."
+            />
+          </div>
+
+          <div className="history-cancel-actions" style={{ marginTop: 20 }}>
+            <button
+              type="button"
+              className="history-cancel-btn--back"
+              onClick={onClose}
+              disabled={submitting}
+            >
+              Hủy
+            </button>
+            <button
+              type="submit"
+              className="history-cancel-btn--confirm"
+              style={{ background: '#0284c7', borderColor: '#0284c7' }}
+              disabled={submitting}
+            >
+              {submitting ? 'Đang gửi...' : '🚀 Gửi Yêu Cầu Cho Lễ Tân'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
 function BookingHistoryPage() {
   const [bookings, setBookings] = useState([])
   const [selectedBookingId, setSelectedBookingId] = useState(null)
@@ -712,6 +965,17 @@ function BookingHistoryPage() {
   // Cancel Booking Modal State
   const [cancelModalOpen, setCancelModalOpen] = useState(false)
   const [cancelBooking, setCancelBooking] = useState(null)
+
+  // Customer Change Room Modal State
+  const [changeRoomModalOpen, setChangeRoomModalOpen] = useState(false)
+  const [changeRoomBooking, setChangeRoomBooking] = useState(null)
+  const [changeRoomTargetRoom, setChangeRoomTargetRoom] = useState(null)
+
+  const handleOpenChangeRoomModal = (bookingObj, roomObj = null) => {
+    setChangeRoomBooking(bookingObj)
+    setChangeRoomTargetRoom(roomObj || bookingObj?.rooms?.[0] || null)
+    setChangeRoomModalOpen(true)
+  }
 
   const handleOpenExtendModal = (bookingObj, roomDetailObj = null) => {
     setExtendBooking(bookingObj)
@@ -1055,19 +1319,6 @@ function BookingHistoryPage() {
                   <p>{formatAppDateTime(booking.checkInTarget, { weekday: 'long' })}</p>
                   <div className="history-card-bottom">
                     <span>{booking.roomCount} phòng · {formatMoney(booking.totalAmount)}</span>
-                    {canExtendStay(booking) && (
-                      <ExtendStayButton
-                        compact
-                        onClick={() => handleOpenExtendModal(booking)}
-                      />
-                    )}
-                    {canCancelBooking(booking) && (
-                      <CancelBookingButton
-                        compact
-                        onClick={() => handleOpenCancelModal(booking)}
-                      />
-                    )}
-                    {canAddService(booking) && <AddServiceButton bookingId={booking.bookingId} compact />}
                     {booking.requiresPayment && (
                       <PaymentButton
                         bookingId={booking.bookingId}
@@ -1122,6 +1373,16 @@ function BookingHistoryPage() {
                       <h2>{statusLabel(detail.status)}</h2>
                     </div>
                     <div className="history-detail-actions">
+                      {['CONFIRMED', 'CHECKED_IN'].includes(String(detail.status || '').toUpperCase()) && (
+                        <button
+                          type="button"
+                          className="history-change-room-btn"
+                          onClick={() => handleOpenChangeRoomModal(detail)}
+                          title="Báo sự cố kỹ thuật hoặc yêu cầu đổi phòng"
+                        >
+                          🔄 Báo sự cố / Đổi phòng
+                        </button>
+                      )}
                       {canExtendStay(detail) && (
                         <ExtendStayButton onClick={() => handleOpenExtendModal(detail)} />
                       )}
@@ -1214,36 +1475,38 @@ function BookingHistoryPage() {
                     <div className="history-room-list">
                       {detail.rooms.map((room) => {
                         const roomExtHours = Number(room.extensionHours || 0)
+                        const isUpgraded = room.notes && (room.notes.includes('Miễn phí') || room.notes.includes('Đổi phòng') || room.notes.includes('đổi từ') || room.notes.includes('Đã đổi'))
                         return (
-                          <article key={room.bookingDetailId}>
+                          <article key={room.bookingDetailId} className={room.notes ? 'has-room-change-note' : ''}>
                             <div>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                                <strong>Phòng {room.roomNumber}</strong>
+                                <strong>{room.roomNumber ? `Phòng ${room.roomNumber}` : 'Chưa gán phòng'}</strong>
                                 {roomExtHours > 0 && (
                                   <span className="history-room-extended-tag">
                                      Đã thuê thêm +{roomExtHours}h
                                   </span>
                                 )}
+                                {isUpgraded && (
+                                  <span className="history-room-upgrade-badge" title={room.notes}>
+                                     🏷️ Đã đổi phòng
+                                  </span>
+                                )}
                               </div>
                               <span>{houseTypeName(room)} · {room.numberOfAdults} NL · {room.numberOfChildren} TE</span>
                             </div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '6px' }}>
+                            <div>
                               <p>{formatAppDateTime(room.checkInTarget, { weekday: 'long' })} → {formatAppDateTime(room.checkOutTarget, { weekday: 'long' })}</p>
-                              {canExtendStay(detail) && (
-                                <button
-                                  type="button"
-                                  className="history-room-extend-link"
-                                  onClick={() => handleOpenExtendModal(detail, room)}
-                                >
-                                   Thuê thêm giờ phòng này
-                                </button>
-                              )}
                             </div>
                             <b>
                               {Number(room.allocatedDiscount || 0) > 0
                                 ? `${formatMoney(room.finalRoomAmount)} (-${formatMoney(room.allocatedDiscount)})`
                                 : formatMoney(room.priceAtBooking)}
                             </b>
+                            {room.notes && (
+                              <div className="history-room-full-row">
+                                <RoomChangeHistoryCard notes={room.notes} />
+                              </div>
+                            )}
                           </article>
                         )
                       })}
@@ -1503,6 +1766,16 @@ function BookingHistoryPage() {
           token={token}
           onClose={() => setCancelModalOpen(false)}
           onCancelSuccess={handleCancelSuccess}
+        />
+      )}
+
+      {/* Modal: Khách Hàng Yêu Cầu Đổi Phòng / Báo Sự Cố */}
+      {changeRoomModalOpen && changeRoomBooking && (
+        <CustomerChangeRoomModal
+          booking={changeRoomBooking}
+          room={changeRoomTargetRoom}
+          currentUser={getStoredUser()}
+          onClose={() => setChangeRoomModalOpen(false)}
         />
       )}
 

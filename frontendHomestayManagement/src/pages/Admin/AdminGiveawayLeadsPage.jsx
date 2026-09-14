@@ -20,10 +20,23 @@ export default function AdminGiveawayLeadsPage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('ALL')
+  const [prizeFilter, setPrizeFilter] = useState('ALL')
   const [selectedLead, setSelectedLead] = useState(null)
   const [detailCustomer, setDetailCustomer] = useState(null)
   const [updating, setUpdating] = useState(false)
   const [statusForm, setStatusForm] = useState({ status: 'NEW', staffNote: '' })
+
+  const handleQuickBooking = (cust, prize) => {
+    const payload = {
+      customerName: cust.fullName,
+      customerPhone: cust.phone,
+      customerEmail: cust.email || '',
+      voucherCode: prize?.prizeCode || cust.allPrizes?.[0]?.prizeCode || '',
+      notes: `Khách từ Minigame Giveaway. ${cust.travelPlan ? `Kế hoạch: ${cust.travelPlan}. ` : ''}${cust.notes ? `Ghi chú: ${cust.notes}` : ''}`,
+    }
+    sessionStorage.setItem('pending_booking_lead', JSON.stringify(payload))
+    window.location.href = '/admin/bookings'
+  }
 
   // Giveaway Post Creation Modal State
   const [isCreatePostModalOpen, setIsCreatePostModalOpen] = useState(false)
@@ -221,6 +234,16 @@ export default function AdminGiveawayLeadsPage() {
     return acc
   }, [])
 
+  const displayedCustomers = groupedCustomers.filter((cust) => {
+    if (prizeFilter === 'ALL') return true
+    if (prizeFilter === '50') return cust.allPrizes.some(p => (p.discountPercent >= 50) || p.prizeName?.includes('50%'))
+    if (prizeFilter === '30') return cust.allPrizes.some(p => (p.discountPercent === 30) || p.prizeName?.includes('30%'))
+    if (prizeFilter === '20') return cust.allPrizes.some(p => (p.discountPercent === 20) || p.prizeName?.includes('20%'))
+    if (prizeFilter === '10') return cust.allPrizes.some(p => (p.discountPercent === 10) || p.prizeName?.includes('10%'))
+    if (prizeFilter === 'OTHER') return cust.allPrizes.some(p => !p.discountPercent || p.discountPercent === 0 || p.prizeName?.includes('BBQ') || p.prizeName?.includes('Cà phê'))
+    return true
+  })
+
   useEffect(() => {
     fetchStats()
   }, [])
@@ -337,7 +360,7 @@ export default function AdminGiveawayLeadsPage() {
         <div className="gw-stats-grid">
           <div className="gw-stat-card">
             <div className="gw-stat-icon" style={{ background: '#eff6ff', color: '#2563eb' }}>
-              
+              👥
             </div>
             <div className="gw-stat-info">
               <h3>{stats?.totalInteractions || 0}</h3>
@@ -347,7 +370,7 @@ export default function AdminGiveawayLeadsPage() {
 
           <div className="gw-stat-card">
             <div className="gw-stat-icon" style={{ background: '#fef2f2', color: '#dc2626' }}>
-              
+              🔔
             </div>
             <div className="gw-stat-info">
               <h3>{stats?.newLeadsCount || 0}</h3>
@@ -357,7 +380,7 @@ export default function AdminGiveawayLeadsPage() {
 
           <div className="gw-stat-card">
             <div className="gw-stat-icon" style={{ background: '#fefce8', color: '#ca8a04' }}>
-              
+              💬
             </div>
             <div className="gw-stat-info">
               <h3>{stats?.contactedCount || 0}</h3>
@@ -367,7 +390,7 @@ export default function AdminGiveawayLeadsPage() {
 
           <div className="gw-stat-card">
             <div className="gw-stat-icon" style={{ background: '#ecfdf5', color: '#059669' }}>
-              
+              ✅
             </div>
             <div className="gw-stat-info">
               <h3>{stats?.bookedCount || 0}</h3>
@@ -377,7 +400,7 @@ export default function AdminGiveawayLeadsPage() {
 
           <div className="gw-stat-card">
             <div className="gw-stat-icon" style={{ background: '#fdf4ff', color: '#c026d3' }}>
-              
+              🎁
             </div>
             <div className="gw-stat-info">
               <h3>{stats?.topPrizesWon || 0}</h3>
@@ -389,7 +412,7 @@ export default function AdminGiveawayLeadsPage() {
         {/* Toolbar & Filter */}
         <div className="gw-toolbar">
           <form onSubmit={handleSearchSubmit} className="gw-search-box">
-            
+            <span style={{ fontSize: '15px' }}>🔍</span>
             <input
               type="text"
               placeholder="Tìm kiếm Họ tên, Số điện thoại..."
@@ -398,22 +421,40 @@ export default function AdminGiveawayLeadsPage() {
             />
           </form>
 
-          <div className="gw-filter-group">
-            <label style={{ fontSize: '0.9rem', color: '#64748b', fontWeight: 600 }}>Lọc trạng thái:</label>
-            <select
-              className="gw-filter-select"
-              value={statusFilter}
-              onChange={(e) => {
-                setStatusFilter(e.target.value)
-                setPage(0)
-              }}
-            >
-              <option value="ALL">Tất cả ({totalLeads})</option>
-              <option value="NEW">Mới - Chưa liên hệ</option>
-              <option value="CONTACTED">Đang tư vấn</option>
-              <option value="BOOKED">Đã chốt đặt phòng</option>
-              <option value="CANCELLED">Hủy / Không nghe máy</option>
-            </select>
+          <div className="gw-filter-group" style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <label style={{ fontSize: '0.875rem', color: '#64748b', fontWeight: 700 }}>Trạng thái:</label>
+              <select
+                className="gw-filter-select"
+                value={statusFilter}
+                onChange={(e) => {
+                  setStatusFilter(e.target.value)
+                  setPage(0)
+                }}
+              >
+                <option value="ALL">Tất cả ({totalLeads})</option>
+                <option value="NEW">🟢 Mới - Chưa liên hệ</option>
+                <option value="CONTACTED">🟡 Đang tư vấn</option>
+                <option value="BOOKED">🔵 Đã chốt đặt phòng</option>
+                <option value="CANCELLED">⚪ Hủy / Không nghe máy</option>
+              </select>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <label style={{ fontSize: '0.875rem', color: '#64748b', fontWeight: 700 }}>Giải thưởng:</label>
+              <select
+                className="gw-filter-select"
+                value={prizeFilter}
+                onChange={(e) => setPrizeFilter(e.target.value)}
+              >
+                <option value="ALL">Tất cả giải thưởng</option>
+                <option value="50">🔥 Giảm 50% tiền phòng</option>
+                <option value="30">🌟 Giảm 30%</option>
+                <option value="20">🎈 Giảm 20%</option>
+                <option value="10">✨ Giảm 10%</option>
+                <option value="OTHER">🍖 Set BBQ / Dịch vụ</option>
+              </select>
+            </div>
           </div>
         </div>
 
@@ -439,30 +480,30 @@ export default function AdminGiveawayLeadsPage() {
                       Đang tải danh sách khách hàng tiềm năng...
                     </td>
                   </tr>
-                ) : groupedCustomers.length === 0 ? (
+                ) : displayedCustomers.length === 0 ? (
                   <tr>
                     <td colSpan={7} style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
-                      Chưa có khách hàng nào tham gia minigame. Hãy chia sẻ link <strong>/giveaway</strong> lên Facebook để thu hút khách!
+                      Không tìm thấy khách hàng tiềm năng phù hợp với bộ lọc.
                     </td>
                   </tr>
                 ) : (
-                  groupedCustomers.map((cust) => {
+                  displayedCustomers.map((cust) => {
                     const topPrize = cust.allPrizes.reduce((max, p) => (p.discountPercent > (max?.discountPercent || 0) ? p : max), cust.allPrizes[0])
                     return (
                       <tr key={cust.key}>
                         <td>
-                          <strong style={{ color: '#0f172a', fontSize: '0.95rem' }}>{cust.fullName}</strong>
-                          {cust.email && <div style={{ fontSize: '0.8rem', color: '#64748b' }}>{cust.email}</div>}
+                          <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '0.95rem' }}>{cust.fullName}</div>
+                          {cust.email && <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '2px' }}>{cust.email}</div>}
                         </td>
                         <td>
-                          <span style={{ fontWeight: 600, color: '#1e293b' }}>{cust.phone}</span>
+                          <span style={{ fontWeight: 700, color: '#1e293b' }}>{cust.phone}</span>
                         </td>
                         <td>
-                          <div style={{ fontSize: '0.875rem', fontWeight: 600, color: '#475569' }}>
-                             {cust.travelPlan || 'Chưa rõ'}
+                          <div style={{ fontSize: '0.875rem', fontWeight: 600, color: '#334155' }}>
+                            {cust.travelPlan || 'Chưa rõ'}
                           </div>
                           {cust.notes && (
-                            <div style={{ fontSize: '0.8rem', color: '#64748b', fontStyle: 'italic', maxWidth: '240px' }}>
+                            <div style={{ fontSize: '0.8rem', color: '#64748b', fontStyle: 'italic', maxWidth: '240px', marginTop: '2px' }}>
                               &ldquo;{cust.notes}&rdquo;
                             </div>
                           )}
@@ -481,12 +522,12 @@ export default function AdminGiveawayLeadsPage() {
                                 border: '1px solid #e9d5ff',
                                 borderRadius: 6,
                                 fontWeight: 700,
-                                fontSize: '0.85rem',
+                                fontSize: '0.82rem',
                                 cursor: 'pointer',
                               }}
                               title="Bấm để xem danh sách tất cả voucher"
                             >
-                               {cust.allPrizes.length} giải thưởng trúng
+                              🎁 {cust.allPrizes.length} giải thưởng trúng
                             </span>
                           ) : topPrize ? (
                             <div>
@@ -494,7 +535,7 @@ export default function AdminGiveawayLeadsPage() {
                                 {topPrize.prizeName}
                               </div>
                               {topPrize.prizeCode && (
-                                <div style={{ fontFamily: 'monospace', fontSize: '0.78rem', background: '#f1f5f9', padding: '1px 5px', borderRadius: 4, display: 'inline-block', marginTop: 2 }}>
+                                <div style={{ fontFamily: 'monospace', fontSize: '0.78rem', background: '#f1f5f9', color: '#475569', padding: '1px 6px', borderRadius: 4, display: 'inline-block', marginTop: 3 }}>
                                   {topPrize.prizeCode}
                                 </div>
                               )}
@@ -503,44 +544,51 @@ export default function AdminGiveawayLeadsPage() {
                             <span style={{ color: '#94a3b8', fontSize: '0.85rem' }}>Không có</span>
                           )}
                         </td>
-                        <td style={{ fontSize: '0.85rem', color: '#64748b' }}>
-                          {cust.createdAt ? new Date(cust.createdAt).toLocaleString('vi-VN') : ''}
+                        <td style={{ fontSize: '0.82rem', color: '#64748b', whiteSpace: 'nowrap' }}>
+                          {cust.createdAt ? new Date(cust.createdAt).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' }) : ''}
                         </td>
                         <td>{renderStatusBadge(cust.status)}</td>
-                        <td style={{ textAlign: 'right' }}>
-                          <div className="gw-action-btn-group" style={{ justifyContent: 'flex-end', gap: 6 }}>
+                        <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                          <div className="gw-action-btn-group" style={{ justifyContent: 'flex-end', gap: '6px' }}>
                             <button
                               type="button"
-                              className="gw-action-btn"
-                              style={{ background: '#f8fafc', color: '#0f172a', borderColor: '#cbd5e1', fontWeight: 600 }}
+                              className="gw-action-btn gw-action-btn--detail"
                               onClick={() => setDetailCustomer(cust)}
                               title="Xem chi tiết khách hàng và lịch sử giải thưởng"
                             >
-                               Chi tiết
+                              👁️ Chi tiết
                             </button>
                             <a
                               href={`https://zalo.me/${cust.phone}`}
                               target="_blank"
                               rel="noreferrer"
                               className="gw-action-btn gw-action-btn--zalo"
-                              title="Nhắn tin Zalo"
+                              title="Nhắn tin Zalo với khách hàng"
                             >
-                               Zalo
+                              💬 Zalo
                             </a>
                             <a
                               href={`tel:${cust.phone}`}
                               className="gw-action-btn gw-action-btn--call"
-                              title="Gọi điện"
+                              title="Gọi điện thoại trực tiếp"
                             >
-                               Gọi
+                              📞 Gọi
                             </a>
                             <button
                               type="button"
-                              className="gw-action-btn"
+                              className="gw-action-btn gw-action-btn--status"
                               onClick={() => handleOpenStatusModal(cust)}
-                              title="Cập nhật trạng thái"
+                              title="Cập nhật trạng thái tư vấn & ghi chú"
                             >
-                              ️ Cập nhật
+                              ✏️ Cập nhật
+                            </button>
+                            <button
+                              type="button"
+                              className="gw-action-btn gw-action-btn--book"
+                              onClick={() => handleQuickBooking(cust, topPrize)}
+                              title="Tạo đặt phòng mới cho khách này"
+                            >
+                              🏨 Đặt phòng
                             </button>
                           </div>
                         </td>
@@ -593,10 +641,25 @@ export default function AdminGiveawayLeadsPage() {
                 </div>
                 <button
                   type="button"
-                  style={{ border: 'none', background: '#f1f5f9', width: 32, height: 32, borderRadius: '50%', cursor: 'pointer', fontSize: 16, fontWeight: 700, color: '#64748b' }}
+                  style={{
+                    border: '1px solid #cbd5e1',
+                    background: '#f1f5f9',
+                    width: 34,
+                    height: 34,
+                    borderRadius: '50%',
+                    cursor: 'pointer',
+                    fontSize: 16,
+                    fontWeight: 800,
+                    color: '#334155',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    transition: 'all 0.15s ease',
+                  }}
                   onClick={() => setDetailCustomer(null)}
+                  title="Đóng"
                 >
-                  
+                  ✕
                 </button>
               </div>
 
@@ -738,9 +801,32 @@ export default function AdminGiveawayLeadsPage() {
         {selectedLead && (
           <div className="gw-admin-modal-backdrop" onClick={() => setSelectedLead(null)}>
             <div className="gw-admin-modal" onClick={(e) => e.stopPropagation()}>
-              <h3 style={{ margin: '0 0 8px 0', fontSize: '1.25rem', color: '#0f172a' }}>
-                Cập Nhật Trạng Thái Khách Hàng
-              </h3>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <h3 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a', fontWeight: 800 }}>
+                  Cập Nhật Trạng Thái Khách Hàng
+                </h3>
+                <button
+                  type="button"
+                  style={{
+                    border: '1px solid #cbd5e1',
+                    background: '#f1f5f9',
+                    width: 32,
+                    height: 32,
+                    borderRadius: '50%',
+                    cursor: 'pointer',
+                    fontSize: 15,
+                    fontWeight: 800,
+                    color: '#334155',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                  onClick={() => setSelectedLead(null)}
+                  title="Đóng"
+                >
+                  ✕
+                </button>
+              </div>
               <p style={{ margin: '0 0 16px 0', color: '#64748b', fontSize: '0.9rem' }}>
                 Khách: <strong>{selectedLead.fullName}</strong> ({selectedLead.phone})
               </p>

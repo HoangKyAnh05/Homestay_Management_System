@@ -480,7 +480,7 @@ class AdminBookingServiceImplTest {
         Employee employee = Employee.builder().id(13L).fullName("Receptionist").build();
         SePayPaymentResponse paymentResponse = new SePayPaymentResponse(
                 3L, booking.getBookingCode(), 14L, BigDecimal.valueOf(6_000), "HMS14",
-                "HMS14", "Vietcombank", "0123456789", "HOME STAY", "qr-url", null
+                "HMS14", "Vietcombank", "0123456789", "HOME STAY", "qr-url", null, 300L
         );
 
         SecurityContextHolder.getContext().setAuthentication(
@@ -812,7 +812,9 @@ class AdminBookingServiceImplTest {
                 "Máy lạnh hỏng",
                 "MAINTENANCE",
                 null,
-                BigDecimal.ZERO
+                BigDecimal.ZERO,
+                false,
+                null
         );
 
         var result = service.changeRoom(10L, request);
@@ -843,7 +845,7 @@ class AdminBookingServiceImplTest {
                 .roomType(standardType)
                 .checkInTarget(checkIn)
                 .checkOutTarget(checkOut)
-                .status("CONFIRMED")
+                .status("CHECKED_IN")
                 .build();
 
         BookingDetail conflictingDetail = BookingDetail.builder()
@@ -865,10 +867,32 @@ class AdminBookingServiceImplTest {
                 "Khách muốn đổi tầng",
                 "DIRTY",
                 null,
-                BigDecimal.ZERO
+                BigDecimal.ZERO,
+                false,
+                null
         );
 
         var ex = assertThrows(IllegalArgumentException.class, () -> service.changeRoom(10L, request));
         assertEquals("Phòng P102 đã có khách đặt trong khung giờ này", ex.getMessage());
+    }
+
+    @Test
+    void testChangeRoom_NotCheckedIn_ThrowsException() {
+        Booking booking = Booking.builder().id(50L).status("CONFIRMED").build();
+        BookingDetail detail = BookingDetail.builder()
+                .id(10L)
+                .booking(booking)
+                .status("CONFIRMED")
+                .build();
+
+        when(bookingDetailRepository.findByIdForAdminDetail(10L)).thenReturn(Optional.of(detail));
+        when(checkInRecordRepository.findByBookingDetailId(10L)).thenReturn(Optional.empty());
+
+        var request = new com.homestayManagement.homestayManagement.dto.request.AdminChangeRoomRequest(
+                102L, "ROOM_ISSUE", "Hỏng điều hòa", "MAINTENANCE", null, BigDecimal.ZERO, false, null
+        );
+
+        var ex = assertThrows(IllegalArgumentException.class, () -> service.changeRoom(10L, request));
+        assertEquals("Đơn phòng phải được Check-in trước khi thực hiện đổi phòng", ex.getMessage());
     }
 }

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react'
+import { getStoredToken } from '../../services/authService'
 import './AdminChangeRoomModal.css'
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api'
+const API_BASE_URL = (import.meta.env.VITE_API_URL || '') + '/api'
 
 export default function AdminChangeRoomModal({
   bookingDetailId,
@@ -20,6 +21,9 @@ export default function AdminChangeRoomModal({
   const [oldRoomStatus, setOldRoomStatus] = useState('MAINTENANCE')
   const [newCheckOutTarget, setNewCheckOutTarget] = useState('')
   const [priceAdjustment, setPriceAdjustment] = useState(0)
+  const [isComplimentaryUpgrade, setIsComplimentaryUpgrade] = useState(false)
+  const [effectiveOption, setEffectiveOption] = useState('NOW') // 'NOW' or 'MID_STAY'
+  const [effectiveFromDate, setEffectiveFromDate] = useState('')
 
   // Fetch available rooms
   useEffect(() => {
@@ -27,7 +31,7 @@ export default function AdminChangeRoomModal({
     setLoading(true)
     setError('')
 
-    const token = localStorage.getItem('token') || ''
+    const token = getStoredToken() || localStorage.getItem('homeStayAccessToken') || ''
     const headers = { 'Content-Type': 'application/json' }
     if (token) headers['Authorization'] = `Bearer ${token}`
 
@@ -41,14 +45,22 @@ export default function AdminChangeRoomModal({
       })
       .then((resData) => {
         setData(resData)
-        if (resData.hasSameTypeAvailable && resData.sameTypeRooms?.length > 0) {
-          setSelectedRoomId(resData.sameTypeRooms[0].roomId)
+        const validSame = (resData.sameTypeRooms || []).filter(
+          (r) => r.roomId !== resData.currentRoomId && r.roomNumber !== resData.currentRoomNumber && r.status !== 'OCCUPIED'
+        )
+        if (resData.hasSameTypeAvailable && validSame.length > 0) {
+          setSelectedRoomId(validSame[0].roomId)
           setSelectedRoomTypeTab('SAME')
         } else if (resData.otherTypes?.length > 0) {
-          const firstType = resData.otherTypes[0]
+          const firstType = resData.otherTypes.find(
+            (ot) => (ot.availableRooms || []).some((r) => r.roomId !== resData.currentRoomId && r.roomNumber !== resData.currentRoomNumber && r.status !== 'OCCUPIED')
+          ) || resData.otherTypes[0]
           setSelectedRoomTypeTab(String(firstType.roomTypeId))
-          if (firstType.availableRooms?.length > 0) {
-            setSelectedRoomId(firstType.availableRooms[0].roomId)
+          const validFirstTypeRooms = (firstType.availableRooms || []).filter(
+            (r) => r.roomId !== resData.currentRoomId && r.roomNumber !== resData.currentRoomNumber && r.status !== 'OCCUPIED'
+          )
+          if (validFirstTypeRooms.length > 0) {
+            setSelectedRoomId(validFirstTypeRooms[0].roomId)
           }
         }
       })
@@ -63,8 +75,19 @@ export default function AdminChangeRoomModal({
     setReason(newReason)
     if (newReason === 'ROOM_ISSUE') {
       setOldRoomStatus('MAINTENANCE')
+      setIsComplimentaryUpgrade(true)
+      setPriceAdjustment(0)
     } else {
       setOldRoomStatus('DIRTY')
+      setIsComplimentaryUpgrade(false)
+    }
+  }
+
+  const handleComplimentaryToggle = (checked) => {
+    setIsComplimentaryUpgrade(checked)
+    if (checked) {
+      setPriceAdjustment(0)
+      setOldRoomStatus('MAINTENANCE')
     }
   }
 
@@ -78,7 +101,7 @@ export default function AdminChangeRoomModal({
     setSubmitting(true)
     setError('')
 
-    const token = localStorage.getItem('token') || ''
+    const token = getStoredToken() || localStorage.getItem('homeStayAccessToken') || ''
     const headers = { 'Content-Type': 'application/json' }
     if (token) headers['Authorization'] = `Bearer ${token}`
 
@@ -86,9 +109,11 @@ export default function AdminChangeRoomModal({
       newRoomId: Number(selectedRoomId),
       reason,
       notes: notes.trim() || undefined,
-      oldRoomStatusAfterChange: oldRoomStatus,
+      oldRoomStatusAfterChange: (reason === 'ROOM_ISSUE' || isComplimentaryUpgrade) ? 'MAINTENANCE' : oldRoomStatus,
       newCheckOutTarget: newCheckOutTarget || undefined,
-      priceAdjustment: Number(priceAdjustment) || 0,
+      priceAdjustment: isComplimentaryUpgrade ? 0 : (Number(priceAdjustment) || 0),
+      isComplimentaryUpgrade: isComplimentaryUpgrade,
+      effectiveFromDate: effectiveOption === 'MID_STAY' && effectiveFromDate ? effectiveFromDate : undefined,
     }
 
     try {
@@ -263,8 +288,14 @@ export default function AdminChangeRoomModal({
                 {/* Rooms Grid */}
                 <div className="acrm-rooms-grid">
                   {selectedRoomTypeTab === 'SAME' ? (
-                    data?.sameTypeRooms?.length > 0 ? (
-                      data.sameTypeRooms.map((r) => (
+                    (() => {
+                      const validSame = (data?.sameTypeRooms || []).filter(
+                        (r) => r.roomId !== data?.currentRoomId && r.roomNumber !== data?.currentRoomNumber && r.status !== 'OCCUPIED'
+                      )
+                      if (validSame.length === 0) {
+                        return <p className="acrm-empty-text">Không có phòng cùng loại nào khả dụng.</p>
+                      }
+                      return validSame.map((r) => (
                         <label
                           key={r.roomId}
                           className={`acrm-room-card ${selectedRoomId === r.roomId ? 'is-selected' : ''}`}
@@ -283,16 +314,17 @@ export default function AdminChangeRoomModal({
                           </div>
                         </label>
                       ))
-                    ) : (
-                      <p className="acrm-empty-text">Không có phòng cùng loại nào khả dụng.</p>
-                    )
+                    })()
                   ) : (
                     (() => {
                       const curType = data?.otherTypes?.find((ot) => String(ot.roomTypeId) === selectedRoomTypeTab)
-                      if (!curType || curType.availableRooms?.length === 0) {
+                      const validOther = (curType?.availableRooms || []).filter(
+                        (r) => r.roomId !== data?.currentRoomId && r.roomNumber !== data?.currentRoomNumber && r.status !== 'OCCUPIED'
+                      )
+                      if (!curType || validOther.length === 0) {
                         return <p className="acrm-empty-text">Loại phòng này hiện không còn phòng trống.</p>
                       }
-                      return curType.availableRooms.map((r) => (
+                      return validOther.map((r) => (
                         <label
                           key={r.roomId}
                           className={`acrm-room-card ${selectedRoomId === r.roomId ? 'is-selected' : ''}`}
@@ -316,35 +348,90 @@ export default function AdminChangeRoomModal({
                 </div>
               </div>
 
-              {/* Step 3: Additional Options */}
+              {/* Step 3: Split stay & Complimentary Upgrade options */}
               <div className="acrm-section">
-                <div className="acrm-grid-2col">
+                <label className="acrm-label">3. Tùy chọn nâng cao & Chia chặng lưu trú</label>
+
+                {/* Complimentary upgrade card */}
+                <div className={`acrm-upgrade-card ${isComplimentaryUpgrade ? 'is-active' : ''}`}>
+                  <label className="acrm-upgrade-label">
+                    <input
+                      type="checkbox"
+                      className="acrm-checkbox"
+                      checked={isComplimentaryUpgrade}
+                      onChange={(e) => handleComplimentaryToggle(e.target.checked)}
+                    />
+                    <div className="acrm-upgrade-text">
+                      <div className="acrm-upgrade-title">
+                        <span>🏷️ Miễn phí nâng hạng phòng do sự cố (Complimentary Upgrade Tag)</span>
+                        <span className="acrm-tag-free">0đ PHỤ THU</span>
+                      </div>
+                      <p className="acrm-upgrade-desc">
+                        Tự động miễn phí toàn bộ tiền chênh lệch loại phòng mới. Tự động đưa phòng cũ sang trạng thái Bảo trì & ghi nhận mã sự cố kỹ thuật.
+                      </p>
+                    </div>
+                  </label>
+                  {isComplimentaryUpgrade && (
+                    <div className="acrm-upgrade-banner">
+                      ✨ Đã kích hoạt <strong>Miễn phí nâng hạng</strong>: Tiền phụ thu cố định <strong>0 VNĐ</strong>. Dịch vụ minibar đã dùng tại phòng cũ sẽ được tự động gắn nhãn lưu vết trên hóa đơn tổng.
+                    </div>
+                  )}
+                </div>
+
+                {/* Split stay timing selector */}
+                <div className="acrm-split-stay-box">
+                  <label className="acrm-field-label">⏳ Thời điểm áp dụng đổi phòng (Chia chặng / Split-stay):</label>
+                  <div className="acrm-split-options">
+                    <label className={`acrm-split-radio ${effectiveOption === 'NOW' ? 'is-selected' : ''}`}>
+                      <input
+                        type="radio"
+                        name="effectiveOption"
+                        value="NOW"
+                        checked={effectiveOption === 'NOW'}
+                        onChange={() => setEffectiveOption('NOW')}
+                      />
+                      <span>Đổi ngay bây giờ (Chuyển phòng lập tức cho các đêm còn lại)</span>
+                    </label>
+                    <label className={`acrm-split-radio ${effectiveOption === 'MID_STAY' ? 'is-selected' : ''}`}>
+                      <input
+                        type="radio"
+                        name="effectiveOption"
+                        value="MID_STAY"
+                        checked={effectiveOption === 'MID_STAY'}
+                        onChange={() => setEffectiveOption('MID_STAY')}
+                      />
+                      <span>Đổi giữa chừng từ ngày/giờ cụ thể (Khách ở phòng cũ đến mốc này)</span>
+                    </label>
+                  </div>
+                  {effectiveOption === 'MID_STAY' && (
+                    <div className="acrm-effective-date-field">
+                      <label className="acrm-sublabel">Chọn ngày giờ bắt đầu chuyển sang phòng mới:</label>
+                      <input
+                        type="datetime-local"
+                        className="acrm-input"
+                        value={effectiveFromDate}
+                        onChange={(e) => setEffectiveFromDate(e.target.value)}
+                      />
+                      <small className="acrm-field-hint">Hệ thống sẽ ghi nhận lịch ở phòng cũ từ lúc check-in đến thời điểm này, và phòng mới cho quãng thời gian còn lại.</small>
+                    </div>
+                  )}
+                </div>
+
+                <div className="acrm-grid-2col" style={{ marginTop: 14 }}>
                   {/* Old Room Status */}
                   <div className="acrm-field">
                     <label className="acrm-field-label">Trạng thái phòng cũ ({data?.currentRoomNumber}) sau khi chuyển:</label>
                     <select
                       className="acrm-select"
-                      value={oldRoomStatus}
+                      value={reason === 'ROOM_ISSUE' ? 'MAINTENANCE' : oldRoomStatus}
+                      disabled={reason === 'ROOM_ISSUE'}
                       onChange={(e) => setOldRoomStatus(e.target.value)}
                     >
-                      <option value="MAINTENANCE">Chuyển sang BẢO TRÌ (Phòng bị sự cố/lỗi kỹ thuật)</option>
-                      <option value="DIRTY">Chuyển sang CẦN DỌN DẸP (Khách vừa chuyển đi)</option>
-                      <option value="AVAILABLE">SẴN SÀNG ĐÓN KHÁCH (Phòng còn sạch)</option>
+                      <option value="MAINTENANCE">🛠️ BẢO TRÌ (Phòng bị sự cố/lỗi kỹ thuật - Tự động thiết lập)</option>
+                      <option value="DIRTY">🧹 CẦN DỌN DẸP (Khách vừa chuyển đi)</option>
+                      <option value="AVAILABLE">✨ SẴN SÀNG ĐÓN KHÁCH (Phòng còn sạch)</option>
                     </select>
                   </div>
-
-                  {/* Extend check out target if reason is EXTEND_STAY */}
-                  {reason === 'EXTEND_STAY' && (
-                    <div className="acrm-field">
-                      <label className="acrm-field-label">Giờ trả phòng mới (Gia hạn):</label>
-                      <input
-                        type="datetime-local"
-                        className="acrm-input"
-                        value={newCheckOutTarget}
-                        onChange={(e) => setNewCheckOutTarget(e.target.value)}
-                      />
-                    </div>
-                  )}
 
                   {/* Price adjustment */}
                   <div className="acrm-field">
@@ -353,12 +440,30 @@ export default function AdminChangeRoomModal({
                       type="number"
                       className="acrm-input"
                       placeholder="0"
-                      value={priceAdjustment}
+                      disabled={isComplimentaryUpgrade}
+                      value={isComplimentaryUpgrade ? 0 : priceAdjustment}
                       onChange={(e) => setPriceAdjustment(e.target.value)}
                     />
-                    <small className="acrm-field-hint">Nhập số tiền chênh lệch (nếu nâng hạng phòng hoặc phụ thu thêm giờ).</small>
+                    <small className="acrm-field-hint">
+                      {isComplimentaryUpgrade
+                        ? 'Khóa 0đ do đang chọn miễn phí nâng hạng sự cố.'
+                        : 'Nhập số tiền chênh lệch (nếu nâng hạng phòng hoặc phụ thu thêm giờ).'}
+                    </small>
                   </div>
                 </div>
+
+                {/* Extend check out target if reason is EXTEND_STAY */}
+                {reason === 'EXTEND_STAY' && (
+                  <div className="acrm-field" style={{ marginTop: 12 }}>
+                    <label className="acrm-field-label">Giờ trả phòng mới (Gia hạn):</label>
+                    <input
+                      type="datetime-local"
+                      className="acrm-input"
+                      value={newCheckOutTarget}
+                      onChange={(e) => setNewCheckOutTarget(e.target.value)}
+                    />
+                  </div>
+                )}
 
                 {/* Notes */}
                 <div className="acrm-field" style={{ marginTop: 12 }}>

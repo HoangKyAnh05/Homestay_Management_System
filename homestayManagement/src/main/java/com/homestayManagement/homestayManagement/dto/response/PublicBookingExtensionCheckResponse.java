@@ -14,7 +14,11 @@ public record PublicBookingExtensionCheckResponse(
         LocalDateTime currentCheckOut,
         LocalDateTime newCheckOut,
         int additionalHours,
+        int additionalDays,
         BigDecimal extensionFee,
+        boolean isOverdue,
+        boolean mustBookFullDay,
+        String warningNotice,
         String message,
         List<AlternativeRoomOptionResponse> alternativeRooms
 ) {}

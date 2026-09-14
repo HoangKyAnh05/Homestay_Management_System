@@ -45,7 +45,7 @@
 
 .stay-header-copy > span {
   color: var(--stay-gold);
-  font-family: Georgia, "Times New Roman", serif;
+  font-family: var(--font-heading);
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.16em;
@@ -53,7 +53,7 @@
 
 .stay-header-copy > strong {
   color: var(--stay-ink);
-  font-family: Georgia, "Times New Roman", serif;
+  font-family: var(--font-heading);
   font-size: 21px;
   line-height: 1.15;
 }
@@ -86,7 +86,7 @@
 }
 
 .stay-user-avatar span {
-  font-family: Georgia, serif;
+  font-family: var(--font-heading);
   font-size: 17px;
   font-weight: 800;
 }
@@ -161,7 +161,7 @@
 .stay-empty h1 {
   max-width: 390px;
   margin: 24px 0 9px;
-  font-family: Georgia, serif;
+  font-family: var(--font-heading);
   font-size: 29px;
   line-height: 1.16;
 }
@@ -297,7 +297,7 @@
 
 .stay-room-title h1 {
   margin: 2px 0 1px;
-  font-family: Georgia, "Times New Roman", serif;
+  font-family: var(--font-heading);
   font-size: clamp(56px, 18vw, 76px);
   font-weight: 500;
   line-height: 0.96;
@@ -432,7 +432,7 @@
 
 .stay-section-title h2 {
   margin: 4px 0 0;
-  font-family: Georgia, "Times New Roman", serif;
+  font-family: var(--font-heading);
   font-size: 26px;
   line-height: 1.1;
 }
@@ -700,7 +700,7 @@
 
 .stay-sheet h2 {
   margin: 6px 0 4px;
-  font-family: Georgia, "Times New Roman", serif;
+  font-family: var(--font-heading);
   font-size: 29px;
   line-height: 1.1;
 }
@@ -744,7 +744,7 @@
 
 .stay-sheet-total strong {
   color: var(--stay-gold);
-  font-family: Georgia, serif;
+  font-family: var(--font-heading);
   font-size: 21px;
 }
 

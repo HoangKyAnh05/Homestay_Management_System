@@ -1,0 +1,306 @@
+[
+  {
+    "tc_id": "TC01",
+    "title": "Tìm kiếm, Lọc phòng & Kiểm tra phòng trống",
+    "role": "Khách hàng",
+    "status": "PASS",
+    "details": "Thực hiện lọc ngày thường, cuối tuần, người lớn/trẻ em, phân loại phòng VIP/S-VIP hiển thị giá và phòng trống chuẩn xác",
+    "screenshot": "output_tc01_rooms_filter_applied.png"
+  },
+  {
+    "tc_id": "TC03",
+    "title": "Đăng ký, Đăng nhập, Quên MK & Bảo mật",
+    "role": "Khách hàng",
+    "status": "PASS",
+    "details": "Validate định dạng email/sđt, xử lý sai mật khẩu, đăng nhập thành công tài khoản customer.an@example.com",
+    "screenshot": "output_tc03_customer_login_success.png"
+  },
+  {
+    "tc_id": "TC02",
+    "title": "Đặt phòng trực tuyến & Thanh toán SePay QR",
+    "role": "Khách hàng",
+    "status": "PASS",
+    "details": "Chọn phòng còn trống, điền form khách hàng, chọn voucher, tạo đơn & chuyển khoản QR SePay thành công",
+    "screenshot": "output_tc02_booking_online_sepay_passed.png"
+  },
+  {
+    "tc_id": "TC04",
+    "title": "Lịch sử đặt phòng & Hủy phòng hoàn tiền",
+    "role": "Khách hàng",
+    "status": "PASS",
+    "details": "Xem danh sách 36 đơn đặt phòng, xem chi tiết phòng, kiểm tra chính sách hủy và hoàn tiền cọc tự động",
+    "screenshot": "output_tc04_booking_history_detail_refund.png"
+  },
+  {
+    "tc_id": "TC05",
+    "title": "Cổng thông tin lưu trú thông minh (Stay Portal)",
+    "role": "Khách hàng",
+    "status": "PASS",
+    "details": "Phòng 122 đang lưu trú: hiển thị Wifi homestay, vị trí phòng, hướng dẫn tự nhận phòng, hotline và gọi dịch vụ tận phòng",
+    "screenshot": "output_tc05_stay_portal_active_room.png"
+  },
+  {
+    "tc_id": "TC06",
+    "title": "Đánh giá & Chấm điểm chất lượng sau Check-out",
+    "role": "Khách hàng",
+    "status": "PASS",
+    "details": "Gửi đánh giá 1-5 sao kèm bình luận nhận xét, duyệt đánh giá và cập nhật điểm chất lượng homestay",
+    "screenshot": "output_tc06_customer_review_feedback.png"
+  },
+  {
+    "tc_id": "TC07",
+    "title": "Minigame Vòng quay may mắn & Nhận Voucher",
+    "role": "Khách hàng",
+    "status": "PASS",
+    "details": "Điền form thông tin, nhận lượt quay, vòng quay Canvas quay ngẫu nhiên, lưu Leads và cấp mã voucher tương ứng vào ví",
+    "screenshot": "output_tc07_giveaway_wheel_reward.png"
+  },
+  {
+    "tc_id": "TC08",
+    "title": "Đặt phòng trực tiếp tại quầy (Walk-in Direct Booking)",
+    "role": "Lễ tân",
+    "status": "PASS",
+    "details": "Mở modal chọn phòng trống, nhập thông tin khách, lưu trú theo giờ/ngày, thanh toán tiền mặt/QR và tạo đơn thành công",
+    "screenshot": "output_tc08_walkin_direct_booking_modal.png"
+  },
+  {
+    "tc_id": "TC09",
+    "title": "Check-in, Chụp ảnh CCCD & Quét OCR tự động",
+    "role": "Lễ tân",
+    "status": "PASS",
+    "details": "Modal Check-in tải ảnh CCCD 2 mặt, OCR trích xuất tự động (Họ tên, CCCD, Ngày sinh, Địa chỉ)",
+    "screenshot": "output_tc09_checkin_ocr_form.png"
+  },
+  {
+    "tc_id": "TC10",
+    "title": "Chỉnh sửa thông tin Người đại diện khi Check-in",
+    "role": "Lễ tân",
+    "status": "PASS",
+    "details": "Chỉnh sửa thủ công các trường (Họ tên, CCCD, Email, SĐT, Địa chỉ), bấm xác nhận và cập nhật DB",
+    "screenshot": "output_tc10_checkin_edited_customer_info.png"
+  },
+  {
+    "tc_id": "TC11",
+    "title": "Đổi phòng do khách yêu cầu (Tính chênh lệch giá Nâng/Hạ hạng)",
+    "role": "Lễ tân",
+    "status": "PASS",
+    "details": "Chọn đơn đang ở, chọn lý do 'Khách yêu cầu đổi phòng', chọn phòng mới, hệ thống tính đúng khoản chênh lệch cần thu thêm/hoàn lại",
+    "screenshot": "output_tc11_room_change_price_diff.png"
+  },
+  {
+    "tc_id": "TC12",
+    "title": "Đổi phòng do sự cố & Chuyển phòng cũ sang Bảo trì",
+    "role": "Lễ tân",
+    "status": "PASS",
+    "details": "Chuyển khách sang phòng mới, đổi phòng cũ sang MAINTENANCE, tạo lịch RoomSchedule và ghi nhận sự cố",
+    "screenshot": "output_tc12_room_change_incident_maintenance.png"
+  },
+  {
+    "tc_id": "TC13",
+    "title": "Ghi nhận Đồ uống Minibar & Dịch vụ tiện ích vào Hóa đơn",
+    "role": "Lễ tân",
+    "status": "PASS",
+    "details": "Thêm 2 chai nước ngọt minibar, thêm dịch vụ thuê xe máy/giặt là, hiển thị chính xác trên hóa đơn và tổng tiền phòng tăng tương ứng",
+    "screenshot": "output_tc13_minibar_services_catalog.png"
+  },
+  {
+    "tc_id": "TC14",
+    "title": "Áp dụng Phạt vi phạm, Đền bù & Phụ thu quá giờ",
+    "role": "Lễ tân",
+    "status": "PASS",
+    "details": "Áp dụng quy định phạt (hút thuốc / làm hỏng đồ), áp dụng phụ thu Check-in sớm / Check-out muộn vào hóa đơn",
+    "screenshot": "output_tc14_rules_penalties_applied.png"
+  },
+  {
+    "tc_id": "TC15",
+    "title": "Thu ngân, Thanh toán Hóa đơn & Hoàn tất Check-out",
+    "role": "Lễ tân",
+    "status": "PASS",
+    "details": "Kiểm tra tổng tiền thanh toán (tiền phòng + minibar + dịch vụ + phạt - cọc), thanh toán Tiền mặt/QR, in hóa đơn và chuyển phòng sang DIRTY",
+    "screenshot": "output_tc15_checkout_invoice_paid.png"
+  },
+  {
+    "tc_id": "TC16",
+    "title": "Báo cáo Tổng quan ca trực & Bàn giao ca Lễ tân",
+    "role": "Lễ tân",
+    "status": "PASS",
+    "details": "Kiểm tra số lượng khách Check-in/Check-out trong ngày, số phòng đang có khách, tiền mặt thu được và tính năng ghi chú bàn giao ca",
+    "screenshot": "output_tc16_receptionist_overview_summary.png"
+  },
+  {
+    "tc_id": "TC17",
+    "title": "Đồng bộ Dữ liệu Lễ tân ra Google Sheets",
+    "role": "Lễ tân",
+    "status": "PASS",
+    "details": "Bảng danh sách khách lưu trú, bộ lọc ngày chuẩn xác và nút đồng bộ/xuất dữ liệu sang Google Sheets",
+    "screenshot": "output_tc17_receptionist_sheets_synced.png"
+  },
+  {
+    "tc_id": "TC18",
+    "title": "Lịch buồng phòng dạng Lưới trực quan",
+    "role": "Buồng phòng",
+    "status": "PASS",
+    "details": "Hiển thị đầy đủ sơ đồ phòng theo tầng, thẻ trạng thái (Trống, Đang ở, Đã đặt, Đang dọn, Bảo trì) và drawer chi tiết",
+    "screenshot": "output_tc18_housekeeping_calendar_drawer.png"
+  },
+  {
+    "tc_id": "TC19",
+    "title": "Tiếp nhận & Cập nhật trạng thái nhiệm vụ dọn phòng",
+    "role": "Buồng phòng",
+    "status": "PASS",
+    "details": "Bộ lọc chuẩn lùi 7 ngày (07/09 - 14/09), hiển thị 5 nhiệm vụ gửi lễ tân, 8 hoàn thành; chuyển đổi trạng thái DIRTY -> CLEANING -> CLEAN",
+    "screenshot": "output_tc19_housekeeping_task_status_transition.png"
+  },
+  {
+    "tc_id": "TC20",
+    "title": "Thực hiện Checklist kiểm tra buồng phòng",
+    "role": "Buồng phòng",
+    "status": "PASS",
+    "details": "Tích chọn tiêu chí vệ sinh (thay ga giường, lau dọn nhà vệ sinh, kiểm tra minibar, bổ sung khăn tắm), xác nhận hoàn thành",
+    "screenshot": "output_tc20_housekeeping_checklist_done.png"
+  },
+  {
+    "tc_id": "TC21",
+    "title": "Báo cáo phòng hỏng / Phát hiện đồ đạc hư hại",
+    "role": "Buồng phòng",
+    "status": "PASS",
+    "details": "Tạo phiếu báo cáo sự cố (vòi sen rò rỉ, điều hòa không lạnh) kèm mức độ khẩn cấp (CRITICAL/MEDIUM) gửi kỹ thuật",
+    "screenshot": "output_tc21_housekeeping_incident_reported.png"
+  },
+  {
+    "tc_id": "TC22",
+    "title": "Quản lý danh sách sự cố & Tiếp nhận sửa chữa",
+    "role": "Kỹ thuật",
+    "status": "PASS",
+    "details": "Danh sách sự cố (REPORTED), phân công kỹ thuật viên, chuyển trạng thái sang Đang xử lý (IN_PROGRESS)",
+    "screenshot": "output_tc22_incidents_in_progress.png"
+  },
+  {
+    "tc_id": "TC23",
+    "title": "Nghiệm thu hoàn tất bảo trì & Mở khóa phòng",
+    "role": "Kỹ thuật",
+    "status": "PASS",
+    "details": "Nhập chi phí linh kiện thay thế, xác định trách nhiệm đền bù, hoàn thành sự cố (RESOLVED) và mở khóa phòng về AVAILABLE",
+    "screenshot": "output_tc23_incident_resolved_room_available.png"
+  },
+  {
+    "tc_id": "TC24",
+    "title": "Quản lý Phòng, Loại phòng & Sơ đồ homestay",
+    "role": "Quản trị",
+    "status": "PASS",
+    "details": "Thêm mới 1 phòng, chỉnh sửa thông tin phòng (số phòng, tầng, loại phòng, ảnh), chuyển trạng thái hoạt động trên sơ đồ",
+    "screenshot": "output_tc24_admin_rooms_management.png"
+  },
+  {
+    "tc_id": "TC25",
+    "title": "Cấu hình Bảng giá theo ngày thường, Cuối tuần & Ngày Lễ",
+    "role": "Quản trị",
+    "status": "PASS",
+    "details": "Cài đặt giá phòng ngày thường, giá cuối tuần (Thứ 6 - CN) và giá lễ tết, hệ thống tính đúng công thức giá cho đơn phòng",
+    "screenshot": "output_tc25_pricing_rules_config.png"
+  },
+  {
+    "tc_id": "TC26",
+    "title": "Quản lý Danh mục Minibar, Tiện ích & Bảng giá",
+    "role": "Quản trị",
+    "status": "PASS",
+    "details": "Thêm mới sản phẩm nước uống/snack, cập nhật đơn giá, thêm dịch vụ tiện ích mới xuất hiện đầy đủ trong menu Lễ tân",
+    "screenshot": "output_tc26_services_minibar_catalog.png"
+  },
+  {
+    "tc_id": "TC27",
+    "title": "Cấu hình Quy định, Mức phạt & Chính sách Homestay",
+    "role": "Quản trị",
+    "status": "PASS",
+    "details": "Thêm mới quy định phạt, sửa đổi số tiền phạt, kích hoạt/vô hiệu hóa quy định áp dụng khi lập biên bản",
+    "screenshot": "output_tc27_rules_penalties_management.png"
+  },
+  {
+    "tc_id": "TC28",
+    "title": "Quản lý Tài khoản nhân viên & Phân quyền Role Security",
+    "role": "Quản trị",
+    "status": "PASS",
+    "details": "Tạo tài khoản nhân viên, gán Role (ROLE_RECEPTIONIST, ROLE_HOUSEKEEPING, ROLE_ACCOUNTANT), khóa tài khoản",
+    "screenshot": "output_tc28_users_roles_permissions.png"
+  },
+  {
+    "tc_id": "TC29",
+    "title": "Báo cáo Doanh thu & Chốt ca ngày (Daily Closing Report)",
+    "role": "Kế toán",
+    "status": "PASS",
+    "details": "Mở modal Chốt ngày, kiểm tra tổng tiền mặt thực thu, tiền chuyển khoản QR, minibar/dịch vụ, đối soát két và xuất biên bản",
+    "screenshot": "output_tc29_dashboard_daily_closing_report.png"
+  },
+  {
+    "tc_id": "TC30",
+    "title": "Quản lý Đánh giá & Phản hồi khách hàng",
+    "role": "Quản trị",
+    "status": "PASS",
+    "details": "Duyệt (APPROVE) hoặc ẩn (HIDE) đánh giá không phù hợp, viết phản hồi chính thức từ homestay hiển thị trên chi tiết phòng",
+    "screenshot": "output_tc30_reviews_moderation_approved.png"
+  },
+  {
+    "tc_id": "TC31",
+    "title": "Marketing AI Agent tự động sáng tạo nội dung",
+    "role": "Marketing",
+    "status": "PASS",
+    "details": "AI sinh bài viết tự động (Caption, Hashtags) theo chủ đề phòng homestay và lưu vào lịch sử bài đăng",
+    "screenshot": "output_tc31_marketing_ai_generated_post.png"
+  },
+  {
+    "tc_id": "TC32",
+    "title": "Tạo Video Studio quảng cáo Remotion",
+    "role": "Marketing",
+    "status": "PASS",
+    "details": "Mẫu template video, ghép hình ảnh phòng và thông điệp ưu đãi, trình phát video render trơn tru",
+    "screenshot": "output_tc32_marketing_remotion_video_studio.png"
+  },
+  {
+    "tc_id": "TC33",
+    "title": "Quản lý & Phát hành Voucher khuyến mãi",
+    "role": "Marketing",
+    "status": "PASS",
+    "details": "Tạo mã voucher giảm giá (% / cố định), cài đặt hạn dùng & số lượt dùng tối đa, áp dụng voucher giảm đúng số tiền",
+    "screenshot": "output_tc33_marketing_vouchers_list.png"
+  },
+  {
+    "tc_id": "TC34",
+    "title": "Kiểm thử Đặt phòng trùng lặp đồng thời (Race Condition)",
+    "role": "Bảo mật",
+    "status": "PASS",
+    "details": "Cơ chế khóa phòng ngăn chặn 2 phiên cùng đặt 1 phòng trong cùng khoảng ngày, chống double booking",
+    "screenshot": "output_tc34_race_condition_locking.png"
+  },
+  {
+    "tc_id": "TC35",
+    "title": "Kiểm thử Bảo mật phân quyền & Token hết hạn",
+    "role": "Bảo mật",
+    "status": "PASS",
+    "details": "Trả về 401 Unauthorized / 403 Forbidden khi truy cập API quản trị không có token hoặc dùng ROLE_CUSTOMER",
+    "screenshot": "output_tc35_api_security_401_403.png"
+  },
+  {
+    "tc_id": "TC36",
+    "title": "Kiểm thử Xử lý ngoại lệ dữ liệu đầu vào (Input Validation)",
+    "role": "Kiểm thử biên",
+    "status": "PASS",
+    "details": "Validate ngày trả phòng < nhận phòng, số điện thoại sai định dạng, CCCD thiếu chữ số, vượt sức chứa phòng",
+    "screenshot": "output_tc36_input_validation_errors.png"
+  },
+  {
+    "tc_id": "TC37",
+    "title": "Kiểm thử Toàn diện Giao diện Responsive (Mobile / Tablet / Desktop)",
+    "role": "Giao diện",
+    "status": "PASS",
+    "details": "Quét 3 kích thước: Mobile (375x812), Tablet (768x1024) và Desktop (1600x900) - không vỡ khung, không tràn ngang",
+    "screenshot": "output_tc37_responsive_mobile_view.png"
+  },
+  {
+    "tc_id": "TC38",
+    "title": "Kiểm thử Toàn bộ Luồng Vòng đời Kỳ nghỉ Khách hàng (End-to-End Master Test)",
+    "role": "End-to-End",
+    "status": "PASS",
+    "details": "Vòng đời khép kín: Khách tìm phòng -> Đặt phòng online -> Check-in OCR -> Minibar -> Đổi phòng sự cố -> Check-out QR -> Đánh giá 5 sao",
+    "screenshot": "output_tc38_e2e_master_lifecycle.png"
+  }
+]

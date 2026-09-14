@@ -1,3 +1,10 @@
+.booking-history-page,
+.booking-history-page *,
+.booking-history-page *::before,
+.booking-history-page *::after {
+  box-sizing: border-box;
+}
+
 .booking-history-page {
   min-height: 100vh;
   background: #f7f8f4;
@@ -43,19 +50,27 @@
 
 .history-layout {
   display: grid;
-  grid-template-columns: 390px minmax(0, 1fr);
+  grid-template-columns: minmax(320px, 380px) minmax(0, 1fr);
   gap: 24px;
   align-items: start;
+  width: 100%;
+  min-width: 0;
 }
 
 .history-list {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 12px;
   align-content: start;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
 }
 
 .history-booking-card {
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
   padding: 16px;
   color: inherit;
   background: #ffffff;
@@ -63,6 +78,9 @@
   border-radius: 16px;
   text-align: left;
   cursor: pointer;
+  box-sizing: border-box;
+  overflow: hidden;
+  position: relative;
   transition: border-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
 }
 
@@ -80,11 +98,19 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
+  min-width: 0;
+}
+
+.history-card-top {
+  flex-wrap: wrap;
 }
 
 .history-card-top strong {
-  font-size: 14px;
+  font-size: 13.5px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .history-status {
@@ -94,6 +120,8 @@
   border-radius: 999px;
   font-size: 12px;
   font-weight: 850;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .history-status--pending {
@@ -109,7 +137,10 @@
 .history-booking-card h2 {
   margin: 12px 0 7px;
   color: #15191f;
-  font-size: 18px;
+  font-size: 17px;
+  line-height: 1.35;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .history-booking-card p {
@@ -117,16 +148,20 @@
   color: #6b7280;
   font-size: 13px;
   line-height: 1.45;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .history-card-bottom span {
   color: #3d4350;
-  font-size: 14px;
+  font-size: 13.5px;
   font-weight: 800;
+  white-space: nowrap;
 }
 
 .history-card-bottom {
   flex-wrap: wrap;
+  gap: 8px;
 }
 
 .history-pay-btn {
@@ -135,7 +170,7 @@
   border: 0;
   border-radius: 10px;
   color: #ffffff;
-  background: #ff385c;
+  background: #1e3a2b;
   font: inherit;
   font-size: 14px;
   font-weight: 850;
@@ -179,20 +214,22 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 4px;
   padding: 10px 0 2px;
+  flex-wrap: wrap;
+  max-width: 100%;
 }
 
 .history-pagination button {
-  min-width: 34px;
-  height: 34px;
-  padding: 0 10px;
+  min-width: 30px;
+  height: 32px;
+  padding: 0 6px;
   color: #374151;
   background: #ffffff;
   border: 1px solid #d7ded4;
-  border-radius: 10px;
+  border-radius: 8px;
   font: inherit;
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 850;
   cursor: pointer;
 }
@@ -385,11 +422,15 @@
 
 .history-detail {
   min-height: 360px;
-  padding: 22px;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 24px;
   background: #ffffff;
   border: 1px solid #dde2d9;
   border-radius: 18px;
   box-shadow: rgba(21, 25, 31, 0.06) 0 10px 28px;
+  position: relative;
 }
 
 .history-detail-head {
@@ -494,6 +535,158 @@
 .history-room-list article b,
 .history-service-list strong {
   color: #15573a;
+}
+
+/* ── Room Change History Card ── */
+.history-room-full-row {
+  grid-column: 1 / -1;
+  margin-top: 6px;
+}
+
+.history-room-change-card {
+  margin-top: 4px;
+  padding: 12px 14px;
+  background: linear-gradient(135deg, #f0fdf4 0%, #eff6ff 100%);
+  border: 1px solid #bfdbfe;
+  border-left: 4px solid #2563eb;
+  border-radius: 10px;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.06);
+}
+
+.history-room-change-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.history-room-change-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #1e40af;
+}
+
+.history-room-change-free-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  background: #dcfce7;
+  border: 1px solid #86efac;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #15803d;
+}
+
+.history-room-change-flow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.history-change-room-tag {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+.history-change-room-old {
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  color: #64748b;
+}
+
+.history-change-room-old .history-change-value {
+  color: #475569;
+  font-weight: 700;
+  font-size: 13px;
+  text-decoration: line-through;
+}
+
+.history-change-room-new {
+  background: #eff6ff;
+  border: 1px solid #93c5fd;
+  color: #1d4ed8;
+}
+
+.history-change-room-new .history-change-value {
+  color: #1e40af;
+  font-weight: 800;
+  font-size: 13.5px;
+}
+
+.history-change-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  font-weight: 600;
+  opacity: 0.85;
+}
+
+.history-change-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #3b82f6;
+}
+
+.history-room-change-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-top: 1px dashed #cbd5e1;
+  padding-top: 8px;
+  font-size: 12.5px;
+}
+
+.history-change-meta-item {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  color: #334155;
+}
+
+.history-change-meta-item .meta-icon {
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.history-change-meta-item .meta-label {
+  font-weight: 600;
+  color: #475569;
+}
+
+.history-change-meta-item .meta-value {
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.history-change-meta-reason .meta-value {
+  color: #b45309;
+  font-weight: 600;
+}
+
+.history-room-change-simple {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+}
+
+.history-room-change-text {
+  margin: 4px 0 0 !important;
+  color: #1e3a8a !important;
+  font-size: 13px !important;
+  line-height: 1.5 !important;
 }
 
 .history-service-list {
@@ -695,8 +888,8 @@
 
 .history-feedback-actions button:last-child {
   color: #ffffff;
-  background: #ff385c;
-  border: 1px solid #ff385c;
+  background: #1e3a2b;
+  border: 1px solid #1e3a2b;
 }
 
 .history-feedback-actions button:disabled {
@@ -719,13 +912,15 @@
   border-color: #ffd3d3;
 }
 
-@media (max-width: 960px) {
+@media (max-width: 1024px) {
   .history-layout {
     grid-template-columns: 1fr;
+    gap: 20px;
   }
 
   .history-detail {
     position: static;
+    width: 100%;
   }
 }
 
@@ -1703,7 +1898,9 @@
 }
 
 .history-cancel-field textarea,
-.history-cancel-field input {
+.history-cancel-field input,
+.history-cancel-field select,
+.history-modal-select {
   width: 100%;
   padding: 11px 14px;
   background-color: #ffffff !important;
@@ -1725,17 +1922,21 @@
 }
 
 .history-cancel-field textarea:hover,
-.history-cancel-field input:hover {
+.history-cancel-field input:hover,
+.history-cancel-field select:hover,
+.history-modal-select:hover {
   border-color: #94a3b8;
 }
 
 .history-cancel-field textarea:focus,
-.history-cancel-field input:focus {
+.history-cancel-field input:focus,
+.history-cancel-field select:focus,
+.history-modal-select:focus {
   outline: none;
   background-color: #ffffff !important;
   color: #0f172a !important;
-  border-color: #dc2626;
-  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.12);
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
 }
 
 .history-cancel-bank-fields {
@@ -1806,6 +2007,47 @@
   opacity: 0.65;
   cursor: not-allowed;
 }
+
+/* Customer Change Room Styles */
+.history-change-room-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 14px;
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  color: #0284c7;
+  font-size: 13px;
+  font-weight: 700;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.history-change-room-btn:hover {
+  background: #0284c7;
+  color: #ffffff;
+  border-color: #0284c7;
+  transform: translateY(-1px);
+}
+
+.history-change-room-btn--compact {
+  padding: 5px 10px;
+  font-size: 12px;
+  border-radius: 6px;
+}
+
+.history-room-upgrade-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  background: #ecfdf5;
+  color: #059669;
+  border: 1px solid #a7f3d0;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
 
 
 

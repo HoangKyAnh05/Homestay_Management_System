@@ -42,6 +42,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/payments/sepay/webhook").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/payments/sepay/public/bookings/*").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/payments/sepay/public/bookings/*/status").permitAll()
+                        .requestMatchers("/api/payments/sepay/sandbox/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/ai/customer/chat").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/ai/customer/chat/stream").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/ai/staff/chat")
@@ -83,7 +84,7 @@ public class SecurityConfig {
                         // Hủy phòng & hoàn tiền: chỉ riêng Admin được truy cập và xác nhận
                         .requestMatchers("/api/admin/bookings/cancellations/**", "/api/admin/bookings/*/confirm-refund")
                         .hasAuthority("ROLE_ADMIN")
-                        .requestMatchers("/api/admin/bookings/**", "/api/admin/invoices/**")
+                        .requestMatchers("/api/admin/bookings/**", "/api/admin/invoices/**", "/api/admin/sheets/**")
                         .hasAnyAuthority("ROLE_ADMIN", "ROLE_RECEPTIONIST")
                         // Lễ tân cần đọc gói giá khi tạo/chỉnh sửa booking.
                         .requestMatchers(HttpMethod.GET, "/api/admin/price-config/**")

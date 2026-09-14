@@ -246,6 +246,7 @@
   font-weight: 600;
   padding: 4px 8px;
   border-radius: 999px;
+  white-space: nowrap;
 }
 
 .type-pill--damaged {
@@ -270,6 +271,7 @@
   padding: 2px 7px;
   border-radius: 4px;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .severity--low { background: #f1f5f9; color: #64748b; }
@@ -284,6 +286,7 @@
   padding: 4px 10px;
   border-radius: 999px;
   text-align: center;
+  white-space: nowrap;
 }
 
 .status--reported { background: #fff3cd; color: #856404; }

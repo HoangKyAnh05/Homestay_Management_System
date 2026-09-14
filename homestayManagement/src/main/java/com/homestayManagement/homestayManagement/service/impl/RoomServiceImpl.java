@@ -99,22 +99,33 @@ public class RoomServiceImpl implements RoomService {
             throw new IllegalArgumentException("Ngày kết thúc phải sau hoặc bằng ngày bắt đầu");
         }
 
-        Room room = roomRepository.findById(roomId)
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy phòng"));
-        RoomType roomType = room.getRoomType();
+        Room room = roomRepository.findById(roomId).orElse(null);
+        RoomType roomType;
+        if (room != null) {
+            roomType = room.getRoomType();
+        } else {
+            roomType = roomTypeRepository.findById(roomId)
+                    .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy phòng"));
+            List<Room> rooms = roomRepository.findByRoomTypeId(roomType.getId());
+            room = rooms.isEmpty() ? null : rooms.get(0);
+        }
+
+        Long effectiveRoomId = room != null ? room.getId() : null;
         DepositPolicy depositPolicy = roomType.getDepositPolicy();
-        List<String> imageUrls = buildRoomImageUrls(room.getId());
+        List<String> imageUrls = effectiveRoomId != null ? buildRoomImageUrls(effectiveRoomId) : List.of();
         List<RoomPublicPriceResponse> prices = roomPriceConfigRepository.findByRoomTypeIdWithPolicy(roomType.getId()).stream()
                 .sorted(Comparator.comparing((RoomPriceConfig config) -> normalize(config.getPricePolicy().getRentType()))
                         .thenComparing(config -> normalize(config.getDayType()))
                         .thenComparing(RoomPriceConfig::getPrice))
                 .map(this::toRoomPriceResponse)
                 .toList();
-        List<RoomBusySlotResponse> busySlots = bookingDetailRepository.findPublicBusySlotsByRoom(
-                        room.getId(),
+        List<RoomBusySlotResponse> busySlots = bookingDetailRepository.findPublicBusySlots(
+                        effectiveRoomId,
+                        roomType.getId(),
                         startDate.atStartOfDay(),
                         endDate.plusDays(1).atStartOfDay()
                 ).stream()
+                .filter(BookingInventoryPolicy::blocksInventory)
                 .map(detail -> new RoomBusySlotResponse(
                         detail.getId(),
                         detail.getCheckInTarget(),

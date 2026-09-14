@@ -51,37 +51,30 @@ function getDayRange(refDate = new Date()) {
 
 function getWeekRange(refDate = new Date()) {
   const date = new Date(refDate)
-  const day = date.getDay()
-  const diffToMonday = day === 0 ? -6 : 1 - day
-  const monday = new Date(date)
-  monday.setDate(date.getDate() + diffToMonday)
-
-  const sunday = new Date(monday)
-  sunday.setDate(monday.getDate() + 6)
-
+  const pastWeek = new Date(date)
+  pastWeek.setDate(date.getDate() - 7)
   return {
-    from: toDateInputValue(monday),
-    to: toDateInputValue(sunday),
+    from: toDateInputValue(pastWeek),
+    to: toDateInputValue(date),
   }
 }
 
 function getMonthRange(refDate = new Date()) {
   const date = new Date(refDate)
-  const firstDay = new Date(date.getFullYear(), date.getMonth(), 1)
-  const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0)
+  const pastMonth = new Date(date)
+  pastMonth.setDate(date.getDate() - 30)
   return {
-    from: toDateInputValue(firstDay),
-    to: toDateInputValue(lastDay),
+    from: toDateInputValue(pastMonth),
+    to: toDateInputValue(date),
   }
 }
 
 function getYearRange(refDate = new Date()) {
   const date = new Date(refDate)
   const firstDay = new Date(date.getFullYear(), 0, 1)
-  const lastDay = new Date(date.getFullYear(), 11, 31)
   return {
     from: toDateInputValue(firstDay),
-    to: toDateInputValue(lastDay),
+    to: toDateInputValue(date),
   }
 }
 
@@ -329,7 +322,7 @@ function DetailCard({ detail, actionLoading, housekeepingRequested, onAction }) 
         </button>
 
         <div className="acl-compact-action-btns">
-          {(canCheckIn || canCheckOut) && (
+          {canCheckOut && (
             <button
               type="button"
               className="acl-btn-changeroom"
@@ -1706,7 +1699,6 @@ function CheckInModal({ bookingDetailId, onClose, onCompleted }) {
   }, [bookingDetailId])
 
   const updateGuest = (index, field, value) => {
-    if (index === 0) return // Khách đặt phòng cố định thông tin, không cho sửa thủ công
     setGuests(current => current.map((guest, guestIndex) => (
       guestIndex === index ? { ...guest, [field]: value } : guest
     )))
@@ -1752,63 +1744,26 @@ function CheckInModal({ bookingDetailId, onClose, onCompleted }) {
         throw new Error('Ảnh tải lên không đúng nhận dạng thẻ CCCD hoặc hình ảnh bị mờ. Vui lòng kiểm tra lại ảnh chụp rõ 2 mặt thẻ Căn cước công dân!')
       }
 
-      // ── Kiểm tra tự động cho Người đại diện (Người lưu trú 1) ──
+      // ── Cập nhật thông tin nhận dạng từ OCR ──
+      setGuests(current => current.map((guest, guestIndex) => {
+        if (guestIndex !== index) return guest
+        return {
+          ...guest,
+          fullName: data.fullName || guest.fullName,
+          identityDocumentNumber: data.identityDocumentNumber || guest.identityDocumentNumber,
+          dateOfBirth: toIsoDateString(data.dateOfBirth) || guest.dateOfBirth,
+          gender: data.gender || guest.gender,
+          nationality: data.nationality || guest.nationality || 'VIETNAM',
+          address: data.address || guest.address,
+        }
+      }))
+
       if (index === 0) {
-        const expectedName = preparation?.customer?.fullName || guests[0]?.fullName || ''
-        const expectedCccd = (preparation?.customerIdentityDocumentNumber || guests[0]?.identityDocumentNumber || '').replace(/\D/g, '')
-        const scannedCccd = (data.identityDocumentNumber || '').replace(/\D/g, '')
-
-        // 1. Kiểm tra Họ và tên
-        if (expectedName && data.fullName && !isNameMatch(data.fullName, expectedName)) {
-          throw new Error(
-            `️ Tên trên CCCD không trùng khớp với khách đặt phòng!\n` +
-            `• Tên trên CCCD: "${data.fullName}"\n` +
-            `• Tên khách đặt phòng: "${expectedName}"\n` +
-            `Vui lòng sử dụng đúng thẻ CCCD của người đặt phòng.`
-          )
-        }
-
-        // 2. Kiểm tra Số CCCD (nếu đơn đặt phòng đã có CCCD)
-        if (expectedCccd && scannedCccd && expectedCccd !== scannedCccd) {
-          throw new Error(
-            `️ Số CCCD trên ảnh không trùng khớp với thông tin đã đăng ký!\n` +
-            `• Số CCCD trên ảnh: ${scannedCccd}\n` +
-            `• Số CCCD đã đăng ký: ${expectedCccd}\n` +
-            `Vui lòng kiểm tra lại thẻ CCCD.`
-          )
-        }
-
-        // 3. Khớp thành công: Cập nhật các trường còn thiếu (ngày sinh, giới tính, địa chỉ, số CCCD nếu chưa có)
-        setGuests(current => current.map((guest, guestIndex) => {
-          if (guestIndex !== 0) return guest
-          return {
-            ...guest,
-            identityDocumentNumber: guest.identityDocumentNumber || data.identityDocumentNumber || '',
-            dateOfBirth: guest.dateOfBirth || toIsoDateString(data.dateOfBirth) || '',
-            gender: guest.gender || data.gender || '',
-            address: guest.address || data.address || '',
-            nationality: guest.nationality || data.nationality || 'VIETNAM',
-          }
-        }))
-
         setRepVerified(true)
         setOcrNotice(
-          `✓ Đã xác minh CCCD chính chủ trùng khớp thành công với khách đặt phòng "${expectedName}" (CCCD: ${scannedCccd || expectedCccd})!`
+          `✓ Đã trích xuất thông tin CCCD cho người đại diện: "${data.fullName || guests[0]?.fullName || ''}" (CCCD: ${data.identityDocumentNumber || ''})`
         )
       } else {
-        // ── Cập nhật cho các khách đi cùng (Người lưu trú 2, 3...) ──
-        setGuests(current => current.map((guest, guestIndex) => {
-          if (guestIndex !== index) return guest
-          return {
-            ...guest,
-            fullName: data.fullName || guest.fullName,
-            identityDocumentNumber: data.identityDocumentNumber || guest.identityDocumentNumber,
-            dateOfBirth: toIsoDateString(data.dateOfBirth) || guest.dateOfBirth,
-            gender: data.gender || guest.gender,
-            nationality: data.nationality || guest.nationality || 'VIETNAM',
-            address: data.address || guest.address,
-          }
-        }))
         setOcrNotice(`✓ Đã đọc CCCD cho người lưu trú ${index + 1}. Vui lòng kiểm tra lại trước khi xác nhận.`)
       }
 
@@ -1912,7 +1867,7 @@ function CheckInModal({ bookingDetailId, onClose, onCompleted }) {
 
             <section className="acl-checkin-section">
               <div className="acl-checkin-section-head">
-                <div><span>02</span><div><h3>Thông tin người lưu trú</h3><p>{preparation.preRegistered ? `Đã đăng ký ${guests.length} người lưu trú. Thông tin khách đặt phòng được giữ cố định.` : `Nhập đủ ${guests.length} người. Thông tin khách đặt phòng được giữ cố định.`}</p></div></div>
+                <div><span>02</span><div><h3>Thông tin người lưu trú</h3><p>{preparation.preRegistered ? `Đã đăng ký ${guests.length} người lưu trú.` : `Nhập đủ ${guests.length} người lưu trú.`}</p></div></div>
               </div>
               <div className="acl-guest-forms">
                 {guests.map((guest, index) => {
@@ -1928,9 +1883,9 @@ function CheckInModal({ bookingDetailId, onClose, onCompleted }) {
                           <strong>Người lưu trú {index + 1}</strong>
                           {isRepresentative ? (
                             <>
-                              <span className="acl-rep-locked-badge"> Người đại diện (Khách đặt phòng - Cố định)</span>
+                              <span className="acl-rep-locked-badge"> Người đại diện (Khách đặt phòng)</span>
                               {repVerified && (
-                                <span className="acl-rep-verified-badge">✓ Đã khớp CCCD chính chủ</span>
+                                <span className="acl-rep-verified-badge">✓ Đã quét CCCD</span>
                               )}
                             </>
                           ) : (
@@ -1995,9 +1950,7 @@ function CheckInModal({ bookingDetailId, onClose, onCompleted }) {
                             required
                             maxLength="100"
                             value={guest.fullName}
-                            readOnly={isRepresentative}
-                            className={isRepresentative ? 'acl-field-readonly' : ''}
-                            title={isRepresentative ? 'Thông tin cố định từ khách đặt phòng' : undefined}
+                            placeholder="Nhập họ và tên"
                             onChange={event => updateGuest(index, 'fullName', event.target.value)}
                           />
                         </label>
@@ -2008,10 +1961,9 @@ function CheckInModal({ bookingDetailId, onClose, onCompleted }) {
                             inputMode="numeric"
                             pattern={isUnder10 ? undefined : "[0-9]{12}"}
                             maxLength="12"
-                            title={isRepresentative ? 'Thông tin cố định từ khách đặt phòng' : isUnder10 ? "Trẻ em dưới 10 tuổi không bắt buộc nhập căn cước công dân" : "Căn cước công dân phải gồm đúng 12 chữ số"}
+                            placeholder={isUnder10 ? "Không bắt buộc (<10 tuổi)" : "12 chữ số CCCD"}
+                            title={isUnder10 ? "Trẻ em dưới 10 tuổi không bắt buộc nhập căn cước công dân" : "Căn cước công dân phải gồm đúng 12 chữ số"}
                             value={guest.identityDocumentNumber}
-                            readOnly={isRepresentative}
-                            className={isRepresentative ? 'acl-field-readonly' : ''}
                             onChange={event => updateGuest(index, 'identityDocumentNumber', event.target.value.replace(/\D/g, ''))}
                           />
                         </label>
@@ -2020,9 +1972,6 @@ function CheckInModal({ bookingDetailId, onClose, onCompleted }) {
                           <input
                             type="date"
                             value={guest.dateOfBirth || ''}
-                            readOnly={isRepresentative}
-                            className={isRepresentative ? 'acl-field-readonly' : ''}
-                            title={isRepresentative ? 'Thông tin cố định từ khách đặt phòng' : undefined}
                             onChange={event => updateGuest(index, 'dateOfBirth', event.target.value)}
                           />
                         </label>
@@ -2032,10 +1981,9 @@ function CheckInModal({ bookingDetailId, onClose, onCompleted }) {
                             type="email"
                             required={isRepresentative}
                             maxLength={isRepresentative ? 50 : 100}
-                            title={isRepresentative ? 'Email này sẽ nhận link truy cập dịch vụ của phòng (Cố định)' : 'Vui lòng nhập đúng định dạng email'}
+                            placeholder="Email nhận link truy cập phòng"
+                            title={isRepresentative ? 'Email này sẽ nhận link truy cập dịch vụ của phòng' : 'Vui lòng nhập đúng định dạng email'}
                             value={guest.email}
-                            readOnly={isRepresentative}
-                            className={isRepresentative ? 'acl-field-readonly' : ''}
                             onChange={event => updateGuest(index, 'email', event.target.value)}
                           />
                         </label>
@@ -2045,10 +1993,9 @@ function CheckInModal({ bookingDetailId, onClose, onCompleted }) {
                             inputMode="numeric"
                             pattern="[0-9]{10}"
                             maxLength="10"
-                            title={isRepresentative ? 'Thông tin cố định từ khách đặt phòng' : "Số điện thoại phải gồm đúng 10 chữ số"}
+                            placeholder="10 chữ số SĐT"
+                            title="Số điện thoại phải gồm đúng 10 chữ số"
                             value={guest.phone}
-                            readOnly={isRepresentative}
-                            className={isRepresentative ? 'acl-field-readonly' : ''}
                             onChange={event => updateGuest(index, 'phone', event.target.value.replace(/\D/g, ''))}
                           />
                         </label>
@@ -2056,9 +2003,6 @@ function CheckInModal({ bookingDetailId, onClose, onCompleted }) {
                           <span>Giới tính</span>
                           <select
                             value={guest.gender}
-                            disabled={isRepresentative}
-                            className={isRepresentative ? 'acl-field-readonly' : ''}
-                            title={isRepresentative ? 'Thông tin cố định từ khách đặt phòng' : undefined}
                             onChange={event => updateGuest(index, 'gender', event.target.value)}
                           >
                             <option value="">Chưa chọn</option>
@@ -2071,10 +2015,8 @@ function CheckInModal({ bookingDetailId, onClose, onCompleted }) {
                           <span>Địa chỉ</span>
                           <input
                             maxLength="255"
+                            placeholder="Địa chỉ thường trú / tạm trú"
                             value={guest.address}
-                            readOnly={isRepresentative}
-                            className={isRepresentative ? 'acl-field-readonly' : ''}
-                            title={isRepresentative ? 'Thông tin cố định từ khách đặt phòng' : undefined}
                             onChange={event => updateGuest(index, 'address', event.target.value)}
                           />
                         </label>

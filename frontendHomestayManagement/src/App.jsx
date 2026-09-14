@@ -17,12 +17,11 @@ import DashboardPage from './pages/Admin/DashboardPage'
 import HousekeepingPage from './pages/Admin/HousekeepingPage'
 import AdminIncidentsPage from './pages/Admin/AdminIncidentsPage'
 import { MarketingAIAgentPage, MarketingPostLogsPage, MarketingVouchersPage } from './pages/Admin/MarketingPages'
-import RemotionStudioPage from './pages/Admin/RemotionStudioPage'
-import GdriveVideoRenamerPage from './pages/Admin/GdriveVideoRenamerPage'
 import AdminTravelArticlesPage from './pages/Admin/AdminTravelArticlesPage'
 import AdminGiveawayLeadsPage from './pages/Admin/AdminGiveawayLeadsPage'
 import GiveawayLuckyWheelPage from './pages/Giveaway/GiveawayLuckyWheelPage'
 import ReceptionistOverviewPage from './pages/Admin/ReceptionistOverviewPage'
+import ReceptionistSheetsPage from './pages/Admin/ReceptionistSheetsPage'
 import BookingHistoryPage from './pages/BookingHistory/BookingHistoryPage'
 import ForgotPasswordPage from './pages/ForgotPassword/ForgotPasswordPage'
 import HomePage from './pages/Home/HomePage'
@@ -37,6 +36,7 @@ import StayActivationPage from './pages/Stay/StayActivationPage'
 import WishlistPage from './pages/Wishlist/WishlistPage'
 import LandingPage from './pages/Landing/LandingPage'
 import CustomerVouchersPage from './pages/Vouchers/CustomerVouchersPage'
+import CalendarShowcasePage from './pages/Test/CalendarShowcasePage'
 import FloatingContactWidget from './components/FloatingContact/FloatingContactWidget'
 import { getStoredUser } from './services/authService'
 import { STAFF_ROLES, roleCanAccess, roleDefaultPath } from './utils/roleUtils'
@@ -47,7 +47,7 @@ function CustomerSurface({ children }) {
   return (
     <>
       {children}
-      {/* <CustomerAiChat /> */}
+      <CustomerAiChat />
       <FloatingContactWidget />
     </>
   )
@@ -118,11 +118,6 @@ function App() {
     return () => document.removeEventListener('click', handleInternalLink)
   }, [])
 
-  if (currentPath.startsWith('/remotion-app')) {
-    window.location.replace('/remotion-app/index.html')
-    return null
-  }
-
   if (currentPath === '/landing' || currentPath === '/sanctuary' || currentPath === '/komorebi') {
     return <LandingPage />
   }
@@ -138,6 +133,9 @@ function App() {
   if (currentPath === '/wishlist') return <CustomerSurface><WishlistPage /></CustomerSurface>
   if (currentPath === '/vouchers' || currentPath === '/my-vouchers') {
     return <CustomerSurface><CustomerVouchersPage /></CustomerSurface>
+  }
+  if (currentPath === '/test-calendars') {
+    return <CalendarShowcasePage />
   }
   if (currentPath === '/stay/activate') return <StayActivationPage />
   if (currentPath === '/stay') return <CustomerSurface><StayPage /></CustomerSurface>
@@ -203,9 +201,8 @@ function App() {
       return <AdminIncidentsPage />
     }
     if (currentPath === '/admin/receptionist') return <ReceptionistOverviewPage />
+    if (currentPath === '/admin/sheets') return <ReceptionistSheetsPage />
     if (currentPath === '/admin/marketing/ai-agent') return <MarketingAIAgentPage />
-    if (currentPath === '/admin/marketing/video-renamer' || currentPath === '/admin/video-renamer') return <GdriveVideoRenamerPage />
-    if (currentPath === '/admin/marketing/video-editor' || currentPath === '/admin/marketing/remotion-studio') return <RemotionStudioPage />
     if (currentPath === '/admin/marketing/post-logs') return <MarketingPostLogsPage />
     if (currentPath === '/admin/marketing/vouchers') return <MarketingVouchersPage />
     if (currentPath === '/admin/marketing/travel-articles') return <AdminTravelArticlesPage />

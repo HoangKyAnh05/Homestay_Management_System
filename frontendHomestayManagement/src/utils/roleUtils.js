@@ -36,6 +36,7 @@ export const NAV_KEYS_BY_ROLE = {
     'receptionist-overview',        // Tổng quan lễ tân
     'bookings',                      // Quản lý Đặt & Trả phòng
     'invoices',                      // Quản lý Hóa đơn
+    'sheets',                        // Quản lý Bảng tính & File
   ],
 
   ROLE_HOUSEKEEPING: [
@@ -60,6 +61,7 @@ export function roleCanAccess(role, path) {
       '/admin/bookings',
       '/admin/check-in-logs',
       '/admin/invoices',
+      '/admin/sheets',
       '/admin/housekeeping/incidents',
     ],
     ROLE_HOUSEKEEPING: [
@@ -68,9 +70,6 @@ export function roleCanAccess(role, path) {
     ],
     ROLE_MARKETING: [
       '/admin/marketing/ai-agent',
-      '/admin/marketing/video-renamer',
-      '/admin/marketing/video-editor',
-      '/admin/marketing/remotion-studio',
       '/admin/marketing/post-logs',
       '/admin/marketing/vouchers',
       '/admin/marketing/travel-articles',

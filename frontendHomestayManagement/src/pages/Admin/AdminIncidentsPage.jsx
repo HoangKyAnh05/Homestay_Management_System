@@ -56,35 +56,30 @@ function getDayRange(refDate = new Date()) {
 
 function getWeekRange(refDate = new Date()) {
   const date = new Date(refDate)
-  const day = date.getDay()
-  const diffToMonday = day === 0 ? -6 : 1 - day
-  const monday = new Date(date)
-  monday.setDate(date.getDate() + diffToMonday)
-  const sunday = new Date(monday)
-  sunday.setDate(monday.getDate() + 6)
+  const pastWeek = new Date(date)
+  pastWeek.setDate(date.getDate() - 7)
   return {
-    from: toDateInputValue(monday),
-    to: toDateInputValue(sunday),
+    from: toDateInputValue(pastWeek),
+    to: toDateInputValue(date),
   }
 }
 
 function getMonthRange(refDate = new Date()) {
   const date = new Date(refDate)
-  const firstDay = new Date(date.getFullYear(), date.getMonth(), 1)
-  const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0)
+  const pastMonth = new Date(date)
+  pastMonth.setDate(date.getDate() - 30)
   return {
-    from: toDateInputValue(firstDay),
-    to: toDateInputValue(lastDay),
+    from: toDateInputValue(pastMonth),
+    to: toDateInputValue(date),
   }
 }
 
 function getYearRange(refDate = new Date()) {
   const date = new Date(refDate)
   const firstDay = new Date(date.getFullYear(), 0, 1)
-  const lastDay = new Date(date.getFullYear(), 11, 31)
   return {
     from: toDateInputValue(firstDay),
-    to: toDateInputValue(lastDay),
+    to: toDateInputValue(date),
   }
 }
 

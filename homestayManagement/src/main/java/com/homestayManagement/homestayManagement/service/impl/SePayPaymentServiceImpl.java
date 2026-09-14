@@ -1,8 +1,10 @@
 package com.homestayManagement.homestayManagement.service.impl;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.homestayManagement.homestayManagement.dto.request.SandboxPaymentRequest;
 import com.homestayManagement.homestayManagement.dto.request.SePayWebhookRequest;
 import com.homestayManagement.homestayManagement.dto.response.PublicBookingPaymentStatusResponse;
+import com.homestayManagement.homestayManagement.dto.response.SandboxPaymentResponse;
 import com.homestayManagement.homestayManagement.dto.response.SePayPaymentResponse;
 import com.homestayManagement.homestayManagement.entity.*;
 import com.homestayManagement.homestayManagement.repository.*;
@@ -54,6 +56,7 @@ public class SePayPaymentServiceImpl implements SePayPaymentService {
     private final ServiceUsageRepository serviceUsageRepository;
     private final InventoryServiceRepository inventoryServiceRepository;
     private final StayAccessService stayAccessService;
+    private final VoucherRepository voucherRepository;
     private final ObjectMapper objectMapper;
     private final ApplicationEventPublisher eventPublisher;
     private final String bankName;
@@ -74,6 +77,7 @@ public class SePayPaymentServiceImpl implements SePayPaymentService {
             ServiceUsageRepository serviceUsageRepository,
             InventoryServiceRepository inventoryServiceRepository,
             StayAccessService stayAccessService,
+            VoucherRepository voucherRepository,
             ObjectMapper objectMapper,
             ApplicationEventPublisher eventPublisher,
             @Value("${sepay.bank-name:}") String bankName,
@@ -94,6 +98,7 @@ public class SePayPaymentServiceImpl implements SePayPaymentService {
         this.serviceUsageRepository = serviceUsageRepository;
         this.inventoryServiceRepository = inventoryServiceRepository;
         this.stayAccessService = stayAccessService;
+        this.voucherRepository = voucherRepository;
         this.objectMapper = objectMapper;
         this.eventPublisher = eventPublisher;
         this.bankName = bankName;
@@ -120,11 +125,36 @@ public class SePayPaymentServiceImpl implements SePayPaymentService {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public PublicBookingPaymentStatusResponse getPublicBookingPaymentStatus(Long bookingId, String email) {
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new IllegalArgumentException("Khong tim thay booking"));
         ensureBookingEmailMatches(booking, email);
+
+        if ("PENDING".equalsIgnoreCase(booking.getStatus())) {
+            LocalDateTime expiresAt = booking.getPaymentHoldExpiresAt() != null
+                    ? booking.getPaymentHoldExpiresAt()
+                    : (booking.getBookingDate() != null ? booking.getBookingDate().plusMinutes(5) : null);
+            if (expiresAt != null && LocalDateTime.now().isAfter(expiresAt)) {
+                booking.setStatus("CANCELLED");
+                booking.setCancellationReason("Quá hạn thanh toán 5 phút");
+                booking.setCancelledAt(LocalDateTime.now());
+                bookingRepository.save(booking);
+
+                List<BookingDetail> details = bookingDetailRepository.findByBookingId(booking.getId());
+                details.forEach(d -> d.setStatus("CANCELLED"));
+                bookingDetailRepository.saveAll(details);
+
+                if (booking.getVoucher() != null) {
+                    com.homestayManagement.homestayManagement.entity.Voucher v = booking.getVoucher();
+                    if (v.getUsedCount() != null && v.getUsedCount() > 0) {
+                        v.setUsedCount(v.getUsedCount() - 1);
+                        voucherRepository.save(v);
+                    }
+                }
+            }
+        }
+
         return new PublicBookingPaymentStatusResponse(
                 booking.getId(),
                 booking.getBookingCode(),
@@ -154,7 +184,19 @@ public class SePayPaymentServiceImpl implements SePayPaymentService {
             throw new IllegalArgumentException("Booking không có chi tiết phòng");
         }
         ensureInventoryAvailable(details, booking.getId());
-        booking.setPaymentHoldExpiresAt(null);
+
+        LocalDateTime holdExpiresAt = booking.getPaymentHoldExpiresAt();
+        if (holdExpiresAt == null) {
+            holdExpiresAt = booking.getBookingDate() != null ? booking.getBookingDate().plusMinutes(5) : LocalDateTime.now().plusMinutes(5);
+            booking.setPaymentHoldExpiresAt(holdExpiresAt);
+        }
+        if (LocalDateTime.now().isAfter(holdExpiresAt)) {
+            booking.setStatus("CANCELLED");
+            booking.setCancellationReason("Quá hạn thanh toán 5 phút");
+            booking.setCancelledAt(LocalDateTime.now());
+            bookingRepository.save(booking);
+            throw new IllegalArgumentException("Mã QR thanh toán và đơn đặt phòng đã hết hạn (quá 5 phút). Phòng đã được tự động mở lại cho khách khác.");
+        }
         bookingRepository.save(booking);
 
         Invoice invoice = getOrCreateInvoice(booking, details);
@@ -626,9 +668,13 @@ public class SePayPaymentServiceImpl implements SePayPaymentService {
     }
 
     private SePayPaymentResponse toResponse(Booking booking, Payment payment, String transferContent) {
+        LocalDateTime holdExpiresAt = booking != null && booking.getPaymentHoldExpiresAt() != null
+                ? booking.getPaymentHoldExpiresAt()
+                : (booking != null && booking.getBookingDate() != null ? booking.getBookingDate().plusMinutes(5) : LocalDateTime.now().plusMinutes(5));
+        long remainingSeconds = Math.max(0, java.time.Duration.between(LocalDateTime.now(), holdExpiresAt).getSeconds());
         return new SePayPaymentResponse(
-                booking.getId(),
-                booking.getBookingCode(),
+                booking != null ? booking.getId() : null,
+                booking != null ? booking.getBookingCode() : null,
                 payment.getId(),
                 payment.getAmount(),
                 payment.getPaymentCode(),
@@ -637,7 +683,8 @@ public class SePayPaymentServiceImpl implements SePayPaymentService {
                 accountNumber,
                 accountHolder,
                 payment.getQrCodeUrl(),
-                null
+                holdExpiresAt,
+                remainingSeconds
         );
     }
 
@@ -741,6 +788,144 @@ public class SePayPaymentServiceImpl implements SePayPaymentService {
 
     private String blankToFallback(String value, String fallback) {
         return value == null || value.isBlank() ? fallback : value;
+    }
+
+    @Override
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    public SandboxPaymentResponse simulateSandboxPayment(SandboxPaymentRequest request) {
+        if (request == null) {
+            throw new IllegalArgumentException("Yêu cầu sandbox không hợp lệ");
+        }
+        if (request.amount() != null && request.amount().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Số tiền thanh toán phải lớn hơn 0");
+        }
+        Payment payment = null;
+        if (request.paymentCode() != null && !request.paymentCode().isBlank()) {
+            payment = paymentRepository.findByPaymentCodeIgnoreCase(request.paymentCode().trim()).orElse(null);
+        }
+        if (payment == null && request.bookingId() != null) {
+            List<Payment> payments = invoiceRepository.findByBookingIdForAdmin(request.bookingId())
+                    .map(inv -> paymentRepository.findByInvoiceIdOrderByPaymentTimeDescIdDesc(inv.getId()))
+                    .orElse(List.of());
+            payment = payments.isEmpty() ? null : payments.get(0);
+        }
+        if (payment == null) {
+            throw new IllegalArgumentException("Không tìm thấy thông tin giao dịch thanh toán để mô phỏng");
+        }
+
+        String simType = request.simulationType() != null ? request.simulationType().trim().toUpperCase() : "SUCCESS";
+
+        if ("UNDERPAID".equals(simType)) {
+            throw new IllegalArgumentException("Mô phỏng: Số tiền thanh toán chưa đủ (Thiếu 50,000đ)");
+        }
+        if ("EXPIRED".equals(simType)) {
+            Booking b = payment.getInvoice() != null ? payment.getInvoice().getBooking() : null;
+            if (b != null) {
+                b.setStatus("CANCELLED");
+                bookingRepository.save(b);
+            }
+            payment.setStatus("EXPIRED");
+            paymentRepository.save(payment);
+            return new SandboxPaymentResponse(
+                    false,
+                    "Mô phỏng: Giao dịch đã hết hạn giữ chỗ (5 phút)",
+                    b != null ? b.getId() : null,
+                    b != null ? b.getBookingCode() : null,
+                    payment.getPaymentCode(),
+                    "EXPIRED",
+                    BigDecimal.ZERO,
+                    LocalDateTime.now()
+            );
+        }
+
+        Booking booking = bookingRepository.findByIdForPaymentUpdate(payment.getInvoice().getBooking().getId())
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy booking của giao dịch"));
+
+        List<BookingDetail> bookingDetails = List.of();
+        if (!"CHECKOUT".equalsIgnoreCase(payment.getPaymentPurpose())) {
+            bookingDetails = bookingDetailRepository.findByBookingId(booking.getId());
+            try {
+                ensureInventoryAvailable(bookingDetails, booking.getId());
+            } catch (IllegalArgumentException conflict) {
+                payment.setSepayTransactionId(System.currentTimeMillis());
+                payment.setTransactionNo("SANDBOX-REV-" + System.currentTimeMillis());
+                payment.setStatus("REVIEW_REQUIRED");
+                payment.setPaymentTime(LocalDateTime.now());
+                paymentRepository.save(payment);
+                booking.setPaymentHoldExpiresAt(null);
+                bookingRepository.save(booking);
+                return new SandboxPaymentResponse(
+                        false,
+                        "Mô phỏng: Hết phòng khả dụng (REVIEW_REQUIRED)",
+                        booking.getId(),
+                        booking.getBookingCode(),
+                        payment.getPaymentCode(),
+                        "REVIEW_REQUIRED",
+                        payment.getAmount(),
+                        LocalDateTime.now()
+                );
+            }
+        }
+
+        payment.setSepayTransactionId(System.currentTimeMillis());
+        payment.setTransactionNo("SANDBOX-" + System.currentTimeMillis());
+        payment.setStatus("SUCCESS");
+        payment.setPaymentTime(LocalDateTime.now());
+        paymentRepository.save(payment);
+
+        if ("CHECKOUT".equalsIgnoreCase(payment.getPaymentPurpose())) {
+            completeCheckout(booking, payment.getBookingDetail());
+        } else {
+            booking.setStatus("CONFIRMED");
+            booking.setPaymentHoldExpiresAt(null);
+            bookingRepository.save(booking);
+            bookingDetails.forEach(detail -> detail.setStatus("CONFIRMED"));
+            bookingDetailRepository.saveAll(bookingDetails);
+            publishGuestPaymentConfirmationEmail(booking, bookingDetails, payment);
+        }
+
+        return new SandboxPaymentResponse(
+                true,
+                "Thanh toán Sandbox giả lập thành công!",
+                booking.getId(),
+                booking.getBookingCode(),
+                payment.getPaymentCode(),
+                "SUCCESS",
+                payment.getAmount(),
+                payment.getPaymentTime()
+        );
+    }
+
+    @Override
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    public SandboxPaymentResponse quickPayBooking(Long bookingId) {
+        if (bookingId == null || bookingId <= 0) {
+            throw new IllegalArgumentException("Booking ID không hợp lệ");
+        }
+        Booking booking = bookingRepository.findByIdForPaymentUpdate(bookingId)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đơn đặt phòng #" + bookingId));
+        
+        List<BookingDetail> bookingDetails = bookingDetailRepository.findByBookingId(booking.getId());
+        Invoice invoice = getOrCreateInvoice(booking, bookingDetails);
+        BigDecimal requiredAmount = calculateRequiredPayment(booking, bookingDetails, invoice.getTotalAmount());
+        
+        Payment payment = paymentRepository.findByInvoiceIdOrderByPaymentTimeDescIdDesc(invoice.getId())
+                .stream()
+                .filter(p -> "SEPAY_QR".equalsIgnoreCase(p.getPaymentMethod()) || "TRANSFER".equalsIgnoreCase(p.getPaymentMethod()) || "PENDING".equalsIgnoreCase(p.getStatus()))
+                .findFirst()
+                .orElseGet(() -> {
+                    String code = paymentCodePrefix + booking.getId() + (System.currentTimeMillis() % 1000);
+                    return paymentRepository.save(Payment.builder()
+                            .invoice(invoice)
+                            .amount(requiredAmount)
+                            .paymentMethod("SEPAY_QR")
+                            .paymentPurpose("DEPOSIT")
+                            .paymentCode(code)
+                            .status("PENDING")
+                            .build());
+                });
+        
+        return simulateSandboxPayment(new SandboxPaymentRequest(booking.getId(), payment.getPaymentCode(), requiredAmount, "SUCCESS"));
     }
 
     private String normalize(String value) {

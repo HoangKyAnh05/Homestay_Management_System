@@ -263,34 +263,52 @@ function KpiCard({ label, value, hint, tone, inspectInfo, onInspectHover, onInsp
   )
 }
 
+function formatCompactMoney(value) {
+  const num = Number(value || 0)
+  if (num === 0) return '0đ'
+  if (num >= 1_000_000) {
+    return (num / 1_000_000).toFixed(1).replace('.0', '') + 'tr'
+  }
+  if (num >= 1_000) {
+    return (num / 1_000).toFixed(0) + 'k'
+  }
+  return num + 'đ'
+}
+
 function RevenueChart({ data, onInspectHover, onInspectLeave, onInspectClick }) {
   const max = Math.max(...data.map(item => Number(item.totalRevenue || 0)), 1)
-  const points = data.map((item, index) => {
-    const x = data.length === 1 ? 0 : (index / (data.length - 1)) * 100
-    const y = 100 - (Number(item.totalRevenue || 0) / max) * 82 - 8
-    return `${x},${y}`
-  }).join(' ')
+  const totalPeriodRevenue = data.reduce((sum, item) => sum + Number(item.totalRevenue || 0), 0)
+  const totalRoom = data.reduce((sum, item) => sum + Number(item.roomRevenue || 0), 0)
+  const totalService = data.reduce((sum, item) => sum + Number(item.serviceRevenue || 0), 0)
+  const totalPenalty = data.reduce((sum, item) => sum + Number(item.penaltyRevenue || 0), 0)
 
   return (
     <section className="dash-panel dash-panel--large">
       <div className="dash-panel-head">
         <div>
-          <h2>Doanh thu theo ngày</h2>
-          <p>Tổng doanh thu hóa đơn, gồm tiền phòng, dịch vụ và phạt/phụ thu. <em>(Rê chuột vào từng cột để xem chi tiết)</em></p>
+          <h2>📊 Doanh thu theo ngày (Thực tế)</h2>
+          <p>Biểu đồ cột trực quan: Tiền phòng (Xanh) + Dịch vụ (Cam) + Phạt/Phụ thu (Tím). <em>(Rê chuột vào từng cột để xem chi tiết)</em></p>
+        </div>
+        <div className="dash-revenue-legend-head">
+          <span className="dash-leg-tag dash-leg-room">🟦 Phòng: {formatCompactMoney(totalRoom)}</span>
+          <span className="dash-leg-tag dash-leg-service">🟧 Dịch vụ: {formatCompactMoney(totalService)}</span>
+          <span className="dash-leg-tag dash-leg-penalty">🟪 Phạt: {formatCompactMoney(totalPenalty)}</span>
+          <strong className="dash-leg-total">💰 Tổng: {formatExactMoney(totalPeriodRevenue)}</strong>
         </div>
       </div>
       <div className="dash-revenue-scroll">
         <div className="dash-revenue-chart" style={{ '--chart-days': Math.max(data.length, 1) }}>
-          <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-label="Biểu đồ doanh thu">
-            <polyline points={points} />
-          </svg>
           <div className="dash-bars">
             {data.map(item => {
-              const height = Math.max(4, (Number(item.totalRevenue || 0) / max) * 100)
               const total = Number(item.totalRevenue || 0)
               const room = Number(item.roomRevenue || 0)
               const service = Number(item.serviceRevenue || 0)
               const penalty = Number(item.penaltyRevenue || 0)
+              const totalHeight = Math.max(total > 0 ? 8 : 2, (total / max) * 100)
+
+              const roomPct = total > 0 ? (room / total) * 100 : 0
+              const servicePct = total > 0 ? (service / total) * 100 : 0
+              const penaltyPct = total > 0 ? (penalty / total) * 100 : 0
 
               const dayInspectInfo = {
                 title: `Doanh thu Ngày ${formatFullDate(item.date)}`,
@@ -299,24 +317,24 @@ function RevenueChart({ data, onInspectHover, onInspectLeave, onInspectClick }) 
                 calculation: `${formatExactMoney(room)} (Phòng) + ${formatExactMoney(service)} (Dịch vụ) + ${formatExactMoney(penalty)} (Phạt) = ${formatExactMoney(total)}`,
                 breakdown: [
                   {
-                    icon: '',
+                    icon: '🏨',
                     label: 'Tiền phòng',
                     value: formatExactMoney(room),
-                    percent: total > 0 ? `${((room / total) * 100).toFixed(1)}%` : '0%',
+                    percent: total > 0 ? `${roomPct.toFixed(1)}%` : '0%',
                     desc: 'Doanh thu thuê phòng trong ngày',
                   },
                   {
-                    icon: '️',
+                    icon: '🥤',
                     label: 'Dịch vụ',
                     value: formatExactMoney(service),
-                    percent: total > 0 ? `${((service / total) * 100).toFixed(1)}%` : '0%',
+                    percent: total > 0 ? `${servicePct.toFixed(1)}%` : '0%',
                     desc: 'Minibar, ăn uống, thuê đồ',
                   },
                   {
-                    icon: '️',
+                    icon: '⚠️',
                     label: 'Phạt & Phụ thu',
                     value: formatExactMoney(penalty),
-                    percent: total > 0 ? `${((penalty / total) * 100).toFixed(1)}%` : '0%',
+                    percent: total > 0 ? `${penaltyPct.toFixed(1)}%` : '0%',
                     desc: 'Phụ thu thêm giờ, quá số người, bồi thường đồ hỏng',
                   },
                 ],
@@ -331,7 +349,15 @@ function RevenueChart({ data, onInspectHover, onInspectLeave, onInspectClick }) 
                   onMouseLeave={onInspectLeave}
                   onClick={() => onInspectClick(dayInspectInfo)}
                 >
-                  <span className="dash-bar" style={{ height: `${height}%` }} />
+                  <div className="dash-bar-value-label">
+                    {total > 0 ? formatCompactMoney(total) : ''}
+                  </div>
+                  <div className="dash-stacked-bar-container" style={{ height: `${totalHeight}%` }}>
+                    {penaltyPct > 0 && <span className="dash-bar-segment dash-bar-seg--penalty" style={{ height: `${penaltyPct}%` }} title={`Phạt: ${formatExactMoney(penalty)}`} />}
+                    {servicePct > 0 && <span className="dash-bar-segment dash-bar-seg--service" style={{ height: `${servicePct}%` }} title={`Dịch vụ: ${formatExactMoney(service)}`} />}
+                    {roomPct > 0 && <span className="dash-bar-segment dash-bar-seg--room" style={{ height: `${roomPct}%` }} title={`Tiền phòng: ${formatExactMoney(room)}`} />}
+                    {total === 0 && <span className="dash-bar-segment dash-bar-seg--zero" style={{ height: '100%' }} />}
+                  </div>
                   <small>{formatShortDate(item.date)}</small>
                 </div>
               )
@@ -352,10 +378,12 @@ function OccupancyChart({ data, totalRooms, onInspectHover, onInspectLeave, onIn
     <section className="dash-panel">
       <div className="dash-panel-head">
         <div>
-          <h2>Công suất phòng</h2>
-          <p>Tỉ lệ phòng có khách theo từng ngày. <em>(Rê chuột vào từng ngày để xem)</em></p>
+          <h2>🏨 Công suất phòng</h2>
+          <p>Tỉ lệ phòng có khách từng ngày. <em>(Dễ hiểu: Số phòng có khách / Tổng số phòng)</em></p>
         </div>
-        <strong>{average.toFixed(1)}%</strong>
+        <div className="dash-occupancy-avg-badge">
+          Trung bình: <strong>{average.toFixed(1)}%</strong>
+        </div>
       </div>
       <div className="dash-occupancy">
         {data.map(item => {
@@ -371,14 +399,14 @@ function OccupancyChart({ data, totalRooms, onInspectHover, onInspectLeave, onIn
             calculation: `${occRooms} phòng có khách / ${roomsCount} phòng tổng × 100% = ${occRate.toFixed(1)}%`,
             breakdown: [
               {
-                icon: '',
+                icon: '👥',
                 label: 'Phòng đang có khách',
                 value: `${occRooms} phòng`,
                 percent: `${occRate.toFixed(1)}%`,
                 desc: 'Phòng đang có booking lưu trú qua ngày này',
               },
               {
-                icon: '',
+                icon: '🚪',
                 label: 'Phòng còn trống',
                 value: `${freeRooms} phòng`,
                 percent: `${(100 - occRate).toFixed(1)}%`,
@@ -396,9 +424,19 @@ function OccupancyChart({ data, totalRooms, onInspectHover, onInspectLeave, onIn
               onMouseLeave={onInspectLeave}
               onClick={() => onInspectClick(occInspectInfo)}
             >
-              <span>{formatShortDate(item.date)}</span>
-              <div><i style={{ width: `${Math.min(100, occRate)}%` }} /></div>
-              <strong>{occRate.toFixed(1)}%</strong>
+              <span className="dash-occ-date">{formatShortDate(item.date)}</span>
+              <div className="dash-occ-bar-track">
+                <i
+                  style={{
+                    width: `${Math.min(100, occRate)}%`,
+                    background: occRate > 75 ? '#10b981' : occRate > 40 ? '#0284c7' : '#94a3b8',
+                  }}
+                />
+              </div>
+              <div className="dash-occ-numbers">
+                <span className="dash-occ-room-counts">{occRooms}/{roomsCount} phòng</span>
+                <strong>{occRate.toFixed(1)}%</strong>
+              </div>
             </div>
           )
         })}
@@ -935,10 +973,7 @@ function triggerFileDownload(blob, fileName) {
       <div className="dash-header">
         <div>
           <h1>Tổng quan hệ thống</h1>
-          <p>
-            Phân tích doanh thu, công suất phòng, booking và hiệu quả khai thác phòng.
-            <span className="dash-inspect-hint-badge">Rê chuột hoặc click vào bất kỳ mục nào để xem công thức & nguồn số liệu</span>
-          </p>
+          <p>Phân tích doanh thu, công suất phòng, booking và hiệu quả khai thác phòng.</p>
         </div>
         <div className="dash-actions">
           <input type="date" value={fromDate} onChange={event => setFromDate(event.target.value)} />

@@ -127,19 +127,24 @@ public interface BookingDetailRepository extends JpaRepository<BookingDetail, Lo
             select bd
             from BookingDetail bd
             join fetch bd.booking b
-            join fetch bd.room r
-            where r.id = :roomId
+            left join fetch bd.room r
+            where ((:roomId is not null and r.id = :roomId) or (:roomTypeId is not null and bd.roomType.id = :roomTypeId))
               and bd.checkInTarget < :endExclusive
               and bd.checkOutTarget > :startInclusive
-              and bd.status in ('CONFIRMED', 'CHECKED_IN')
-              and b.status in ('CONFIRMED', 'CHECKED_IN')
+              and bd.status != 'CANCELLED'
+              and b.status != 'CANCELLED'
             order by bd.checkInTarget asc
             """)
-    List<BookingDetail> findPublicBusySlotsByRoom(
+    List<BookingDetail> findPublicBusySlots(
             @Param("roomId") Long roomId,
+            @Param("roomTypeId") Long roomTypeId,
             @Param("startInclusive") LocalDateTime startInclusive,
             @Param("endExclusive") LocalDateTime endExclusive
     );
+
+    default List<BookingDetail> findPublicBusySlotsByRoom(Long roomId, LocalDateTime startInclusive, LocalDateTime endExclusive) {
+        return findPublicBusySlots(roomId, null, startInclusive, endExclusive);
+    }
 
     @Modifying
     @Query("UPDATE BookingDetail bd SET bd.room = null WHERE bd.room.id = :roomId")

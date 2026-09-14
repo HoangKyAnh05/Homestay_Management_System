@@ -1,7 +1,9 @@
 package com.homestayManagement.homestayManagement.controller;
 
 import com.homestayManagement.homestayManagement.dto.request.PublicSePayBookingPaymentRequest;
+import com.homestayManagement.homestayManagement.dto.request.SandboxPaymentRequest;
 import com.homestayManagement.homestayManagement.dto.response.PublicBookingPaymentStatusResponse;
+import com.homestayManagement.homestayManagement.dto.response.SandboxPaymentResponse;
 import com.homestayManagement.homestayManagement.dto.response.SePayPaymentResponse;
 import com.homestayManagement.homestayManagement.service.SePayPaymentService;
 import jakarta.validation.Valid;
@@ -50,6 +52,19 @@ public class SePayPaymentController {
         return sePayPaymentService.getPublicBookingPaymentStatus(bookingId, email);
     }
 
+    @PostMapping("/sandbox/simulate")
+    public SandboxPaymentResponse simulateSandboxPayment(@RequestBody SandboxPaymentRequest request) {
+        log.info("Simulating sandbox payment: bookingId={}, paymentCode={}, simType={}",
+                request.bookingId(), request.paymentCode(), request.simulationType());
+        return sePayPaymentService.simulateSandboxPayment(request);
+    }
+
+    @PostMapping("/sandbox/bookings/{bookingId}/quick-pay")
+    public SandboxPaymentResponse quickPayBooking(@PathVariable Long bookingId) {
+        log.info("Executing sandbox quick-pay for booking #{}", bookingId);
+        return sePayPaymentService.quickPayBooking(bookingId);
+    }
+
     @PostMapping("/webhook")
     public Map<String, Boolean> webhook(
             @RequestBody(required = false) byte[] rawBody,
@@ -69,7 +84,7 @@ public class SePayPaymentController {
 
     @ExceptionHandler({IllegalArgumentException.class, IllegalStateException.class})
     public ResponseEntity<Map<String, String>> handleBadRequest(RuntimeException exception) {
-        log.warn("SePay webhook error: {}", exception.getMessage(), exception);
+        log.warn("SePay payment error: {}", exception.getMessage(), exception);
         return ResponseEntity.badRequest().body(Map.of("message", exception.getMessage()));
     }
 }

@@ -18,6 +18,7 @@ public record PublicBookingHistoryRoomResponse(
         String rentType,
         String status,
         Integer extensionHours,
-        BigDecimal extensionAmount
+        BigDecimal extensionAmount,
+        String notes
 ) {
 }

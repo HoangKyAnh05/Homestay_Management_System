@@ -14,6 +14,7 @@ public record SePayPaymentResponse(
         String accountNumber,
         String accountHolder,
         String qrCodeUrl,
-        LocalDateTime holdExpiresAt
+        LocalDateTime holdExpiresAt,
+        Long remainingSeconds
 ) {
 }

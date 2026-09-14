@@ -46,4 +46,28 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     java.util.List<Booking> findCancellationsOrderByCancelledAtDesc();
 
     long countByRefundStatus(String refundStatus);
+
+    @Query("""
+            select count(b)
+            from Booking b
+            join b.customer c
+            left join c.account a
+            where (
+                (:accountId is not null and a.id = :accountId)
+                or (:email is not null and lower(c.email) = lower(:email))
+                or (:phone is not null and c.phone = :phone)
+            )
+            and b.bookingDate >= :since
+            and (
+                (b.status = 'CANCELLED' and b.cancellationReason like '%Quá hạn thanh toán%')
+                or (b.status = 'PENDING' and b.paymentHoldExpiresAt is not null and b.paymentHoldExpiresAt < :now)
+            )
+            """)
+    long countExpiredHoldBookings(
+            @Param("accountId") Long accountId,
+            @Param("email") String email,
+            @Param("phone") String phone,
+            @Param("since") LocalDateTime since,
+            @Param("now") LocalDateTime now
+    );
 }

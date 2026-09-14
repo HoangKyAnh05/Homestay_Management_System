@@ -74,7 +74,7 @@
   background: rgba(255, 255, 255, 0.74);
   border: 1px solid rgba(255, 255, 255, 0.82);
   box-shadow: 0 12px 28px rgba(38, 53, 42, 0.12);
-  font-family: Georgia, 'Times New Roman', serif;
+  font-family: var(--font-heading);
   font-size: clamp(19px, 2vw, 27px);
   font-style: italic;
   font-weight: 700;
@@ -98,7 +98,7 @@
 
 .brand-title span {
   color: #b66b05;
-  font-family: Georgia, 'Times New Roman', serif;
+  font-family: var(--font-heading);
   font-style: italic;
   font-weight: 800;
 }
@@ -233,7 +233,7 @@
   font-weight: 600;
 }
 
-.field-group > span {
+.field-group>span {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -526,7 +526,7 @@
 }
 
 .google-render-target,
-.google-render-target > div,
+.google-render-target>div,
 .google-render-target iframe {
   width: 100% !important;
 }

@@ -20,10 +20,11 @@
 
 .home-logo {
   color: #15191f;
-  font-family: Georgia, 'Times New Roman', serif;
-  font-size: 28px;
-  font-style: italic;
+  font-family: 'Plus Jakarta Sans', 'Be Vietnam Pro', sans-serif;
+  font-size: 26px;
+  font-style: normal;
   font-weight: 800;
+  letter-spacing: -0.02em;
   line-height: 1;
   text-decoration: none;
 }
@@ -71,9 +72,11 @@
     gap: 16px;
     padding: 0 20px;
   }
+
   .home-nav {
     gap: 18px;
   }
+
   .home-nav a {
     font-size: 14.5px;
     padding: 6px 6px;
@@ -346,7 +349,7 @@
   cursor: pointer;
 }
 
-.search-date-field + .search-date-field {
+.search-date-field+.search-date-field {
   border-left: 1px solid #d7dbe2;
   border-radius: 0 8px 8px 0;
 }
@@ -912,7 +915,8 @@
 .rooms-slider-shell {
   position: relative;
   width: 100%;
-  padding: 0 46px; /* Khoảng đệm 2 bên để nút tròn nổi hoàn toàn bên ngoài thẻ phòng */
+  padding: 0 46px;
+  /* Khoảng đệm 2 bên để nút tròn nổi hoàn toàn bên ngoài thẻ phòng */
   box-sizing: border-box;
 }
 
@@ -1019,9 +1023,11 @@
   .rooms-slider-shell {
     padding: 0 36px;
   }
+
   .rooms-slider-btn--prev {
     left: -4px;
   }
+
   .rooms-slider-btn--next {
     right: -4px;
   }
@@ -1031,13 +1037,16 @@
   .rooms-slider-shell {
     padding: 0 20px;
   }
+
   .rooms-slider-btn {
     width: 36px;
     height: 36px;
   }
+
   .rooms-slider-btn--prev {
     left: -6px;
   }
+
   .rooms-slider-btn--next {
     right: -6px;
   }
@@ -1093,7 +1102,7 @@
   gap: 5px;
   padding: 5px 10px;
   border-radius: 999px;
-  background: rgba(255,255,255,0.92);
+  background: rgba(255, 255, 255, 0.92);
   color: #15573a;
   font-size: 13px;
   font-weight: 700;
@@ -1210,6 +1219,7 @@
     opacity: 0;
     transform: translateX(42px);
   }
+
   to {
     opacity: 1;
     transform: translateX(0);
@@ -1427,11 +1437,11 @@
 }
 
 .home-reviews-heading {
-  font-family: 'Playfair Display', Georgia, serif;
+  font-family: 'Plus Jakarta Sans', 'Be Vietnam Pro', sans-serif;
   font-size: clamp(28px, 4vw, 42px);
-  font-weight: 700;
+  font-weight: 800;
   color: #17281f;
-  letter-spacing: -0.015em;
+  letter-spacing: -0.02em;
   line-height: 1.25;
   margin: 0 0 14px;
 }
@@ -1470,7 +1480,7 @@
   position: absolute;
   top: -5px;
   right: 22px;
-  font-family: 'Playfair Display', Georgia, serif;
+  font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 105px;
   line-height: 1;
   color: rgba(184, 137, 72, 0.12);
@@ -1523,8 +1533,8 @@
 }
 
 .review-card-title {
-  font-family: 'Playfair Display', Georgia, serif;
-  font-size: 19px;
+  font-family: 'Plus Jakarta Sans', 'Be Vietnam Pro', sans-serif;
+  font-size: 18px;
   font-weight: 700;
   color: #14281c !important;
   margin: 0 0 12px;
@@ -1532,11 +1542,11 @@
 }
 
 .review-card-text {
-  font-family: 'Cormorant Garamond', Georgia, serif;
-  font-size: 19px;
+  font-family: 'Be Vietnam Pro', sans-serif;
+  font-size: 15px;
   line-height: 1.65;
   color: #2c3e32 !important;
-  font-style: italic;
+  font-style: normal;
   margin: 0 0 24px;
   flex-grow: 1;
 }
@@ -1555,7 +1565,7 @@
   border-radius: 50%;
   background: linear-gradient(135deg, #183e25 0%, #295d3b 100%);
   color: #f7e7cb;
-  font-family: 'Playfair Display', serif;
+  font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 16px;
   font-weight: 700;
   display: grid;
@@ -1666,9 +1676,9 @@
 .footer-brand-header h3 {
   margin: 0 0 4px;
   color: #174229;
-  font-family: Georgia, 'Times New Roman', serif;
-  font-size: 27px;
-  font-style: italic;
+  font-family: 'Plus Jakarta Sans', 'Be Vietnam Pro', sans-serif;
+  font-size: 26px;
+  font-style: normal;
   font-weight: 800;
   letter-spacing: -0.01em;
 }
@@ -1755,10 +1765,12 @@
     transform: scale(0.95);
     box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
   }
+
   70% {
     transform: scale(1.15);
     box-shadow: 0 0 0 5px rgba(34, 197, 94, 0);
   }
+
   100% {
     transform: scale(0.95);
     box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
@@ -2010,8 +2022,17 @@
 }
 
 @keyframes footerDotPulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.4; transform: scale(0.85); }
+
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.4;
+    transform: scale(0.85);
+  }
 }
 
 /* ── Responsive ── */
@@ -2206,6 +2227,7 @@
     opacity: 0;
     transform: translateY(18px) scale(0.98);
   }
+
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
@@ -2217,6 +2239,7 @@
     opacity: 0;
     transform: translateX(-14px);
   }
+
   to {
     opacity: 1;
     transform: translateX(0);
@@ -2224,9 +2247,12 @@
 }
 
 @keyframes voucherSoftPulse {
-  0%, 100% {
+
+  0%,
+  100% {
     box-shadow: 0 10px 26px rgba(21, 25, 31, 0.14);
   }
+
   50% {
     box-shadow: 0 10px 26px rgba(21, 87, 58, 0.16), 0 0 0 2px rgba(31, 67, 40, 0.05);
   }
@@ -2326,11 +2352,14 @@
 }
 
 @keyframes lado-3d-pulse {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: scale(1);
     box-shadow: 0 0 0 0 rgba(225, 29, 72, 0.4), 0 2px 8px rgba(225, 29, 72, 0.2);
     border-color: rgba(225, 29, 72, 0.45);
   }
+
   50% {
     transform: scale(1.04);
     box-shadow: 0 0 14px 4px rgba(225, 29, 72, 0.35), 0 4px 14px rgba(225, 29, 72, 0.3);
@@ -2411,9 +2440,9 @@
   display: flex;
   align-items: baseline;
   gap: 16px;
-  font-family: 'Playfair Display', Georgia, serif;
+  font-family: 'Plus Jakarta Sans', 'Be Vietnam Pro', sans-serif;
   font-size: clamp(28px, 4vw, 40px);
-  font-weight: 700;
+  font-weight: 800;
   color: #fffbeb;
   margin-bottom: 16px;
   line-height: 1.2;
@@ -2504,6 +2533,7 @@
   .komorebi-showcase-content {
     padding: 36px 24px;
   }
+
   .komorebi-title {
     flex-direction: column;
     gap: 4px;
@@ -2562,10 +2592,13 @@
 }
 
 @keyframes luckyWheelPulse {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: scale(1);
     box-shadow: 0 4px 14px rgba(239, 68, 68, 0.45), 0 0 10px rgba(249, 115, 22, 0.35);
   }
+
   50% {
     transform: scale(1.12);
     box-shadow: 0 6px 22px rgba(239, 68, 68, 0.8), 0 0 24px rgba(245, 158, 11, 0.65);
@@ -2578,10 +2611,10 @@
     opacity: 1;
     border-color: rgba(239, 68, 68, 0.95);
   }
+
   100% {
     transform: scale(1.6);
     opacity: 0;
     border-color: rgba(245, 158, 11, 0);
   }
 }
-

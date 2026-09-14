@@ -136,27 +136,30 @@
 
 .gw-table-wrap {
   overflow-x: auto;
+  border-radius: 0 0 14px 14px;
 }
 
 .gw-table {
   width: 100%;
+  min-width: 1100px;
   border-collapse: collapse;
   text-align: left;
 }
 
 .gw-table th {
   background: #f8fafc;
-  padding: 14px 18px;
+  padding: 14px 16px;
   font-size: 0.825rem;
   font-weight: 700;
   color: #475569;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   border-bottom: 1px solid #e2e8f0;
+  white-space: nowrap;
 }
 
 .gw-table td {
-  padding: 14px 18px;
+  padding: 14px 16px;
   border-bottom: 1px solid #f1f5f9;
   font-size: 0.925rem;
   color: #1e293b;
@@ -172,77 +175,112 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 10px;
+  padding: 5px 12px;
   border-radius: 9999px;
   font-size: 0.8rem;
   font-weight: 700;
+  white-space: nowrap;
+  line-height: 1.2;
 }
 
 .gw-badge--new {
   background: #fee2e2;
   color: #b91c1c;
+  border: 1px solid #fecaca;
 }
 
 .gw-badge--contacted {
   background: #fef3c7;
   color: #b45309;
+  border: 1px solid #fde68a;
 }
 
 .gw-badge--booked {
   background: #dcfce7;
   color: #15803d;
+  border: 1px solid #bbf7d0;
 }
 
 .gw-badge--cancelled {
   background: #f1f5f9;
   color: #64748b;
+  border: 1px solid #e2e8f0;
 }
 
 /* Quick Action Buttons */
 .gw-action-btn-group {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  flex-wrap: nowrap;
 }
 
 .gw-action-btn {
   padding: 6px 10px;
   border-radius: 8px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid #cbd5e1;
   background: #ffffff;
   color: #1e293b;
-  font-size: 0.85rem;
-  font-weight: 600;
+  font-size: 0.82rem;
+  font-weight: 700;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   text-decoration: none;
-  transition: all 0.15s;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+  line-height: 1;
 }
 
-.gw-action-btn:hover {
-  background: #f1f5f9;
+.gw-action-btn--detail {
+  color: #334155;
+  border-color: #cbd5e1;
+  background: #f8fafc;
+}
+.gw-action-btn--detail:hover {
+  background: #e2e8f0;
+  color: #0f172a;
 }
 
 .gw-action-btn--zalo {
-  color: #0284c7;
-  border-color: #bae6fd;
-  background: #f0f9ff;
+  color: #0068ff;
+  border-color: #bfdbfe;
+  background: #eff6ff;
 }
-
 .gw-action-btn--zalo:hover {
-  background: #e0f2fe;
+  background: #dbeafe;
+  border-color: #93c5fd;
 }
 
 .gw-action-btn--call {
-  color: #059669;
-  border-color: #a7f3d0;
-  background: #ecfdf5;
+  color: #16a34a;
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+}
+.gw-action-btn--call:hover {
+  background: #dcfce7;
+  border-color: #86efac;
 }
 
-.gw-action-btn--call:hover {
-  background: #d1fae5;
+.gw-action-btn--status {
+  color: #d97706;
+  border-color: #fde68a;
+  background: #fffbeb;
+}
+.gw-action-btn--status:hover {
+  background: #fef3c7;
+  border-color: #fcd34d;
+}
+
+.gw-action-btn--book {
+  color: #7c3aed;
+  border-color: #ddd6fe;
+  background: #f5f3ff;
+}
+.gw-action-btn--book:hover {
+  background: #ede9fe;
+  border-color: #c4b5fd;
 }
 
 /* Modal Edit Status */

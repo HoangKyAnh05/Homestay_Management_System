@@ -25,6 +25,7 @@ public class DailyClosingReportServiceImpl implements DailyClosingReportService 
     private final PaymentRepository paymentRepository;
     private final InvoiceRepository invoiceRepository;
     private final EmployeeRepository employeeRepository;
+    private final MarketingNotificationRepository marketingNotificationRepository;
     private final ObjectMapper objectMapper;
 
     public DailyClosingReportServiceImpl(
@@ -33,6 +34,7 @@ public class DailyClosingReportServiceImpl implements DailyClosingReportService 
             PaymentRepository paymentRepository,
             InvoiceRepository invoiceRepository,
             EmployeeRepository employeeRepository,
+            MarketingNotificationRepository marketingNotificationRepository,
             ObjectMapper objectMapper
     ) {
         this.dailyClosingReportRepository = dailyClosingReportRepository;
@@ -40,6 +42,7 @@ public class DailyClosingReportServiceImpl implements DailyClosingReportService 
         this.paymentRepository = paymentRepository;
         this.invoiceRepository = invoiceRepository;
         this.employeeRepository = employeeRepository;
+        this.marketingNotificationRepository = marketingNotificationRepository;
         this.objectMapper = objectMapper;
     }
 
@@ -91,8 +94,8 @@ public class DailyClosingReportServiceImpl implements DailyClosingReportService 
                     .build());
         }
 
-        // 2. Danh sách phòng đang có khách ở
-        List<CheckInRecord> occupiedRecords = checkInRecordRepository.findCurrentlyOccupied();
+        // 2. Danh sách phòng đang có khách ở trong ngày targetDate
+        List<CheckInRecord> occupiedRecords = checkInRecordRepository.findOccupiedOnDate(startInclusive, endExclusive);
         List<OccupiedRoomItemDto> occupiedRooms = new ArrayList<>();
         for (CheckInRecord cr : occupiedRecords) {
             BookingDetail bd = cr.getBookingDetail();
@@ -110,6 +113,29 @@ public class DailyClosingReportServiceImpl implements DailyClosingReportService 
                 guests = adults + children;
             }
 
+            BigDecimal totalRoomAmount = (bd != null && bd.getPriceAtBooking() != null) ? bd.getPriceAtBooking() : BigDecimal.ZERO;
+            if (bd != null && bd.getAllocatedDiscount() != null) {
+                totalRoomAmount = totalRoomAmount.subtract(bd.getAllocatedDiscount()).max(BigDecimal.ZERO);
+            }
+
+            BigDecimal depositAmount = BigDecimal.ZERO;
+            if (b != null) {
+                Invoice inv = invoiceRepository.findByBookingId(b.getId()).orElse(null);
+                if (inv != null) {
+                    depositAmount = paymentRepository.findByInvoiceIdOrderByPaymentTimeDescIdDesc(inv.getId())
+                            .stream()
+                            .filter(p -> "SUCCESS".equalsIgnoreCase(p.getStatus()))
+                            .map(Payment::getAmount)
+                            .reduce(BigDecimal.ZERO, BigDecimal::add);
+                } else if ("CONFIRMED".equalsIgnoreCase(b.getStatus()) || "CHECKED_IN".equalsIgnoreCase(b.getStatus()) || b.isCustomerConfirmed()) {
+                    depositAmount = totalRoomAmount;
+                }
+            }
+
+            BigDecimal remainingAmount = totalRoomAmount.subtract(depositAmount).max(BigDecimal.ZERO);
+            String paymentStatus = remainingAmount.compareTo(BigDecimal.ZERO) <= 0 ? "PAID"
+                    : depositAmount.compareTo(BigDecimal.ZERO) > 0 ? "PARTIAL" : "UNPAID";
+
             occupiedRooms.add(OccupiedRoomItemDto.builder()
                     .roomId(r != null ? r.getId() : null)
                     .roomNumber(r != null ? r.getRoomNumber() : "—")
@@ -120,6 +146,10 @@ public class DailyClosingReportServiceImpl implements DailyClosingReportService 
                     .actualCheckIn(cr.getActualCheckIn())
                     .expectedCheckOut(bd != null ? bd.getCheckOutTarget() : null)
                     .guestCount(guests)
+                    .depositAmount(depositAmount)
+                    .totalRoomAmount(totalRoomAmount)
+                    .remainingAmount(remainingAmount)
+                    .paymentStatus(paymentStatus)
                     .build());
         }
 
@@ -180,6 +210,19 @@ public class DailyClosingReportServiceImpl implements DailyClosingReportService 
                 .build();
 
         DailyClosingReport saved = dailyClosingReportRepository.save(report);
+
+        // Tạo thông báo hệ thống cho Admin
+        try {
+            marketingNotificationRepository.save(MarketingNotification.builder()
+                    .title("Báo cáo cuối ngày mới")
+                    .message(fullName + " vừa gửi Báo cáo tổng kết doanh thu & phòng ngày " + request.getReportDate())
+                    .type("DAILY_REPORT")
+                    .platform("SYSTEM")
+                    .isRead(false)
+                    .createdAt(LocalDateTime.now())
+                    .build());
+        } catch (Exception ignored) {}
+
         return mapToResponse(saved);
     }
 

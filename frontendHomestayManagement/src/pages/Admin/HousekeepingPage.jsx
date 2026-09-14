@@ -60,35 +60,30 @@ function getDayRange(refDate = new Date()) {
 
 function getWeekRange(refDate = new Date()) {
   const date = new Date(refDate)
-  const day = date.getDay()
-  const diffToMonday = day === 0 ? -6 : 1 - day
-  const monday = new Date(date)
-  monday.setDate(date.getDate() + diffToMonday)
-  const sunday = new Date(monday)
-  sunday.setDate(monday.getDate() + 6)
+  const pastWeek = new Date(date)
+  pastWeek.setDate(date.getDate() - 7)
   return {
-    from: toDateInputValue(monday),
-    to: toDateInputValue(sunday),
+    from: toDateInputValue(pastWeek),
+    to: toDateInputValue(date),
   }
 }
 
 function getMonthRange(refDate = new Date()) {
   const date = new Date(refDate)
-  const firstDay = new Date(date.getFullYear(), date.getMonth(), 1)
-  const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0)
+  const pastMonth = new Date(date)
+  pastMonth.setDate(date.getDate() - 30)
   return {
-    from: toDateInputValue(firstDay),
-    to: toDateInputValue(lastDay),
+    from: toDateInputValue(pastMonth),
+    to: toDateInputValue(date),
   }
 }
 
 function getYearRange(refDate = new Date()) {
   const date = new Date(refDate)
   const firstDay = new Date(date.getFullYear(), 0, 1)
-  const lastDay = new Date(date.getFullYear(), 11, 31)
   return {
     from: toDateInputValue(firstDay),
-    to: toDateInputValue(lastDay),
+    to: toDateInputValue(date),
   }
 }
 
@@ -100,6 +95,42 @@ function defaultToDate() {
   return getWeekRange().to
 }
 
+function CleaningCountdown({ task }) {
+  const [now, setNow] = useState(Date.now())
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(timer)
+  }, [])
+
+  if (!task || task.cleaningStatus === 'COMPLETED') {
+    return <span className="hk-countdown hk-countdown--done">✓ Đã dọn xong</span>
+  }
+
+  const baseTimeStr = task.startedAt || task.inspectionCompletedAt || task.requestedAt
+  const baseTime = baseTimeStr ? new Date(baseTimeStr).getTime() : Date.now()
+  // Standard target: 30 minutes (1800000 ms)
+  const targetEndTime = baseTime + 30 * 60 * 1000
+  const diffMs = targetEndTime - now
+
+  if (diffMs > 0) {
+    const mins = Math.floor(diffMs / 60000)
+    const secs = Math.floor((diffMs % 60000) / 1000)
+    return (
+      <span className="hk-countdown hk-countdown--cleaning" title="Thời gian dự kiến còn lại của quy trình dọn buồng phòng">
+        ⏱️ Buồng phòng đang dọn: còn {mins}p {secs < 10 ? '0' : ''}{secs}s nữa xong
+      </span>
+    )
+  }
+
+  const overdueMins = Math.floor(Math.abs(diffMs) / 60000)
+  return (
+    <span className="hk-countdown hk-countdown--overdue">
+      ⏱️ Đang dọn (Vượt thời gian chuẩn {overdueMins}p)
+    </span>
+  )
+}
+
 function StatusBadge({ task }) {
   if (task.cleaningStatus === 'COMPLETED') return <span className="hk-badge hk-badge--done">Đã dọn xong</span>
   if (task.inspectionStatus === 'COMPLETED') return <span className="hk-badge hk-badge--inspected">Đã gửi chi phí</span>
@@ -107,15 +138,46 @@ function StatusBadge({ task }) {
   return <span className="hk-badge hk-badge--pending">Chờ kiểm tra</span>
 }
 
+function isExpressCleanNeeded(task) {
+  if (!task || task.cleaningStatus === 'COMPLETED') return false
+  // Check if checkout was today or priority flag
+  if (task.isPriority || task.isExpressClean) return true
+  if (task.checkOutTarget) {
+    const coTime = new Date(task.checkOutTarget).getTime()
+    const now = Date.now()
+    // If checkout happened in last 3 hours and not completed cleaning
+    if (now >= coTime - 3600000 && now <= coTime + 10800000) {
+      return true
+    }
+  }
+  return false
+}
+
 function TaskCard({ task, active, onClick }) {
+  const isExpress = isExpressCleanNeeded(task)
+
   return (
-    <button type="button" className={`hk-task-card${active ? ' hk-task-card--active' : ''}`} onClick={onClick}>
+    <button type="button" className={`hk-task-card${active ? ' hk-task-card--active' : ''}${isExpress ? ' hk-task-card--express' : ''}`} onClick={onClick}>
       <div className="hk-task-card__top">
         <div className="hk-room-mark">{task.roomNumber}</div>
-        <StatusBadge task={task} />
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+          {isExpress && (
+            <span className="hk-express-badge" title="Khách cũ vừa trả phòng, khách mới sắp đến lúc 14:00!">
+              ⚡ DỌN GẤP (EXPRESS CLEAN)
+            </span>
+          )}
+          <StatusBadge task={task} />
+        </div>
       </div>
       <h3>Phòng {task.roomNumber}</h3>
       <p>{task.customerName || 'Khách lưu trú'} · Booking {bookingDisplay(task)}</p>
+      
+      {task.cleaningStatus !== 'COMPLETED' && (
+        <div className="hk-card-countdown-wrap">
+          <CleaningCountdown task={task} />
+        </div>
+      )}
+
       <div className="hk-task-meta">
         <span>Trả phòng {time(task.checkOutTarget)}</span>
         <strong>{money(task.totalMiniBarCharge)}</strong>
@@ -189,6 +251,23 @@ function TaskDetail({ task, busy, onStart, onSubmitInspection, onCompleteCleanin
           <button type="button" className="hk-close" onClick={onClose} aria-label="Đóng chi tiết">×</button>
         </div>
       </div>
+
+      {isExpressCleanNeeded(task) && (
+        <div className="hk-express-alert-box">
+          <div className="hk-express-alert-icon">⚡</div>
+          <div className="hk-express-alert-info">
+            <strong>CẢNH BÁO DỌN KHẨN CẤP (EXPRESS CLEAN ALERT)</strong>
+            <p>Khách cũ vừa trả phòng lúc 12:30. Khách tiếp theo sẽ nhận phòng lúc 14:00 (còn &lt; 90 phút). Vui lòng ưu tiên hoàn tất dọn buồng phòng gấp!</p>
+          </div>
+        </div>
+      )}
+
+      {task.cleaningStatus !== 'COMPLETED' && (
+        <div className="hk-detail-timer-box">
+          <CleaningCountdown task={task} />
+          <span className="hk-detail-timer-hint">Thời gian chuẩn dọn phòng: 30 phút / lượt</span>
+        </div>
+      )}
 
       <div className="hk-progress">
         <div className={started ? 'is-done' : 'is-current'}><i>1</i><span>Nhận việc</span></div>

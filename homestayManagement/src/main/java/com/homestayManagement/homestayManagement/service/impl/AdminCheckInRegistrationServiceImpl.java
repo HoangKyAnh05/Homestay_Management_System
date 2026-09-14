@@ -18,6 +18,7 @@ import com.homestayManagement.homestayManagement.repository.BookingDetailReposit
 import com.homestayManagement.homestayManagement.repository.BookingGuestRepository;
 import com.homestayManagement.homestayManagement.repository.BookingRepository;
 import com.homestayManagement.homestayManagement.repository.CheckInRecordRepository;
+import com.homestayManagement.homestayManagement.repository.CustomerRepository;
 import com.homestayManagement.homestayManagement.repository.EmployeeRepository;
 import com.homestayManagement.homestayManagement.repository.RoomRepository;
 import com.homestayManagement.homestayManagement.service.AdminCheckInRegistrationService;
@@ -46,6 +47,7 @@ public class AdminCheckInRegistrationServiceImpl implements AdminCheckInRegistra
     private final CheckInRecordRepository checkInRecordRepository;
     private final RoomRepository roomRepository;
     private final EmployeeRepository employeeRepository;
+    private final CustomerRepository customerRepository;
     private final StayAccessService stayAccessService;
     private final ApplicationEventPublisher eventPublisher;
 
@@ -56,6 +58,7 @@ public class AdminCheckInRegistrationServiceImpl implements AdminCheckInRegistra
             CheckInRecordRepository checkInRecordRepository,
             RoomRepository roomRepository,
             EmployeeRepository employeeRepository,
+            CustomerRepository customerRepository,
             StayAccessService stayAccessService,
             ApplicationEventPublisher eventPublisher
     ) {
@@ -65,6 +68,7 @@ public class AdminCheckInRegistrationServiceImpl implements AdminCheckInRegistra
         this.checkInRecordRepository = checkInRecordRepository;
         this.roomRepository = roomRepository;
         this.employeeRepository = employeeRepository;
+        this.customerRepository = customerRepository;
         this.stayAccessService = stayAccessService;
         this.eventPublisher = eventPublisher;
     }
@@ -132,6 +136,32 @@ public class AdminCheckInRegistrationServiceImpl implements AdminCheckInRegistra
         bookingGuestRepository.flush();
         List<BookingGuest> guests = buildGuests(detail, request.guests(), request.representativeEmail());
         bookingGuestRepository.saveAll(guests);
+
+        Customer customer = detail.getBooking().getCustomer();
+        if (customer != null && !request.guests().isEmpty()) {
+            AdminCheckInGuestRequest rep = request.guests().getFirst();
+            if (rep.fullName() != null && !rep.fullName().isBlank()) {
+                customer.setFullName(rep.fullName().trim());
+            }
+            if (blankToNull(rep.phone()) != null) {
+                customer.setPhone(blankToNull(rep.phone()));
+            }
+            if (request.representativeEmail() != null && !request.representativeEmail().isBlank()) {
+                customer.setEmail(request.representativeEmail().trim().toLowerCase());
+            } else if (blankToNull(rep.email()) != null) {
+                customer.setEmail(blankToNull(rep.email()).toLowerCase());
+            }
+            if (blankToNull(rep.identityDocumentNumber()) != null) {
+                customer.setIdentityDocumentNumber(blankToNull(rep.identityDocumentNumber()));
+            }
+            if (rep.dateOfBirth() != null) {
+                customer.setDateOfBirth(rep.dateOfBirth());
+            }
+            if (blankToNull(rep.address()) != null) {
+                customer.setAddress(blankToNull(rep.address()));
+            }
+            customerRepository.save(customer);
+        }
 
         CheckInRecord record = CheckInRecord.builder()
                 .bookingDetail(detail)

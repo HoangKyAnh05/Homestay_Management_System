@@ -68,7 +68,7 @@ export function getRoomFullLabel(room, index) {
  * Homestay standard check-in: 14:00 (02:00 PM)
  * Homestay standard check-out: 12:00 (12:00 PM)
  */
-export function isSlotBusyOnDate(slot, dateKey, isCheckIn, checkInValue) {
+export function isSlotBusyOnDate(slot, dateKey) {
   if (!slot || !slot.checkInTarget || !slot.checkOutTarget) return false
   const slotStart = new Date(slot.checkInTarget)
   const slotEnd = new Date(slot.checkOutTarget)
@@ -76,28 +76,12 @@ export function isSlotBusyOnDate(slot, dateKey, isCheckIn, checkInValue) {
 
   const [y, m, d] = dateKey.split('-').map(Number)
 
-  if (isCheckIn) {
-    // Check-in mode: Guest checks in on dateKey at 14:00
-    // Slot blocks check-in if it is active at 14:00
-    // (slotStart <= 14:00 and slotEnd > 14:00)
-    const checkInMoment = new Date(y, m - 1, d, 14, 0, 0, 0)
-    return slotStart <= checkInMoment && slotEnd > checkInMoment
-  } else {
-    // Check-out mode: Guest checks out on dateKey at 12:00
-    const checkOutMoment = new Date(y, m - 1, d, 12, 0, 0, 0)
+  // Standard day window for the dateKey (homestay check-in 14:00 to next day checkout 11:00)
+  const dayStart = new Date(y, m - 1, d, 14, 0, 0, 0)
+  const dayEnd = new Date(y, m - 1, d + 1, 11, 0, 0, 0)
 
-    if (checkInValue) {
-      const userCheckIn = new Date(checkInValue)
-      if (!Number.isNaN(userCheckIn.getTime())) {
-        // Must strictly overlap the stay range [userCheckIn, checkOutMoment]
-        // If checkOutMoment <= slotStart (e.g. 12:00 <= 14:00 start of new booking), no overlap!
-        return userCheckIn < slotEnd && checkOutMoment > slotStart
-      }
-    }
-
-    // Default: slot blocks check-out if room was occupied the night leading up to 12:00
-    return slotStart < checkOutMoment && slotEnd >= checkOutMoment
-  }
+  // The room is occupied on dateKey if slot overlaps [dayStart, dayEnd]
+  return slotStart < dayEnd && slotEnd > dayStart
 }
 
 export default function CustomDateTimePicker({
@@ -291,11 +275,33 @@ export default function CustomDateTimePicker({
   }, [viewYear, viewMonth])
 
   // Detailed occupancy calculation per day for active rooms
+  // Detailed occupancy calculation per day for active rooms with comprehensive reason detection
   const getDayRoomOccupancy = (dateKey) => {
+    const matchedSlots = allBusySlots.filter((slot) =>
+      isSlotBusyOnDate(slot, dateKey)
+    )
+    const isBusy = matchedSlots.length > 0
+
+    let primaryReason = 'AVAILABLE'
+    let reasonDetail = ''
+    if (matchedSlots.some(s => s.status === 'MAINTENANCE' || s.bookingDetailId === -1)) {
+      primaryReason = 'MAINTENANCE'
+      reasonDetail = 'Phòng đang tạm khóa để bảo trì / sửa chữa sự cố kỹ thuật'
+    } else if (matchedSlots.some(s => s.status === 'DIRTY')) {
+      primaryReason = 'DIRTY'
+      reasonDetail = 'Phòng đang bẩn, chờ buồng phòng dọn dẹp và nghiệm thu'
+    } else if (matchedSlots.some(s => s.status === 'CHECKED_IN')) {
+      primaryReason = 'CHECKED_IN'
+      reasonDetail = 'Phòng đang có khách lưu trú thực tế'
+    } else if (matchedSlots.some(s => s.status === 'PENDING')) {
+      primaryReason = 'PENDING'
+      reasonDetail = 'Đang có khách giữ chỗ tạm thời (5 phút chờ thanh toán)'
+    } else if (isBusy) {
+      primaryReason = 'CONFIRMED'
+      reasonDetail = 'Đã có khách đặt và xác nhận thành công'
+    }
+
     if (!activeRooms || activeRooms.length <= 1) {
-      const isBusy = allBusySlots.some((slot) =>
-        isSlotBusyOnDate(slot, dateKey, isCheckIn, checkInValue)
-      )
       return {
         isMulti: false,
         totalRooms: 1,
@@ -304,6 +310,9 @@ export default function CustomDateTimePicker({
         isAllBusy: isBusy,
         isPartiallyBusy: false,
         isAllFree: !isBusy,
+        matchedSlots,
+        primaryReason,
+        reasonDetail,
       }
     }
 
@@ -324,7 +333,7 @@ export default function CustomDateTimePicker({
       })
 
       const isRoomBusy = roomSlots.some((slot) =>
-        isSlotBusyOnDate(slot, dateKey, isCheckIn, checkInValue)
+        isSlotBusyOnDate(slot, dateKey)
       )
 
       const info = {
@@ -349,6 +358,9 @@ export default function CustomDateTimePicker({
       isAllBusy: busyRooms.length === activeRooms.length,
       isPartiallyBusy: busyRooms.length > 0 && busyRooms.length < activeRooms.length,
       isAllFree: busyRooms.length === 0,
+      matchedSlots,
+      primaryReason,
+      reasonDetail,
     }
   }
 
@@ -385,10 +397,10 @@ export default function CustomDateTimePicker({
   const isTodayDisabled = (!isCheckIn && checkInDateKey && todayKey <= checkInDateKey) ||
     (!allowBeforeMin && minDateKey && todayKey < minDateKey)
 
-  // Time / Date builder with fixed homestay policy (14:00 checkin, 12:00 checkout)
+  // Time / Date builder with fixed homestay policy (14:00 checkin, 11:00 checkout)
   const commitNewDateTime = (newDateKey) => {
     const targetDateKey = newDateKey || selectedDateKey || todayKey
-    const hour24 = isCheckIn ? 14 : 12
+    const hour24 = isCheckIn ? 14 : 11
     const formatted = `${targetDateKey}T${formatTwoDigits(hour24)}:00`
 
     if (!allowBeforeMin) {
@@ -435,7 +447,7 @@ export default function CustomDateTimePicker({
           className="custom-datetime-text-input"
           type="text"
           aria-label={ariaLabel}
-          placeholder={isCheckIn ? 'dd/mm/yyyy 02:00 PM' : 'dd/mm/yyyy 12:00 PM'}
+          placeholder={isCheckIn ? 'dd/mm/yyyy 02:00 PM' : 'dd/mm/yyyy 11:00 AM'}
           value={formatDateTimeDisplay(value)}
           disabled={disabled}
           required={required}
@@ -467,7 +479,7 @@ export default function CustomDateTimePicker({
               <polyline points="12 6 12 12 16 14" />
             </svg>
             <span>
-              Chính sách Homestay: <strong>{isCheckIn ? 'Nhận phòng từ 14:00 (02:00 PM)' : 'Trả phòng trước 12:00 (12:00 PM)'}</strong>
+              Chính sách Homestay: <strong>{isCheckIn ? 'Nhận phòng từ 14:00 (02:00 PM)' : 'Trả phòng trước 11:00 (11:00 AM)'}</strong>
             </span>
           </div>
 
@@ -560,45 +572,71 @@ export default function CustomDateTimePicker({
 
                   let badgeText = 'Trống'
                   let badgeClass = 'status-available'
-                  let cellTitle = 'Ngày còn trống'
+                  let cellTitle = 'Ngày còn trống - Sẵn sàng đón khách'
 
                   if (isDisabled) {
-                    badgeText = isBeforeCheckIn ? 'Khóa' : (isPast ? 'Đã qua' : 'Khóa')
-                    badgeClass = 'status-disabled'
-                    cellTitle = isBeforeCheckIn
-                      ? 'Không thể trả phòng trước hoặc cùng ngày nhận phòng'
-                      : (isPast ? 'Ngày đã qua trong quá khứ' : 'Ngày không khả dụng')
+                    if (isBeforeCheckIn) {
+                      badgeText = 'Khóa'
+                      badgeClass = 'status-disabled'
+                      cellTitle = '🔒 Không thể trả phòng trước hoặc cùng ngày nhận phòng (Quy tắc lưu trú)'
+                    } else if (isPast) {
+                      badgeText = ''
+                      badgeClass = 'status-past'
+                      cellTitle = '⏰ Ngày đã qua trong quá khứ'
+                    } else if (isBeforeMin) {
+                      badgeText = 'Khóa'
+                      badgeClass = 'status-disabled'
+                      cellTitle = '🔒 Không khả dụng trước mốc thời gian tối thiểu'
+                    } else {
+                      badgeText = 'Khóa'
+                      badgeClass = 'status-disabled'
+                      cellTitle = '🔒 Ngày không khả dụng'
+                    }
                   } else if (!occupancy.isMulti) {
                     if (occupancy.isAllBusy) {
-                      badgeText = 'Đã đặt'
-                      badgeClass = 'status-busy'
-                      cellTitle = isCheckIn
-                        ? 'Ngày này đã có khách ở (kín phòng từ 14:00)'
-                        : 'Ngày này đã kín phòng trước 12:00'
+                      if (occupancy.primaryReason === 'MAINTENANCE') {
+                        badgeText = 'Bảo trì'
+                        badgeClass = 'status-maintenance'
+                        cellTitle = '🛠️ Phòng đang tạm khóa để bảo trì / sửa chữa sự cố kỹ thuật'
+                      } else if (occupancy.primaryReason === 'DIRTY') {
+                        badgeText = 'Chờ dọn'
+                        badgeClass = 'status-dirty'
+                        cellTitle = '🧹 Phòng đang chờ buồng phòng dọn dẹp và nghiệm thu'
+                      } else if (occupancy.primaryReason === 'CHECKED_IN') {
+                        badgeText = 'Đang ở'
+                        badgeClass = 'status-stay'
+                        cellTitle = '👥 Phòng đang có khách lưu trú thực tế'
+                      } else if (occupancy.primaryReason === 'PENDING') {
+                        badgeText = 'Giữ chỗ'
+                        badgeClass = 'status-pending'
+                        cellTitle = '⏳ Đang có khách giữ chỗ tạm thời (5 phút chờ thanh toán)'
+                      } else {
+                        badgeText = 'Đã đặt'
+                        badgeClass = 'status-busy'
+                        cellTitle = isCheckIn
+                          ? '📅 Ngày này đã có khách cọc/xác nhận (kín từ 14:00)'
+                          : '📅 Ngày này đã kín phòng trước 11:00 (Cần 3 tiếng dọn dẹp)'
+                      }
                     } else {
                       badgeText = 'Trống'
                       badgeClass = 'status-available'
                       cellTitle = isCheckIn
-                        ? 'Có thể nhận phòng từ 14:00'
-                        : 'Có thể trả phòng lúc 12:00'
+                        ? '✅ Phòng trống - Có thể nhận phòng từ 14:00 (02:00 PM)'
+                        : '✅ Phòng trống - Trả phòng trước 11:00 (11:00 AM)'
                     }
                   } else {
                     if (occupancy.isAllBusy) {
                       badgeText = `Kín cả ${occupancy.totalRooms}P`
                       badgeClass = 'status-busy'
-                      cellTitle = `Đã kín tất cả ${occupancy.totalRooms} phòng (${occupancy.busyRooms.map((r) => r.fullLabel).join(', ')})`
+                      cellTitle = `🚫 Đã kín tất cả ${occupancy.totalRooms} phòng (${occupancy.busyRooms.map((r) => r.fullLabel).join(', ')})`
                     } else if (occupancy.isPartiallyBusy) {
-                      if (occupancy.busyRooms.length === 1) {
-                        badgeText = `Kín ${occupancy.busyRooms[0].label}`
-                      } else {
-                        badgeText = `Kín ${occupancy.busyRooms.length}/${occupancy.totalRooms}P`
-                      }
+                      badgeText = `Kín ${occupancy.busyRooms.length}/${occupancy.totalRooms}P`
                       badgeClass = 'status-partial'
-                      cellTitle = `️ Đã đặt: ${occupancy.busyRooms.map((r) => r.fullLabel).join(', ')} • Còn trống: ${occupancy.freeRooms.map((r) => r.fullLabel).join(', ')}`
+                      cellTitle = `⚠️ Hết phòng cục bộ: Kín [${occupancy.busyRooms.map((r) => r.fullLabel).join(', ')}] • Còn trống [${occupancy.freeRooms.map((r) => r.fullLabel).join(', ')}]`
                     } else {
                       badgeText = `Trống ${occupancy.totalRooms}P`
                       badgeClass = 'status-available'
-                      cellTitle = `Còn trống tất cả ${occupancy.totalRooms} phòng (${occupancy.freeRooms.map((r) => r.fullLabel).join(', ')})`
+                      cellTitle = `✅ Còn trống tất cả ${occupancy.totalRooms} phòng (${occupancy.freeRooms.map((r) => r.fullLabel).join(', ')})`
                     }
                   }
 
@@ -623,7 +661,7 @@ export default function CustomDateTimePicker({
                       title={cellTitle}
                     >
                       <span className="custom-datetime-day-number">{day.dayNum}</span>
-                      {!day.isOutside && (
+                      {!day.isOutside && badgeText && (
                         <span className={`custom-datetime-day-status-badge ${badgeClass}`}>
                           {badgeText}
                         </span>

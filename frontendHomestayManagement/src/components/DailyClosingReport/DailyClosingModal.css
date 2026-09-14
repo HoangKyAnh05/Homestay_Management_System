@@ -233,26 +233,60 @@
 
 .dcm-rev-box {
   background: #ffffff;
-  border-radius: 10px;
+  border-radius: 12px;
   padding: 14px 18px;
   border: 1px solid #e2e8f0;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  transition: all 0.2s ease;
+}
+
+.dcm-rev-box--cash {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
+.dcm-rev-box--transfer {
+  background: #eff6ff;
+  border-color: #bfdbfe;
 }
 
 .dcm-rev-label {
   font-size: 13px;
-  color: #64748b;
+  color: #334155;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+}
+
+.dcm-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.dcm-dot--green {
+  background: #10b981;
+}
+
+.dcm-dot--blue {
+  background: #3b82f6;
 }
 
 .dcm-rev-amount {
-  font-size: 18px;
-  font-weight: 700;
+  font-size: 20px;
+  font-weight: 800;
   color: #0f172a;
+}
+
+.dcm-rev-amount--cash {
+  color: #047857;
+}
+
+.dcm-rev-amount--transfer {
+  color: #1d4ed8;
 }
 
 /* TOTAL REVENUE HIGHLIGHT */

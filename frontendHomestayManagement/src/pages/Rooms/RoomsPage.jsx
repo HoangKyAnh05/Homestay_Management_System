@@ -429,11 +429,11 @@ function isOvernightPolicy(policy) {
 }
 
 function isAutoCheckoutPolicy(policy) {
-  return ['HOURLY', 'BY_HOUR', 'COMBO'].includes(normalizeRentType(policy?.rentType))
+  return false
 }
 
 function isHourlyPolicy(policy) {
-  return ['HOURLY', 'BY_HOUR'].includes(normalizeRentType(policy?.rentType))
+  return false
 }
 
 function addHoursToDateTimeLocal(value, hours) {
@@ -450,6 +450,7 @@ function nowDateTimeLocalMin() {
 }
 
 function overnightCheckoutValue(checkInTarget) {
+  if (!checkInTarget) return ''
   const date = new Date(checkInTarget)
   date.setDate(date.getDate() + 1)
   date.setHours(11, 0, 0, 0)
@@ -458,15 +459,9 @@ function overnightCheckoutValue(checkInTarget) {
 
 function normalizeBookingTime(form, policy) {
   if (!form.checkInTarget) return form
-  if (isAutoCheckoutPolicy(policy)) {
-    return {
-      ...form,
-      checkOutTarget: addHoursToDateTimeLocal(form.checkInTarget, policy?.limitHours || 1),
-    }
-  }
   return {
     ...form,
-    checkOutTarget: overnightCheckoutValue(form.checkInTarget),
+    checkOutTarget: form.checkOutTarget || overnightCheckoutValue(form.checkInTarget),
   }
 }
 
@@ -474,7 +469,13 @@ function validateBookingTime(form) {
   if (!form.checkInTarget || !form.checkOutTarget) return ''
   const checkIn = new Date(form.checkInTarget)
   const checkOut = new Date(form.checkOutTarget)
-  if (checkOut <= checkIn) return 'Giờ trả phòng phải sau giờ nhận phòng.'
+  if (checkOut <= checkIn) {
+    return 'Giờ trả phòng phải sau giờ nhận phòng ít nhất 1 đêm (Tối thiểu 2 ngày 1 đêm).'
+  }
+  const diffHours = (checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60)
+  if (diffHours < 18) {
+    return 'Thời gian lưu trú tối thiểu là 2 ngày 1 đêm. Vui lòng chọn ngày trả phòng từ ngày hôm sau trở đi.'
+  }
   return ''
 }
 
@@ -593,6 +594,7 @@ function PublicHeader() {
             <line x1="6" y1="21.5" x2="18" y2="21.5" />
           </svg>
         </a>
+
         <a href="/home#about">Giới thiệu</a>
       </nav>
 
@@ -756,8 +758,17 @@ function RoomCard({ room, selected, onToggle, criteria }) {
             className={`public-room-heart-btn${isLiked ? ' is-liked' : ''}`}
             title={isLiked ? 'Bỏ yêu thích' : 'Thêm vào yêu thích'}
             onClick={toggleHeart}
+            aria-label={isLiked ? 'Bỏ yêu thích' : 'Thêm vào yêu thích'}
           >
-            {isLiked ? '️' : '♡'}
+            {isLiked ? (
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="#ef4444" stroke="#ef4444" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+              </svg>
+            ) : (
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#1f2937" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+              </svg>
+            )}
           </button>
         </div>
       </a>
@@ -1208,7 +1219,9 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
           window.sessionStorage.removeItem('homeStayPendingAmenityService')
         }
         setForm((current) => {
+          const overnightPolicy = nextPolicies.find((p) => ['OVERNIGHT', 'DAILY', 'BY_NIGHT', 'BY_DAY'].includes(String(p.rentType || '').toUpperCase()))
           const initialPolicy = nextPolicies.find((policy) => String(policy.id) === String(current.pricePolicyId))
+            || overnightPolicy
             || nextPolicies[0]
           const nextForm = {
             ...current,
@@ -1294,8 +1307,11 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
       setScheduleError('')
       setScheduleNotice('')
       setCheckingSchedule(true)
-      const fromDate = dateTimeLocalToDateKey(form.checkInTarget)
-      const toDate = dateTimeLocalToDateKey(form.checkOutTarget) || fromDate
+      const dIn = new Date(form.checkInTarget)
+      const dOut = new Date(form.checkOutTarget)
+      const fromDate = `${dIn.getFullYear()}-${String(dIn.getMonth() + 1).padStart(2, '0')}-01`
+      const lastDayOut = new Date(dOut.getFullYear(), dOut.getMonth() + 2, 0).getDate()
+      const toDate = `${dOut.getFullYear()}-${String(dOut.getMonth() + 2).padStart(2, '0')}-${String(lastDayOut).padStart(2, '0')}`
 
       Promise.all(selectedRooms.map((room) => {
         const targetId = room.roomId || room.roomTypeId || room.id
@@ -1591,7 +1607,12 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
       setError(timeError)
       return
     }
-    const activePolicy = selectedPolicy || availablePolicies[0] || policies[0]
+    const overnightPolicy = policies.find((p) => ['OVERNIGHT', 'DAILY', 'BY_NIGHT', 'BY_DAY'].includes(String(p.rentType || '').toUpperCase()))
+    const activePolicy = (selectedPolicy && !isHourlyPolicy(selectedPolicy) ? selectedPolicy : null)
+      || overnightPolicy
+      || selectedPolicy
+      || availablePolicies[0]
+      || policies[0]
     if (!activePolicy) {
       setError('Chưa có gói thuê nào được cấu hình trong hệ thống.')
       return
@@ -1790,9 +1811,9 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
                   required
                   invalid={Boolean(timeError)}
                   value={form.checkOutTarget}
-                  min={form.checkInTarget || nowDateTimeLocalMin()}
+                  min={overnightCheckoutValue(form.checkInTarget) || nowDateTimeLocalMin()}
                   onChange={updateCheckOutTarget}
-                  disabled={isAutoCheckoutPolicy(selectedPolicy)}
+                  disabled={false}
                   busySlots={roomSchedules.flatMap((s, idx) => (s.busySlots || []).map((b) => ({
                     ...b,
                     room: s.room,

@@ -14,6 +14,7 @@ import com.homestayManagement.homestayManagement.repository.BookingDetailReposit
 import com.homestayManagement.homestayManagement.repository.BookingGuestRepository;
 import com.homestayManagement.homestayManagement.repository.BookingRepository;
 import com.homestayManagement.homestayManagement.repository.CheckInRecordRepository;
+import com.homestayManagement.homestayManagement.repository.CustomerRepository;
 import com.homestayManagement.homestayManagement.repository.EmployeeRepository;
 import com.homestayManagement.homestayManagement.repository.RoomRepository;
 import com.homestayManagement.homestayManagement.service.impl.AdminCheckInRegistrationServiceImpl;
@@ -53,6 +54,7 @@ class AdminCheckInRegistrationServiceImplTest {
     @Mock private CheckInRecordRepository checkInRecordRepository;
     @Mock private RoomRepository roomRepository;
     @Mock private EmployeeRepository employeeRepository;
+    @Mock private CustomerRepository customerRepository;
     @Mock private StayAccessService stayAccessService;
     @Mock private ApplicationEventPublisher eventPublisher;
 
@@ -62,8 +64,8 @@ class AdminCheckInRegistrationServiceImplTest {
     void setUp() {
         service = new AdminCheckInRegistrationServiceImpl(
                 bookingDetailRepository, bookingRepository, bookingGuestRepository,
-                checkInRecordRepository, roomRepository, employeeRepository, stayAccessService,
-                eventPublisher
+                checkInRecordRepository, roomRepository, employeeRepository, customerRepository,
+                stayAccessService, eventPublisher
         );
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken("staff@example.com", "password")
@@ -165,6 +167,7 @@ class AdminCheckInRegistrationServiceImplTest {
         guestWriteOrder.verify(bookingGuestRepository).saveAll(any());
         verify(checkInRecordRepository).save(any());
         verify(bookingRepository).save(data.booking());
+        verify(customerRepository).save(data.customer());
         verify(stayAccessService).grantAccess(
                 eq(data.detail()), any(), eq("Người đặt"), eq("booker@example.com")
         );

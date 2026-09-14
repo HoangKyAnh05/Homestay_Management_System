@@ -57,20 +57,22 @@ export default function FloatingContactWidget() {
           </svg>
         </a>
 
-        {/* Nút Facebook Messenger */}
-        <a
-          href={fbUrl}
-          target="_blank"
-          rel="noopener noreferrer"
+        {/* Nút Chat / Messenger Tư Vấn */}
+        <button
+          type="button"
           className="fcw-btn fcw-btn--facebook"
-          aria-label="Liên hệ qua Facebook Messenger"
+          aria-label="Nhắn tin tư vấn trực tiếp với Lá Đỏ Homestay"
+          title="Nhắn tin tư vấn trực tiếp"
+          onClick={() => {
+            window.dispatchEvent(new CustomEvent('open-customer-ai-chat'))
+          }}
         >
           <div className="fcw-pulse-ring fcw-pulse-ring--facebook"></div>
-          <span className="fcw-tooltip">Facebook Lá Đỏ</span>
+          <span className="fcw-tooltip">Nhắn tin tư vấn</span>
           <svg viewBox="0 0 24 24" className="fcw-icon" fill="currentColor">
             <path d="M12 2C6.477 2 2 6.145 2 11.258c0 2.91 1.455 5.51 3.736 7.15V22l3.433-1.884c.907.251 1.867.388 2.831.388 5.523 0 10-4.145 10-9.246C22 6.145 17.523 2 12 2zm1.066 12.457l-2.724-2.906-5.313 2.906 5.845-6.205 2.787 2.906 5.25-2.906-5.845 6.205z" />
           </svg>
-        </a>
+        </button>
 
         {/* Nút Zalo */}
         <a

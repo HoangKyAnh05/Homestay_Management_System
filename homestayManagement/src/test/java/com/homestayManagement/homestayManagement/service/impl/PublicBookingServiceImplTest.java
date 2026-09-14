@@ -293,12 +293,8 @@ class PublicBookingServiceImplTest {
         assertEquals(null, savedCustomer.getAccount());
         assertEquals("guest@example.com", savedCustomer.getEmail());
         assertEquals(0, response.earnedMemberPoints());
-        ArgumentCaptor<PublicBookingConfirmationEmailEvent> eventCaptor =
-                ArgumentCaptor.forClass(PublicBookingConfirmationEmailEvent.class);
-        verify(eventPublisher).publishEvent(eventCaptor.capture());
-        assertEquals("guest@example.com", eventCaptor.getValue().email());
-        assertEquals(response.bookingCode(), eventCaptor.getValue().bookingCode());
-        assertEquals(BigDecimal.valueOf(1_200_000), eventCaptor.getValue().totalAmount());
+        assertEquals(true, response.requiresDeposit());
+        verify(eventPublisher, never()).publishEvent(any());
         verify(accountRepository, never()).findByEmail(any());
     }
 
@@ -388,6 +384,41 @@ class PublicBookingServiceImplTest {
         );
 
         assertEquals("Vui lòng chọn phòng áp dụng cho từng dịch vụ", error.getMessage());
+        verify(bookingRepository, never()).save(any(Booking.class));
+    }
+
+    @Test
+    void createBookingRejectsWhenCustomerHasThreeExpiredHoldsInPastHour() {
+        Role customerRole = Role.builder().id(1L).name("ROLE_CUSTOMER").build();
+        Account account = Account.builder().id(2L).email("spammer@example.com").role(customerRole).build();
+        when(accountRepository.findByEmail("spammer@example.com")).thenReturn(java.util.Optional.of(account));
+        when(bookingRepository.countExpiredHoldBookings(any(), any(), any(), any(), any())).thenReturn(3L);
+
+        PublicCreateBookingRequest request = new PublicCreateBookingRequest(
+                "Spammer",
+                "0900000000",
+                "spammer@example.com",
+                null,
+                null,
+                null,
+                null,
+                10L,
+                List.of(new PublicBookingRoomRequest(null, 10L, 1, 1, 0, List.of())),
+                LocalDateTime.of(2026, 7, 6, 14, 0),
+                LocalDateTime.of(2026, 7, 7, 12, 0),
+                30L,
+                1,
+                0,
+                null,
+                List.of()
+        );
+
+        IllegalArgumentException error = assertThrows(
+                IllegalArgumentException.class,
+                () -> service.createBooking("spammer@example.com", request)
+        );
+
+        assertEquals("Bạn đã để quá hạn thanh toán mã QR 3 lần trong vòng 1 giờ qua. Để đảm bảo tính công bằng và tránh giữ phòng ảo, vui lòng thử lại sau 1 giờ hoặc liên hệ homestay để được hỗ trợ.", error.getMessage());
         verify(bookingRepository, never()).save(any(Booking.class));
     }
 }

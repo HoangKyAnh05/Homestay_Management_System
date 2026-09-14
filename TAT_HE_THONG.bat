@@ -12,8 +12,8 @@ echo [*] Dang dong tien trinh Cloudflare Tunnel va Ngrok...
 taskkill /F /IM cloudflared.exe >nul 2>&1
 taskkill /F /IM ngrok.exe >nul 2>&1
 
-echo [*] Dang giai phong cac cong 8080 (Backend), 5173 (Frontend), 3000 (Remotion)...
-powershell -NoProfile -Command "Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue | Where-Object { $_.LocalPort -in 8080, 5173, 3000 } | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }"
+echo [*] Dang giai phong cac cong 8080 (Backend), 5173 (Frontend)...
+powershell -NoProfile -Command "Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue | Where-Object { $_.LocalPort -in 8080, 5173 } | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }"
 
 echo.
 echo ======================================================================

@@ -18,5 +18,9 @@ public record AdminChangeRoomRequest(
 
         LocalDateTime newCheckOutTarget,
 
-        BigDecimal priceAdjustment
+        BigDecimal priceAdjustment,
+
+        Boolean isComplimentaryUpgrade,
+
+        LocalDateTime effectiveFromDate
 ) {}

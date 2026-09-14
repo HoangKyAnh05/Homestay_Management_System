@@ -74,6 +74,8 @@ class SePayPaymentServiceImplTest {
     @Mock
     private StayAccessService stayAccessService;
     @Mock
+    private com.homestayManagement.homestayManagement.repository.VoucherRepository voucherRepository;
+    @Mock
     private ApplicationEventPublisher eventPublisher;
 
     private SePayPaymentServiceImpl service;
@@ -92,6 +94,7 @@ class SePayPaymentServiceImplTest {
                 serviceUsageRepository,
                 inventoryServiceRepository,
                 stayAccessService,
+                voucherRepository,
                 new ObjectMapper(),
                 eventPublisher,
                 "Vietcombank",

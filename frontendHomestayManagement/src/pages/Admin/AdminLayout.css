@@ -204,7 +204,7 @@
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: #ff385c;
+  background: #1e3a2b;
   box-shadow: 0 0 0 1.5px #ffffff, 0 0 6px rgba(255, 56, 92, 0.85);
   animation: adminRedDotPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   flex-shrink: 0;
@@ -254,20 +254,46 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #ff385c;
-  box-shadow: 0 0 0 2px #ffffff, 0 0 8px rgba(255, 56, 92, 0.9);
+  background: #ef4444;
+  box-shadow: 0 0 0 2px #ffffff, 0 0 8px rgba(239, 68, 68, 0.9);
   animation: adminRedDotPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   pointer-events: none;
+}
+
+/* Badge dot neatly aligned to the right edge of menu text */
+.admin-nav-badge-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ef4444;
+  box-shadow: 0 0 0 2px #fee2e2;
+  margin-left: auto;
+  margin-right: 6px;
+  flex-shrink: 0;
+  display: inline-block;
+  animation: adminRedDotPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.admin-nav-sub-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #ef4444;
+  box-shadow: 0 0 0 2px #fee2e2;
+  margin-left: auto;
+  margin-right: 4px;
+  flex-shrink: 0;
+  display: inline-block;
 }
 
 @keyframes adminRedDotPulse {
   0%, 100% {
     transform: scale(1);
-    box-shadow: 0 0 0 2px #ffffff, 0 0 6px rgba(255, 56, 92, 0.6);
+    box-shadow: 0 0 0 2px #ffffff, 0 0 6px rgba(239, 68, 68, 0.6);
   }
   50% {
     transform: scale(1.25);
-    box-shadow: 0 0 0 2px #ffffff, 0 0 10px rgba(255, 56, 92, 1);
+    box-shadow: 0 0 0 2px #ffffff, 0 0 10px rgba(239, 68, 68, 1);
   }
 }
 

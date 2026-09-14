@@ -190,21 +190,43 @@ export default function AdminDailyReportsModal({ isOpen, onClose }) {
                           <th>Nhận phòng</th>
                           <th>Dự kiến trả</th>
                           <th>Số khách</th>
+                          <th style={{ color: '#15803d' }}>Tiền cọc / Đã trả</th>
+                          <th style={{ color: '#b91c1c' }}>Tiền còn lại</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {snapshot.occupiedRooms.map((r, i) => (
-                          <tr key={i}>
-                            <td><span className="dcm-room-badge">{r.roomNumber}</span></td>
-                            <td>{r.roomTypeName}</td>
-                            <td><strong>{r.customerName}</strong></td>
-                            <td>{r.customerPhone}</td>
-                            <td><small>{r.bookingCode}</small></td>
-                            <td>{formatDateTime(r.actualCheckIn)}</td>
-                            <td>{formatDateTime(r.expectedCheckOut)}</td>
-                            <td>{r.guestCount} khách</td>
-                          </tr>
-                        ))}
+                        {snapshot.occupiedRooms.map((r, i) => {
+                          const deposit = Number(r.depositAmount || 0)
+                          const remaining = Number(r.remainingAmount || 0)
+                          return (
+                            <tr key={i}>
+                              <td><span className="dcm-room-badge">{r.roomNumber}</span></td>
+                              <td>{r.roomTypeName}</td>
+                              <td><strong>{r.customerName}</strong></td>
+                              <td>{r.customerPhone}</td>
+                              <td><small>{r.bookingCode}</small></td>
+                              <td>{formatDateTime(r.actualCheckIn)}</td>
+                              <td>{formatDateTime(r.expectedCheckOut)}</td>
+                              <td>{r.guestCount} khách</td>
+                              <td>
+                                <span style={{ color: '#16a34a', fontWeight: 700, background: '#dcfce7', padding: '3px 8px', borderRadius: '6px' }}>
+                                  {formatMoney(deposit)}
+                                </span>
+                              </td>
+                              <td>
+                                {remaining > 0 ? (
+                                  <span style={{ color: '#dc2626', fontWeight: 700, background: '#fee2e2', padding: '3px 8px', borderRadius: '6px' }}>
+                                    {formatMoney(remaining)}
+                                  </span>
+                                ) : (
+                                  <span style={{ color: '#16a34a', fontWeight: 600, background: '#f0fdf4', padding: '3px 8px', borderRadius: '6px' }}>
+                                    0đ (Đã thu đủ)
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+                          )
+                        })}
                       </tbody>
                     </table>
                   </div>

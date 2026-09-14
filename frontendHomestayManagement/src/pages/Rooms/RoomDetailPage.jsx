@@ -117,7 +117,7 @@ function defaultCheckInValue() {
 function defaultCheckOutValue(checkInValue) {
   const date = new Date(checkInValue)
   date.setDate(date.getDate() + 1)
-  date.setHours(12, 0, 0, 0)
+  date.setHours(11, 0, 0, 0)
   return toDateTimeLocalValue(date)
 }
 
@@ -197,6 +197,7 @@ function PublicHeader() {
             <line x1="6" y1="21.5" x2="18" y2="21.5" />
           </svg>
         </a>
+
         <a href="/home#about">Giới thiệu</a>
       </nav>
 
@@ -246,10 +247,29 @@ function groupSlotsByDate(slots) {
 function groupPrices(prices) {
   const groups = new Map()
   prices.forEach((price) => {
-    const key = `${price.policyName}-${price.rentType}`
+    const rentTypeUpper = String(price.rentType || '').toUpperCase()
+    const policyUpper = String(price.policyName || '').toUpperCase().trim()
+    if (
+      rentTypeUpper.includes('HOUR') ||
+      rentTypeUpper.includes('COMBO') ||
+      policyUpper.includes('COMBO') ||
+      policyUpper.includes('GIỜ') ||
+      policyUpper.includes('GIO') ||
+      policyUpper.includes('2 GIỜ') ||
+      policyUpper.includes('4 GIỜ') ||
+      policyUpper.includes('ĐÊM') ||
+      policyUpper.includes('DEM') ||
+      policyUpper.includes('OVERNIGHT') ||
+      policyUpper === 'NGÀY' ||
+      policyUpper === 'NGAY'
+    ) {
+      return
+    }
+    const cleanPolicyName = 'Thuê theo ngày'
+    const key = `${cleanPolicyName}-${price.rentType || 'DAILY'}`
     const current = groups.get(key) || {
-      policyName: price.policyName,
-      rentType: price.rentType,
+      policyName: cleanPolicyName,
+      rentType: price.rentType || 'DAILY',
       weekdayPrice: null,
       weekendPrice: null,
     }
@@ -339,9 +359,10 @@ function BookingModal({ room, initialBookingData, onClose, onCreated }) {
         const nextPolicies = Array.isArray(policyData) ? policyData : []
         setPolicies(nextPolicies)
         setServiceOptions(Array.isArray(serviceData) ? serviceData : [])
+        const overnightPolicy = nextPolicies.find((p) => ['OVERNIGHT', 'DAILY', 'BY_NIGHT', 'BY_DAY'].includes(String(p.rentType || '').toUpperCase()))
         setForm((current) => ({
           ...current,
-          pricePolicyId: current.pricePolicyId || nextPolicies[0]?.id || '',
+          pricePolicyId: current.pricePolicyId || overnightPolicy?.id || nextPolicies[0]?.id || '',
           ...(profileData ? {
             fullName: profileData.fullName || current.fullName,
             phone: profileData.phone || current.phone,
@@ -465,7 +486,10 @@ function BookingModal({ room, initialBookingData, onClose, onCreated }) {
     setError('')
     if (overlappingSlot) {
       setSubmitting(false)
-      setError(`Khung giờ này đã được đặt trước: ${formatBusyDateRange(overlappingSlot)}, ${formatBusyTimeRange(overlappingSlot)}.`)
+      const reason = overlappingSlot.status === 'PENDING'
+        ? 'đang có khách giữ chỗ thanh toán (trong 5 phút)'
+        : 'đã được đặt trước'
+      setError(`Khung giờ này ${reason}: ${formatBusyDateRange(overlappingSlot)}, ${formatBusyTimeRange(overlappingSlot)}.`)
       return
     }
     fetch(`${API_BASE_URL}/bookings`, {
@@ -807,7 +831,19 @@ function RoomDetailPage({ roomId }) {
 
   const imageUrls = room?.imageUrls?.length ? room.imageUrls : []
   const groupedSlots = useMemo(() => groupSlotsByDate(room?.busySlots || []), [room])
-  const groupedPrices = useMemo(() => groupPrices(room?.prices || []), [room])
+  const groupedPrices = useMemo(() => {
+    const list = groupPrices(room?.prices || [])
+    if (list.length > 0) return list
+    if (room?.weekdayPrice != null || room?.weekendPrice != null) {
+      return [{
+        policyName: 'Lưu trú tiêu chuẩn (từ 2N1Đ)',
+        rentType: 'DAILY',
+        weekdayPrice: room.weekdayPrice || 0,
+        weekendPrice: room.weekendPrice || room.weekdayPrice || 0,
+      }]
+    }
+    return []
+  }, [room])
 
   const isMaintenance = String(room?.status || '').toUpperCase() === 'MAINTENANCE'
   const isSoldOut = room?.availableRooms != null && Number(room.availableRooms) <= 0
@@ -840,9 +876,9 @@ function RoomDetailPage({ roomId }) {
 
   const [reviews, setReviews] = useState([])
   const [isWishlisted, setIsWishlisted] = useState(false)
-  const token = getStoredToken()
+  const token = getStoredToken() || localStorage.getItem('homeStayAccessToken') || localStorage.getItem('token') || localStorage.getItem('accessToken') || ''
 
-  const targetRoomTypeId = room?.roomTypeId || room?.id || roomId
+  const targetRoomTypeId = Number(room?.roomTypeId || room?.id || roomId)
 
   useEffect(() => {
     if (!targetRoomTypeId) return
@@ -853,43 +889,64 @@ function RoomDetailPage({ roomId }) {
       .catch(() => setReviews([]))
 
     // Check wishlist status
-    if (token) {
+    const activeToken = getStoredToken() || localStorage.getItem('homeStayAccessToken') || localStorage.getItem('token') || localStorage.getItem('accessToken')
+    if (activeToken) {
       fetch(`${API_BASE_URL}/customer/wishlist/check/${targetRoomTypeId}`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${activeToken}` },
       })
         .then((res) => (res.ok ? res.json() : false))
-        .then((resData) => setIsWishlisted(Boolean(resData)))
+        .then((resData) => {
+          const liked = typeof resData === 'boolean' ? resData : Boolean(resData?.isWishlisted ?? resData?.wishlisted)
+          setIsWishlisted(liked)
+        })
         .catch(() => {})
+    } else {
+      setIsWishlisted(false)
     }
   }, [targetRoomTypeId, token])
 
   const toggleWishlist = async (e) => {
     e?.preventDefault?.()
     e?.stopPropagation?.()
-    if (!token) {
-      alert('Vui lòng đăng nhập để lưu loại phòng này vào danh sách yêu thích.')
+    const activeToken = getStoredToken() || localStorage.getItem('homeStayAccessToken') || localStorage.getItem('token') || localStorage.getItem('accessToken')
+    if (!activeToken) {
       window.location.assign('/login')
       return
     }
-    const finalRoomTypeId = room?.roomTypeId || room?.id || targetRoomTypeId
+    const finalRoomTypeId = Number(room?.roomTypeId || room?.id || targetRoomTypeId)
     if (!finalRoomTypeId) return
-    const nextState = !isWishlisted
+
+    const previousState = isWishlisted
+    const nextState = !previousState
     setIsWishlisted(nextState)
+
     try {
       const res = await fetch(`${API_BASE_URL}/customer/wishlist/toggle/${finalRoomTypeId}`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${activeToken}` },
       })
-      const data = await res.json().catch(() => ({}))
-      if (res.ok && typeof data.isWishlisted === 'boolean') {
-        setIsWishlisted(data.isWishlisted)
+      if (res.ok) {
+        const data = await res.json().catch(() => ({}))
+        if (typeof data.isWishlisted === 'boolean') {
+          setIsWishlisted(data.isWishlisted)
+        } else if (typeof data.wishlisted === 'boolean') {
+          setIsWishlisted(data.wishlisted)
+        }
       } else {
-        setIsWishlisted(!nextState)
+        setIsWishlisted(previousState)
       }
     } catch {
-      setIsWishlisted(!nextState)
+      setIsWishlisted(previousState)
     }
   }
+
+  const averageRatingCalculated = useMemo(() => {
+    if (reviews && reviews.length > 0) {
+      const totalStars = reviews.reduce((sum, rev) => sum + (Number(rev.ratingStars) || 5), 0)
+      return (totalStars / reviews.length).toFixed(1)
+    }
+    return room?.averageRating ? Number(room.averageRating).toFixed(1) : '5.0'
+  }, [reviews, room?.averageRating])
 
   return (
     <div className="rooms-page room-detail-page">
@@ -912,27 +969,36 @@ function RoomDetailPage({ roomId }) {
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <button
                   type="button"
+                  className="room-detail-wishlist-btn"
                   onClick={toggleWishlist}
                   style={{
                     width: '42px',
                     height: '42px',
                     borderRadius: '50%',
                     border: '1px solid #e2e8f0',
-                    background: '#fff',
-                    fontSize: '20px',
+                    background: '#ffffff',
                     cursor: 'pointer',
-                    display: 'grid',
-                    placeItems: 'center',
-                    color: isWishlisted ? '#ff385c' : '#64748b',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-                    transition: 'transform 0.2s',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
+                    transition: 'transform 0.2s, box-shadow 0.2s',
                   }}
                   title={isWishlisted ? 'Bỏ yêu thích' : 'Thêm vào yêu thích'}
+                  aria-label={isWishlisted ? 'Bỏ yêu thích' : 'Thêm vào yêu thích'}
                 >
-                  {isWishlisted ? '️' : '♡'}
+                  {isWishlisted ? (
+                    <svg viewBox="0 0 24 24" width="22" height="22" fill="#ef4444" stroke="#ef4444" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                    </svg>
+                  ) : (
+                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#1f2937" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                    </svg>
+                  )}
                 </button>
                 <div className="room-detail-rating">
-                  ★ {room.averageRating ? Number(room.averageRating).toFixed(1) : '5.0'} ({reviews.length} đánh giá)
+                  ★ {averageRatingCalculated} ({reviews.length} đánh giá)
                 </div>
               </div>
             </section>
@@ -1003,21 +1069,36 @@ function RoomDetailPage({ roomId }) {
                     </button>
                   ))}
                 </div>
-                <section className="room-info-section">
-                  <h2>Thông tin loại phòng</h2>
-                  <p>{room.description || 'Không gian nghỉ dưỡng tiện nghi, phù hợp cho kỳ lưu trú của bạn.'}</p>
-                  <div className="room-info-chips">
-                    <span>{room.maxAdults || 0} người lớn</span>
-                    <span>{room.maxChildren || 0} trẻ em</span>
-                    <span>Phòng sẽ được lễ tân sắp xếp khi check-in</span>
-                    <span className={room.depositPolicyId ? 'room-deposit-chip' : 'room-deposit-chip room-deposit-chip--free'}>
-                      {depositText(room)}
-                    </span>
-                  </div>
-                </section>
               </aside>
 
               <div className="room-detail-content">
+                {/* Thông tin loại phòng chi tiết */}
+                <section className="room-info-section" style={{ marginBottom: '24px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                    <h2 style={{ margin: 0, fontSize: '22px', color: '#1e293b' }}>Thông tin loại phòng</h2>
+                    <span style={{ fontSize: '13px', background: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0', padding: '4px 10px', borderRadius: '999px', fontWeight: 600 }}>
+                      ⚡ Nhận phòng từ 2 ngày 1 đêm
+                    </span>
+                  </div>
+                  <p style={{ color: '#475569', fontSize: '15px', lineHeight: '1.6', marginBottom: '16px' }}>
+                    {room.description || 'Không gian nghỉ dưỡng tiện nghi, view núi săn mây lý tưởng tại Lá Đỏ Sanctuary, Sa Pa.'}
+                  </p>
+                  <div className="room-info-chips" style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+                    <span style={{ padding: '8px 14px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '999px', fontSize: '14px', fontWeight: 600, color: '#334155' }}>
+                      👥 Sức chứa: {room.maxAdults || 0} người lớn, {room.maxChildren || 0} trẻ em
+                    </span>
+                    <span style={{ padding: '8px 14px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '999px', fontSize: '14px', fontWeight: 600, color: '#334155' }}>
+                      🔑 Bố trí phòng: Lễ tân sắp xếp tự động khi check-in
+                    </span>
+                    <span className={room.depositPolicyId ? 'room-deposit-chip' : 'room-deposit-chip room-deposit-chip--free'} style={{ padding: '8px 14px', borderRadius: '999px', fontSize: '14px', fontWeight: 600 }}>
+                      💳 {depositText(room)}
+                    </span>
+                    <span style={{ padding: '8px 14px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '999px', fontSize: '14px', fontWeight: 600, color: '#334155' }}>
+                      ⏱️ Nhận phòng: 14:00 | Trả phòng: 11:00
+                    </span>
+                  </div>
+                </section>
+
                 <section className="room-booking-panel room-booking-panel--compact">
                   <div className="room-booking-head">
                     <div>
@@ -1027,7 +1108,7 @@ function RoomDetailPage({ roomId }) {
                           ? '️ Hạng phòng này hiện đang tạm bảo trì.'
                           : isBookedOrConflicted
                           ? '️ Hạng phòng này đã có khách đặt trước trong khung giờ bạn chọn.'
-                          : 'Chọn thời gian lưu trú và gói thuê phù hợp để tạo đơn đặt phòng.'}
+                          : 'Chọn thời gian lưu trú (từ 2 ngày 1 đêm trở lên) để tạo đơn đặt phòng ngay.'}
                       </p>
                     </div>
                     <button
@@ -1042,8 +1123,11 @@ function RoomDetailPage({ roomId }) {
                   </div>
                 </section>
 
-                <section className="room-info-section room-price-section">
-                  <h2>Bảng giá theo gói</h2>
+                <section className="room-info-section room-price-section" style={{ marginTop: '24px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                    <h2 style={{ margin: 0 }}>Bảng giá lưu trú (Áp dụng từ 2 ngày 1 đêm)</h2>
+                    <span style={{ fontSize: '13px', color: '#64748b' }}>Đơn vị: VNĐ / đêm</span>
+                  </div>
                   <div className="room-price-grid">
                     {groupedPrices.map((price) => (
                       <article className="room-price-card" key={`${price.policyName}-${price.rentType}`}>
@@ -1066,7 +1150,7 @@ function RoomDetailPage({ roomId }) {
 
                 {/* Section Đánh giá từ khách hàng */}
                 <section className="room-info-section" style={{ marginTop: '28px' }}>
-                  <h2>Đánh giá từ khách hàng (★ {room.averageRating ? Number(room.averageRating).toFixed(1) : '5.0'})</h2>
+                  <h2>Đánh giá từ khách hàng (★ {averageRatingCalculated})</h2>
                   {reviews.length === 0 ? (
                     <p style={{ color: '#64748b', fontSize: '14px', marginTop: '10px' }}>Hạng phòng này chưa có đánh giá nào. Hãy là người đầu tiên trải nghiệm và để lại đánh giá!</p>
                   ) : (

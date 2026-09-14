@@ -43,6 +43,9 @@ class DailyClosingReportServiceImplTest {
     @Mock
     private EmployeeRepository employeeRepository;
 
+    @Mock
+    private MarketingNotificationRepository marketingNotificationRepository;
+
     private DailyClosingReportServiceImpl service;
 
     @BeforeEach
@@ -53,6 +56,7 @@ class DailyClosingReportServiceImplTest {
                 paymentRepository,
                 invoiceRepository,
                 employeeRepository,
+                marketingNotificationRepository,
                 new ObjectMapper()
         );
     }
@@ -73,7 +77,7 @@ class DailyClosingReportServiceImplTest {
         Customer customer = Customer.builder().fullName("Nguyen Van A").phone("0912345678").build();
         CheckInRecord record = CheckInRecord.builder().id(10L).bookingDetail(detail).customer(customer).actualCheckIn(today.atTime(14, 0)).build();
 
-        when(checkInRecordRepository.findCurrentlyOccupied()).thenReturn(List.of(record));
+        when(checkInRecordRepository.findOccupiedOnDate(any(LocalDateTime.class), any(LocalDateTime.class))).thenReturn(List.of(record));
         when(checkInRecordRepository.countCheckInBetween(any(LocalDateTime.class), any(LocalDateTime.class))).thenReturn(2);
         when(checkInRecordRepository.countCheckOutBetween(any(LocalDateTime.class), any(LocalDateTime.class))).thenReturn(1);
         when(dailyClosingReportRepository.findFirstByReportDateOrderByCreatedAtDesc(today)).thenReturn(Optional.empty());

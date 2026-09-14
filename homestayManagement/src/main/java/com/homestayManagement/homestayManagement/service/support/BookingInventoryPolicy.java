@@ -20,8 +20,25 @@ public final class BookingInventoryPolicy {
         String detailStatus = normalize(detail.getStatus());
         String bookingStatus = normalize(booking.getStatus());
 
-        return OCCUPYING_STATUSES.contains(detailStatus)
-                && OCCUPYING_STATUSES.contains(bookingStatus);
+        if ("CANCELLED".equals(bookingStatus) || "CANCELLED".equals(detailStatus)) {
+            return false;
+        }
+
+        if (OCCUPYING_STATUSES.contains(bookingStatus) && OCCUPYING_STATUSES.contains(detailStatus)) {
+            return true;
+        }
+
+        if ("PENDING".equals(bookingStatus) && !"CANCELLED".equals(detailStatus)) {
+            if (booking.getPaymentHoldExpiresAt() != null) {
+                return booking.getPaymentHoldExpiresAt().isAfter(java.time.LocalDateTime.now());
+            }
+            if (booking.getBookingDate() != null) {
+                return booking.getBookingDate().plusMinutes(5).isAfter(java.time.LocalDateTime.now());
+            }
+            return true;
+        }
+
+        return false;
     }
 
     private static String normalize(String status) {

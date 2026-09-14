@@ -308,11 +308,20 @@ function RoomCard({ room, criteria }) {
         <button
           type="button"
           className={`public-room-heart-btn${isLiked ? ' is-liked' : ''}`}
-          style={{ position: 'absolute', top: 12, right: 12, zIndex: 3, border: 0, borderRadius: '50%', width: 36, height: 36, display: 'grid', placeItems: 'center', background: '#ffffff', cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}
+          style={{ position: 'absolute', top: 12, right: 12, zIndex: 3, border: 0, borderRadius: '50%', width: 36, height: 36, display: 'grid', placeItems: 'center', background: '#ffffff', cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,0.18)' }}
           title={isLiked ? 'Bỏ yêu thích' : 'Thêm vào yêu thích'}
           onClick={toggleHeart}
+          aria-label={isLiked ? 'Bỏ yêu thích' : 'Thêm vào yêu thích'}
         >
-          {isLiked ? '️' : '♡'}
+          {isLiked ? (
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="#ef4444" stroke="#ef4444" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+            </svg>
+          ) : (
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#1f2937" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+            </svg>
+          )}
         </button>
       </div>
       <div className="room-card-body">
@@ -658,37 +667,89 @@ function KomorebiSanctuarySection() {
   )
 }
 
-// Section: Đánh giá khách hàng
+// Section: Đánh giá khách hàng (Đồng bộ dữ liệu thật)
 function ReviewsSection() {
-  const reviews = [
-    {
-      initials: 'TT',
-      name: 'Nguyễn Thanh Tùng',
-      role: 'Kiến trúc sư • Hà Nội',
-      stay: 'Nghỉ tại Nhà 7 · 3 ngày 2 đêm',
-      title: 'Không gian tĩnh tại vượt mong đợi',
-      text: '“Không gian tuyệt đẹp, phòng rộng rãi và sạch sẽ từng góc nhỏ. Buổi sáng mở cửa ban công thấy sương sớm bảng lảng luồn qua ngọn thông, cảm giác bình yên đến lạ. Chắc chắn tôi sẽ quay lại cùng gia đình.”',
-      highlight: 'Sạch sẽ & View mây',
-    },
-    {
-      initials: 'MA',
-      name: 'Trần Thị Mai Anh',
-      role: 'Nhiếp ảnh gia • TP. Hồ Chí Minh',
-      stay: 'Nghỉ tại Nhà VIP · 2 ngày 1 đêm',
-      title: 'Khoảnh khắc săn mây tuyệt diệu',
-      text: '“View từ ban công ngắm bình minh và sương mờ trên thung lũng thực sự ngoạn mục. Đồ ăn sáng bản địa tươi ngon, nhân viên ấm áp chu đáo như người nhà. Một trải nghiệm chữa lành tâm hồn đúng nghĩa!”',
-      highlight: 'Ẩm thực & Dịch vụ tận tâm',
-    },
-    {
-      initials: 'MĐ',
-      name: 'Lê Minh Đức',
-      role: 'Kinh doanh tự do • Đà Nẵng',
-      stay: 'Nghỉ tại Nhà 1 · 4 ngày 3 đêm',
-      title: 'Ấm cúng như trở về ngôi nhà thứ hai',
-      text: '“Homestay ấm cúng, thiết kế gỗ kết hợp đá bazan rất sang trọng mà vẫn gần gũi với thiên nhiên. Tắm suối khoáng thảo dược buổi tối giúp xua tan hết mệt mỏi. Giá cả hoàn toàn xứng đáng với chất lượng.”',
-      highlight: 'Tắm khoáng & Tiện nghi',
-    },
-  ]
+  const [realReviews, setRealReviews] = useState([])
+  const [loadingReviews, setLoadingReviews] = useState(true)
+
+  useEffect(() => {
+    fetch(`${API_BASE_URL}/public/reviews/featured`)
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          const approved = data.filter((r) => (r.status || 'APPROVED').toUpperCase() !== 'HIDDEN')
+          setRealReviews(approved)
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoadingReviews(false))
+  }, [])
+
+  const displayReviews = useMemo(() => {
+    if (realReviews.length > 0) {
+      return realReviews.map((r) => {
+        const name = r.customerName || 'Khách lưu trú'
+        const initials = name.split(' ').map((w) => w[0]).join('').slice(-2).toUpperCase() || 'KH'
+        return {
+          id: r.reviewId,
+          initials,
+          avatar: r.customerAvatar,
+          name,
+          role: 'Du khách trải nghiệm thực tế',
+          stay: r.roomTypeName ? `Nghỉ tại ${r.roomTypeName}` : 'Nghỉ tại Lá Đỏ Homestay',
+          title: `Đánh giá ${r.ratingStars || 5}★ cho ${r.roomTypeName || 'Homestay'}`,
+          text: `“${r.comment || 'Trải nghiệm tuyệt vời tại Lá Đỏ Homestay!'}”`,
+          ratingStars: r.ratingStars || 5,
+          imageUrls: r.imageUrls || [],
+          createdAt: r.createdAt ? new Date(r.createdAt).toLocaleDateString('vi-VN') : '',
+        }
+      })
+    }
+
+    return [
+      {
+        id: 'fb1',
+        initials: 'TT',
+        name: 'Nguyễn Thanh Tùng',
+        role: 'Kiến trúc sư • Hà Nội',
+        stay: 'Nghỉ tại Nhà 7 · 3 ngày 2 đêm',
+        title: 'Không gian tĩnh tại vượt mong đợi',
+        text: '“Không gian tuyệt đẹp, phòng rộng rãi và sạch sẽ từng góc nhỏ. Buổi sáng mở cửa ban công thấy sương sớm bảng lảng luồn qua ngọn thông, cảm giác bình yên đến lạ. Chắc chắn tôi sẽ quay lại cùng gia đình.”',
+        ratingStars: 5,
+        imageUrls: [],
+      },
+      {
+        id: 'fb2',
+        initials: 'MA',
+        name: 'Trần Thị Mai Anh',
+        role: 'Nhiếp ảnh gia • TP. Hồ Chí Minh',
+        stay: 'Nghỉ tại Nhà VIP · 2 ngày 1 đêm',
+        title: 'Khoảnh khắc săn mây tuyệt diệu',
+        text: '“View từ ban công ngắm bình minh và sương mờ trên thung lũng thực sự ngoạn mục. Đồ ăn sáng bản địa tươi ngon, nhân viên ấm áp chu đáo như người nhà. Một trải nghiệm chữa lành tâm hồn đúng nghĩa!”',
+        ratingStars: 5,
+        imageUrls: [],
+      },
+      {
+        id: 'fb3',
+        initials: 'MĐ',
+        name: 'Lê Minh Đức',
+        role: 'Kinh doanh tự do • Đà Nẵng',
+        stay: 'Nghỉ tại Nhà 1 · 4 ngày 3 đêm',
+        title: 'Ấm cúng như trở về ngôi nhà thứ hai',
+        text: '“Homestay ấm cúng, thiết kế gỗ kết hợp đá bazan rất sang trọng mà vẫn gần gũi với thiên nhiên. Tắm suối khoáng thảo dược buổi tối giúp xua tan hết mệt mỏi. Giá cả hoàn toàn xứng đáng với chất lượng.”',
+        ratingStars: 5,
+        imageUrls: [],
+      },
+    ]
+  }, [realReviews])
+
+  const calculatedAvgRating = useMemo(() => {
+    if (realReviews.length > 0) {
+      const totalStars = realReviews.reduce((sum, r) => sum + (Number(r.ratingStars) || 5), 0)
+      return (totalStars / realReviews.length).toFixed(1)
+    }
+    return '5.0'
+  }, [realReviews])
 
   return (
     <section className="home-section home-reviews" aria-labelledby="reviews-title">
@@ -700,17 +761,17 @@ function ReviewsSection() {
           </div>
           <h2 id="reviews-title" className="home-reviews-heading">Những Câu Chuyện Thư Thái & Chữa Lành</h2>
           <p className="home-reviews-subtitle">
-            Hơn 98% du khách đánh giá 5 sao về không gian tĩnh lặng, khung cảnh săn mây và dịch vụ tận tâm tại Lá Đỏ Homestay Sa Pa.
+            Điểm đánh giá thực tế: <strong>★ {calculatedAvgRating}/5.0</strong> từ {realReviews.length > 0 ? realReviews.length : 'hàng trăm'} du khách thực tế đã lưu trú tại Lá Đỏ Homestay Sa Pa.
           </p>
         </div>
 
         <div className="reviews-grid">
-          {reviews.map((r) => (
-            <div key={r.name} className="home-review-card">
+          {displayReviews.map((r) => (
+            <div key={r.id || r.name} className="home-review-card">
               <div className="review-card-top">
-                <div className="review-stars" aria-label="5 sao">
-                  {Array.from({ length: 5 }).map((_, index) => (
-                    <svg key={index} viewBox="0 0 24 24" aria-hidden="true">
+                <div className="review-stars" aria-label={`${r.ratingStars} sao`}>
+                  {Array.from({ length: r.ratingStars || 5 }).map((_, index) => (
+                    <svg key={index} viewBox="0 0 24 24" aria-hidden="true" fill="#f59e0b" stroke="#f59e0b" width="18" height="18">
                       <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
                     </svg>
                   ))}
@@ -719,15 +780,37 @@ function ReviewsSection() {
                   <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                     <polyline points="20 6 9 17 4 12"></polyline>
                   </svg>
-                  Đã lưu trú
+                  Đã lưu trú {r.createdAt ? `· ${r.createdAt}` : ''}
                 </span>
               </div>
 
               <h3 className="review-card-title">{r.title}</h3>
               <p className="review-card-text">{r.text}</p>
 
+              {r.imageUrls && r.imageUrls.length > 0 && (
+                <div style={{ display: 'flex', gap: '8px', marginBottom: '14px', flexWrap: 'wrap' }}>
+                  {r.imageUrls.map((imgUrl, i) => (
+                    <img
+                      key={i}
+                      src={resolveImageUrl(imgUrl)}
+                      alt="Ảnh đánh giá thực tế"
+                      style={{ width: '60px', height: '60px', borderRadius: '8px', objectFit: 'cover', border: '1px solid #e2e8f0' }}
+                    />
+                  ))}
+                </div>
+              )}
+
               <div className="review-author">
-                <div className="review-avatar-initials">{r.initials}</div>
+                {r.avatar ? (
+                  <img
+                    src={resolveImageUrl(r.avatar)}
+                    alt={r.name}
+                    className="review-avatar-img"
+                    style={{ width: '42px', height: '42px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #10b981' }}
+                  />
+                ) : (
+                  <div className="review-avatar-initials">{r.initials}</div>
+                )}
                 <div className="review-author-info">
                   <strong className="review-author-name">{r.name}</strong>
                   <span className="review-author-role">{r.role}</span>
@@ -1100,6 +1183,7 @@ function HomePage() {
               <line x1="6" y1="21.5" x2="18" y2="21.5" />
             </svg>
           </a>
+
           <a
             href="#about"
             className={activeNav === 'about' ? 'home-nav-active' : ''}

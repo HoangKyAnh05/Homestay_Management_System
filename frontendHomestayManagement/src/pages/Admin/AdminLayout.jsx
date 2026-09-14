@@ -28,6 +28,9 @@ const ICONS = {
   invoices: (
     <svg viewBox="0 0 24 24"><path d="M6 2h12v20l-3-2-3 2-3-2-3 2V2z"/><path d="M9 7h6"/><path d="M9 11h6"/><path d="M9 15h4"/></svg>
   ),
+  sheets: (
+    <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+  ),
   marketing: (
     <svg viewBox="0 0 24 24"><path d="M3 11v3a2 2 0 0 0 2 2h2l4 4v-4h4l6-4V7l-6-4H5a2 2 0 0 0-2 2v3"/><path d="M3 8h8"/></svg>
   ),
@@ -82,6 +85,7 @@ const NAV_ITEMS = [
   { key: 'rules', label: 'Cấu hình Nội quy & Phạt & Phụ thu', path: '/admin/rules-penalties', icon: ICONS.rules },
   { key: 'reviews', label: 'Quản lý Đánh giá', path: '/admin/reviews', icon: ICONS.rules },
   { key: 'invoices', label: 'Quản lý Hóa đơn', path: '/admin/invoices', icon: ICONS.invoices },
+  { key: 'sheets', label: 'Bảng Tính & Sheet Homestay', path: '/admin/sheets', icon: ICONS.sheets },
   {
     key: 'housekeeping',
     label: 'Quản lý Housekeeping',
@@ -99,8 +103,6 @@ const NAV_ITEMS = [
     icon: ICONS.marketing,
     children: [
       { key: 'ai-post-agent', label: 'AI Agent Đăng bài', path: '/admin/marketing/ai-agent' },
-      { key: 'gdrive-video-renamer', label: 'Đổi tên Video (Drive & Tệp)', path: '/admin/marketing/video-renamer' },
-      { key: 'remotion-studio', label: ' Remotion Video Studio', path: '/admin/marketing/video-editor' },
       { key: 'post-logs', label: 'Nhật ký Bài đăng', path: '/admin/marketing/post-logs' },
       { key: 'vouchers', label: 'Mã giảm giá (Vouchers)', path: '/admin/marketing/vouchers' },
       { key: 'travel-articles', label: 'Điểm đến & Bài review Sa Pa', path: '/admin/marketing/travel-articles' },
@@ -178,6 +180,7 @@ function AdminLayoutInner({ activePage, children }) {
   })
 
   const [marketingUnreadCount, setMarketingUnreadCount] = useState(0)
+  const [hasPendingDailyReport, setHasPendingDailyReport] = useState(false)
   const [showNotificationDropdown, setShowNotificationDropdown] = useState(false)
   const [marketingNotifications, setMarketingNotifications] = useState([])
   const [loadingNotifications, setLoadingNotifications] = useState(false)
@@ -381,7 +384,7 @@ function AdminLayoutInner({ activePage, children }) {
       }
     } catch (_) {}
 
-    // 6. Thông báo tương tác Marketing (Like, Bình luận mới từ MXH)
+    // 6. Thông báo tương tác Marketing & Hệ thống
     try {
       const notifRes = await fetch((import.meta.env.VITE_API_URL || '') + '/api/admin/marketing/notifications/unread-count', { headers })
       if (notifRes.ok) {
@@ -391,6 +394,19 @@ function AdminLayoutInner({ activePage, children }) {
         updated.marketing = count > 0
       }
     } catch (_) {}
+
+    // 7. Kiểm tra Báo cáo cuối ngày mới cho Admin
+    if (role === 'ROLE_ADMIN') {
+      try {
+        const reportRes = await fetch((import.meta.env.VITE_API_URL || '') + '/api/admin/daily-reports?size=10', { headers })
+        if (reportRes.ok) {
+          const reportData = await reportRes.json()
+          const reports = reportData?.content || []
+          const hasPending = reports.some(r => r.status === 'SUBMITTED')
+          setHasPendingDailyReport(hasPending)
+        }
+      } catch (_) {}
+    }
 
     setNavAlerts(updated)
   }
@@ -482,11 +498,12 @@ function AdminLayoutInner({ activePage, children }) {
                   >
                     <span className="admin-nav-icon">
                       {item.icon}
-                      {hasParentAlert && <span className="admin-nav-red-dot" title="Có thông báo cần xử lý" />}
+                      {collapsed && hasParentAlert && <span className="admin-nav-red-dot" title="Có thông báo cần xử lý" />}
                     </span>
                     {!collapsed && (
                       <>
                         <span className="admin-nav-label">{item.label}</span>
+                        {hasParentAlert && <span className="admin-nav-badge-dot" title="Có thông báo cần xử lý" />}
                         <span className={`admin-nav-chevron${open ? ' admin-nav-chevron--open' : ''}`}>
                           <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
                         </span>
@@ -505,9 +522,6 @@ function AdminLayoutInner({ activePage, children }) {
                             className={`admin-nav-subitem${activePage === child.key ? ' admin-nav-subitem--active' : ''}`}
                             onClick={() => {
                               clearAlert(child.key)
-                              if (child.key === 'remotion-studio') {
-                                window.open('/remotion-app/index.html', '_blank')
-                              }
                               navigate(child.path)
                             }}
                           >
@@ -535,9 +549,14 @@ function AdminLayoutInner({ activePage, children }) {
               >
                 <span className="admin-nav-icon">
                   {item.icon}
-                  {hasParentAlert && <span className="admin-nav-red-dot" title="Có thông báo cần xem" />}
+                  {collapsed && hasParentAlert && <span className="admin-nav-red-dot" title="Có thông báo cần xem" />}
                 </span>
-                {!collapsed && <span>{item.label}</span>}
+                {!collapsed && (
+                  <>
+                    <span>{item.label}</span>
+                    {hasParentAlert && <span className="admin-nav-badge-dot" title="Có thông báo cần xem" />}
+                  </>
+                )}
               </button>
             )
           })}
@@ -548,10 +567,10 @@ function AdminLayoutInner({ activePage, children }) {
             type="button"
             className="admin-nav-item admin-nav-item--home"
             onClick={() => navigate('/home')}
-            title={collapsed ? 'Lá Đỏ Homestay' : undefined}
+            title={collapsed ? 'Lá Đỏ Homestay (Trang chủ)' : undefined}
           >
             <span className="admin-nav-icon">
-              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+              <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
             </span>
             {!collapsed && <span>Lá Đỏ Homestay</span>}
           </button>
@@ -590,17 +609,21 @@ function AdminLayoutInner({ activePage, children }) {
             {role === 'ROLE_ADMIN' && (
               <button
                 type="button"
-                onClick={() => setShowAdminReportsModal(true)}
+                onClick={() => {
+                  setHasPendingDailyReport(false)
+                  setShowAdminReportsModal(true)
+                }}
                 title="Xem các Báo cáo cuối ngày do Lễ tân gửi"
                 style={{
+                  position: 'relative',
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: 6,
                   padding: '6px 14px',
                   borderRadius: 8,
-                  border: '1px solid #cbd5e1',
-                  background: '#f8fafc',
-                  color: '#0f172a',
+                  border: hasPendingDailyReport ? '1px solid #f97316' : '1px solid #cbd5e1',
+                  background: hasPendingDailyReport ? '#fff7ed' : '#f8fafc',
+                  color: hasPendingDailyReport ? '#c2410c' : '#0f172a',
                   fontSize: 13,
                   fontWeight: 600,
                   cursor: 'pointer',
@@ -608,8 +631,21 @@ function AdminLayoutInner({ activePage, children }) {
                   transition: 'all 0.2s',
                 }}
               >
-                <span style={{ fontSize: 15 }}></span>
                 <span>Báo cáo cuối ngày</span>
+                {hasPendingDailyReport && (
+                  <span
+                    style={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: '50%',
+                      background: '#ef4444',
+                      display: 'inline-block',
+                      boxShadow: '0 0 0 2px #fee2e2',
+                      animation: 'adminPulseDot 1.5s infinite',
+                    }}
+                    title="Có báo cáo mới cần duyệt"
+                  />
+                )}
               </button>
             )}
 
@@ -625,12 +661,18 @@ function AdminLayoutInner({ activePage, children }) {
                     return next
                   })
                 }}
-                title={marketingUnreadCount > 0 ? `${marketingUnreadCount} thông báo tương tác mới` : 'Thông báo'}
+                title={
+                  marketingUnreadCount > 0 || hasPendingDailyReport
+                    ? `${marketingUnreadCount + (hasPendingDailyReport ? 1 : 0)} thông báo mới`
+                    : 'Thông báo'
+                }
               >
                 <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-                {marketingUnreadCount > 0 && (
+                {(marketingUnreadCount > 0 || hasPendingDailyReport) && (
                   <span className="admin-bell-badge">
-                    {marketingUnreadCount > 99 ? '99+' : marketingUnreadCount}
+                    {(marketingUnreadCount + (hasPendingDailyReport ? 1 : 0)) > 99
+                      ? '99+'
+                      : (marketingUnreadCount + (hasPendingDailyReport ? 1 : 0))}
                   </span>
                 )}
               </button>
@@ -639,9 +681,11 @@ function AdminLayoutInner({ activePage, children }) {
                 <div className="admin-notification-dropdown" onClick={(e) => e.stopPropagation()}>
                   <div className="admin-notif-header">
                     <div className="admin-notif-title">
-                      <span> Thông báo tương tác</span>
-                      {marketingUnreadCount > 0 && (
-                        <span className="admin-notif-pill">{marketingUnreadCount} mới</span>
+                      <span>Trung tâm thông báo</span>
+                      {(marketingUnreadCount > 0 || hasPendingDailyReport) && (
+                        <span className="admin-notif-pill">
+                          {marketingUnreadCount + (hasPendingDailyReport ? 1 : 0)} mới
+                        </span>
                       )}
                     </div>
                     {marketingUnreadCount > 0 && (
@@ -658,36 +702,69 @@ function AdminLayoutInner({ activePage, children }) {
                   <div className="admin-notif-body">
                     {loadingNotifications ? (
                       <div className="admin-notif-empty">Đang tải thông báo...</div>
-                    ) : marketingNotifications.length === 0 ? (
+                    ) : marketingNotifications.length === 0 && !hasPendingDailyReport ? (
                       <div className="admin-notif-empty">
-                        <span style={{ fontSize: 24, display: 'block', marginBottom: 4 }}></span>
-                        Chưa có thông báo tương tác mới nào.
+                        Chưa có thông báo mới nào.
                       </div>
                     ) : (
-                      marketingNotifications.map((item) => (
-                        <div
-                          key={item.id}
-                          className={`admin-notif-item ${!item.isRead ? 'admin-notif-item--unread' : ''}`}
-                          onClick={() => {
-                            if (!item.isRead) markNotificationAsRead(item.id)
-                            if (item.externalUrl) window.open(item.externalUrl, '_blank')
-                          }}
-                        >
-                          <span className="admin-notif-icon">
-                            {item.type === 'LIKE' ? '️' : item.type === 'COMMENT' ? '' : item.type === 'SHARE' ? '' : ''}
-                          </span>
-                          <div className="admin-notif-content">
-                            <div className="admin-notif-item-title">{item.title}</div>
-                            <div className="admin-notif-item-message">{item.message}</div>
-                            <div className="admin-notif-item-meta">
-                              <span>{item.platform || 'MXH'}</span>
-                              <span>•</span>
-                              <span>{item.createdAt ? new Date(item.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : ''}</span>
+                      <>
+                        {hasPendingDailyReport && (
+                          <div
+                            className="admin-notif-item admin-notif-item--unread"
+                            style={{ background: '#fff7ed', borderColor: '#fed7aa' }}
+                            onClick={() => {
+                              setShowNotificationDropdown(false)
+                              setHasPendingDailyReport(false)
+                              setShowAdminReportsModal(true)
+                            }}
+                          >
+                            <span className="admin-notif-icon">📄</span>
+                            <div className="admin-notif-content">
+                              <div className="admin-notif-item-title" style={{ color: '#c2410c', fontWeight: 700 }}>
+                                Báo cáo cuối ngày chờ Admin duyệt
+                              </div>
+                              <div className="admin-notif-item-message">
+                                Lễ tân vừa gửi bảng tổng kết doanh thu và phòng cần kiểm tra đối soát.
+                              </div>
+                              <div className="admin-notif-item-meta">
+                                <span>HỆ THỐNG</span>
+                                <span>•</span>
+                                <span style={{ color: '#ea580c', fontWeight: 600 }}>Nhấn để mở xem</span>
+                              </div>
                             </div>
+                            <span className="admin-notif-dot" style={{ background: '#ea580c' }} />
                           </div>
-                          {!item.isRead && <span className="admin-notif-dot" />}
-                        </div>
-                      ))
+                        )}
+                        {marketingNotifications.map((item) => (
+                          <div
+                            key={item.id}
+                            className={`admin-notif-item ${!item.isRead ? 'admin-notif-item--unread' : ''}`}
+                            onClick={() => {
+                              if (!item.isRead) markNotificationAsRead(item.id)
+                              if (item.type === 'DAILY_REPORT') {
+                                setShowNotificationDropdown(false)
+                                setShowAdminReportsModal(true)
+                              } else if (item.externalUrl) {
+                                window.open(item.externalUrl, '_blank')
+                              }
+                            }}
+                          >
+                            <span className="admin-notif-icon">
+                              {item.type === 'DAILY_REPORT' ? '📄' : item.type === 'LIKE' ? '❤️' : item.type === 'COMMENT' ? '💬' : '🔔'}
+                            </span>
+                            <div className="admin-notif-content">
+                              <div className="admin-notif-item-title">{item.title}</div>
+                              <div className="admin-notif-item-message">{item.message}</div>
+                              <div className="admin-notif-item-meta">
+                                <span>{item.platform || 'HỆ THỐNG'}</span>
+                                <span>•</span>
+                                <span>{item.createdAt ? new Date(item.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : ''}</span>
+                              </div>
+                            </div>
+                            {!item.isRead && <span className="admin-notif-dot" />}
+                          </div>
+                        ))}
+                      </>
                     )}
                   </div>
                 </div>

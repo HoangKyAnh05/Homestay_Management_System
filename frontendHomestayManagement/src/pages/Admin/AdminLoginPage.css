@@ -43,7 +43,7 @@
 .admin-login-brand p,
 .admin-login-heading p {
   margin: 0 0 10px;
-  color: #ff385c;
+  color: #1e3a2b;
   font-size: 13px;
   font-weight: 800;
   letter-spacing: 0;
@@ -172,7 +172,7 @@
   width: 16px;
   height: 16px;
   margin: 0;
-  accent-color: #ff385c;
+  accent-color: #1e3a2b;
 }
 
 .admin-login-submit {
@@ -184,14 +184,14 @@
   border: 0;
   border-radius: 8px;
   color: #ffffff;
-  background: #ff385c;
+  background: #1e3a2b;
   font: inherit;
   font-weight: 800;
   cursor: pointer;
 }
 
 .admin-login-submit:hover {
-  background: #e00b41;
+  background: #166534;
 }
 
 .admin-login-submit:disabled {

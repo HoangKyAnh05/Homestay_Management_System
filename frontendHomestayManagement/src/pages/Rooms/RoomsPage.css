@@ -68,7 +68,7 @@
 }
 
 .rooms-price-filter input {
-  accent-color: #ff385c;
+  accent-color: #1e3a2b;
 }
 
 .rooms-amenities-card {
@@ -160,7 +160,7 @@
 .rooms-results-head span {
   flex: 0 0 auto;
   padding: 8px 12px;
-  color: #ff385c;
+  color: #1e3a2b;
   background: #fff0f4;
   border-radius: 999px;
   font-size: 13px;
@@ -181,7 +181,7 @@
 }
 
 .public-room-card.is-selected .public-room-photo {
-  outline: 3px solid #ff385c;
+  outline: 3px solid #1e3a2b;
   outline-offset: 3px;
 }
 
@@ -266,7 +266,7 @@
 
 .public-room-heart-btn.is-liked {
   background: #ffffff;
-  color: #ff385c;
+  color: #1e3a2b;
   transform: scale(1.08);
 }
 
@@ -409,7 +409,7 @@
 
 .public-room-actions button {
   color: #ffffff;
-  background: #ff385c;
+  background: #1e3a2b;
   border: 0;
   cursor: pointer;
 }
@@ -578,7 +578,7 @@
   height: 44px;
   margin-top: 14px;
   color: #ffffff;
-  background: #ff385c;
+  background: #1e3a2b;
   border: 0;
   border-radius: 12px;
   font-size: 15px;
@@ -980,8 +980,8 @@
 
 .public-voucher-modal-actions .public-voucher-confirm {
   color: #ffffff;
-  background: #ff385c;
-  border-color: #ff385c;
+  background: #1e3a2b;
+  border-color: #1e3a2b;
 }
 
 .multi-room-units {

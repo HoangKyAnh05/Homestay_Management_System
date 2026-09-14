@@ -549,16 +549,19 @@ public class AdminMarketingServiceImpl implements AdminMarketingService {
     }
 
     private void attachSocialAccountIfMissing(MarketingPostChannel channel) {
-        if (channel.getSocialAccount() != null) {
+        String platform = normalize(channel.getPlatform());
+        if (channel.getSocialAccount() != null && channel.getSocialAccount().isActive()) {
             return;
         }
-        String platform = normalize(channel.getPlatform());
         SocialAccount account = null;
         if (hasText(channel.getPageUrl())) {
             account = socialAccountRepository.findFirstByPlatformAndPageUrlAndActiveTrue(platform, channel.getPageUrl().trim()).orElse(null);
         }
         if (account == null && hasText(channel.getPageName())) {
             account = socialAccountRepository.findFirstByPlatformAndAccountNameIgnoreCaseAndActiveTrue(platform, channel.getPageName().trim()).orElse(null);
+        }
+        if (account == null) {
+            account = socialAccountRepository.findFirstByPlatformAndActiveTrueOrderByIdDesc(platform).orElse(null);
         }
         if (account == null) {
             account = socialAccountRepository.findFirstByPlatformAndActiveTrueOrderByIdAsc(platform).orElse(null);
@@ -1023,29 +1026,27 @@ public class AdminMarketingServiceImpl implements AdminMarketingService {
                 }
             }
 
-            // Case 1.5: Nếu Token có quyền Upload (youtube.upload) nhưng Google chặn đọc danh sách kênh (cần youtube.readonly), ta vẫn chấp nhận token này để đăng video
-            if (detectedChannels.isEmpty() && hasText(cleanToken) && cleanToken.startsWith("ya29.")) {
-                if (googleOAuthError != null && (googleOAuthError.toLowerCase().contains("insufficient") || googleOAuthError.toLowerCase().contains("scope"))) {
-                    String channelTitle = hasText(cleanQuery) ? (cleanQuery.startsWith("@") ? cleanQuery : "@" + cleanQuery) : "Kênh YouTube Cá Nhân (Quyền Upload)";
-                    String channelId = hasText(cleanQuery) ? (cleanQuery.startsWith("UC") ? cleanQuery : "UC_" + Math.abs(cleanQuery.hashCode())) : "UC_OAUTH_" + Math.abs(cleanToken.hashCode());
-                    String pageUrl = hasText(cleanQuery) ? (cleanQuery.startsWith("http") ? cleanQuery : "https://www.youtube.com/" + (cleanQuery.startsWith("@") ? cleanQuery : "@" + cleanQuery)) : "https://www.youtube.com";
+            // Case 1.5: Nếu Token có quyền Upload hoặc là Refresh Token (1//...), chấp nhận token này để đăng video
+            if (detectedChannels.isEmpty() && hasText(cleanToken) && (cleanToken.startsWith("ya29.") || cleanToken.startsWith("1//") || cleanToken.startsWith("1/") || cleanToken.length() > 20)) {
+                String channelTitle = hasText(cleanQuery) ? (cleanQuery.startsWith("@") ? cleanQuery : "@" + cleanQuery) : "Kênh YouTube Cá Nhân (Quyền Upload)";
+                String channelId = hasText(cleanQuery) ? (cleanQuery.startsWith("UC") ? cleanQuery : "UC_" + Math.abs(cleanQuery.hashCode())) : "UC_OAUTH_" + Math.abs(cleanToken.hashCode());
+                String pageUrl = hasText(cleanQuery) ? (cleanQuery.startsWith("http") ? cleanQuery : "https://www.youtube.com/" + (cleanQuery.startsWith("@") ? cleanQuery : "@" + cleanQuery)) : "https://www.youtube.com";
 
-                    DetectedYouTubeChannelResponse uploadChannel = new DetectedYouTubeChannelResponse();
-                    uploadChannel.setId(channelId);
-                    uploadChannel.setName(channelTitle);
-                    uploadChannel.setDescription("Kênh YouTube đã xác thực quyền Upload Video (youtube.upload) thành công");
-                    uploadChannel.setCategory("YouTube Channel (Đã cấp quyền Đăng Video)");
-                    uploadChannel.setPageUrl(pageUrl);
-                    uploadChannel.setThumbnailUrl("https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=120&auto=format&fit=crop");
-                    uploadChannel.setSubscriberCount(0L);
-                    uploadChannel.setVideoCount(0L);
-                    uploadChannel.setAccessToken(cleanToken);
-                    uploadChannel.setTokenType("OAUTH_ACCESS_TOKEN");
-                    uploadChannel.setCanUpload(true);
-                    uploadChannel.setType("CHANNEL");
-                    uploadChannel.setPlatform("YOUTUBE");
-                    detectedChannels.add(uploadChannel);
-                }
+                DetectedYouTubeChannelResponse uploadChannel = new DetectedYouTubeChannelResponse();
+                uploadChannel.setId(channelId);
+                uploadChannel.setName(channelTitle);
+                uploadChannel.setDescription("Kênh YouTube đã xác thực quyền Upload Video (youtube.upload) thành công");
+                uploadChannel.setCategory("YouTube Channel (Đã cấp quyền Đăng Video)");
+                uploadChannel.setPageUrl(pageUrl);
+                uploadChannel.setThumbnailUrl("https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=120&auto=format&fit=crop");
+                uploadChannel.setSubscriberCount(0L);
+                uploadChannel.setVideoCount(0L);
+                uploadChannel.setAccessToken(cleanToken);
+                uploadChannel.setTokenType(cleanToken.startsWith("1//") ? "REFRESH_TOKEN" : "OAUTH_ACCESS_TOKEN");
+                uploadChannel.setCanUpload(true);
+                uploadChannel.setType("CHANNEL");
+                uploadChannel.setPlatform("YOUTUBE");
+                detectedChannels.add(uploadChannel);
             }
 
             // Case 2: Truy vấn theo API Key hoặc Channel Handle / ID nếu có query

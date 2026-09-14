@@ -57,7 +57,7 @@
 .wishlist-browse-btn {
   display: inline-block;
   margin-top: 16px;
-  background: #ff385c;
+  background: #1e3a2b;
   color: white;
   padding: 10px 24px;
   border-radius: 8px;
@@ -67,7 +67,7 @@
 }
 
 .wishlist-browse-btn:hover {
-  background: #e00b41;
+  background: #166534;
   transform: translateY(-1px);
 }
 
@@ -181,7 +181,7 @@
   display: block;
   width: 100%;
   text-align: center;
-  background: #ff385c;
+  background: #1e3a2b;
   color: white;
   padding: 10px;
   border-radius: 8px;
@@ -190,5 +190,5 @@
 }
 
 .wishlist-book-btn:hover {
-  background: #e00b41;
+  background: #166534;
 }

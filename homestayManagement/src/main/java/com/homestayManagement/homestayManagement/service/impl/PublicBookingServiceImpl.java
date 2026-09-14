@@ -136,10 +136,24 @@ public class PublicBookingServiceImpl implements PublicBookingService {
     @Override
     @Transactional(readOnly = true)
     public List<PublicBookingHistoryResponse> getMyBookings(String email) {
+        LocalDateTime now = LocalDateTime.now();
         return bookingDetailRepository.findByCustomerEmailForHistory(email).stream()
                 .collect(Collectors.groupingBy(detail -> detail.getBooking().getId()))
                 .values()
                 .stream()
+                .filter(details -> {
+                    if (details.isEmpty()) return false;
+                    Booking b = details.get(0).getBooking();
+                    if (b != null && "PENDING".equalsIgnoreCase(b.getStatus())) {
+                        LocalDateTime expiresAt = b.getPaymentHoldExpiresAt() != null
+                                ? b.getPaymentHoldExpiresAt()
+                                : (b.getBookingDate() != null ? b.getBookingDate().plusMinutes(5) : null);
+                        if (expiresAt != null && now.isAfter(expiresAt)) {
+                            return false;
+                        }
+                    }
+                    return true;
+                })
                 .map(this::toHistoryResponse)
                 .sorted(Comparator.comparing(PublicBookingHistoryResponse::bookingDate, Comparator.nullsLast(Comparator.reverseOrder())))
                 .toList();
@@ -243,6 +257,24 @@ public class PublicBookingServiceImpl implements PublicBookingService {
         if (account == null && (request.email() == null || request.email().isBlank())) {
             throw new IllegalArgumentException("Vui lòng nhập email để nhận xác nhận đặt phòng");
         }
+
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime oneHourAgo = now.minusHours(1);
+        Long accountId = account != null ? account.getId() : null;
+        String emailToCheck = (account != null && account.getEmail() != null) ? account.getEmail().trim() : (request.email() != null ? request.email().trim() : null);
+        String phoneToCheck = request.phone() != null ? request.phone().trim() : null;
+
+        long expiredHoldCount = bookingRepository.countExpiredHoldBookings(
+                accountId,
+                emailToCheck,
+                phoneToCheck,
+                oneHourAgo,
+                now
+        );
+        if (expiredHoldCount >= 3) {
+            throw new IllegalArgumentException("Bạn đã để quá hạn thanh toán mã QR 3 lần trong vòng 1 giờ qua. Để đảm bảo tính công bằng và tránh giữ phòng ảo, vui lòng thử lại sau 1 giờ hoặc liên hệ homestay để được hỗ trợ.");
+        }
+
         Customer customer = findBookingCustomer(account, request);
         updateCustomer(customer, request);
         boolean memberBooking = account != null;
@@ -270,6 +302,17 @@ public class PublicBookingServiceImpl implements PublicBookingService {
         PricePolicy pricePolicy = null;
         if (request.pricePolicyId() != null) {
             pricePolicy = pricePolicyRepository.findById(request.pricePolicyId()).orElse(null);
+        }
+        // If policy is COMBO / HOURLY but the customer booked an overnight or multi-hour stay, fallback to OVERNIGHT/DAILY
+        if (pricePolicy != null && Set.of("HOURLY", "BY_HOUR", "COMBO").contains(normalize(pricePolicy.getRentType()))) {
+            int limitHours = pricePolicy.getLimitHours() != null && pricePolicy.getLimitHours() > 0 ? pricePolicy.getLimitHours() : 1;
+            LocalDateTime expectedCheckOut = request.checkInTarget().plusHours(limitHours);
+            if (!request.checkOutTarget().equals(expectedCheckOut)) {
+                pricePolicy = pricePolicyRepository.findAll().stream()
+                        .filter(p -> "OVERNIGHT".equalsIgnoreCase(p.getRentType()) || "DAILY".equalsIgnoreCase(p.getRentType()))
+                        .findFirst()
+                        .orElse(pricePolicy);
+            }
         }
         if (pricePolicy == null) {
             pricePolicy = pricePolicyRepository.findAll().stream()
@@ -313,6 +356,7 @@ public class PublicBookingServiceImpl implements PublicBookingService {
                 .memberDiscountPercent(memberDiscountPercent)
                 .memberDiscountAmount(memberDiscountAmount)
                 .bookingDate(bookingDate)
+                .paymentHoldExpiresAt(bookingDate.plusMinutes(5))
                 .status(bookingStatus)
                 .build());
         markVoucherReserved(voucherDiscount.voucher());
@@ -785,7 +829,8 @@ public class PublicBookingServiceImpl implements PublicBookingService {
                 detail.getRentType(),
                 detail.getStatus(),
                 detail.getExtensionHours() != null ? detail.getExtensionHours() : 0,
-                safeExtensionAmount(detail)
+                safeExtensionAmount(detail),
+                detail.getNotes()
         );
     }
 
@@ -1116,8 +1161,23 @@ public class PublicBookingServiceImpl implements PublicBookingService {
             currentCheckOut = LocalDateTime.now().plusHours(2);
         }
 
-        int addHours = request.additionalHours() != null && request.additionalHours() > 0 ? request.additionalHours() : 1;
-        LocalDateTime newCheckOut = request.targetCheckOut() != null ? request.targetCheckOut() : currentCheckOut.plusHours(addHours);
+        LocalDateTime now = LocalDateTime.now();
+        boolean isOverdue = now.isAfter(currentCheckOut);
+        long overdueMinutes = isOverdue ? java.time.Duration.between(currentCheckOut, now).toMinutes() : 0;
+        boolean mustBookFullDay = overdueMinutes > 60; // Quá giờ checkout hơn 1 tiếng (sau 12:00 nếu checkout là 11:00)
+
+        boolean isDayExtension = mustBookFullDay || (request.additionalDays() != null && request.additionalDays() > 0);
+        int addDays = request.additionalDays() != null && request.additionalDays() > 0 ? request.additionalDays() : (mustBookFullDay ? 1 : 0);
+        int addHours = (!isDayExtension && request.additionalHours() != null && request.additionalHours() > 0) ? request.additionalHours() : (isDayExtension ? 0 : 1);
+
+        LocalDateTime newCheckOut;
+        if (request.targetCheckOut() != null) {
+            newCheckOut = request.targetCheckOut();
+        } else if (isDayExtension) {
+            newCheckOut = currentCheckOut.toLocalDate().plusDays(addDays > 0 ? addDays : 1).atTime(11, 0);
+        } else {
+            newCheckOut = currentCheckOut.plusHours(addHours);
+        }
 
         if (!newCheckOut.isAfter(currentCheckOut)) {
             throw new IllegalArgumentException("Thời gian trả phòng mới phải sau thời gian trả phòng hiện tại");
@@ -1126,21 +1186,47 @@ public class PublicBookingServiceImpl implements PublicBookingService {
         long actualHours = Math.max(1, java.time.Duration.between(currentCheckOut, newCheckOut).toHours());
         Room currentRoom = detail.getRoom();
         RoomType roomType = detail.getRoomType() != null ? detail.getRoomType() : (currentRoom != null ? currentRoom.getRoomType() : null);
+        Long roomTypeId = roomType != null ? roomType.getId() : (currentRoom != null && currentRoom.getRoomType() != null ? currentRoom.getRoomType().getId() : 1L);
 
         Set<Long> inProgressRoomIds = new HashSet<>(roomIncidentRepository.findRoomIdsWithInProgressIncidents());
         boolean currentRoomAvailable = false;
+        boolean isMaintenance = false;
 
-        if (currentRoom != null && !"MAINTENANCE".equalsIgnoreCase(currentRoom.getStatus()) && !inProgressRoomIds.contains(currentRoom.getId())) {
-            boolean hasConflict = bookingDetailRepository.findOverlappingSchedule(currentCheckOut, newCheckOut)
+        if (currentRoom != null) {
+            if ("MAINTENANCE".equalsIgnoreCase(currentRoom.getStatus()) || inProgressRoomIds.contains(currentRoom.getId())) {
+                isMaintenance = true;
+            } else {
+                boolean hasConflict = bookingDetailRepository.findOverlappingSchedule(currentCheckOut, newCheckOut)
+                        .stream()
+                        .filter(this::isActive)
+                        .filter(d -> !d.getId().equals(detail.getId()))
+                        .anyMatch(d -> d.getRoom() != null && d.getRoom().getId().equals(currentRoom.getId()));
+                currentRoomAvailable = !hasConflict;
+            }
+        } else {
+            // Unassigned room: check if there's ANY room of this roomType available
+            Set<Long> occupiedRoomIds = bookingDetailRepository.findOverlappingSchedule(currentCheckOut, newCheckOut)
                     .stream()
                     .filter(this::isActive)
-                    .filter(d -> !d.getId().equals(detail.getId()))
-                    .anyMatch(d -> d.getRoom() != null && d.getRoom().getId().equals(currentRoom.getId()));
-            currentRoomAvailable = !hasConflict;
+                    .filter(d -> !d.getId().equals(detail.getId()) && d.getRoom() != null)
+                    .map(d -> d.getRoom().getId())
+                    .collect(Collectors.toSet());
+            
+            boolean hasAnyAvailableRoomOfType = roomRepository.findAll().stream()
+                    .filter(r -> r.getRoomType() != null && r.getRoomType().getId().equals(roomTypeId))
+                    .filter(r -> !"MAINTENANCE".equalsIgnoreCase(r.getStatus()) && !inProgressRoomIds.contains(r.getId()))
+                    .anyMatch(r -> !occupiedRoomIds.contains(r.getId()));
+            
+            currentRoomAvailable = hasAnyAvailableRoomOfType;
         }
 
-        BigDecimal hourlyRate = calculateHourlyRate(roomType, detail);
-        BigDecimal extensionFee = hourlyRate.multiply(BigDecimal.valueOf(actualHours));
+        BigDecimal extensionFee;
+        if (isDayExtension) {
+            extensionFee = calculateRoomTypePriceForRange(roomTypeId, currentCheckOut, newCheckOut);
+        } else {
+            BigDecimal hourlyRate = calculateHourlyRate(roomType, detail);
+            extensionFee = hourlyRate.multiply(BigDecimal.valueOf(actualHours));
+        }
 
         List<AlternativeRoomOptionResponse> alternativeRooms = new ArrayList<>();
         if (!currentRoomAvailable) {
@@ -1151,20 +1237,31 @@ public class PublicBookingServiceImpl implements PublicBookingService {
                     .map(d -> d.getRoom().getId())
                     .collect(Collectors.toSet());
 
+            boolean finalIsDayExtension = isDayExtension;
+            LocalDateTime finalNewCheckOut = newCheckOut;
+            LocalDateTime finalCurrentCheckOut = currentCheckOut;
+
             alternativeRooms = roomRepository.findAll().stream()
                     .filter(r -> !"MAINTENANCE".equalsIgnoreCase(r.getStatus()) && !inProgressRoomIds.contains(r.getId()))
                     .filter(r -> !occupiedRoomIds.contains(r.getId()))
                     .filter(r -> currentRoom == null || !r.getId().equals(currentRoom.getId()))
                     .map(r -> {
-                        BigDecimal altHourly = calculateHourlyRate(r.getRoomType(), null);
-                        BigDecimal altTotal = altHourly.multiply(BigDecimal.valueOf(actualHours));
+                        BigDecimal altTotal;
+                        BigDecimal unitRate;
+                        if (finalIsDayExtension) {
+                            altTotal = calculateRoomTypePriceForRange(r.getRoomType().getId(), finalCurrentCheckOut, finalNewCheckOut);
+                            unitRate = altTotal;
+                        } else {
+                            unitRate = calculateHourlyRate(r.getRoomType(), null);
+                            altTotal = unitRate.multiply(BigDecimal.valueOf(actualHours));
+                        }
                         String img = null;
                         return new AlternativeRoomOptionResponse(
                                 r.getId(),
                                 r.getRoomNumber(),
                                 r.getRoomType() != null ? r.getRoomType().getId() : null,
                                 r.getRoomType() != null ? r.getRoomType().getName() : "Phòng tiêu chuẩn",
-                                altHourly,
+                                unitRate,
                                 altTotal,
                                 r.getRoomType() != null ? r.getRoomType().getMaxAdults() : 2,
                                 r.getRoomType() != null ? r.getRoomType().getMaxChildren() : 1,
@@ -1175,9 +1272,20 @@ public class PublicBookingServiceImpl implements PublicBookingService {
         }
 
         String roomName = currentRoom != null ? "Phòng " + currentRoom.getRoomNumber() : (roomType != null ? roomType.getName() : "Phòng hiện tại");
-        String message = currentRoomAvailable
-                ? roomName + " còn trống trong khung giờ này! Bạn có thể gia hạn trực tiếp."
-                : roomName + " đã có khách đặt trước cho khung giờ tiếp theo nên không thể gia hạn tại chỗ. Bạn có thể chọn đổi sang phòng khác còn trống hoặc trả phòng đúng giờ.";
+        String message;
+        if (mustBookFullDay) {
+            message = currentRoomAvailable
+                    ? roomName + " còn trống trong ngày tiếp theo! Bạn có thể tiếp tục gia hạn lưu trú tại phòng hiện tại đến 11:00 ngày mai."
+                    : (isMaintenance ? roomName + " đang được bảo trì hoặc xử lý sự cố. Bạn có thể chọn đổi sang phòng khác còn trống dưới đây." : roomName + " đã có khách đặt trước cho ngày mai. Bạn có thể chọn đổi sang phòng khác còn trống dưới đây để tiếp tục lưu trú trọn gói ngày mai.");
+        } else {
+            message = currentRoomAvailable
+                    ? roomName + " còn trống trong khung thời gian này! Bạn có thể gia hạn trực tiếp."
+                    : (isMaintenance ? roomName + " đang được bảo trì. Vui lòng chọn đổi sang phòng khác." : roomName + " đã có khách đặt trước cho khung thời gian tiếp theo. Bạn có thể chọn đổi sang phòng khác còn trống hoặc trả phòng đúng giờ.");
+        }
+
+        String warningNotice = mustBookFullDay
+                ? "⚠️ Bạn đã quá giờ trả phòng hơn 1 tiếng (sau 12:00). Theo quy định homestay, hệ thống tự động áp dụng chính sách Book thêm ngày tiếp theo đến 11:00 ngày mai."
+                : (isOverdue ? "⚠️ Bạn hiện đã quá giờ trả phòng. Vui lòng chọn gia hạn hoặc hoàn tất thủ tục trả phòng sớm nhất có thể." : null);
 
         return new PublicBookingExtensionCheckResponse(
                 currentRoomAvailable,
@@ -1189,7 +1297,11 @@ public class PublicBookingServiceImpl implements PublicBookingService {
                 currentCheckOut,
                 newCheckOut,
                 (int) actualHours,
+                addDays,
                 extensionFee,
+                isOverdue,
+                mustBookFullDay,
+                warningNotice,
                 message,
                 alternativeRooms
         );
@@ -1213,8 +1325,23 @@ public class PublicBookingServiceImpl implements PublicBookingService {
             currentCheckOut = LocalDateTime.now().plusHours(2);
         }
 
-        int addHours = request.additionalHours() != null && request.additionalHours() > 0 ? request.additionalHours() : 1;
-        LocalDateTime newCheckOut = request.targetCheckOut() != null ? request.targetCheckOut() : currentCheckOut.plusHours(addHours);
+        LocalDateTime now = LocalDateTime.now();
+        boolean isOverdue = now.isAfter(currentCheckOut);
+        long overdueMinutes = isOverdue ? java.time.Duration.between(currentCheckOut, now).toMinutes() : 0;
+        boolean mustBookFullDay = overdueMinutes > 60;
+
+        boolean isDayExtension = mustBookFullDay || (request.additionalDays() != null && request.additionalDays() > 0);
+        int addDays = request.additionalDays() != null && request.additionalDays() > 0 ? request.additionalDays() : (mustBookFullDay ? 1 : 0);
+        int addHours = (!isDayExtension && request.additionalHours() != null && request.additionalHours() > 0) ? request.additionalHours() : (isDayExtension ? 0 : 1);
+
+        LocalDateTime newCheckOut;
+        if (request.targetCheckOut() != null) {
+            newCheckOut = request.targetCheckOut();
+        } else if (isDayExtension) {
+            newCheckOut = currentCheckOut.toLocalDate().plusDays(addDays > 0 ? addDays : 1).atTime(11, 0);
+        } else {
+            newCheckOut = currentCheckOut.plusHours(addHours);
+        }
 
         if (!newCheckOut.isAfter(currentCheckOut)) {
             throw new IllegalArgumentException("Thời gian trả phòng mới phải sau thời gian trả phòng hiện tại");
@@ -1240,8 +1367,13 @@ public class PublicBookingServiceImpl implements PublicBookingService {
                 throw new IllegalArgumentException("Phòng " + switchRoom.getRoomNumber() + " vừa có khách khác đặt trong khung giờ này, vui lòng chọn phòng khác");
             }
 
-            BigDecimal switchHourly = calculateHourlyRate(switchRoom.getRoomType(), null);
-            BigDecimal switchFee = switchHourly.multiply(BigDecimal.valueOf(actualHours));
+            BigDecimal switchFee;
+            if (isDayExtension) {
+                switchFee = calculateRoomTypePriceForRange(switchRoom.getRoomType().getId(), currentCheckOut, newCheckOut);
+            } else {
+                BigDecimal switchHourly = calculateHourlyRate(switchRoom.getRoomType(), null);
+                switchFee = switchHourly.multiply(BigDecimal.valueOf(actualHours));
+            }
 
             BookingDetail switchDetail = BookingDetail.builder()
                     .booking(booking)
@@ -1253,7 +1385,7 @@ public class PublicBookingServiceImpl implements PublicBookingService {
                     .numberOfChildren(detail.getNumberOfChildren())
                     .priceAtBooking(switchFee)
                     .allocatedDiscount(BigDecimal.ZERO)
-                    .rentType("HOURLY")
+                    .rentType(isDayExtension ? "DAILY" : "HOURLY")
                     .roomAssignmentStatus("ASSIGNED")
                     .extensionHours((int) actualHours)
                     .extensionAmount(switchFee)
@@ -1280,11 +1412,18 @@ public class PublicBookingServiceImpl implements PublicBookingService {
                     .anyMatch(d -> d.getRoom() != null && d.getRoom().getId().equals(currentRoom.getId()));
 
             if (hasConflict) {
-                throw new IllegalArgumentException("Phòng " + currentRoom.getRoomNumber() + " đã có khách đặt trước trong khung giờ tiếp theo. Vui lòng chọn chuyển đổi sang phòng khác hoặc trả phòng đúng giờ.");
+                throw new IllegalArgumentException("Phòng " + currentRoom.getRoomNumber() + " đã có khách đặt trước trong ngày/khung giờ tiếp theo. Vui lòng chọn chuyển đổi sang phòng khác hoặc trả phòng đúng giờ.");
             }
 
-            BigDecimal hourlyRate = calculateHourlyRate(detail.getRoomType(), detail);
-            BigDecimal extensionFee = hourlyRate.multiply(BigDecimal.valueOf(actualHours));
+            BigDecimal extensionFee;
+            if (isDayExtension) {
+                RoomType roomType = detail.getRoomType() != null ? detail.getRoomType() : currentRoom.getRoomType();
+                Long roomTypeId = roomType != null ? roomType.getId() : 1L;
+                extensionFee = calculateRoomTypePriceForRange(roomTypeId, currentCheckOut, newCheckOut);
+            } else {
+                BigDecimal hourlyRate = calculateHourlyRate(detail.getRoomType(), detail);
+                extensionFee = hourlyRate.multiply(BigDecimal.valueOf(actualHours));
+            }
 
             detail.setCheckOutTarget(newCheckOut);
             detail.setPriceAtBooking(detail.getPriceAtBooking().add(extensionFee));

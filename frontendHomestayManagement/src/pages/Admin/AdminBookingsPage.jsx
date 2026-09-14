@@ -84,9 +84,16 @@ function isAdminScheduleBookingVisible(booking) {
 
 function formatBookingCardTime(booking) {
   if (!booking.checkInTarget || !booking.checkOutTarget) return ''
+  const checkIn = new Date(booking.checkInTarget)
   const checkOut = new Date(booking.checkOutTarget)
   const weekdayLabels = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7']
-  return `${formatClockTime(booking.checkInTarget)} - ${formatClockTime(booking.checkOutTarget)} ${weekdayLabels[checkOut.getDay()]}`
+  const inTime = formatClockTime(booking.checkInTarget)
+  const outTime = formatClockTime(booking.checkOutTarget)
+
+  if (toDateKey(checkIn) === toDateKey(checkOut)) {
+    return `${inTime} - ${outTime} (${weekdayLabels[checkIn.getDay()]})`
+  }
+  return `${inTime} (${weekdayLabels[checkIn.getDay()]}) → ${outTime} (${weekdayLabels[checkOut.getDay()]})`
 }
 
 function toDateTimeLocalValue(date = new Date()) {
@@ -206,6 +213,7 @@ function BookingCard({ booking, onOpenDetail }) {
   const status = normalizeStatus(booking.detailStatus || booking.bookingStatus)
   const statusText = statusLabel(booking.detailStatus || booking.bookingStatus)
   const cardTime = formatBookingCardTime(booking)
+  const price = Number(booking.priceAtBooking || booking.finalRoomAmount || 0)
 
   return (
     <article className={bookingStatusClass(booking.detailStatus || booking.bookingStatus)}>
@@ -227,28 +235,33 @@ function BookingCard({ booking, onOpenDetail }) {
 
       <div className="abk-card-meta">
         {cardTime && (
-          <div className="abk-card-time">
-            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <div className="abk-card-time" title={`Nhận: ${formatAppDateTime(booking.checkInTarget)} - Trả: ${formatAppDateTime(booking.checkOutTarget)}`}>
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2">
               <circle cx="12" cy="12" r="10" />
               <polyline points="12 6 12 12 16 14" />
             </svg>
             <span>{cardTime}</span>
           </div>
         )}
-        <div className="abk-card-guests">
-          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-            <circle cx="9" cy="7" r="4" />
-            <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-            <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-          </svg>
-          <span>{totalGuests > 0 ? `${totalGuests} khách` : '1 khách'}</span>
+        <div className="abk-card-bottom-row">
+          <div className="abk-card-guests">
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+              <circle cx="9" cy="7" r="4" />
+            </svg>
+            <span>{totalGuests > 0 ? `${totalGuests} khách` : '1 khách'}</span>
+          </div>
+          {price > 0 && (
+            <span className="abk-card-price-tag">
+              {formatMoney(price)}
+            </span>
+          )}
         </div>
       </div>
 
       <button type="button" className="abk-detail-link" onClick={() => onOpenDetail(booking.bookingDetailId)}>
         <span>Chi tiết</span>
-        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5">
           <path d="M5 12h14" />
           <path d="M12 5l7 7-7 7" />
         </svg>
@@ -812,7 +825,7 @@ function BookingDetailModal({ detail, loading, error, actionLoading, actionError
                       {checkoutLoading ? 'Đang kiểm tra...' : inspectionComplete ? ' Check out' : 'Check out'}
                     </button>
                   )}
-                  {detail && !['CANCELLED', 'COMPLETED'].includes(String(detail.bookingStatus).toUpperCase()) && (
+                  {detail && ['CHECKED_IN'].includes(String(detail.detailStatus || detail.bookingStatus).toUpperCase()) && (
                     <button
                       type="button"
                       className="abk-action-secondary"
@@ -2461,8 +2474,223 @@ function DayRevenueDetailModal({ day, bookings = [], rooms = [], onClose, onOpen
   )
 }
 
+function IntuitiveBookingCardsView({
+  bookings = [],
+  rooms = [],
+  onOpenDetail,
+  onOpenChangeRoom,
+  today,
+}) {
+  const [activeCategory, setActiveCategory] = useState('ALL')
+  const todayDate = today ? new Date(today) : new Date()
+
+  // Categories
+  const unassignedBookings = useMemo(() => bookings.filter(b => b.roomId == null), [bookings])
+  const todayCheckInBookings = useMemo(() => bookings.filter(b => isCheckInDay(b, todayDate)), [bookings, todayDate])
+  const stayingBookings = useMemo(() => bookings.filter(b => {
+    const s = normalizeStatus(b.bookingStatus || b.detailStatus)
+    return s === 'CHECKED_IN'
+  }), [bookings])
+  const completedBookings = useMemo(() => bookings.filter(b => {
+    const s = normalizeStatus(b.bookingStatus || b.detailStatus)
+    return s === 'COMPLETED' || s === 'CHECKED_OUT'
+  }), [bookings])
+
+  const displayedBookings = useMemo(() => {
+    switch (activeCategory) {
+      case 'UNASSIGNED': return unassignedBookings
+      case 'TODAY': return todayCheckInBookings
+      case 'STAYING': return stayingBookings
+      case 'COMPLETED': return completedBookings
+      default: return bookings
+    }
+  }, [activeCategory, bookings, unassignedBookings, todayCheckInBookings, stayingBookings, completedBookings])
+
+  return (
+    <div className="abk-easy-cards-container">
+      {/* Category Tabs */}
+      <div className="abk-easy-tabs">
+        <button
+          type="button"
+          className={`abk-easy-tab ${activeCategory === 'ALL' ? 'is-active' : ''}`}
+          onClick={() => setActiveCategory('ALL')}
+        >
+          <span>Tất cả đơn</span>
+          <span className="abk-easy-tab-badge">{bookings.length}</span>
+        </button>
+        <button
+          type="button"
+          className={`abk-easy-tab abk-easy-tab--unassigned ${activeCategory === 'UNASSIGNED' ? 'is-active' : ''}`}
+          onClick={() => setActiveCategory('UNASSIGNED')}
+        >
+          <span className="abk-tab-dot abk-tab-dot--orange" />
+          <span>Chờ xếp phòng</span>
+          <span className="abk-easy-tab-badge">{unassignedBookings.length}</span>
+        </button>
+        <button
+          type="button"
+          className={`abk-easy-tab abk-easy-tab--today ${activeCategory === 'TODAY' ? 'is-active' : ''}`}
+          onClick={() => setActiveCategory('TODAY')}
+        >
+          <span className="abk-tab-dot abk-tab-dot--amber" />
+          <span>Nhận phòng hôm nay</span>
+          <span className="abk-easy-tab-badge">{todayCheckInBookings.length}</span>
+        </button>
+        <button
+          type="button"
+          className={`abk-easy-tab abk-easy-tab--staying ${activeCategory === 'STAYING' ? 'is-active' : ''}`}
+          onClick={() => setActiveCategory('STAYING')}
+        >
+          <span className="abk-tab-dot abk-tab-dot--blue" />
+          <span>Đang lưu trú</span>
+          <span className="abk-easy-tab-badge">{stayingBookings.length}</span>
+        </button>
+        <button
+          type="button"
+          className={`abk-easy-tab abk-easy-tab--completed ${activeCategory === 'COMPLETED' ? 'is-active' : ''}`}
+          onClick={() => setActiveCategory('COMPLETED')}
+        >
+          <span className="abk-tab-dot abk-tab-dot--green" />
+          <span>Đã trả phòng</span>
+          <span className="abk-easy-tab-badge">{completedBookings.length}</span>
+        </button>
+      </div>
+
+      {displayedBookings.length === 0 ? (
+        <div className="abk-empty" style={{ margin: '24px 0' }}>Không có đơn đặt phòng nào trong danh mục này.</div>
+      ) : (
+        <div className="abk-easy-grid">
+          {displayedBookings.map((b) => {
+            const room = rooms.find(r => r.id === b.roomId)
+            const isUnassigned = b.roomId == null
+            const isCheckedIn = normalizeStatus(b.bookingStatus) === 'CHECKED_IN' || normalizeStatus(b.detailStatus) === 'CHECKED_IN'
+            const isConfirmed = normalizeStatus(b.bookingStatus) === 'CONFIRMED' || normalizeStatus(b.detailStatus) === 'CONFIRMED'
+            const isCompleted = ['COMPLETED', 'CHECKED_OUT'].includes(normalizeStatus(b.bookingStatus))
+
+            const guestName = b.customerName || 'Khách hàng'
+            const guestInitial = (guestName.trim().charAt(0) || 'K').toUpperCase()
+
+            return (
+              <div
+                key={b.bookingDetailId}
+                className={`abk-easy-card ${isUnassigned ? 'is-unassigned-card' : isCheckedIn ? 'is-staying-card' : ''}`}
+              >
+                {/* Header: Customer & Status */}
+                <div className="abk-easy-card-head">
+                  <div className="abk-easy-customer-box">
+                    <div className="abk-easy-avatar">{guestInitial}</div>
+                    <div className="abk-easy-cust-meta">
+                      <strong className="abk-easy-cust-name">{guestName}</strong>
+                      <span className="abk-easy-phone">{b.customerPhone ? b.customerPhone : bookingDisplay(b)}</span>
+                    </div>
+                  </div>
+                  <span className={`abk-status-pill abk-status-pill--${String(b.bookingStatus || '').toLowerCase()}`}>
+                    {statusLabel(b.bookingStatus)}
+                  </span>
+                </div>
+
+                {/* Room Banner */}
+                <div className="abk-easy-room-banner">
+                  {isUnassigned ? (
+                    <div className="abk-easy-room-unassigned">
+                      <div className="abk-easy-room-indicator abk-easy-room-indicator--warn" />
+                      <div className="abk-easy-room-text-group">
+                        <strong className="abk-easy-room-title">Chưa gán phòng cụ thể</strong>
+                        <span className="abk-easy-room-sub">Hạng phòng: {houseTypeName(b, 'Loại phòng')}</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="abk-easy-room-assigned">
+                      <div className="abk-easy-room-indicator abk-easy-room-indicator--active" />
+                      <div className="abk-easy-room-text-group">
+                        <strong className="abk-easy-room-title">Phòng {b.roomNumber || room?.roomNumber}</strong>
+                        <span className="abk-easy-room-sub">{houseTypeName(b, room?.roomTypeName || 'Loại phòng')}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Info List */}
+                <div className="abk-easy-info-grid">
+                  <div className="abk-easy-info-item">
+                    <span className="abk-easy-info-label">Lịch lưu trú</span>
+                    <span className="abk-easy-info-value">
+                      {formatAppDateTime(b.checkInTarget)} → {formatAppDateTime(b.checkOutTarget)}
+                    </span>
+                  </div>
+
+                  <div className="abk-easy-info-row">
+                    <div className="abk-easy-info-item">
+                      <span className="abk-easy-info-label">Số khách</span>
+                      <span className="abk-easy-info-value">
+                        {b.numberOfAdults || 1} người lớn {b.numberOfChildren > 0 ? `· ${b.numberOfChildren} trẻ em` : ''}
+                      </span>
+                    </div>
+                    <div className="abk-easy-info-item" style={{ textAlign: 'right' }}>
+                      <span className="abk-easy-info-label">Tiền phòng</span>
+                      <strong className="abk-easy-price">
+                        {formatMoney(b.priceAtBooking || b.finalRoomAmount || 0)}
+                      </strong>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Actions Footer */}
+                <div className="abk-easy-card-actions">
+                  {isUnassigned && (
+                    <button
+                      type="button"
+                      className="abk-easy-btn abk-easy-btn--assign"
+                      onClick={() => window.location.assign(`/admin/check-in-logs`)}
+                      title="Mở Nhật ký check-in để gán phòng"
+                    >
+                      Xếp phòng ngay
+                    </button>
+                  )}
+
+                  {!isUnassigned && isCheckedIn && !isCompleted && (
+                    <button
+                      type="button"
+                      className="abk-easy-btn abk-easy-btn--swap"
+                      onClick={() => onOpenChangeRoom(b.bookingDetailId)}
+                      title="Đổi sang phòng khác cho khách"
+                    >
+                      Đổi phòng
+                    </button>
+                  )}
+
+                  {isConfirmed && (
+                    <button
+                      type="button"
+                      className="abk-easy-btn abk-easy-btn--checkin"
+                      onClick={() => window.location.assign(`/admin/check-in-logs?bookingDetailId=${b.bookingDetailId}`)}
+                      title="Thực hiện check-in nhận phòng"
+                    >
+                      Nhận phòng
+                    </button>
+                  )}
+
+                  <button
+                    type="button"
+                    className="abk-easy-btn abk-easy-btn--detail"
+                    onClick={() => onOpenDetail(b.bookingDetailId)}
+                  >
+                    Chi tiết & Hóa đơn
+                  </button>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function AdminBookingsPage() {
   const { isInShift, guardAction } = useShiftGuard()
+  const [viewMode, setViewMode] = useState('CARDS') // 'CARDS' or 'TIMELINE'
+  const [activeChangeRoomDetailId, setActiveChangeRoomDetailId] = useState(null)
   const [weekStart, setWeekStart] = useState(() => toDateKey(startOfWeek()))
   const [schedule, setSchedule] = useState({ rooms: [], bookings: [], weekStart, weekEnd: weekStart })
   const [loading, setLoading] = useState(true)
@@ -2742,6 +2970,25 @@ function AdminBookingsPage() {
         </div>
 
         <div className="abk-toolbar-controls">
+          <div className="abk-view-mode-toggle">
+            <button
+              type="button"
+              className={`abk-mode-btn ${viewMode === 'CARDS' ? 'is-active' : ''}`}
+              onClick={() => setViewMode('CARDS')}
+            >
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
+              <span>Dạng Thẻ Trực Quan</span>
+            </button>
+            <button
+              type="button"
+              className={`abk-mode-btn ${viewMode === 'TIMELINE' ? 'is-active' : ''}`}
+              onClick={() => setViewMode('TIMELINE')}
+            >
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              <span>Lịch Tuần</span>
+            </button>
+          </div>
+
           <input
             className="abk-date"
             type="date"
@@ -2755,122 +3002,136 @@ function AdminBookingsPage() {
             <option value="COMPLETED">Hoàn tất</option>
             <option value="CANCELLED">Đã hủy</option>
           </select>
-          <select className="abk-select" value={pageSize} onChange={e => setPageSize(Number(e.target.value))}>
-            {PAGE_SIZE_OPTIONS.map(size => <option key={size} value={size}>{size} phòng/trang</option>)}
-          </select>
+          {viewMode === 'TIMELINE' && (
+            <select className="abk-select" value={pageSize} onChange={e => setPageSize(Number(e.target.value))}>
+              {PAGE_SIZE_OPTIONS.map(size => <option key={size} value={size}>{size} phòng/trang</option>)}
+            </select>
+          )}
         </div>
       </div>
 
-      <section className="abk-schedule">
-        {loading ? (
-          <div className="abk-empty">Đang tải lịch đặt phòng...</div>
-        ) : error ? (
-          <div className="abk-empty abk-empty--error">{error}</div>
-        ) : filteredRooms.length === 0 && unassignedVisibleBookings.length === 0 ? (
-          <div className="abk-empty">Không có phòng hoặc đơn đặt phòng phù hợp.</div>
-        ) : (
-          <div className="abk-grid-wrap">
-            <div className="abk-grid" style={{ '--abk-days': weekDays.length }}>
-              <div className="abk-room-head">Phòng</div>
-              {weekDays.map((day, index) => {
-                const key = toDateKey(day)
-                const dayCheckInBookings = schedule.bookings.filter(b => isAdminScheduleBookingVisible(b) && isCheckInDay(b, day))
-                const dayRevenue = dayCheckInBookings.reduce((sum, b) => sum + Number(b.priceAtBooking || b.finalRoomAmount || 0), 0)
-                return (
-                  <div
-                    className={`abk-day-head${key === todayKey ? ' abk-day-head--today' : ''}`}
-                    key={key}
-                    onClick={() => setDaySummaryModal(day)}
-                    title={`Nhấn để xem doanh thu & danh sách đặt phòng ngày ${formatShortDate(day)}`}
-                  >
-                    <span>{index === 6 ? 'Chủ nhật' : `Thứ ${index + 2}`}</span>
-                    <strong>{formatShortDate(day)}</strong>
-                    <div className="abk-day-head-meta">
-                      {dayCheckInBookings.length > 0 ? (
-                        <span className="abk-day-head-revenue">
-                          {formatMoney(dayRevenue)}
-                        </span>
-                      ) : (
-                        <span className="abk-day-head-empty">0đ</span>
-                      )}
-                    </div>
-                  </div>
-                )
-              })}
-
-              {/* Hàng đơn đặt chưa gán phòng (Web Booking Chưa Xếp Phòng) */}
-              {unassignedVisibleBookings.length > 0 && (
-                <div className="abk-row abk-row--unassigned" key="unassigned-row">
-                  <div className="abk-room-cell abk-room-cell--unassigned">
-                    <div className="abk-unassigned-tag">
-                      <span className="abk-unassigned-pulse"></span>
-                      <strong>Chờ gán phòng</strong>
-                    </div>
-                    <span>{unassignedVisibleBookings.length} đơn đặt chờ xếp</span>
-                  </div>
-                  {weekDays.map(day => {
-                    const dayBookings = unassignedVisibleBookings
-                      .filter(booking => isCheckInDay(booking, day))
-                      .sort((a, b) => new Date(a.checkInTarget) - new Date(b.checkInTarget))
+      {loading ? (
+        <div className="abk-empty">Đang tải lịch đặt phòng...</div>
+      ) : error ? (
+        <div className="abk-empty abk-empty--error">{error}</div>
+      ) : viewMode === 'CARDS' ? (
+        <IntuitiveBookingCardsView
+          bookings={visibleBookings}
+          rooms={schedule.rooms}
+          onOpenDetail={openDetail}
+          onOpenChangeRoom={setActiveChangeRoomDetailId}
+          today={schedule.today}
+        />
+      ) : (
+        <>
+          <section className="abk-schedule">
+            {filteredRooms.length === 0 && unassignedVisibleBookings.length === 0 ? (
+              <div className="abk-empty">Không có phòng hoặc đơn đặt phòng phù hợp.</div>
+            ) : (
+              <div className="abk-grid-wrap">
+                <div className="abk-grid" style={{ '--abk-days': weekDays.length }}>
+                  <div className="abk-room-head">Phòng</div>
+                  {weekDays.map((day, index) => {
+                    const key = toDateKey(day)
+                    const dayCheckInBookings = schedule.bookings.filter(b => isAdminScheduleBookingVisible(b) && isCheckInDay(b, day))
+                    const dayRevenue = dayCheckInBookings.reduce((sum, b) => sum + Number(b.priceAtBooking || b.finalRoomAmount || 0), 0)
                     return (
-                      <div className="abk-day-cell abk-day-cell--unassigned" key={`unassigned-${toDateKey(day)}`}>
-                        {dayBookings.length ? (
-                          dayBookings.map(booking => (
-                            <div key={booking.bookingDetailId} className="abk-unassigned-booking-wrapper">
-                              <span className="abk-unassigned-type-pill">
-                                 {houseTypeName(booking, 'Loại phòng')}
-                              </span>
-                              <BookingCard booking={booking} onOpenDetail={openDetail} />
-                            </div>
-                          ))
-                        ) : (
-                          <span className="abk-free">—</span>
-                        )}
+                      <div
+                        className={`abk-day-head${key === todayKey ? ' abk-day-head--today' : ''}`}
+                        key={key}
+                        onClick={() => setDaySummaryModal(day)}
+                        title={`Nhấn để xem doanh thu & danh sách đặt phòng ngày ${formatShortDate(day)}`}
+                      >
+                        <span>{index === 6 ? 'Chủ nhật' : `Thứ ${index + 2}`}</span>
+                        <strong>{formatShortDate(day)}</strong>
+                        <div className="abk-day-head-meta">
+                          {dayCheckInBookings.length > 0 ? (
+                            <span className="abk-day-head-revenue">
+                              {formatMoney(dayRevenue)}
+                            </span>
+                          ) : (
+                            <span className="abk-day-head-empty">0đ</span>
+                          )}
+                        </div>
                       </div>
                     )
                   })}
-                </div>
-              )}
 
-              {pagedRooms.map(room => (
-                <div className="abk-row" key={room.id}>
-                  <div className="abk-room-cell">
-                    <strong>Phòng {room.roomNumber}</strong>
-                    <span>{houseTypeName(room, 'Chưa phân loại')}</span>
-                  </div>
-                  {weekDays.map(day => {
-                    const dayBookings = visibleBookings
-                      .filter(booking => booking.roomId === room.id && isCheckInDay(booking, day))
-                      .sort((a, b) => new Date(a.checkInTarget) - new Date(b.checkInTarget))
-                    return (
-                      <div className="abk-day-cell" key={`${room.id}-${toDateKey(day)}`}>
-                        {dayBookings.length ? (
-                          dayBookings.map(booking => (
-                            <BookingCard key={booking.bookingDetailId} booking={booking} onOpenDetail={openDetail} />
-                          ))
-                        ) : (
-                          <span className="abk-free">Trống</span>
-                        )}
+                  {/* Hàng đơn đặt chưa gán phòng (Web Booking Chưa Xếp Phòng) */}
+                  {unassignedVisibleBookings.length > 0 && (
+                    <div className="abk-row abk-row--unassigned" key="unassigned-row">
+                      <div className="abk-room-cell abk-room-cell--unassigned">
+                        <div className="abk-unassigned-tag">
+                          <span className="abk-unassigned-pulse"></span>
+                          <strong>Chờ gán phòng</strong>
+                        </div>
+                        <span>{unassignedVisibleBookings.length} đơn đặt chờ xếp</span>
                       </div>
-                    )
-                  })}
+                      {weekDays.map(day => {
+                        const dayBookings = unassignedVisibleBookings
+                          .filter(booking => isCheckInDay(booking, day))
+                          .sort((a, b) => new Date(a.checkInTarget) - new Date(b.checkInTarget))
+                        return (
+                          <div className="abk-day-cell abk-day-cell--unassigned" key={`unassigned-${toDateKey(day)}`}>
+                            {dayBookings.length ? (
+                              dayBookings.map(booking => (
+                                <div key={booking.bookingDetailId} className="abk-unassigned-booking-wrapper">
+                                  <span className="abk-unassigned-type-pill">
+                                     {houseTypeName(booking, 'Loại phòng')}
+                                  </span>
+                                  <BookingCard booking={booking} onOpenDetail={openDetail} />
+                                </div>
+                              ))
+                            ) : (
+                              <span className="abk-free">—</span>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+
+                  {pagedRooms.map(room => (
+                    <div className="abk-row" key={room.id}>
+                      <div className="abk-room-cell">
+                        <strong>Phòng {room.roomNumber}</strong>
+                        <span>{houseTypeName(room, 'Chưa phân loại')}</span>
+                      </div>
+                      {weekDays.map(day => {
+                        const dayBookings = visibleBookings
+                          .filter(booking => booking.roomId === room.id && isCheckInDay(booking, day))
+                          .sort((a, b) => new Date(a.checkInTarget) - new Date(b.checkInTarget))
+                        return (
+                          <div className="abk-day-cell" key={`${room.id}-${toDateKey(day)}`}>
+                            {dayBookings.length ? (
+                              dayBookings.map(booking => (
+                                <BookingCard key={booking.bookingDetailId} booking={booking} onOpenDetail={openDetail} />
+                              ))
+                            ) : (
+                              <span className="abk-free">Trống</span>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  ))}
                 </div>
-              ))}
+              </div>
+            )}
+          </section>
+
+          <div className="abk-footer">
+            <span>
+              Hiển thị {pagedRooms.length ? (safePage - 1) * pageSize + 1 : 0}-{Math.min(safePage * pageSize, filteredRooms.length)} / {filteredRooms.length} phòng
+            </span>
+            <div className="abk-pagination">
+              <button type="button" disabled={safePage === 1} onClick={() => setPage(value => Math.max(1, value - 1))}>Trước</button>
+              <strong>{safePage} / {totalPages}</strong>
+              <button type="button" disabled={safePage === totalPages} onClick={() => setPage(value => Math.min(totalPages, value + 1))}>Sau</button>
             </div>
           </div>
-        )}
-      </section>
-
-      <div className="abk-footer">
-        <span>
-          Hiển thị {pagedRooms.length ? (safePage - 1) * pageSize + 1 : 0}-{Math.min(safePage * pageSize, filteredRooms.length)} / {filteredRooms.length} phòng
-        </span>
-        <div className="abk-pagination">
-          <button type="button" disabled={safePage === 1} onClick={() => setPage(value => Math.max(1, value - 1))}>Trước</button>
-          <strong>{safePage} / {totalPages}</strong>
-          <button type="button" disabled={safePage === totalPages} onClick={() => setPage(value => Math.min(totalPages, value + 1))}>Sau</button>
-        </div>
-      </div>
+        </>
+      )}
 
       {detailModalOpen && (
         <BookingDetailModal
@@ -2899,6 +3160,17 @@ function AdminBookingsPage() {
           rooms={schedule.rooms}
           onClose={() => setDaySummaryModal(null)}
           onOpenDetail={openDetail}
+        />
+      )}
+
+      {activeChangeRoomDetailId && (
+        <AdminChangeRoomModal
+          bookingDetailId={activeChangeRoomDetailId}
+          onClose={() => setActiveChangeRoomDetailId(null)}
+          onSuccess={() => {
+            setActiveChangeRoomDetailId(null)
+            loadSchedule()
+          }}
         />
       )}
     </AdminLayout>

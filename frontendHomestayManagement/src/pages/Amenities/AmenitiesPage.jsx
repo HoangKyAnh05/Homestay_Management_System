@@ -231,6 +231,7 @@ function AmenitiesHeader() {
             <line x1="6" y1="21.5" x2="18" y2="21.5" />
           </svg>
         </a>
+
         <a href="/home#about">Giới thiệu</a>
       </nav>
       {currentUser ? (
@@ -243,6 +244,7 @@ function AmenitiesHeader() {
           {isOpen && (
             <div className="home-user-dropdown">
               <a href="/wishlist" onClick={(e) => { e.preventDefault(); setIsOpen(false); window.location.assign('/wishlist'); }}>Danh sách yêu thích</a>
+              <a href="/vouchers" onClick={(e) => { e.preventDefault(); setIsOpen(false); window.location.assign('/vouchers'); }}>Kho mã giảm giá</a>
               <a href="/booking-history" onClick={(e) => { e.preventDefault(); setIsOpen(false); window.location.assign('/booking-history'); }}>Lịch sử đặt phòng</a>
               <a href="/profile" onClick={(e) => { e.preventDefault(); setIsOpen(false); window.location.assign('/profile'); }}>Thông tin cá nhân</a>
               <button type="button" onClick={handleLogout}>Đăng xuất</button>

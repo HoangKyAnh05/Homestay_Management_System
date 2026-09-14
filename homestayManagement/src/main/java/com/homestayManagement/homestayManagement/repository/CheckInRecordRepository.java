@@ -69,6 +69,24 @@ public interface CheckInRecordRepository extends JpaRepository<CheckInRecord, Lo
             left join fetch bd.room r
             left join fetch bd.roomType rt
             left join fetch cr.customer c
+            where cr.actualCheckIn < :endExclusive
+              and (cr.actualCheckOut is null or cr.actualCheckOut >= :startInclusive)
+              and (bd.checkOutTarget is null or bd.checkOutTarget >= :startInclusive)
+              and b.status not in ('CANCELLED')
+            order by r.roomNumber asc, cr.actualCheckIn asc
+            """)
+    List<CheckInRecord> findOccupiedOnDate(
+            @Param("startInclusive") java.time.LocalDateTime startInclusive,
+            @Param("endExclusive") java.time.LocalDateTime endExclusive
+    );
+
+    @Query("""
+            select cr from CheckInRecord cr
+            join fetch cr.bookingDetail bd
+            join fetch bd.booking b
+            left join fetch bd.room r
+            left join fetch bd.roomType rt
+            left join fetch cr.customer c
             where cr.actualCheckIn is not null
               and cr.actualCheckOut is null
             order by r.roomNumber asc, cr.actualCheckIn asc

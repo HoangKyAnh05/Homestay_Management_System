@@ -18,4 +18,6 @@ public interface SocialAccountRepository extends JpaRepository<SocialAccount, Lo
     Optional<SocialAccount> findFirstByPlatformAndPageUrlAndActiveTrue(String platform, String pageUrl);
 
     Optional<SocialAccount> findFirstByPlatformAndActiveTrueOrderByIdAsc(String platform);
+
+    Optional<SocialAccount> findFirstByPlatformAndActiveTrueOrderByIdDesc(String platform);
 }

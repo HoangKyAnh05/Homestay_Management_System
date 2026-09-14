@@ -174,27 +174,49 @@ export default function DailyClosingModal({ isOpen, onClose, onSuccess }) {
                         <th>Thời gian Check-in</th>
                         <th>Dự kiến Check-out</th>
                         <th>Khách</th>
+                        <th style={{ color: '#15803d' }}>Tiền cọc / Đã trả</th>
+                        <th style={{ color: '#b91c1c' }}>Tiền còn lại</th>
                       </tr>
                     </thead>
                     <tbody>
                       {previewData.occupiedRooms && previewData.occupiedRooms.length > 0 ? (
-                        previewData.occupiedRooms.map((r, i) => (
-                          <tr key={i}>
-                            <td>
-                              <span className="dcm-room-badge">{r.roomNumber}</span>
-                            </td>
-                            <td><strong>{r.roomTypeName}</strong></td>
-                            <td>{r.customerName}</td>
-                            <td>{r.customerPhone}</td>
-                            <td><small style={{ color: '#64748b' }}>{r.bookingCode}</small></td>
-                            <td>{formatDateTime(r.actualCheckIn)}</td>
-                            <td>{formatDateTime(r.expectedCheckOut)}</td>
-                            <td>{r.guestCount} người</td>
-                          </tr>
-                        ))
+                        previewData.occupiedRooms.map((r, i) => {
+                          const deposit = Number(r.depositAmount || 0)
+                          const remaining = Number(r.remainingAmount || 0)
+                          return (
+                            <tr key={i}>
+                              <td>
+                                <span className="dcm-room-badge">{r.roomNumber}</span>
+                              </td>
+                              <td><strong>{r.roomTypeName}</strong></td>
+                              <td><strong>{r.customerName}</strong></td>
+                              <td>{r.customerPhone}</td>
+                              <td><small style={{ color: '#64748b' }}>{r.bookingCode}</small></td>
+                              <td>{formatDateTime(r.actualCheckIn)}</td>
+                              <td>{formatDateTime(r.expectedCheckOut)}</td>
+                              <td>{r.guestCount} người</td>
+                              <td>
+                                <span style={{ color: '#16a34a', fontWeight: 700, background: '#dcfce7', padding: '3px 8px', borderRadius: '6px' }}>
+                                  {formatMoney(deposit)}
+                                </span>
+                              </td>
+                              <td>
+                                {remaining > 0 ? (
+                                  <span style={{ color: '#dc2626', fontWeight: 700, background: '#fee2e2', padding: '3px 8px', borderRadius: '6px' }}>
+                                    {formatMoney(remaining)}
+                                  </span>
+                                ) : (
+                                  <span style={{ color: '#16a34a', fontWeight: 600, background: '#f0fdf4', padding: '3px 8px', borderRadius: '6px' }}>
+                                    0đ (Đã thu đủ)
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+                          )
+                        })
                       ) : (
                         <tr>
-                          <td colSpan="8" className="dcm-empty-text">
+                          <td colSpan="10" className="dcm-empty-text">
                             Hiện không có phòng nào đang có khách lưu trú qua đêm.
                           </td>
                         </tr>
@@ -204,27 +226,35 @@ export default function DailyClosingModal({ isOpen, onClose, onSuccess }) {
                 </div>
               </div>
 
-              {/* Chi tiết Doanh thu */}
+              {/* Chi tiết Doanh thu bóc tách Tiền mặt & Chuyển khoản */}
               <div className="dcm-section">
                 <h3 className="dcm-section-title">
-                  <span> Chi tiết nguồn thu trong ngày</span>
+                  <span>Chi tiết nguồn thu trong ngày {selectedDate}</span>
                 </h3>
 
                 <div className="dcm-revenue-grid">
-                  <div className="dcm-rev-box">
-                    <div className="dcm-rev-label">
-                      <span> Tiền mặt thu tại quầy:</span>
+                  <div className="dcm-rev-box dcm-rev-box--cash">
+                    <div>
+                      <div className="dcm-rev-label">
+                        <span className="dcm-dot dcm-dot--green"></span>
+                        <strong>TIỀN MẶT THU TẠI QUẦY (BÀN GIAO KÉT):</strong>
+                      </div>
+                      <small style={{ color: '#059669', fontSize: 11 }}>Tiền mặt lễ tân đã thu từ khách trong ngày</small>
                     </div>
-                    <div className="dcm-rev-amount" style={{ color: '#059669' }}>
+                    <div className="dcm-rev-amount dcm-rev-amount--cash">
                       {formatMoney(previewData.cashRevenue)}
                     </div>
                   </div>
 
-                  <div className="dcm-rev-box">
-                    <div className="dcm-rev-label">
-                      <span> Chuyển khoản / Ngân hàng:</span>
+                  <div className="dcm-rev-box dcm-rev-box--transfer">
+                    <div>
+                      <div className="dcm-rev-label">
+                        <span className="dcm-dot dcm-dot--blue"></span>
+                        <strong>CHUYỂN KHOẢN / VNPAY:</strong>
+                      </div>
+                      <small style={{ color: '#2563eb', fontSize: 11 }}>Tiền đã vào trực tiếp tài khoản homestay</small>
                     </div>
-                    <div className="dcm-rev-amount" style={{ color: '#2563eb' }}>
+                    <div className="dcm-rev-amount dcm-rev-amount--transfer">
                       {formatMoney(previewData.transferRevenue)}
                     </div>
                   </div>
@@ -233,9 +263,9 @@ export default function DailyClosingModal({ isOpen, onClose, onSuccess }) {
                 {/* Khối Tổng doanh thu nổi bật */}
                 <div className="dcm-total-revenue-card">
                   <div>
-                    <div className="dcm-total-title">TỔNG DOANH THU THU VỀ TRONG NGÀY</div>
+                    <div className="dcm-total-title">TỔNG THU TRONG NGÀY {selectedDate}</div>
                     <div className="dcm-total-sub">
-                      Gồm toàn bộ tiền mặt tại quầy và chuyển khoản ngân hàng trong ngày {selectedDate}
+                      Tổng tiền mặt tại quầy + Chuyển khoản ngân hàng phát sinh trong ngày
                     </div>
                   </div>
                   <div className="dcm-total-number">
@@ -247,11 +277,11 @@ export default function DailyClosingModal({ isOpen, onClose, onSuccess }) {
               {/* Ghi chú của lễ tân dặn dò Admin */}
               <div className="dcm-section">
                 <h3 className="dcm-section-title">
-                  <span> Ghi chú & Dặn dò gửi Quản trị viên (Admin)</span>
+                  <span>Ghi chú & Dặn dò gửi Quản trị viên (Admin)</span>
                 </h3>
                 <textarea
                   className="dcm-notes-textarea"
-                  placeholder="Nhập ghi chú cho Admin (ví dụ: Phòng 102 mai xin trả muộn 1h, khách phòng 201 để quên sạc, tiền thừa trong két còn đủ,...)..."
+                  placeholder="Nhập ghi chú cho Admin (ví dụ: Số tiền mặt đã bỏ két an toàn, phòng 102 mai xin trả muộn 1h, khách phòng 201 để quên sạc,...)..."
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                 />

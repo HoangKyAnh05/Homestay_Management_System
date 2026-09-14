@@ -75,4 +75,7 @@ public class BookingDetail {
     @Builder.Default
     @Column(nullable = false, length = 20)
     private String status = "CONFIRMED";
+
+    @Column(name = "notes", length = 1000)
+    private String notes;
 }

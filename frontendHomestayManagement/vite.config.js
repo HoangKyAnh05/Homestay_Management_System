@@ -11,45 +11,6 @@ export default defineConfig({
   plugins: [
     react(),
     {
-      name: 'remotion-static-serve',
-      configureServer(server) {
-        server.middlewares.use((req, res, next) => {
-          const cleanUrl = req.url.split('?')[0]
-          if (cleanUrl === '/remotion-app') {
-            const query = req.url.includes('?') ? '?' + req.url.split('?')[1] : ''
-            res.writeHead(301, { Location: '/remotion-app/' + query })
-            return res.end()
-          }
-          if (cleanUrl === '/remotion-app/' || cleanUrl === '/remotion-app/index.html') {
-            const indexPath = path.resolve(__dirname, 'public/remotion-app/index.html')
-            if (fs.existsSync(indexPath)) {
-              res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
-              return fs.createReadStream(indexPath).pipe(res)
-            }
-          }
-          next()
-        })
-      },
-      configurePreviewServer(server) {
-        server.middlewares.use((req, res, next) => {
-          const cleanUrl = req.url.split('?')[0]
-          if (cleanUrl === '/remotion-app') {
-            const query = req.url.includes('?') ? '?' + req.url.split('?')[1] : ''
-            res.writeHead(301, { Location: '/remotion-app/' + query })
-            return res.end()
-          }
-          if (cleanUrl === '/remotion-app/' || cleanUrl === '/remotion-app/index.html') {
-            const indexPath = path.resolve(__dirname, 'dist/remotion-app/index.html')
-            if (fs.existsSync(indexPath)) {
-              res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
-              return fs.createReadStream(indexPath).pipe(res)
-            }
-          }
-          next()
-        })
-      },
-    },
-    {
       name: 'spa-fallback-landing',
       closeBundle() {
         try {
@@ -73,15 +34,6 @@ export default defineConfig({
       clientPort: 443,
     },
     proxy: {
-      '/api/tts': {
-        target: 'http://localhost:3000',
-        changeOrigin: true,
-      },
-      '/remotion-health': {
-        target: 'http://localhost:3000',
-        changeOrigin: true,
-        rewrite: () => '/health',
-      },
       '/api': {
         target: 'http://localhost:8080',
         changeOrigin: true,
@@ -105,15 +57,6 @@ export default defineConfig({
     port: 5173,
     allowedHosts: true,
     proxy: {
-      '/api/tts': {
-        target: 'http://localhost:3000',
-        changeOrigin: true,
-      },
-      '/remotion-health': {
-        target: 'http://localhost:3000',
-        changeOrigin: true,
-        rewrite: () => '/health',
-      },
       '/api': {
         target: 'http://localhost:8080',
         changeOrigin: true,
@@ -133,4 +76,3 @@ export default defineConfig({
     },
   },
 })
-

@@ -1,5 +1,7 @@
 package com.homestayManagement.homestayManagement.service;
 
+import com.homestayManagement.homestayManagement.dto.request.SandboxPaymentRequest;
+import com.homestayManagement.homestayManagement.dto.response.SandboxPaymentResponse;
 import com.homestayManagement.homestayManagement.dto.response.SePayPaymentResponse;
 import com.homestayManagement.homestayManagement.dto.response.PublicBookingPaymentStatusResponse;
 
@@ -21,4 +23,8 @@ public interface SePayPaymentService {
     default void handleWebhook(byte[] rawBody, String signature, String timestamp, String authorization) {
         handleWebhook(rawBody, signature, timestamp);
     }
+
+    SandboxPaymentResponse simulateSandboxPayment(SandboxPaymentRequest request);
+
+    SandboxPaymentResponse quickPayBooking(Long bookingId);
 }

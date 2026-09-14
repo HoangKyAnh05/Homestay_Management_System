@@ -123,7 +123,7 @@
 
 .acl-toolbar input:focus,
 .acl-toolbar select:focus {
-  border-color: #ff385c;
+  border-color: #1e3a2b;
   box-shadow: 0 0 0 3px rgba(255, 56, 92, 0.12);
 }
 
@@ -210,7 +210,7 @@
 
 .acl-booking:hover,
 .acl-booking--active {
-  border-color: #ff385c;
+  border-color: #1e3a2b;
   background: #fff7f8;
 }
 
@@ -292,7 +292,7 @@
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: #ff385c;
+  background: #1e3a2b;
 }
 
 .acl-progress--completed {
@@ -550,7 +550,7 @@
   padding: 0 14px;
   border: none;
   border-radius: 6px;
-  background: #ff385c;
+  background: #1e3a2b;
   color: #ffffff;
   font-size: 12.5px;
   font-weight: 800;
@@ -880,8 +880,8 @@
 }
 
 .acl-detail-actions button:first-child:not(:disabled) {
-  border-color: #ff385c;
-  background: #ff385c;
+  border-color: #1e3a2b;
+  background: #1e3a2b;
 }
 
 .acl-empty {
@@ -968,7 +968,7 @@
 }
 
 .acl-checkin-head > div > span {
-  color: #ff385c;
+  color: #1e3a2b;
   font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.06em;
@@ -998,9 +998,9 @@
   gap: 10px;
   margin-bottom: 18px;
   padding: 14px;
-  border: 1px solid #ffd1da;
+  border: 1px solid #dcfce7;
   border-radius: 14px;
-  background: #fff5f7;
+  background: #f8fafc;
 }
 
 .acl-checkin-summary div { min-width: 0; }
@@ -1041,7 +1041,7 @@
   flex: 0 0 auto;
   border-radius: 10px;
   background: #ffe8ed;
-  color: #e00b41;
+  color: #166534;
   font-size: 12px;
   font-weight: 800;
 }
@@ -1058,7 +1058,7 @@
   border-radius: 10px;
   cursor: pointer;
 }
-.acl-room-options label.is-selected { border-color: #ff385c; background: #fff5f7; box-shadow: 0 0 0 1px #ff385c; }
+.acl-room-options label.is-selected { border-color: #1e3a2b; background: #f8fafc; box-shadow: 0 0 0 1px #1e3a2b; }
 .acl-room-options input { position: absolute; opacity: 0; pointer-events: none; }
 .acl-room-options span,
 .acl-room-options small { color: #6a6a6a; font-size: 11px; }
@@ -1098,7 +1098,7 @@
   align-items: center;
   padding: 0 7px;
   border-radius: 7px;
-  background: #fff5f7;
+  background: #f8fafc;
   color: #c13515;
   font-size: 11px;
   font-weight: 800;
@@ -1109,10 +1109,10 @@
   align-items: center;
   justify-content: center;
   padding: 0 11px;
-  border: 1px solid #ff385c;
+  border: 1px solid #1e3a2b;
   border-radius: 8px;
   background: #ffffff;
-  color: #e00b41;
+  color: #166534;
   font-size: 12px;
   font-weight: 800;
   cursor: pointer;
@@ -1120,9 +1120,9 @@
 .acl-identity-camera-btn {
   min-height: 30px;
   padding: 0 11px;
-  border: 1px solid #ff385c;
+  border: 1px solid #1e3a2b;
   border-radius: 8px;
-  background: #ff385c;
+  background: #1e3a2b;
   color: #ffffff;
   font: inherit;
   font-size: 12px;
@@ -1132,8 +1132,8 @@
   transition: background 140ms, border-color 140ms, box-shadow 140ms, transform 140ms;
 }
 .acl-identity-camera-btn:hover:not(:disabled) {
-  border-color: #e00b41;
-  background: #e00b41;
+  border-color: #166534;
+  background: #166534;
   box-shadow: 0 8px 18px rgba(224, 11, 65, 0.22);
   transform: translateY(-1px);
 }
@@ -1199,7 +1199,7 @@
 .acl-camera-head span {
   display: block;
   margin-bottom: 4px;
-  color: #ff385c;
+  color: #1e3a2b;
   font-size: 12px;
   font-weight: 900;
   text-transform: uppercase;
@@ -1278,8 +1278,8 @@
   cursor: pointer;
 }
 .acl-camera-actions button:last-child {
-  border-color: #ff385c;
-  background: #ff385c;
+  border-color: #1e3a2b;
+  background: #1e3a2b;
   color: #ffffff;
 }
 .acl-camera-actions button:disabled {
@@ -1294,24 +1294,38 @@
 .acl-guest-fields select {
   width: 100%;
   height: 42px;
-  padding: 0 11px;
-  border: 1px solid #dddddd;
+  padding: 0 12px;
+  border: 1.5px solid #cbd5e1;
   border-radius: 8px;
-  background: #ffffff;
-  color: #222222;
+  background: #ffffff !important;
+  color: #0f172a !important;
   font: inherit;
   font-size: 13px;
+  font-weight: 500;
   outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  box-sizing: border-box;
+}
+
+.acl-guest-fields input:focus,
+.acl-guest-fields select:focus {
+  border-color: #166534 !important;
+  box-shadow: 0 0 0 3px rgba(22, 101, 52, 0.15) !important;
+}
+
+.acl-guest-fields input::placeholder {
+  color: #94a3b8;
+  font-weight: 400;
 }
 .acl-guest-field-wide { grid-column: span 2; }
 
 .acl-guest-form--rep {
-  border-color: #cbd5e1;
+  border-color: #93c5fd;
   background: #f8fafc;
 }
 
 .acl-guest-form--rep .acl-guest-form-title {
-  background: #f1f5f9;
+  background: #f0fdf4;
 }
 
 .acl-rep-locked-badge {
@@ -1341,9 +1355,7 @@
 }
 
 .acl-guest-fields input.acl-field-readonly,
-.acl-guest-fields select.acl-field-readonly,
-.acl-guest-fields input:read-only,
-.acl-guest-fields select:disabled {
+.acl-guest-fields select.acl-field-readonly {
   background-color: #f1f5f9 !important;
   color: #475569 !important;
   border-color: #cbd5e1 !important;
@@ -1366,8 +1378,8 @@
   background: rgba(255, 255, 255, 0.96);
 }
 .acl-checkin-actions button { min-height: 44px; padding: 0 20px; border: 1px solid #222222; border-radius: 8px; background: #ffffff; color: #222222; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
-.acl-checkin-actions button:last-child { border-color: #ff385c; background: #ff385c; color: #ffffff; }
-.acl-checkin-actions button:disabled { border-color: #ffd1da; background: #ffd1da; cursor: not-allowed; }
+.acl-checkin-actions button:last-child { border-color: #1e3a2b; background: #1e3a2b; color: #ffffff; }
+.acl-checkin-actions button:disabled { border-color: #dcfce7; background: #dcfce7; cursor: not-allowed; }
 
 @media (max-width: 800px) {
   .acl-checkin-overlay { padding: 0; }
@@ -1416,7 +1428,7 @@
   margin-bottom: 10px;
   padding: 4px 10px;
   border-radius: 999px;
-  background: #fff0f3;
+  background: #f0fdf4;
   color: #e11d48;
   font-size: 11px;
   font-weight: 800;

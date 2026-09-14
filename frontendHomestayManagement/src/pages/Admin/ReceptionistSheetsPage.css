@@ -1,0 +1,764 @@
+.rsheet-page {
+  padding: 24px;
+  max-width: 1400px;
+  margin: 0 auto;
+  font-family: inherit;
+}
+
+.rsheet-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 24px;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.rsheet-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 6px 0;
+}
+
+.rsheet-subtitle {
+  font-size: 14px;
+  color: #6b7280;
+  margin: 0;
+}
+
+.rsheet-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.rsheet-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+}
+
+.rsheet-btn-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.rsheet-btn--primary {
+  background: #10b981;
+  color: #ffffff;
+  border-color: #10b981;
+}
+
+.rsheet-btn--primary:hover:not(:disabled) {
+  background: #059669;
+}
+
+.rsheet-btn--secondary {
+  background: #ffffff;
+  color: #374151;
+  border-color: #d1d5db;
+}
+
+.rsheet-btn--secondary:hover:not(:disabled) {
+  background: #f3f4f6;
+}
+
+.rsheet-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Stats Cards */
+.rsheet-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.rsheet-stat-card {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 18px 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  border: 2px solid #f3f4f6;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.rsheet-stat-card:hover {
+  transform: translateY(-2px);
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.rsheet-stat-card.is-active {
+  border-color: #10b981;
+  background: #f0fdf4;
+}
+
+.rsheet-stat-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.rsheet-stat-icon svg {
+  width: 26px;
+  height: 26px;
+}
+
+.rsheet-stat-icon--green {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.rsheet-stat-icon--blue {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.rsheet-stat-icon--orange {
+  background: #ffedd5;
+  color: #c2410c;
+}
+
+.rsheet-stat-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.rsheet-stat-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #64748b;
+  margin-bottom: 4px;
+}
+
+.rsheet-stat-value-group {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.rsheet-stat-number {
+  font-size: 24px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.rsheet-stat-desc {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+/* Controls & Tabs */
+.rsheet-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.rsheet-tabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #f1f5f9;
+  padding: 4px;
+  border-radius: 10px;
+  overflow-x: auto;
+}
+
+.rsheet-tab {
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #64748b;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+
+.rsheet-tab:hover {
+  color: #0f172a;
+}
+
+.rsheet-tab.is-active {
+  background: #ffffff;
+  color: #0f172a;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.rsheet-filters {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.rsheet-search-wrapper {
+  position: relative;
+  width: 280px;
+}
+
+.rsheet-search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  color: #94a3b8;
+}
+
+.rsheet-search-input {
+  width: 100%;
+  padding: 9px 32px 9px 36px;
+  font-size: 13px;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.rsheet-search-input:focus {
+  border-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+}
+
+.rsheet-search-clear,
+.rsheet-date-clear {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #94a3b8;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.rsheet-date-filter {
+  position: relative;
+}
+
+.rsheet-date-input {
+  padding: 8px 12px;
+  font-size: 13px;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  outline: none;
+}
+
+/* Content & Table */
+.rsheet-content-card {
+  background: #ffffff;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+}
+
+.rsheet-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.rsheet-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  text-align: left;
+}
+
+.rsheet-table th {
+  background: #f8fafc;
+  padding: 14px 18px;
+  font-weight: 600;
+  color: #475569;
+  border-bottom: 1px solid #e2e8f0;
+  white-space: nowrap;
+}
+
+.rsheet-table td {
+  padding: 14px 18px;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: middle;
+}
+
+.rsheet-row:hover {
+  background: #f8fafc;
+}
+
+.rsheet-file-cell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.rsheet-file-badge {
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
+}
+
+.rsheet-file-badge--excel {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.rsheet-file-badge--html {
+  background: #ffedd5;
+  color: #9a3412;
+}
+
+.rsheet-file-badge--pdf {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.rsheet-file-badge--other {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.rsheet-file-details {
+  display: flex;
+  flex-direction: column;
+}
+
+.rsheet-file-name {
+  font-weight: 600;
+  color: #0f172a;
+  word-break: break-all;
+}
+
+.rsheet-file-path {
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.rsheet-folder-tag {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.rsheet-folder-tag--temporary_residence {
+  background: #f0fdf4;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+
+.rsheet-folder-tag--dashboard_reports {
+  background: #eff6ff;
+  color: #1e40af;
+  border: 1px solid #bfdbfe;
+}
+
+.rsheet-folder-tag--invoices {
+  background: #fff7ed;
+  color: #9a3412;
+  border: 1px solid #fed7aa;
+}
+
+.rsheet-size-tag {
+  font-size: 12px;
+  color: #475569;
+  font-family: monospace;
+}
+
+.rsheet-date-text {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.rsheet-row-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.rsheet-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.15s ease;
+}
+
+.rsheet-action-icon {
+  width: 14px;
+  height: 14px;
+}
+
+.rsheet-action-btn--preview {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border-color: #bfdbfe;
+}
+
+.rsheet-action-btn--preview:hover {
+  background: #dbeafe;
+}
+
+.rsheet-action-btn--excel-preview {
+  background: #ecfdf5;
+  color: #047857;
+  border-color: #a7f3d0;
+}
+
+.rsheet-action-btn--excel-preview:hover {
+  background: #d1fae5;
+}
+
+.rsheet-action-btn--download {
+  background: #f1f5f9;
+  color: #334155;
+  border-color: #cbd5e1;
+}
+
+.rsheet-action-btn--download:hover {
+  background: #e2e8f0;
+}
+
+/* Loading & Empty States */
+.rsheet-loading,
+.rsheet-empty,
+.rsheet-error {
+  padding: 48px 24px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.rsheet-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid #e2e8f0;
+  border-top-color: #10b981;
+  border-radius: 50%;
+  animation: rsheet-spin 0.8s linear infinite;
+  margin-bottom: 12px;
+}
+
+@keyframes rsheet-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.rsheet-empty-icon {
+  width: 48px;
+  height: 48px;
+  color: #94a3b8;
+  margin-bottom: 12px;
+}
+
+.rsheet-empty-text {
+  font-size: 14px;
+  color: #64748b;
+  margin-bottom: 16px;
+}
+
+/* Modal */
+.rsheet-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.rsheet-modal {
+  background: #ffffff;
+  border-radius: 16px;
+  width: 100%;
+  max-width: 900px;
+  height: 85vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  animation: rsheet-modal-in 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.rsheet-modal--excel {
+  max-width: 1100px;
+  height: 90vh;
+}
+
+@keyframes rsheet-modal-in {
+  from {
+    transform: scale(0.96);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.rsheet-modal-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.rsheet-modal-title-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.rsheet-modal-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: #ffedd5;
+  color: #c2410c;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rsheet-modal-icon--excel {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.rsheet-modal-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.rsheet-modal-title-group h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.rsheet-modal-title-group p {
+  margin: 2px 0 0 0;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.rsheet-modal-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.rsheet-close-btn {
+  background: transparent;
+  border: none;
+  font-size: 24px;
+  line-height: 1;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+}
+
+.rsheet-close-btn:hover {
+  color: #0f172a;
+  background: #e2e8f0;
+}
+
+.rsheet-modal-body {
+  flex: 1;
+  background: #f1f5f9;
+  padding: 16px;
+  overflow: hidden;
+}
+
+.rsheet-modal-body--excel {
+  background: #ffffff;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.rsheet-iframe {
+  width: 100%;
+  height: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+/* Excel Sheet Toolbar & Table */
+.rsheet-excel-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 18px;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+  flex-wrap: wrap;
+}
+
+.rsheet-excel-sheet-tabs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+}
+
+.rsheet-excel-sheet-tab {
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  background: #ffffff;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.rsheet-excel-sheet-tab:hover {
+  border-color: #10b981;
+  color: #047857;
+}
+
+.rsheet-excel-sheet-tab.is-active {
+  background: #10b981;
+  color: #ffffff;
+  border-color: #10b981;
+  box-shadow: 0 1px 3px rgba(16, 185, 129, 0.2);
+}
+
+.rsheet-excel-search {
+  position: relative;
+  width: 240px;
+}
+
+.rsheet-excel-search-input {
+  width: 100%;
+  padding: 6px 28px 6px 10px;
+  font-size: 12px;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  outline: none;
+  background: #ffffff;
+}
+
+.rsheet-excel-search-input:focus {
+  border-color: #10b981;
+}
+
+.rsheet-excel-search-clear {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.rsheet-excel-grid-container {
+  flex: 1;
+  overflow: auto;
+  position: relative;
+}
+
+.rsheet-excel-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  color: #1e293b;
+}
+
+.rsheet-excel-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.rsheet-excel-row-header,
+.rsheet-excel-col-header {
+  background: #f1f5f9;
+  color: #334155;
+  font-weight: 700;
+  padding: 8px 12px;
+  border: 1px solid #cbd5e1;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.rsheet-excel-row-num {
+  background: #f8fafc;
+  color: #64748b;
+  font-weight: 600;
+  padding: 6px 10px;
+  border: 1px solid #e2e8f0;
+  text-align: center;
+  width: 40px;
+  min-width: 40px;
+  position: sticky;
+  left: 0;
+  z-index: 1;
+}
+
+.rsheet-excel-cell {
+  padding: 6px 12px;
+  border: 1px solid #e2e8f0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: #ffffff;
+}
+
+.rsheet-excel-table tbody tr:hover td {
+  background-color: #f8fafc;
+}

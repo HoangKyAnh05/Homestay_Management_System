@@ -58,8 +58,8 @@
 
 .abk-today-btn {
   padding: 0 14px;
-  background: #ff385c;
-  border-color: #ff385c;
+  background: #1e3a2b;
+  border-color: #1e3a2b;
   color: #ffffff;
 }
 
@@ -463,12 +463,12 @@
 }
 
 .abk-day-head--today strong {
-  color: #e00b41;
+  color: #166534;
 }
 
 .abk-day-head--today:hover {
   background: #ffe4e6;
-  box-shadow: inset 0 -3px 0 #e00b41;
+  box-shadow: inset 0 -3px 0 #166534;
 }
 
 .abk-day-head-meta {
@@ -599,26 +599,28 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 8px;
+  gap: 6px;
 }
 
 .abk-card-name {
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 700;
   color: #0f172a;
-  line-height: 1.3;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  word-break: break-word;
 }
 
 .abk-card-badge {
-  font-size: 10.5px;
+  font-size: 10px;
   font-weight: 700;
-  padding: 2px 7px;
+  padding: 2px 6px;
   border-radius: 9999px;
   white-space: nowrap;
-  line-height: 1.3;
+  line-height: 1.2;
   flex-shrink: 0;
 }
 
@@ -655,23 +657,26 @@
 .abk-card-sub {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 6px;
-  font-size: 11.5px;
+  font-size: 11px;
+  margin-top: 2px;
 }
 
 .abk-card-code {
   color: #64748b;
   font-weight: 600;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 10.5px;
 }
 
 .abk-card-rent-type {
   display: inline-block;
-  padding: 1px 6px;
+  padding: 1px 5px;
   background: #f1f5f9;
   color: #475569;
   border-radius: 4px;
-  font-size: 10px;
+  font-size: 9.5px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.3px;
@@ -680,18 +685,38 @@
 .abk-card-meta {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
   font-size: 11.5px;
   color: #475569;
-  margin-top: 2px;
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px dashed #f1f5f9;
 }
 
-.abk-card-time,
-.abk-card-guests {
+.abk-card-time {
   display: flex;
   align-items: center;
   gap: 5px;
   line-height: 1.3;
+  color: #334155;
+  font-weight: 500;
+  font-size: 11px;
+}
+
+.abk-card-bottom-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.abk-card-guests {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: #64748b;
 }
 
 .abk-card-time svg,
@@ -700,17 +725,23 @@
   flex-shrink: 0;
 }
 
+.abk-card-price-tag {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
 .abk-detail-link {
   width: 100%;
-  height: 28px;
-  margin-top: 4px;
+  height: 26px;
+  margin-top: 6px;
   border: 1px solid #e2e8f0;
   border-radius: 6px;
-  background: #f8fafc;
+  background: #ffffff;
   color: #334155;
   font: inherit;
-  font-size: 12px;
-  font-weight: 700;
+  font-size: 11.5px;
+  font-weight: 600;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -872,7 +903,7 @@
 }
 
 .abk-action-primary {
-  background: #ff385c;
+  background: #1e3a2b;
   color: #ffffff;
 }
 
@@ -1223,7 +1254,7 @@
 
 .abk-form-grid input:focus,
 .abk-form-grid select:focus {
-  border-color: #ff385c;
+  border-color: #1e3a2b;
   box-shadow: 0 0 0 3px rgba(255,56,92,0.12);
 }
 
@@ -1374,7 +1405,7 @@
   height: 32px;
   padding: 0 12px;
   border-radius: 8px;
-  background: #ff385c;
+  background: #1e3a2b;
   color: #ffffff;
   font-size: 12px;
   font-weight: 900;
@@ -1478,7 +1509,7 @@
 
 .abk-room-option--busy {
   border-color: #fecdd3;
-  border-left-color: #ff385c;
+  border-left-color: #1e3a2b;
   background: #fff1f2;
   cursor: not-allowed;
 }
@@ -1591,7 +1622,7 @@
 }
 
 .abk-service-picker-row--selected {
-  border-color: #ff385c;
+  border-color: #1e3a2b;
   background: #fff1f4;
   box-shadow: 0 0 0 3px rgba(255,56,92,0.1);
 }
@@ -3070,3 +3101,381 @@
   }
 }
 
+/* ─────────────────────────────────────────────────────────
+   EASY / INTUITIVE BOOKING CARDS VIEW ("Lớp 5 nhìn cũng hiểu")
+   ───────────────────────────────────────────────────────── */
+.abk-view-mode-toggle {
+  display: inline-flex;
+  align-items: center;
+  background: #f1f5f9;
+  padding: 3px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.abk-mode-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #64748b;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.abk-mode-btn:hover {
+  color: #0f172a;
+}
+
+.abk-mode-btn.is-active {
+  background: #ffffff;
+  color: #0f172a;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.abk-easy-cards-container {
+  margin-top: 16px;
+  margin-bottom: 32px;
+  font-family: inherit;
+}
+
+.abk-easy-tabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 22px;
+  flex-wrap: wrap;
+}
+
+.abk-easy-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  background: #ffffff;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.abk-easy-tab:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+
+.abk-easy-tab.is-active {
+  background: #0f172a;
+  color: #ffffff;
+  border-color: #0f172a;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.12);
+}
+
+.abk-tab-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.abk-tab-dot--orange {
+  background-color: #f97316;
+}
+
+.abk-tab-dot--amber {
+  background-color: #f59e0b;
+}
+
+.abk-tab-dot--blue {
+  background-color: #3b82f6;
+}
+
+.abk-tab-dot--green {
+  background-color: #10b981;
+}
+
+.abk-easy-tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.abk-easy-tab.is-active .abk-easy-tab-badge {
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+}
+
+/* Grid & Cards */
+.abk-easy-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 18px;
+}
+
+.abk-easy-card {
+  background: #ffffff;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  transition: all 0.2s ease;
+}
+
+.abk-easy-card:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+}
+
+.abk-easy-card.is-unassigned-card {
+  border-color: #fed7aa;
+  background: #fffdfa;
+}
+
+.abk-easy-card.is-staying-card {
+  border-color: #bfdbfe;
+  background: #fafcff;
+}
+
+/* Card Head */
+.abk-easy-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.abk-easy-customer-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.abk-easy-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: #f1f5f9;
+  color: #334155;
+  border: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.abk-easy-card.is-staying-card .abk-easy-avatar {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border-color: #bfdbfe;
+}
+
+.abk-easy-cust-meta {
+  display: flex;
+  flex-direction: column;
+}
+
+.abk-easy-cust-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.25;
+}
+
+.abk-easy-phone {
+  font-size: 12px;
+  font-weight: 500;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+/* Room Banner */
+.abk-easy-room-banner {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.abk-easy-room-unassigned {
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 8px;
+  padding: 9px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.abk-easy-room-assigned {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+  padding: 9px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.abk-easy-room-indicator {
+  width: 4px;
+  height: 28px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.abk-easy-room-indicator--warn {
+  background: #f97316;
+}
+
+.abk-easy-room-indicator--active {
+  background: #10b981;
+}
+
+.abk-easy-room-text-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.abk-easy-room-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.abk-easy-room-unassigned .abk-easy-room-title {
+  color: #c2410c;
+}
+
+.abk-easy-room-assigned .abk-easy-room-title {
+  color: #166534;
+}
+
+.abk-easy-room-sub {
+  font-size: 12px;
+  color: #64748b;
+  margin-top: 1px;
+}
+
+/* Info Grid */
+.abk-easy-info-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: #f8fafc;
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: 1px solid #f1f5f9;
+}
+
+.abk-easy-info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 12px;
+  padding-top: 8px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.abk-easy-info-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.abk-easy-info-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #94a3b8;
+  margin-bottom: 2px;
+}
+
+.abk-easy-info-value {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #334155;
+}
+
+.abk-easy-price {
+  font-size: 15px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+/* Actions Footer */
+.abk-easy-card-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(105px, 1fr));
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 6px;
+}
+
+.abk-easy-btn {
+  padding: 8px 12px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.15s ease;
+  text-align: center;
+  white-space: nowrap;
+  font-family: inherit;
+}
+
+.abk-easy-btn--assign {
+  background: #f97316;
+  color: #ffffff;
+}
+
+.abk-easy-btn--assign:hover {
+  background: #ea580c;
+}
+
+.abk-easy-btn--swap {
+  background: #ffffff;
+  color: #1d4ed8;
+  border-color: #bfdbfe;
+}
+
+.abk-easy-btn--swap:hover {
+  background: #eff6ff;
+}
+
+.abk-easy-btn--checkin {
+  background: #10b981;
+  color: #ffffff;
+}
+
+.abk-easy-btn--checkin:hover {
+  background: #059669;
+}
+
+.abk-easy-btn--detail {
+  background: #ffffff;
+  color: #475569;
+  border-color: #cbd5e1;
+}
+
+.abk-easy-btn--detail:hover {
+  background: #f8fafc;
+  color: #0f172a;
+  border-color: #94a3b8;
+}

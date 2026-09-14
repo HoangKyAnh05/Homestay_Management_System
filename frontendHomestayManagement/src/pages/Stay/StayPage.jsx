@@ -1,10 +1,11 @@
-﻿import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { getStoredToken, getStoredUser, logout } from '../../services/authService'
 import { houseTypeName } from '../../utils/houseType'
 import { resolveImageUrl } from '../../utils/imageUrl'
 import './StayPage.css'
 
 const API_BASE = (import.meta.env.VITE_API_URL || '') + '/api/stays'
+const API_BASE_URL = (import.meta.env.VITE_API_URL || '') + '/api'
 
 function authHeaders(json = false) {
   return {
@@ -44,10 +45,11 @@ function ServiceIcon({ type }) {
 function NavIcon({ type }) {
   const paths = {
     home: <><path d="m4 11 8-7 8 7" /><path d="M6.5 10v10h11V10M10 20v-6h4v6" /></>,
+    extend: <><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /><path d="M12 14v4M10 16h4" /></>,
     services: <><path d="M12 3v18M3 12h18" /><circle cx="12" cy="12" r="8" /></>,
     orders: <><path d="M7 4h10M7 9h10M7 14h7M7 19h5" /><path d="M4 4h.01M4 9h.01M4 14h.01M4 19h.01" /></>,
   }
-  return <svg viewBox="0 0 24 24" aria-hidden="true">{paths[type]}</svg>
+  return <svg viewBox="0 0 24 24" aria-hidden="true">{paths[type] || paths.home}</svg>
 }
 
 function sourceLabel(source) {
@@ -79,13 +81,24 @@ function StayPage() {
   const [stays, setStays] = useState([])
   const [services, setServices] = useState([])
   const [selectedAccessId, setSelectedAccessId] = useState('')
-  const [activeTab, setActiveTab] = useState('home')
+  const [activeTab, setActiveTab] = useState(() => {
+    const params = new URLSearchParams(window.location.search)
+    return params.get('tab') === 'extend' || window.location.hash === '#extend' ? 'extend' : 'home'
+  })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [selectedService, setSelectedService] = useState(null)
   const [quantity, setQuantity] = useState(1)
   const [ordering, setOrdering] = useState(false)
   const [notice, setNotice] = useState('')
+
+  // Extension state
+  const [extDays, setExtDays] = useState(1)
+  const [checkingExt, setCheckingExt] = useState(false)
+  const [extResult, setExtResult] = useState(null)
+  const [extSaving, setExtSaving] = useState(false)
+  const [extError, setExtError] = useState('')
+  const [extSuccess, setExtSuccess] = useState('')
 
   const applyPortalData = (portalData) => {
     setStays(portalData.stays)
@@ -148,6 +161,71 @@ function StayPage() {
     [selectedStay],
   )
 
+  // Extension check handler
+  const checkExtension = async (targetDays) => {
+    if (!selectedStay?.bookingId) return
+    setCheckingExt(true)
+    setExtError('')
+    try {
+      const res = await fetch(`${API_BASE_URL}/bookings/my/${selectedStay.bookingId}/check-extension`, {
+        method: 'POST',
+        headers: authHeaders(true),
+        body: JSON.stringify({
+          bookingDetailId: selectedStay.bookingDetailId,
+          additionalHours: null,
+          additionalDays: targetDays,
+        }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.message || 'Không thể kiểm tra tình trạng phòng')
+      setExtResult(data)
+    } catch (err) {
+      setExtError(err.message)
+    } finally {
+      setCheckingExt(false)
+    }
+  }
+
+  useEffect(() => {
+    if (activeTab === 'extend' && selectedStay?.bookingId) {
+      checkExtension(extDays)
+    }
+  }, [activeTab, selectedStay, extDays])
+
+  const handleConfirmExtend = async (switchRoomId = null) => {
+    if (!selectedStay?.bookingId) return
+    setExtSaving(true)
+    setExtError('')
+    setExtSuccess('')
+    try {
+      const res = await fetch(`${API_BASE_URL}/bookings/my/${selectedStay.bookingId}/extend`, {
+        method: 'POST',
+        headers: authHeaders(true),
+        body: JSON.stringify({
+          bookingDetailId: selectedStay.bookingDetailId,
+          additionalHours: null,
+          additionalDays: extDays,
+          switchRoomId: switchRoomId,
+        }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.message || 'Không thể gia hạn lưu trú')
+      setExtSuccess(
+        switchRoomId
+          ? '✓ Đã chuyển đổi sang phòng mới thành công! Bạn có thể tiếp tục lưu trú.'
+          : `✓ Đã gia hạn thành công thêm ${extDays} ngày! Chúc bạn có kỳ nghỉ tuyệt vời!`
+      )
+      await refreshPortal()
+      setTimeout(() => {
+        checkExtension(extDays)
+      }, 1000)
+    } catch (err) {
+      setExtError(err.message)
+    } finally {
+      setExtSaving(false)
+    }
+  }
+
   const orderService = async () => {
     if (!selectedStay || !selectedService) return
     setOrdering(true)
@@ -203,7 +281,7 @@ function StayPage() {
         {!loading && error && <div className="stay-error" role="alert">{error}</div>}
         {!loading && !error && stays.length === 0 && (
           <section className="stay-empty">
-            
+            <span>🏠</span>
             <h1>Hiện không có kỳ lưu trú đang hoạt động</h1>
             <p>Khi bạn check-in, thông tin phòng và dịch vụ sẽ xuất hiện tại đây.</p>
             <a href="/home">Về trang chủ</a>
@@ -251,12 +329,31 @@ function StayPage() {
                 </section>
 
                 <section className="stay-quick">
-                  <button type="button" onClick={() => setActiveTab('services')}><span><ServiceIcon type="FACILITY" /></span><b>Gọi dịch vụ</b><small>Tiện ích tận phòng</small><i>→</i></button>
-                  <button type="button" onClick={() => setActiveTab('orders')}><span><NavIcon type="orders" /></span><b>Chi phí dịch vụ</b><small>{formatMoney(selectedStayTotal)}</small><i>→</i></button>
+                  <button type="button" onClick={() => setActiveTab('extend')}>
+                    <span style={{ fontSize: '20px' }}>📅</span>
+                    <b>Book thêm ngày</b>
+                    <small>Gia hạn lưu trú</small>
+                    <i>→</i>
+                  </button>
+                  <button type="button" onClick={() => setActiveTab('services')}>
+                    <span><ServiceIcon type="FACILITY" /></span>
+                    <b>Gọi dịch vụ</b>
+                    <small>Tiện ích tận phòng</small>
+                    <i>→</i>
+                  </button>
+                  <button type="button" onClick={() => setActiveTab('orders')}>
+                    <span><NavIcon type="orders" /></span>
+                    <b>Chi phí dịch vụ</b>
+                    <small>{formatMoney(selectedStayTotal)}</small>
+                    <i>→</i>
+                  </button>
                 </section>
 
                 <section className="stay-section">
-                  <div className="stay-section-title"><div><span>DÀNH CHO PHÒNG CỦA BẠN</span><h2>Dịch vụ nổi bật</h2></div><button type="button" onClick={() => setActiveTab('services')}>Xem tất cả</button></div>
+                  <div className="stay-section-title">
+                    <div><span>DÀNH CHO PHÒNG CỦA BẠN</span><h2>Dịch vụ nổi bật</h2></div>
+                    <button type="button" onClick={() => setActiveTab('services')}>Xem tất cả</button>
+                  </div>
                   <div className="stay-featured">
                     {services.slice(0, 3).map(service => (
                       <button type="button" key={`${service.type}-${service.id}`} onClick={() => { setSelectedService(service); setQuantity(1) }}>
@@ -268,6 +365,191 @@ function StayPage() {
                   </div>
                 </section>
               </>
+            )}
+
+            {/* TAB BOOK THÊM NGÀY / GIA HẠN LƯU TRÚ */}
+            {activeTab === 'extend' && selectedStay && (
+              <section className="stay-section" style={{ marginTop: '8px' }}>
+                <div className="stay-section-title">
+                  <div>
+                    <span>GIA HẠN PHÒNG</span>
+                    <h2>Book Thêm Ngày / Gia Hạn Lưu Trú</h2>
+                  </div>
+                  <button type="button" onClick={() => setActiveTab('home')}>← Về phòng</button>
+                </div>
+
+                <div
+                  style={{
+                    background: '#ffffff',
+                    borderRadius: '20px',
+                    padding: '20px',
+                    border: '1px solid #e5e7eb',
+                    boxShadow: '0 8px 30px rgba(0,0,0,0.04)',
+                    marginBottom: '20px'
+                  }}
+                >
+                  {extResult?.warningNotice && (
+                    <div
+                      style={{
+                        background: '#fffbeb',
+                        border: '1px solid #fde68a',
+                        color: '#92400e',
+                        padding: '12px 16px',
+                        borderRadius: '12px',
+                        fontSize: '14px',
+                        fontWeight: 600,
+                        marginBottom: '16px',
+                        lineHeight: '1.5'
+                      }}
+                    >
+                      {extResult.warningNotice}
+                    </div>
+                  )}
+
+                  {extError && (
+                    <div style={{ background: '#fef2f2', color: '#991b1b', padding: '12px 16px', borderRadius: '10px', marginBottom: '14px', fontSize: '13px' }}>
+                      {extError}
+                    </div>
+                  )}
+                  {extSuccess && (
+                    <div style={{ background: '#f0fdf4', color: '#166534', padding: '12px 16px', borderRadius: '10px', marginBottom: '14px', fontSize: '13px', fontWeight: 600 }}>
+                      {extSuccess}
+                    </div>
+                  )}
+
+                  {/* Info Header */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', padding: '14px', background: '#f8fafc', borderRadius: '14px', marginBottom: '16px' }}>
+                    <div>
+                      <div style={{ fontSize: '12px', color: '#64748b' }}>Phòng đang ở</div>
+                      <strong style={{ fontSize: '15px', color: '#0f172a' }}>Phòng {selectedStay.roomNumber} ({houseTypeName(selectedStay)})</strong>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '12px', color: '#64748b' }}>Giờ trả phòng hiện tại</div>
+                      <strong style={{ fontSize: '15px', color: '#ea580c' }}>{formatDateTime(selectedStay.checkOutTarget || extResult?.currentCheckOut)}</strong>
+                    </div>
+                  </div>
+
+                  {/* Days Selection */}
+                  <div style={{ marginBottom: '18px' }}>
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#334155', marginBottom: '8px' }}>
+                      Chọn số ngày muốn book thêm (trả phòng lúc 11:00 trưa):
+                    </label>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                      {[1, 2, 3, 5, 7].map((d) => (
+                        <button
+                          key={d}
+                          type="button"
+                          style={{
+                            flex: '1 0 calc(50% - 8px)',
+                            padding: '10px 12px',
+                            borderRadius: '10px',
+                            border: extDays === d ? '2px solid #174f3b' : '1px solid #cbd5e1',
+                            background: extDays === d ? '#174f3b' : '#ffffff',
+                            color: extDays === d ? '#ffffff' : '#1e293b',
+                            fontWeight: 600,
+                            fontSize: '13px',
+                            cursor: 'pointer'
+                          }}
+                          onClick={() => setExtDays(d)}
+                        >
+                          +{d} Ngày {d === 1 ? '(đến 11:00 ngày mai)' : ''}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Live Check Result Box */}
+                  {checkingExt ? (
+                    <div style={{ padding: '24px', textAlign: 'center', color: '#64748b', fontSize: '13px' }}>
+                      ⏳ Đang kiểm tra phòng trống theo thời gian thực...
+                    </div>
+                  ) : extResult ? (
+                    extResult.currentRoomAvailable ? (
+                      /* Room is free */
+                      <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '14px', padding: '18px', marginTop: '12px' }}>
+                        <div style={{ color: '#166534', fontWeight: 700, fontSize: '14px', marginBottom: '6px' }}>✓ Phòng còn trống</div>
+                        <p style={{ fontSize: '13px', color: '#15803d', margin: '0 0 14px' }}>{extResult.message}</p>
+                        <div style={{ background: '#ffffff', borderRadius: '10px', padding: '12px', display: 'grid', gap: '8px', fontSize: '13px', marginBottom: '14px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <span style={{ color: '#64748b' }}>Thời gian trả phòng mới:</span>
+                            <strong>{formatDateTime(extResult.newCheckOut)}</strong>
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <span style={{ color: '#64748b' }}>Thời gian gia hạn:</span>
+                            <strong>+{extResult.additionalDays || extDays} ngày</strong>
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px dashed #e2e8f0', paddingTop: '8px' }}>
+                            <span style={{ color: '#334155', fontWeight: 600 }}>Phí gia hạn lưu trú:</span>
+                            <strong style={{ color: '#16a34a', fontSize: '17px' }}>{formatMoney(extResult.extensionFee)}</strong>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          style={{
+                            width: '100%',
+                            padding: '13px',
+                            borderRadius: '12px',
+                            border: 'none',
+                            background: '#174f3b',
+                            color: '#ffffff',
+                            fontWeight: 700,
+                            fontSize: '15px',
+                            cursor: 'pointer',
+                            boxShadow: '0 8px 20px rgba(23, 79, 59, 0.2)'
+                          }}
+                          disabled={extSaving}
+                          onClick={() => handleConfirmExtend(null)}
+                        >
+                          {extSaving ? 'Đang xử lý...' : `✓ Xác nhận Book thêm ngày (${formatMoney(extResult.extensionFee)})`}
+                        </button>
+                      </div>
+                    ) : (
+                      /* Room is booked by another customer */
+                      <div style={{ background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: '14px', padding: '18px', marginTop: '12px' }}>
+                        <div style={{ color: '#c2410c', fontWeight: 700, fontSize: '14px', marginBottom: '6px' }}>⚠️ Phòng đã có khách đặt trước</div>
+                        <p style={{ fontSize: '13px', color: '#9a3412', margin: '0 0 14px' }}>
+                          Phòng {extResult.roomNumber} đã có khách khác đặt trước cho ngày mai. Bạn có thể chọn đổi sang phòng trống khác dưới đây để tiếp tục lưu trú:
+                        </p>
+
+                        {extResult.alternativeRooms && extResult.alternativeRooms.length > 0 ? (
+                          <div style={{ display: 'grid', gap: '10px' }}>
+                            {extResult.alternativeRooms.map((alt) => (
+                              <div key={alt.roomId} style={{ background: '#ffffff', border: '1px solid #ffedd5', borderRadius: '12px', padding: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div>
+                                  <strong style={{ display: 'block', fontSize: '14px', color: '#0f172a' }}>Phòng {alt.roomNumber}</strong>
+                                  <span style={{ fontSize: '12px', color: '#64748b' }}>{alt.roomTypeName} · Tối đa {alt.capacityAdults} người</span>
+                                  <div style={{ fontSize: '13px', fontWeight: 700, color: '#16a34a', marginTop: '2px' }}>
+                                    {formatMoney(alt.totalPrice)} (+{extResult.additionalDays || extDays} ngày)
+                                  </div>
+                                </div>
+                                <button
+                                  type="button"
+                                  style={{
+                                    padding: '8px 14px',
+                                    borderRadius: '8px',
+                                    border: 'none',
+                                    background: '#ea580c',
+                                    color: '#ffffff',
+                                    fontWeight: 700,
+                                    fontSize: '12px',
+                                    cursor: 'pointer'
+                                  }}
+                                  disabled={extSaving}
+                                  onClick={() => handleConfirmExtend(alt.roomId)}
+                                >
+                                  {extSaving ? 'Đang đổi...' : 'Đổi sang phòng này →'}
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div style={{ fontSize: '13px', color: '#64748b' }}>Hiện tại các phòng khác cũng đã kín lịch cho ngày này.</div>
+                        )}
+                      </div>
+                    )
+                  ) : null}
+                </div>
+              </section>
             )}
 
             {activeTab === 'services' && (
@@ -315,6 +597,7 @@ function StayPage() {
       {stays.length > 0 && (
         <nav className="stay-bottom-nav">
           <button type="button" className={activeTab === 'home' ? 'active' : ''} onClick={() => setActiveTab('home')}><span><NavIcon type="home" /></span>Phòng</button>
+
           <button type="button" className={activeTab === 'services' ? 'active' : ''} onClick={() => setActiveTab('services')}><span><NavIcon type="services" /></span>Dịch vụ</button>
           <button type="button" className={activeTab === 'orders' ? 'active' : ''} onClick={() => setActiveTab('orders')}><span><NavIcon type="orders" /></span>Đã gọi</button>
         </nav>
