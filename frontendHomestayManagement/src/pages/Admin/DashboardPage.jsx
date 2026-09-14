@@ -91,84 +91,7 @@ function totalValue(items) {
 }
 
 /**
- * Component Popover Tooltip Soi Chi Tiết & Công Thức Toán Học
- */
-function MetricInspectPopover({ info, position, onClose }) {
-  if (!info) return null
-
-  return (
-    <div
-      className="dash-inspect-popover"
-      style={{
-        top: position.y,
-        left: position.x,
-      }}
-      onClick={(e) => e.stopPropagation()}
-    >
-      <div className="dash-inspect-head">
-        <div className="dash-inspect-title-wrap">
-          <span className="dash-inspect-badge">CÔNG THỨC & SỐ LIỆU</span>
-          <h4>{info.title}</h4>
-          {info.subtitle && <p className="dash-inspect-sub">{info.subtitle}</p>}
-        </div>
-        {onClose && (
-          <button type="button" className="dash-inspect-close" onClick={onClose} title="Đóng">
-            
-          </button>
-        )}
-      </div>
-
-      {info.formula && (
-        <div className="dash-inspect-section">
-          <div className="dash-inspect-label">Công thức tính toán:</div>
-          <div className="dash-inspect-formula">
-            <code>{info.formula}</code>
-          </div>
-        </div>
-      )}
-
-      {info.calculation && (
-        <div className="dash-inspect-section">
-          <div className="dash-inspect-label">Minh họa phép tính với số liệu thực tế:</div>
-          <div className="dash-inspect-calc">
-            {info.calculation}
-          </div>
-        </div>
-      )}
-
-      {Array.isArray(info.breakdown) && info.breakdown.length > 0 && (
-        <div className="dash-inspect-section">
-          <div className="dash-inspect-label">Chi tiết các thành phần cấu thành:</div>
-          <div className="dash-inspect-table">
-            {info.breakdown.map((item, idx) => (
-              <div className="dash-inspect-row" key={idx}>
-                <div className="dash-inspect-row-left">
-                  <div>
-                    <strong>{item.label}</strong>
-                    {item.desc && <small>{item.desc}</small>}
-                  </div>
-                </div>
-                <div className="dash-inspect-row-right">
-                  <strong>{item.value}</strong>
-                  {item.percent && <span>({item.percent})</span>}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {info.source && (
-        <div className="dash-inspect-footer">
-          <span><strong>Nguồn dữ liệu:</strong> {info.source}</span>
-        </div>
-      )}
-    </div>
-  )
-}
-
-/**
- * Modal soi chi tiết khi bấm Hold/Click cố định
+ * Modal soi chi tiết giải trình số liệu & công thức toán học khi BẤM (Click)
  */
 function MetricInspectModal({ info, onClose }) {
   if (!info) return null
@@ -244,18 +167,16 @@ function MetricInspectModal({ info, onClose }) {
   )
 }
 
-function KpiCard({ label, value, hint, tone, inspectInfo, onInspectHover, onInspectLeave, onInspectClick }) {
+function KpiCard({ label, value, hint, tone, inspectInfo, onInspectClick }) {
   return (
     <article
       className={`dash-kpi${tone ? ` dash-kpi--${tone}` : ''} dash-inspectable`}
-      onMouseEnter={(e) => onInspectHover(inspectInfo, e)}
-      onMouseLeave={onInspectLeave}
       onClick={() => onInspectClick(inspectInfo)}
-      title="Rê chuột hoặc click để xem chi tiết & công thức tính toán"
+      title="Bấm vào để xem chi tiết giải trình & công thức tính toán"
     >
       <div className="dash-kpi-header">
         <span>{label}</span>
-        <span className="dash-inspect-hint-icon" title="Xem chi tiết & công thức">ℹ️</span>
+        <span className="dash-inspect-hint-icon" title="Bấm xem chi tiết & công thức">ℹ️</span>
       </div>
       <strong>{value}</strong>
       <small>{hint}</small>
@@ -275,7 +196,7 @@ function formatCompactMoney(value) {
   return num + 'đ'
 }
 
-function RevenueChart({ data, onInspectHover, onInspectLeave, onInspectClick }) {
+function RevenueChart({ data, onInspectClick }) {
   const max = Math.max(...data.map(item => Number(item.totalRevenue || 0)), 1)
   const totalPeriodRevenue = data.reduce((sum, item) => sum + Number(item.totalRevenue || 0), 0)
   const totalRoom = data.reduce((sum, item) => sum + Number(item.roomRevenue || 0), 0)
@@ -287,7 +208,7 @@ function RevenueChart({ data, onInspectHover, onInspectLeave, onInspectClick }) 
       <div className="dash-panel-head">
         <div>
           <h2>📊 Doanh thu theo ngày (Thực tế)</h2>
-          <p>Biểu đồ cột trực quan: Tiền phòng (Xanh) + Dịch vụ (Cam) + Phạt/Phụ thu (Tím). <em>(Rê chuột vào từng cột để xem chi tiết)</em></p>
+          <p>Biểu đồ cột trực quan: Tiền phòng (Xanh) + Dịch vụ (Cam) + Phạt/Phụ thu (Tím). <em>(Bấm vào từng cột để xem chi tiết giải trình)</em></p>
         </div>
         <div className="dash-revenue-legend-head">
           <span className="dash-leg-tag dash-leg-room">🟦 Phòng: {formatCompactMoney(totalRoom)}</span>
@@ -345,9 +266,8 @@ function RevenueChart({ data, onInspectHover, onInspectLeave, onInspectClick }) 
                 <div
                   className="dash-bar-day dash-inspectable"
                   key={item.date}
-                  onMouseEnter={(e) => onInspectHover(dayInspectInfo, e)}
-                  onMouseLeave={onInspectLeave}
                   onClick={() => onInspectClick(dayInspectInfo)}
+                  title={`Bấm để xem chi tiết doanh thu ngày ${formatFullDate(item.date)}`}
                 >
                   <div className="dash-bar-value-label">
                     {total > 0 ? formatCompactMoney(total) : ''}
@@ -369,7 +289,7 @@ function RevenueChart({ data, onInspectHover, onInspectLeave, onInspectClick }) 
   )
 }
 
-function OccupancyChart({ data, totalRooms, onInspectHover, onInspectLeave, onInspectClick }) {
+function OccupancyChart({ data, totalRooms, onInspectClick }) {
   const average = data.length
     ? data.reduce((sum, item) => sum + Number(item.occupancyRate || 0), 0) / data.length
     : 0
@@ -420,9 +340,8 @@ function OccupancyChart({ data, totalRooms, onInspectHover, onInspectLeave, onIn
             <div
               className="dash-occ-row dash-inspectable"
               key={item.date}
-              onMouseEnter={(e) => onInspectHover(occInspectInfo, e)}
-              onMouseLeave={onInspectLeave}
               onClick={() => onInspectClick(occInspectInfo)}
+              title={`Bấm để xem chi tiết công suất ngày ${formatFullDate(item.date)}`}
             >
               <span className="dash-occ-date">{formatShortDate(item.date)}</span>
               <div className="dash-occ-bar-track">
@@ -448,7 +367,7 @@ function OccupancyChart({ data, totalRooms, onInspectHover, onInspectLeave, onIn
 const REVENUE_PALETTE = ['#0ea5e9', '#f59e0b', '#8b5cf6', '#64748b']
 const STATUS_PALETTE = ['#22c55e', '#0ea5e9', '#ef4444', '#f59e0b', '#8b5cf6', '#64748b']
 
-function DonutChart({ title, subtitle, items, type = 'money', palette = REVENUE_PALETTE, onInspectHover, onInspectLeave, onInspectClick }) {
+function DonutChart({ title, subtitle, items, type = 'money', palette = REVENUE_PALETTE, onInspectClick }) {
   const total = totalValue(items)
   const colors = palette
   let cursor = 0
@@ -492,10 +411,8 @@ function DonutChart({ title, subtitle, items, type = 'money', palette = REVENUE_
         <div
           className="dash-donut dash-inspectable"
           style={{ background: `conic-gradient(${gradient})` }}
-          onMouseEnter={(e) => onInspectHover(wholeInspectInfo, e)}
-          onMouseLeave={onInspectLeave}
           onClick={() => onInspectClick(wholeInspectInfo)}
-          title="Rê chuột để xem chi tiết cơ cấu tỉ trọng"
+          title="Bấm để xem chi tiết cơ cấu tỉ trọng"
         >
           <span>{type === 'money' ? formatMoney(total) : formatNumber(total)}</span>
         </div>
@@ -526,9 +443,8 @@ function DonutChart({ title, subtitle, items, type = 'money', palette = REVENUE_
               <div
                 key={item.name}
                 className="dash-inspectable"
-                onMouseEnter={(e) => onInspectHover(itemInspectInfo, e)}
-                onMouseLeave={onInspectLeave}
                 onClick={() => onInspectClick(itemInspectInfo)}
+                title={`Bấm để xem chi tiết ${itemLabel}`}
               >
                 <i style={{ background: colors[index % colors.length] }} />
                 <span>{itemLabel}</span>
@@ -542,7 +458,7 @@ function DonutChart({ title, subtitle, items, type = 'money', palette = REVENUE_
   )
 }
 
-function RankingPanel({ title, subtitle, items, valueType = 'money', totalBasis = 0, onInspectHover, onInspectLeave, onInspectClick }) {
+function RankingPanel({ title, subtitle, items, valueType = 'money', totalBasis = 0, onInspectClick }) {
   const max = Math.max(...items.map(item => Number(item.value || item.count || 0)), 1)
   const totalRankValue = items.reduce((sum, item) => sum + Number(item.value || item.count || 0), 0)
 
@@ -584,9 +500,8 @@ function RankingPanel({ title, subtitle, items, valueType = 'money', totalBasis 
             <div
               className="dash-rank-row dash-inspectable"
               key={item.name}
-              onMouseEnter={(e) => onInspectHover(rankInspectInfo, e)}
-              onMouseLeave={onInspectLeave}
               onClick={() => onInspectClick(rankInspectInfo)}
+              title={`Bấm để xem chi tiết ${item.name}`}
             >
               <span>{index + 1}</span>
               <div>
@@ -694,11 +609,8 @@ function DashboardPage() {
   const [generatingWeekly, setGeneratingWeekly] = useState(false)
   const [weeklyMessage, setWeeklyMessage] = useState('')
 
-  // State cho Popover Hover & Modal Click Hold
-  const [hoverInspectInfo, setHoverInspectInfo] = useState(null)
-  const [popoverPos, setPopoverPos] = useState({ x: 0, y: 0 })
+  // State cho Modal Click Soi Chi Tiết & Giải Trình
   const [modalInspectInfo, setModalInspectInfo] = useState(null)
-  const hoverTimeoutRef = useRef(null)
 
 function triggerFileDownload(blob, fileName) {
   const url = window.URL.createObjectURL(blob)
@@ -821,31 +733,7 @@ function triggerFileDownload(blob, fileName) {
     loadSummary()
   }, [loadSummary])
 
-  const handleInspectHover = (info, event) => {
-    if (!info) return
-    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current)
-
-    const rect = event.currentTarget.getBoundingClientRect()
-    // Vị trí popover thông minh tránh tràn mép phải màn hình
-    const popoverWidth = 360
-    let x = rect.left + window.scrollX
-    if (x + popoverWidth > window.innerWidth - 20) {
-      x = Math.max(10, window.innerWidth - popoverWidth - 20)
-    }
-    let y = rect.bottom + window.scrollY + 8
-
-    setPopoverPos({ x, y })
-    setHoverInspectInfo(info)
-  }
-
-  const handleInspectLeave = () => {
-    hoverTimeoutRef.current = setTimeout(() => {
-      setHoverInspectInfo(null)
-    }, 150)
-  }
-
   const handleInspectClick = (info) => {
-    setHoverInspectInfo(null)
     setModalInspectInfo(info)
   }
 
@@ -874,21 +762,21 @@ function triggerFileDownload(blob, fileName) {
       calculation: `${formatExactMoney(roomRev)} (Tiền phòng) + ${formatExactMoney(servRev)} (Dịch vụ) + ${formatExactMoney(penRev)} (Phạt) = ${formatExactMoney(totalRev)}`,
       breakdown: [
         {
-          icon: '',
+          icon: '🏨',
           label: 'Doanh thu Tiền phòng',
           value: formatExactMoney(roomRev),
           percent: totalRev > 0 ? `${((roomRev / totalRev) * 100).toFixed(1)}%` : '0%',
           desc: 'Tổng tiền thuê phòng thực thu từ các hóa đơn',
         },
         {
-          icon: '️',
+          icon: '🥤',
           label: 'Doanh thu Dịch vụ',
           value: formatExactMoney(servRev),
           percent: totalRev > 0 ? `${((servRev / totalRev) * 100).toFixed(1)}%` : '0%',
           desc: 'Tiện ích, đồ uống, giặt là, thuê xe máy',
         },
         {
-          icon: '️',
+          icon: '⚠️',
           label: 'Phạt & Phụ phí',
           value: formatExactMoney(penRev),
           percent: totalRev > 0 ? `${((penRev / totalRev) * 100).toFixed(1)}%` : '0%',
@@ -908,7 +796,7 @@ function triggerFileDownload(blob, fileName) {
       formula: 'Tổng Booking = COUNT(DISTINCT Booking ID có ngày lưu trú giao thoa với kỳ lọc)',
       calculation: `Ghi nhận ${bookingCount} đơn đặt phòng duy nhất với các trạng thái lưu trú bên dưới`,
       breakdown: statusItems.map((item) => ({
-        icon: '',
+        icon: '📋',
         label: statusLabel(item.name),
         value: `${formatNumber(item.count || item.value)} lượt phòng`,
         desc: statusDescription(item.name),
@@ -929,19 +817,19 @@ function triggerFileDownload(blob, fileName) {
       calculation: `${formatNumber(occupiedNights)} phòng·ngày / (${totalRooms} phòng × ${daysInPeriod} ngày) × 100% = ${avgRate.toFixed(1)}%`,
       breakdown: [
         {
-          icon: '️',
+          icon: '🛏️',
           label: 'Số phòng-đêm đã sử dụng',
           value: `${formatNumber(occupiedNights)} phòng·ngày`,
           desc: 'Tổng số đêm có khách lưu trú tại các phòng',
         },
         {
-          icon: '',
+          icon: '🚪',
           label: 'Tổng công suất tối đa khả dụng',
           value: `${formatNumber(totalCapacityNights)} phòng·ngày`,
           desc: `${totalRooms} phòng × ${daysInPeriod} ngày trong kỳ`,
         },
         {
-          icon: '',
+          icon: '📊',
           label: 'Tỉ lệ khai thác đạt được',
           value: `${avgRate.toFixed(1)}%`,
           desc: 'Mức độ lấp đầy thực tế so với tiềm năng tối đa',
@@ -959,7 +847,7 @@ function triggerFileDownload(blob, fileName) {
       formula: 'Tổng phòng = COUNT(Phòng trong hệ thống Homestay)',
       calculation: `Hệ thống hiện có ${totalRooms} phòng đang sẵn sàng tiếp đón khách lưu trú`,
       breakdown: (summary?.topRooms || []).map((item) => ({
-        icon: '',
+        icon: '🏠',
         label: item.name,
         value: 'Đang hoạt động',
         desc: `Doanh thu tạo ra trong kỳ: ${formatMoney(item.value)}`,
@@ -1013,8 +901,6 @@ function triggerFileDownload(blob, fileName) {
           hint="Tổng hóa đơn trong kỳ"
           tone="revenue"
           inspectInfo={revenueKpiInfo}
-          onInspectHover={handleInspectHover}
-          onInspectLeave={handleInspectLeave}
           onInspectClick={handleInspectClick}
         />
         <KpiCard
@@ -1023,8 +909,6 @@ function triggerFileDownload(blob, fileName) {
           hint="Booking có lưu trú trong kỳ"
           tone="booking"
           inspectInfo={bookingKpiInfo}
-          onInspectHover={handleInspectHover}
-          onInspectLeave={handleInspectLeave}
           onInspectClick={handleInspectClick}
         />
         <KpiCard
@@ -1033,8 +917,6 @@ function triggerFileDownload(blob, fileName) {
           hint={`${formatNumber(kpis.occupiedRoomNights)} phòng-ngày đã dùng`}
           tone="occupancy"
           inspectInfo={occupancyKpiInfo}
-          onInspectHover={handleInspectHover}
-          onInspectLeave={handleInspectLeave}
           onInspectClick={handleInspectClick}
         />
         <KpiCard
@@ -1043,8 +925,6 @@ function triggerFileDownload(blob, fileName) {
           hint="Số phòng đang quản lý"
           tone="rooms"
           inspectInfo={roomsKpiInfo}
-          onInspectHover={handleInspectHover}
-          onInspectLeave={handleInspectLeave}
           onInspectClick={handleInspectClick}
         />
       </section>
@@ -1056,8 +936,6 @@ function triggerFileDownload(blob, fileName) {
           <div className="dash-grid dash-grid--top">
             <RevenueChart
               data={summary.revenueTrend || []}
-              onInspectHover={handleInspectHover}
-              onInspectLeave={handleInspectLeave}
               onInspectClick={handleInspectClick}
             />
             <DonutChart
@@ -1065,8 +943,6 @@ function triggerFileDownload(blob, fileName) {
               subtitle="Tỉ trọng tiền phòng, dịch vụ và phạt/phụ thu."
               items={summary.revenueBreakdown || []}
               palette={REVENUE_PALETTE}
-              onInspectHover={handleInspectHover}
-              onInspectLeave={handleInspectLeave}
               onInspectClick={handleInspectClick}
             />
           </div>
@@ -1074,9 +950,7 @@ function triggerFileDownload(blob, fileName) {
           <div className="dash-grid">
             <OccupancyChart
               data={summary.occupancyTrend || []}
-              totalRooms={Number(kpis.totalRooms || 9)}
-              onInspectHover={handleInspectHover}
-              onInspectLeave={handleInspectLeave}
+              totalRooms={Number(kpis.totalRooms || 10)}
               onInspectClick={handleInspectClick}
             />
             <DonutChart
@@ -1085,8 +959,6 @@ function triggerFileDownload(blob, fileName) {
               items={summary.bookingStatusBreakdown || []}
               type="status"
               palette={STATUS_PALETTE}
-              onInspectHover={handleInspectHover}
-              onInspectLeave={handleInspectLeave}
               onInspectClick={handleInspectClick}
             />
           </div>
@@ -1097,8 +969,6 @@ function triggerFileDownload(blob, fileName) {
               subtitle="Doanh thu đặt phòng ước tính theo booking detail."
               items={summary.topRooms || []}
               totalBasis={Number(kpis.roomRevenue || 0)}
-              onInspectHover={handleInspectHover}
-              onInspectLeave={handleInspectLeave}
               onInspectClick={handleInspectClick}
             />
             <RankingPanel
@@ -1107,8 +977,6 @@ function triggerFileDownload(blob, fileName) {
               items={roomTypeItems}
               valueType="count"
               totalBasis={summary.bookingStatusBreakdown ? totalValue(summary.bookingStatusBreakdown) : 0}
-              onInspectHover={handleInspectHover}
-              onInspectLeave={handleInspectLeave}
               onInspectClick={handleInspectClick}
             />
           </div>
@@ -1117,15 +985,7 @@ function triggerFileDownload(blob, fileName) {
         <div className="dash-empty dash-empty--page">Chưa có dữ liệu để hiển thị.</div>
       )}
 
-      {/* Popover Hover nhanh */}
-      {hoverInspectInfo && (
-        <MetricInspectPopover
-          info={hoverInspectInfo}
-          position={popoverPos}
-        />
-      )}
-
-      {/* Modal Click Hold cố định */}
+      {/* Modal Click Soi Chi Tiết & Giải Trình */}
       {modalInspectInfo && (
         <MetricInspectModal
           info={modalInspectInfo}
