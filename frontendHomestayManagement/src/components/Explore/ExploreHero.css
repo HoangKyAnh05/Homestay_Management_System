@@ -2,11 +2,11 @@
 .explore-hero {
   position: relative;
   width: 100%;
-  min-height: 140px;
+  min-height: 130px;
   overflow: hidden;
   display: flex;
   align-items: center;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid #e2e8f0;
 }
 
 .explore-hero-bg {
@@ -19,7 +19,7 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: center 35%;
+  object-position: center 30%;
   filter: brightness(0.65) saturate(1.15);
   transform: scale(1.02);
 }
@@ -30,7 +30,7 @@
   background: linear-gradient(
     90deg,
     rgba(15, 23, 42, 0.88) 0%,
-    rgba(15, 23, 42, 0.72) 50%,
+    rgba(15, 23, 42, 0.7) 50%,
     rgba(15, 23, 42, 0.85) 100%
   );
 }
@@ -41,7 +41,7 @@
   width: 100%;
   max-width: 1440px;
   margin: 0 auto;
-  padding: 1.5rem 1.75rem;
+  padding: 1.25rem 1.75rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -52,7 +52,7 @@
 .explore-hero-left {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 0.3rem;
   max-width: 780px;
 }
 
@@ -66,32 +66,32 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
-  background: rgba(225, 29, 72, 0.18);
+  background: rgba(225, 29, 72, 0.2);
   border: 1px solid rgba(225, 29, 72, 0.4);
   box-shadow: 0 4px 16px rgba(225, 29, 72, 0.35);
   flex-shrink: 0;
 }
 
 .explore-hero-title {
-  font-family: 'Playfair Display', Georgia, 'Times New Roman', serif, system-ui;
-  font-size: 2rem;
-  font-weight: 700;
+  font-family: 'Plus Jakarta Sans', 'Be Vietnam Pro', system-ui, sans-serif;
+  font-size: 1.85rem;
+  font-weight: 800;
   color: #ffffff;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
   margin: 0;
   line-height: 1.2;
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
 }
 
 .explore-hero-subtitle {
-  font-size: 0.95rem;
-  color: #e2e8f0;
+  font-size: 0.925rem;
+  color: #f1f5f9;
   margin: 0;
   font-weight: 400;
-  opacity: 0.92;
+  opacity: 0.95;
 }
 
 /* Right Content */
@@ -105,7 +105,7 @@
 
 .explore-hero-location-brand {
   font-family: 'Playfair Display', Georgia, cursive, serif;
-  font-size: 2.25rem;
+  font-size: 2.2rem;
   font-weight: 700;
   color: #ffffff;
   line-height: 1;
@@ -116,7 +116,7 @@
 .explore-hero-tagline {
   font-size: 0.8125rem;
   font-style: italic;
-  color: #fda4af;
+  color: #fecdd3;
   margin: 0.25rem 0 0;
   max-width: 260px;
   line-height: 1.35;
@@ -131,7 +131,7 @@
   }
 
   .explore-hero-title {
-    font-size: 1.5rem;
+    font-size: 1.45rem;
   }
 
   .explore-hero-right {
@@ -140,6 +140,6 @@
   }
 
   .explore-hero-location-brand {
-    font-size: 1.75rem;
+    font-size: 1.65rem;
   }
 }

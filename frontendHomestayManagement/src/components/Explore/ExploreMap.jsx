@@ -52,11 +52,11 @@ export default function ExploreMap({
         attributionControl: true,
       });
 
-      // Add CartoDB Voyager / OpenStreetMap base tiles for a sleek travel aesthetic
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+      // Add OpenStreetMap Standard tiles (No API key watermark)
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
         maxZoom: 19,
-        subdomains: 'abcd',
+        subdomains: ['a', 'b', 'c'],
       }).addTo(map);
 
       // Group layer for place markers
