@@ -112,6 +112,10 @@ export default function ExploreMap({
             </div>
           </div>
           <p class="homestay-popup-desc">${HOMESTAY_LOCATION.description}</p>
+          <div style="margin: 6px 0; font-size: 12px; color: #047857; background: #ecfdf5; padding: 4px 8px; border-radius: 6px; display: flex; align-items: center; justify-content: space-between;">
+            <span>📞 Hotline / Zalo:</span>
+            <a href="tel:${HOMESTAY_LOCATION.phone.replace(/\s+/g, '')}" style="color: #047857; font-weight: 700; text-decoration: none;">${HOMESTAY_LOCATION.phone}</a>
+          </div>
           <div class="homestay-popup-actions">
             <a href="/rooms" class="homestay-popup-btn homestay-popup-btn--book">Đặt phòng ngay</a>
             <a href="/home" class="homestay-popup-btn homestay-popup-btn--view">Xem homestay</a>
@@ -261,6 +265,7 @@ export default function ExploreMap({
         <div class="itinerary-stop-popup">
           <div class="itinerary-stop-badge">Điểm dừng ${stopNumber}/${validStops.length}</div>
           <h4 class="itinerary-stop-title">${stop.name}</h4>
+          ${stop.phone ? `<div style="font-size: 11px; margin: 4px 0; color: #047857;">📞 ĐT: <a href="tel:${stop.phone.replace(/\s+/g, '')}" style="color: #047857; font-weight: 700; text-decoration: none;">${stop.phone}</a></div>` : ''}
           ${stop.note ? `<p class="itinerary-stop-desc">${stop.note}</p>` : ''}
         </div>
       `, { maxWidth: 260 });

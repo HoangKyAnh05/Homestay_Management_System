@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import DateDropdownPicker from '../../components/Common/DateDropdownPicker'
 import {
   getCurrentProfile,
   getStoredUser,
@@ -246,13 +247,15 @@ function ProfilePage() {
                   value={formData.phone}
                   onChange={handleChange}
                 />
-                <ProfileInput
-                  label="Ngày sinh"
-                  name="dateOfBirth"
-                  type="date"
-                  value={formData.dateOfBirth}
-                  onChange={handleChange}
-                />
+                <div className="profile-input">
+                  <span>Ngày sinh</span>
+                  <DateDropdownPicker
+                    isDob={true}
+                    value={formData.dateOfBirth}
+                    onChange={(val) => setFormData((prev) => ({ ...prev, dateOfBirth: val }))}
+                    placeholder="Chọn ngày sinh..."
+                  />
+                </div>
                 <ProfileInput
                   label="Địa chỉ"
                   name="address"

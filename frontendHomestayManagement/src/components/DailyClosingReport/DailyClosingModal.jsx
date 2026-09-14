@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { getDailyPreview, submitDailyReport } from '../../services/dailyReportService'
 import { getStoredUser } from '../../services/authService'
+import DateDropdownPicker from '../Common/DateDropdownPicker'
 import './DailyClosingModal.css'
 
 function toDateInput(date) {
@@ -52,9 +53,8 @@ export default function DailyClosingModal({ isOpen, onClose, onSuccess }) {
 
   if (!isOpen) return null
 
-  const handleDateChange = (e) => {
-    const newDate = e.target.value
-    setSelectedDate(newDate)
+  const handleDateChange = (val) => {
+    if (val) setSelectedDate(val)
   }
 
   const handleSubmit = async () => {
@@ -105,16 +105,18 @@ export default function DailyClosingModal({ isOpen, onClose, onSuccess }) {
             <h2> Tổng Kết Cuối Ngày & Báo Cáo Admin</h2>
             <p>Tổng hợp doanh thu, các phòng đang lưu trú và gửi báo cáo cho Quản trị viên</p>
           </div>
-          <div className="dcm-header-right">
-            <input
-              type="date"
-              className="dcm-date-input"
-              value={selectedDate}
-              onChange={handleDateChange}
-              title="Chọn ngày cần tổng kết"
-            />
+          <div className="dcm-header-right" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ width: '160px' }}>
+              <DateDropdownPicker
+                value={selectedDate}
+                onChange={handleDateChange}
+                allowEmpty={false}
+                placeholder="Chọn ngày..."
+                className="date-dropdown-picker--compact"
+              />
+            </div>
             <button type="button" className="dcm-close-btn" onClick={onClose} title="Đóng">
-              
+              ×
             </button>
           </div>
         </div>

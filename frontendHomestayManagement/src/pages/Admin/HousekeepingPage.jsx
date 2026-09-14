@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { getStoredToken } from '../../services/authService'
 import AdminLayout from './AdminLayout'
+import DateDropdownPicker from '../../components/Common/DateDropdownPicker'
 import './HousekeepingPage.css'
 
 const API = (import.meta.env.VITE_API_URL || '') + '/api/housekeeping'
@@ -472,13 +473,13 @@ function HousekeepingPage() {
     }
   }
 
-  const handleFromDateChange = (event) => {
-    setFromDate(event.target.value)
+  const handleFromDateChange = (val) => {
+    setFromDate(val || '')
     setPeriodFilter('custom')
   }
 
-  const handleToDateChange = (event) => {
-    setToDate(event.target.value)
+  const handleToDateChange = (val) => {
+    setToDate(val || '')
     setPeriodFilter('custom')
   }
 
@@ -631,7 +632,6 @@ function HousekeepingPage() {
           quantity: Number(incidentForm.quantity) || 1,
           incidentType: incidentForm.incidentType,
           severity: incidentForm.severity,
-          estimatedCost: incidentForm.estimatedCost ? Number(incidentForm.estimatedCost) : null,
           description: incidentForm.description,
           evidenceImageUrl: incidentForm.evidenceImageUrl,
         }),
@@ -693,22 +693,22 @@ function HousekeepingPage() {
             </select>
             {periodFilter !== 'all' && (
               <>
-                <input
-                  type="date"
-                  className="hk-date-input"
-                  value={fromDate}
-                  onChange={handleFromDateChange}
-                  title="Từ ngày"
-                  aria-label="Từ ngày"
-                />
-                <input
-                  type="date"
-                  className="hk-date-input"
-                  value={toDate}
-                  onChange={handleToDateChange}
-                  title="Đến ngày"
-                  aria-label="Đến ngày"
-                />
+                <div style={{ width: '150px' }}>
+                  <DateDropdownPicker
+                    value={fromDate}
+                    onChange={handleFromDateChange}
+                    placeholder="Từ ngày..."
+                    className="date-dropdown-picker--compact"
+                  />
+                </div>
+                <div style={{ width: '150px' }}>
+                  <DateDropdownPicker
+                    value={toDate}
+                    onChange={handleToDateChange}
+                    placeholder="Đến ngày..."
+                    className="date-dropdown-picker--compact"
+                  />
+                </div>
               </>
             )}
           </div>
@@ -779,32 +779,18 @@ function HousekeepingPage() {
                       />
                     </div>
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                    <div>
-                      <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 4, color: '#334155' }}>Mức độ nghiêm trọng</label>
-                      <select
-                        value={incidentForm.severity}
-                        onChange={e => setIncidentForm({ ...incidentForm, severity: e.target.value })}
-                        style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #cbd5e1', background: '#ffffff', color: '#0f172a' }}
-                      >
-                        <option value="LOW">Thấp (Trầy xước nhỏ, đồ phụ)</option>
-                        <option value="MEDIUM">Trung bình (Đồ dùng thường ngày)</option>
-                        <option value="HIGH">Cao (Đồ giá trị, ảnh hưởng phòng)</option>
-                        <option value="CRITICAL">Khẩn cấp (Hỏng điện, vỡ kính lớn...)</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 4, color: '#334155' }}>Chi phí ước tính (VND)</label>
-                      <input
-                        type="number"
-                        min="0"
-                        step="any"
-                        placeholder="VD: 150000"
-                        value={incidentForm.estimatedCost}
-                        onChange={e => setIncidentForm({ ...incidentForm, estimatedCost: e.target.value })}
-                        style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #cbd5e1', background: '#ffffff', color: '#0f172a', boxSizing: 'border-box' }}
-                      />
-                    </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 4, color: '#334155' }}>Mức độ nghiêm trọng</label>
+                    <select
+                      value={incidentForm.severity}
+                      onChange={e => setIncidentForm({ ...incidentForm, severity: e.target.value })}
+                      style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #cbd5e1', background: '#ffffff', color: '#0f172a' }}
+                    >
+                      <option value="LOW">Thấp (Trầy xước nhỏ, đồ phụ)</option>
+                      <option value="MEDIUM">Trung bình (Đồ dùng thường ngày)</option>
+                      <option value="HIGH">Cao (Đồ giá trị, ảnh hưởng phòng)</option>
+                      <option value="CRITICAL">Khẩn cấp (Hỏng điện, vỡ kính lớn...)</option>
+                    </select>
                   </div>
                   <div>
                     <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 4, color: '#334155' }}>Ảnh bằng chứng hiện trường</label>

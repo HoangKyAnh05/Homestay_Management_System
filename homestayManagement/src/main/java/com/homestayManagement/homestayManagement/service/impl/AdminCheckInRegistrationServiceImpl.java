@@ -96,7 +96,8 @@ public class AdminCheckInRegistrationServiceImpl implements AdminCheckInRegistra
                 detail.getRoom() != null ? toRoomResponse(detail.getRoom()) : null,
                 preRegistered,
                 preRegistered ? registeredGuests.stream().map(this::toGuestResponse).toList() : List.of(),
-                findAvailableRooms(detail)
+                findAvailableRooms(detail),
+                findOtherAvailableRooms(detail)
         );
     }
 
@@ -109,11 +110,11 @@ public class AdminCheckInRegistrationServiceImpl implements AdminCheckInRegistra
         Room room = roomRepository.findByIdForCheckIn(request.roomId())
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy phòng"));
         if (!"AVAILABLE".equalsIgnoreCase(room.getStatus())) {
-            throw new IllegalArgumentException("Phòng chưa sẵn sàng để nhận khách");
+            throw new IllegalArgumentException("Phòng chưa sẵn sàng để nhận khách (đang bảo trì hoặc có khách)");
         }
-        if (detail.getRoomType() == null || room.getRoomType() == null
-                || !detail.getRoomType().getId().equals(room.getRoomType().getId())) {
-            throw new IllegalArgumentException("Phòng được chọn không đúng loại nhà khách đã đặt");
+        if (room.getRoomType() != null && (detail.getRoomType() == null || !detail.getRoomType().getId().equals(room.getRoomType().getId()))) {
+            // Linh hoạt hỗ trợ Lễ tân đổi phòng / nâng hạng phòng ngay tại bước Check-in khi phòng cũ bảo trì hoặc theo yêu cầu
+            detail.setRoomType(room.getRoomType());
         }
         if (!isRoomAvailable(room.getId(), detail)) {
             throw new IllegalArgumentException("Phòng vừa được gán cho booking khác, vui lòng chọn phòng khác");
@@ -210,6 +211,18 @@ public class AdminCheckInRegistrationServiceImpl implements AdminCheckInRegistra
                 .filter(room -> isRoomAvailable(room.getId(), detail))
                 .map(room -> new AdminBookingRoomResponse(
                         room.getId(), room.getRoomNumber(), room.getRoomType().getName()
+                ))
+                .toList();
+    }
+
+    private List<AdminBookingRoomResponse> findOtherAvailableRooms(BookingDetail detail) {
+        Long currentTypeId = detail.getRoomType() != null ? detail.getRoomType().getId() : null;
+        return roomRepository.findAll().stream()
+                .filter(room -> currentTypeId == null || room.getRoomType() == null || !currentTypeId.equals(room.getRoomType().getId()))
+                .filter(room -> "AVAILABLE".equalsIgnoreCase(room.getStatus()))
+                .filter(room -> isRoomAvailable(room.getId(), detail))
+                .map(room -> new AdminBookingRoomResponse(
+                        room.getId(), room.getRoomNumber(), room.getRoomType() != null ? room.getRoomType().getName() : "Khác"
                 ))
                 .toList();
     }

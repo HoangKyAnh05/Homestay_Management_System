@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import AdminLayout from './AdminLayout'
+import DateDropdownPicker from '../../components/Common/DateDropdownPicker'
 import { getStoredToken, getStoredUser } from '../../services/authService'
 import { useShiftGuard } from '../../context/ShiftGuardContext'
 import './AdminIncidentsPage.css'
@@ -137,13 +138,13 @@ export default function AdminIncidentsPage() {
     }
   }
 
-  const handleFromDateChange = (event) => {
-    setFromDate(event.target.value)
+  const handleFromDateChange = (val) => {
+    setFromDate(val || '')
     setPeriodFilter('custom')
   }
 
-  const handleToDateChange = (event) => {
-    setToDate(event.target.value)
+  const handleToDateChange = (val) => {
+    setToDate(val || '')
     setPeriodFilter('custom')
   }
 
@@ -522,24 +523,22 @@ export default function AdminIncidentsPage() {
 
             {periodFilter !== 'all' && (
               <>
-                <input
-                  type="date"
-                  className="filter-select"
-                  value={fromDate}
-                  onChange={handleFromDateChange}
-                  title="Từ ngày"
-                  aria-label="Từ ngày"
-                  style={{ width: 'auto', minWidth: 130 }}
-                />
-                <input
-                  type="date"
-                  className="filter-select"
-                  value={toDate}
-                  onChange={handleToDateChange}
-                  title="Đến ngày"
-                  aria-label="Đến ngày"
-                  style={{ width: 'auto', minWidth: 130 }}
-                />
+                <div style={{ width: '150px' }}>
+                  <DateDropdownPicker
+                    value={fromDate}
+                    onChange={handleFromDateChange}
+                    placeholder="Từ ngày..."
+                    className="date-dropdown-picker--compact"
+                  />
+                </div>
+                <div style={{ width: '150px' }}>
+                  <DateDropdownPicker
+                    value={toDate}
+                    onChange={handleToDateChange}
+                    placeholder="Đến ngày..."
+                    className="date-dropdown-picker--compact"
+                  />
+                </div>
               </>
             )}
 
@@ -654,7 +653,10 @@ export default function AdminIncidentsPage() {
                           <strong style={{ marginLeft: 4, color: '#dc2626' }}>{formatMoney(item.compensationAmount)}</strong>
                         </div>
                       ) : item.liability === 'HOMESTAY' ? (
-                        <span className="liability-text liability-homestay">Homestay bảo trì</span>
+                        <div>
+                          <span className="liability-text liability-homestay">Homestay bảo trì:</span>
+                          <strong style={{ marginLeft: 4, color: '#2563eb' }}>{formatMoney(item.compensationAmount || 0)}</strong>
+                        </div>
                       ) : item.liability === 'NONE' ? (
                         <span className="liability-text liability-none">Miễn bồi thường</span>
                       ) : (
@@ -743,7 +745,7 @@ export default function AdminIncidentsPage() {
                       {item.liability === 'CUSTOMER' ? (
                         <span style={{ color: '#dc2626', fontWeight: 700 }}>Khách đền: {formatMoney(item.compensationAmount)}</span>
                       ) : item.liability === 'HOMESTAY' ? (
-                        <span style={{ color: '#2563eb', fontWeight: 600 }}>Homestay bảo trì</span>
+                        <span style={{ color: '#2563eb', fontWeight: 600 }}>Homestay bảo trì: {formatMoney(item.compensationAmount || 0)}</span>
                       ) : item.liability === 'NONE' ? (
                         <span style={{ color: '#16a34a' }}>Miễn bồi thường</span>
                       ) : (
@@ -1040,13 +1042,28 @@ export default function AdminIncidentsPage() {
 
                         {actionForm.liability === 'CUSTOMER' && (
                           <div className="form-group full-width">
-                            <label>Số tiền bồi thường (VND)</label>
+                            <label>Số tiền khách bồi thường (VNĐ)</label>
                             <input
                               type="number"
                               min="0"
                               step="any"
                               className="form-input"
                               placeholder="Nhập số tiền đền bù..."
+                              value={actionForm.compensationAmount}
+                              onChange={(e) => setActionForm({ ...actionForm, compensationAmount: e.target.value })}
+                            />
+                          </div>
+                        )}
+
+                        {actionForm.liability === 'HOMESTAY' && (
+                          <div className="form-group full-width">
+                            <label>Chi phí bảo trì / sửa chữa nội bộ (VNĐ)</label>
+                            <input
+                              type="number"
+                              min="0"
+                              step="any"
+                              className="form-input"
+                              placeholder="Nhập chi phí bảo trì do Homestay chi trả..."
                               value={actionForm.compensationAmount}
                               onChange={(e) => setActionForm({ ...actionForm, compensationAmount: e.target.value })}
                             />
@@ -1086,7 +1103,7 @@ export default function AdminIncidentsPage() {
                             {selectedIncident.liability === 'CUSTOMER'
                               ? `Khách bồi thường: ${formatMoney(selectedIncident.compensationAmount)}`
                               : selectedIncident.liability === 'HOMESTAY'
-                              ? 'Homestay tự bảo trì'
+                              ? `Homestay tự bảo trì: ${formatMoney(selectedIncident.compensationAmount || 0)}`
                               : selectedIncident.liability === 'NONE'
                               ? 'Miễn bồi thường'
                               : 'Đang chờ Quản trị viên chỉ đạo'}

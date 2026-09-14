@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { getStoredToken } from '../../services/authService'
 import { houseTypeName } from '../../utils/houseType'
+import DateDropdownPicker from '../../components/Common/DateDropdownPicker'
 import AdminLayout from './AdminLayout'
 import './AdminHousekeepingCalendarPage.css'
 
@@ -130,6 +131,16 @@ function AdminHousekeepingCalendarPage() {
           </div>
 
           <div className="hkr-date-controls">
+            <div className="hkr-date-picker-box" style={{ minWidth: 160 }}>
+              <DateDropdownPicker
+                className="date-dropdown-picker--compact"
+                value={startDate}
+                onChange={(newDate) => {
+                  if (newDate) setStartDate(newDate)
+                }}
+                allowEmpty={false}
+              />
+            </div>
             <div className="hkr-date-range-badge">
               📅 {shortDate(dates[0])} — {shortDate(dates[dates.length - 1])}
             </div>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import AdminLayout from './AdminLayout'
+import DateDropdownPicker from '../../components/Common/DateDropdownPicker'
 import {
   getShiftHistory,
   resolveShiftCompensation,
@@ -285,23 +286,23 @@ export default function AdminShiftHandoversPage() {
             </select>
           </div>
 
-          <div className="ash-filter-item">
+          <div className="ash-filter-item" style={{ minWidth: '150px' }}>
             <label>Từ ngày:</label>
-            <input
-              type="date"
+            <DateDropdownPicker
               value={fromDate}
-              onChange={(e) => setFromDate(e.target.value)}
-              className="ash-input"
+              onChange={(val) => setFromDate(val || '')}
+              placeholder="Từ ngày..."
+              className="date-dropdown-picker--compact"
             />
           </div>
 
-          <div className="ash-filter-item">
+          <div className="ash-filter-item" style={{ minWidth: '150px' }}>
             <label>Đến ngày:</label>
-            <input
-              type="date"
+            <DateDropdownPicker
               value={toDate}
-              onChange={(e) => setToDate(e.target.value)}
-              className="ash-input"
+              onChange={(val) => setToDate(val || '')}
+              placeholder="Đến ngày..."
+              className="date-dropdown-picker--compact"
             />
           </div>
         </div>

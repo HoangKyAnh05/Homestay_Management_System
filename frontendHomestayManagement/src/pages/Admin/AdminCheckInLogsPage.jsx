@@ -6,6 +6,7 @@ import { houseTypeName } from '../../utils/houseType'
 import SePayQrPayment from '../../components/SePayQrPayment/SePayQrPayment'
 import AdminLayout from './AdminLayout'
 import AdminChangeRoomModal from '../../components/AdminChangeRoom/AdminChangeRoomModal'
+import DateDropdownPicker from '../../components/Common/DateDropdownPicker'
 import './AdminCheckInLogsPage.css'
 
 const API_BASE = (import.meta.env.VITE_API_URL || '') + '/api/admin/bookings'
@@ -1672,6 +1673,74 @@ function CheckInModal({ bookingDetailId, onClose, onCompleted }) {
   const [ocrNotice, setOcrNotice] = useState('')
   const [error, setError] = useState('')
   const [repVerified, setRepVerified] = useState(false)
+  const [selectedTypeTab, setSelectedTypeTab] = useState('SAME')
+  const [isTypeDropdownOpen, setIsTypeDropdownOpen] = useState(false)
+  const typeDropdownRef = useRef(null)
+
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (typeDropdownRef.current && !typeDropdownRef.current.contains(e.target)) {
+        setIsTypeDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const roomTypeGroups = useMemo(() => {
+    if (!preparation) return []
+    const list = []
+
+    // 1. Same Type group
+    const sameRooms = preparation.availableRooms || []
+    const sameTypeName = houseTypeName(preparation) || 'Cùng loại'
+    if (sameRooms.length > 0 || (!preparation.otherAvailableRooms || preparation.otherAvailableRooms.length === 0)) {
+      list.push({
+        key: 'SAME',
+        name: `Cùng loại: ${sameTypeName}`,
+        shortName: sameTypeName,
+        badgeText: `Cùng loại: ${sameTypeName} (${sameRooms.length} phòng trống)`,
+        rooms: sameRooms,
+        isSame: true,
+      })
+    }
+
+    // 2. Group other available rooms by room type
+    const otherRooms = preparation.otherAvailableRooms || []
+    const otherMap = new Map()
+    otherRooms.forEach(room => {
+      const typeName = houseTypeName(room) || 'Loại phòng khác'
+      const typeKey = String(room.houseType || room.roomTypeId || typeName)
+      if (!otherMap.has(typeKey)) {
+        otherMap.set(typeKey, {
+          key: typeKey,
+          name: typeName,
+          shortName: typeName,
+          badgeText: `${typeName} (${0} phòng trống)`,
+          rooms: [],
+          isSame: false,
+        })
+      }
+      otherMap.get(typeKey).rooms.push(room)
+    })
+
+    otherMap.forEach(group => {
+      group.badgeText = `${group.name} (${group.rooms.length} phòng trống)`
+      list.push(group)
+    })
+
+    return list
+  }, [preparation])
+
+  useEffect(() => {
+    if (preparation) {
+      if (preparation.availableRooms?.length > 0) {
+        setSelectedTypeTab('SAME')
+      } else if (roomTypeGroups.length > 0) {
+        setSelectedTypeTab(roomTypeGroups[0].key)
+      }
+    }
+  }, [preparation, roomTypeGroups])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -1684,7 +1753,11 @@ function CheckInModal({ bookingDetailId, onClose, onCompleted }) {
         setPreparation(data)
         setRoomId(data.assignedRoom?.id
           ? String(data.assignedRoom.id)
-          : data.availableRooms?.[0]?.id ? String(data.availableRooms[0].id) : '')
+          : data.availableRooms?.[0]?.id 
+            ? String(data.availableRooms[0].id) 
+            : data.otherAvailableRooms?.[0]?.id 
+              ? String(data.otherAvailableRooms[0].id) 
+              : '')
         setGuests(createGuestForms(data))
         setIdentityImages({})
         setCameraTarget(null)
@@ -1843,8 +1916,19 @@ function CheckInModal({ bookingDetailId, onClose, onCompleted }) {
 
             <section className="acl-checkin-section">
               <div className="acl-checkin-section-head">
-                <div><span>01</span><div><h3>{preparation.preRegistered ? 'Phòng đã đặt' : 'Gán phòng trống'}</h3><p>{preparation.preRegistered ? 'Phòng đã được xác nhận khi tạo đơn trực tiếp.' : 'Chỉ hiển thị phòng đúng loại và không trùng lịch.'}</p></div></div>
+                <div>
+                  <span>01</span>
+                  <div>
+                    <h3>{preparation.preRegistered ? 'Phòng đã đặt' : 'Gán phòng trống'}</h3>
+                    <p>
+                      {preparation.preRegistered
+                        ? 'Phòng đã được xác nhận khi tạo đơn trực tiếp.'
+                        : 'Chọn phòng thuộc đúng loại hoặc linh hoạt đổi phòng trống khác khi phòng bị bảo trì / trùng lịch.'}
+                    </p>
+                  </div>
+                </div>
               </div>
+
               {preparation.preRegistered && preparation.assignedRoom ? (
                 <div className="acl-room-options">
                   <label className="is-selected acl-room-option--readonly">
@@ -1852,17 +1936,222 @@ function CheckInModal({ bookingDetailId, onClose, onCompleted }) {
                     <span>Phòng</span><strong>{preparation.assignedRoom.roomNumber}</strong><small>{houseTypeName(preparation.assignedRoom)}</small>
                   </label>
                 </div>
-              ) : preparation.availableRooms.length ? (
-                <div className="acl-room-options">
-                  {preparation.availableRooms.map(room => (
-                    <label key={room.id} className={String(room.id) === roomId ? 'is-selected' : ''}>
-                      <input type="radio" name="room" value={room.id} checked={String(room.id) === roomId}
-                        onChange={event => setRoomId(event.target.value)} />
-                      <span>Phòng</span><strong>{room.roomNumber}</strong><small>{houseTypeName(room)}</small>
-                    </label>
-                  ))}
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {/* Notice Banner */}
+                  {preparation.availableRooms?.length > 0 ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 16px', borderRadius: 10, background: '#f0fdf4', border: '1.5px solid #bbf7d0', color: '#166534', fontSize: '13.5px', fontWeight: 500 }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, borderRadius: '50%', background: '#16a34a', color: '#ffffff', fontSize: 13, fontWeight: 900 }}>✓</span>
+                      <span>Còn <strong>{preparation.availableRooms.length}</strong> phòng cùng loại (<strong>{houseTypeName(preparation)}</strong>) đang trống.</span>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 16px', borderRadius: 10, background: '#fffbeb', border: '1.5px solid #fde68a', color: '#b45309', fontSize: '13.5px', fontWeight: 500 }}>
+                      <span style={{ fontSize: 18 }}>⚠️</span>
+                      <span><strong>Đã hết phòng cùng loại trống!</strong> Quý khách / Lễ tân vui lòng chọn chuyển sang loại phòng khác bên dưới:</span>
+                    </div>
+                  )}
+
+                  {/* Room Type Dropdown Selector */}
+                  {roomTypeGroups.length > 0 && (() => {
+                    const activeGroup = roomTypeGroups.find(g => g.key === selectedTypeTab) || roomTypeGroups[0]
+                    return (
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, paddingBottom: 4, borderBottom: '1px solid #e2e8f0' }}>
+                        <div style={{ fontSize: '13.5px', fontWeight: 700, color: '#334155', display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0284c7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                          <span>Chọn loại phòng:</span>
+                        </div>
+
+                        <div ref={typeDropdownRef} style={{ position: 'relative', minWidth: 260, flex: '1 1 260px', maxWidth: 400 }}>
+                          <button
+                            type="button"
+                            onClick={() => setIsTypeDropdownOpen(prev => !prev)}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              gap: 12,
+                              width: '100%',
+                              padding: '9px 14px',
+                              borderRadius: 8,
+                              border: '1.5px solid #0284c7',
+                              background: '#f0f9ff',
+                              color: '#0369a1',
+                              fontWeight: 700,
+                              fontSize: '13.5px',
+                              cursor: 'pointer',
+                              boxShadow: '0 1px 3px rgba(2, 132, 199, 0.1)',
+                              transition: 'all 0.15s ease',
+                            }}
+                          >
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              <span>🛏️</span>
+                              <span>{activeGroup?.badgeText || 'Chọn loại phòng'}</span>
+                            </span>
+                            <svg
+                              width="16"
+                              height="16"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2.5"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              style={{
+                                transform: isTypeDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                                transition: 'transform 0.2s ease',
+                                flexShrink: 0,
+                              }}
+                            >
+                              <polyline points="6 9 12 15 18 9" />
+                            </svg>
+                          </button>
+
+                          {isTypeDropdownOpen && (
+                            <div
+                              style={{
+                                position: 'absolute',
+                                top: 'calc(100% + 6px)',
+                                left: 0,
+                                right: 0,
+                                zIndex: 100,
+                                background: '#ffffff',
+                                borderRadius: 10,
+                                border: '1.5px solid #cbd5e1',
+                                boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+                                overflow: 'hidden',
+                                padding: '6px',
+                              }}
+                            >
+                              {roomTypeGroups.map(group => {
+                                const isSelected = selectedTypeTab === group.key
+                                return (
+                                  <button
+                                    key={group.key}
+                                    type="button"
+                                    onClick={() => {
+                                      setSelectedTypeTab(group.key)
+                                      if (group.rooms.length > 0) {
+                                        setRoomId(String(group.rooms[0].id))
+                                      }
+                                      setIsTypeDropdownOpen(false)
+                                    }}
+                                    style={{
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'space-between',
+                                      width: '100%',
+                                      padding: '9px 12px',
+                                      borderRadius: 6,
+                                      border: 'none',
+                                      background: isSelected ? '#0284c7' : 'transparent',
+                                      color: isSelected ? '#ffffff' : '#1e293b',
+                                      fontWeight: isSelected ? 700 : 600,
+                                      fontSize: '13px',
+                                      cursor: 'pointer',
+                                      textAlign: 'left',
+                                      transition: 'background 0.12s ease',
+                                    }}
+                                    onMouseEnter={e => {
+                                      if (!isSelected) e.currentTarget.style.background = '#f1f5f9'
+                                    }}
+                                    onMouseLeave={e => {
+                                      if (!isSelected) e.currentTarget.style.background = 'transparent'
+                                    }}
+                                  >
+                                    <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                      {isSelected && <span>✓</span>}
+                                      <span>{group.name}</span>
+                                    </span>
+                                    <span
+                                      style={{
+                                        padding: '2px 8px',
+                                        borderRadius: 12,
+                                        fontSize: '11px',
+                                        fontWeight: 700,
+                                        background: isSelected ? 'rgba(255,255,255,0.25)' : (group.rooms.length > 0 ? '#dcfce7' : '#fee2e2'),
+                                        color: isSelected ? '#ffffff' : (group.rooms.length > 0 ? '#15803d' : '#b91c1c'),
+                                      }}
+                                    >
+                                      {group.rooms.length} phòng trống
+                                    </span>
+                                  </button>
+                                )
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })()}
+
+                  {/* Room Cards Grid */}
+                  {(() => {
+                    const activeGroup = roomTypeGroups.find(g => g.key === selectedTypeTab) || roomTypeGroups[0]
+                    if (!activeGroup || activeGroup.rooms.length === 0) {
+                      return (
+                        <div style={{ padding: '20px', textAlign: 'center', color: '#94a3b8', background: '#f8fafc', borderRadius: '10px', fontSize: '13.5px' }}>
+                          Loại phòng này hiện không còn phòng trống.
+                        </div>
+                      )
+                    }
+
+                    return (
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: '12px' }}>
+                        {activeGroup.rooms.map(room => {
+                          const isSelected = String(room.id) === String(roomId)
+                          return (
+                            <label
+                              key={room.id}
+                              style={{
+                                position: 'relative',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '4px',
+                                padding: '14px 16px',
+                                borderRadius: '12px',
+                                border: isSelected ? '2px solid #0284c7' : '1.5px solid #e2e8f0',
+                                background: isSelected ? '#f0f9ff' : '#ffffff',
+                                cursor: 'pointer',
+                                transition: 'all 0.15s ease',
+                                boxShadow: isSelected ? '0 4px 12px rgba(2, 132, 199, 0.15)' : '0 1px 2px rgba(0,0,0,0.03)',
+                              }}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <input
+                                  type="radio"
+                                  name="checkin_room_choice"
+                                  value={room.id}
+                                  checked={isSelected}
+                                  onChange={() => setRoomId(String(room.id))}
+                                  style={{ accentColor: '#0284c7', width: 17, height: 17, cursor: 'pointer' }}
+                                />
+                                <strong style={{ fontSize: '15.5px', color: '#0f172a', fontWeight: 800 }}>
+                                  Phòng {room.roomNumber}
+                                </strong>
+                              </div>
+                              <div style={{ fontSize: '12.5px', color: '#64748b', marginLeft: 25 }}>
+                                {houseTypeName(room)}
+                              </div>
+                              <div style={{ marginTop: 6, marginLeft: 25 }}>
+                                <span style={{ display: 'inline-block', padding: '3px 9px', borderRadius: '6px', background: '#dcfce7', color: '#15803d', fontSize: '11px', fontWeight: 700 }}>
+                                  Sẵn sàng nhận khách
+                                </span>
+                              </div>
+                            </label>
+                          )
+                        })}
+                      </div>
+                    )
+                  })()}
+
+                  {(!preparation.availableRooms || preparation.availableRooms.length === 0) &&
+                   (!preparation.otherAvailableRooms || preparation.otherAvailableRooms.length === 0) && (
+                    <div className="acl-checkin-warning" style={{ color: '#dc2626', background: '#fef2f2', borderColor: '#fecaca' }}>
+                      ❌ Toàn bộ các phòng trong homestay đã kín hoặc đang bảo trì trong thời gian này.
+                    </div>
+                  )}
                 </div>
-              ) : <div className="acl-checkin-warning">Không còn phòng thuộc {houseTypeName(preparation)} trống trong thời gian này.</div>}
+              )}
             </section>
 
             <section className="acl-checkin-section">
@@ -1967,14 +2256,17 @@ function CheckInModal({ bookingDetailId, onClose, onCompleted }) {
                             onChange={event => updateGuest(index, 'identityDocumentNumber', event.target.value.replace(/\D/g, ''))}
                           />
                         </label>
-                        <label>
-                          <span>Ngày sinh</span>
-                          <input
-                            type="date"
-                            value={guest.dateOfBirth || ''}
-                            onChange={event => updateGuest(index, 'dateOfBirth', event.target.value)}
-                          />
-                        </label>
+                        <div className="acl-form-field-group">
+                          <label>
+                            <span>Ngày sinh</span>
+                            <DateDropdownPicker
+                              isDob={true}
+                              value={guest.dateOfBirth || ''}
+                              onChange={val => updateGuest(index, 'dateOfBirth', val)}
+                              allowEmpty={true}
+                            />
+                          </label>
+                        </div>
                         <label>
                           <span>Email {isRepresentative ? '*' : ''}</span>
                           <input
@@ -2081,13 +2373,13 @@ function AdminCheckInLogsPage() {
     }
   }
 
-  const handleFromDateChange = (event) => {
-    setFromDate(event.target.value)
+  const handleFromDateChange = (val) => {
+    setFromDate(val)
     setPeriodFilter('custom')
   }
 
-  const handleToDateChange = (event) => {
-    setToDate(event.target.value)
+  const handleToDateChange = (val) => {
+    setToDate(val)
     setPeriodFilter('custom')
   }
   const [loading, setLoading] = useState(false)
@@ -2256,8 +2548,22 @@ function AdminCheckInLogsPage() {
           <option value="year">Theo năm</option>
           {periodFilter === 'custom' && <option value="custom">Tùy chọn</option>}
         </select>
-        <input type="date" value={fromDate} onChange={handleFromDateChange} title="Từ ngày" aria-label="Từ ngày" />
-        <input type="date" value={toDate} onChange={handleToDateChange} title="Đến ngày" aria-label="Đến ngày" />
+        <div style={{ width: '150px' }}>
+          <DateDropdownPicker
+            value={fromDate}
+            onChange={handleFromDateChange}
+            placeholder="Từ ngày..."
+            className="date-dropdown-picker--compact"
+          />
+        </div>
+        <div style={{ width: '150px' }}>
+          <DateDropdownPicker
+            value={toDate}
+            onChange={handleToDateChange}
+            placeholder="Đến ngày..."
+            className="date-dropdown-picker--compact"
+          />
+        </div>
         <select value={stageFilter} onChange={event => setStageFilter(event.target.value)} aria-label="Trạng thái lưu trú">
           <option value="">Tất cả lưu trú</option>
           <option value="waiting">Chưa check-in</option>

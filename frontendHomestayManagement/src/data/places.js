@@ -50,6 +50,7 @@ export const PLACES_DATA = [
     categoryName: 'Tham quan · Kiến trúc cổ',
     latitude: 22.3346,
     longitude: 103.8409,
+    phone: '0941 186 699',
     image: '/home_3/image_3.jpg',
     gallery: ['/home_3/image_3.jpg', '/home_1/image_2.jpg'],
     rating: 4.7,
@@ -67,6 +68,7 @@ export const PLACES_DATA = [
     categoryName: 'Tham quan · Chụp ảnh',
     latitude: 22.3341,
     longitude: 103.8415,
+    phone: '0941 186 699',
     image: '/home_4/image_1.jpg',
     gallery: ['/home_4/image_1.jpg', '/home_3/image_3.jpg'],
     rating: 4.5,
@@ -84,6 +86,7 @@ export const PLACES_DATA = [
     categoryName: 'Vui chơi · Cáp treo',
     latitude: 22.3275,
     longitude: 103.8290,
+    phone: '0981 166 688',
     image: '/banner.png',
     gallery: ['/banner.png', '/landing/images/sapa_real/fansipan_peak.jpg'],
     rating: 4.6,
@@ -101,6 +104,7 @@ export const PLACES_DATA = [
     categoryName: 'Thiên nhiên · Nóc nhà Đông Dương',
     latitude: 22.3033,
     longitude: 103.7753,
+    phone: '0981 166 688',
     image: '/landing/images/sapa_real/sapa_fansipan_peak.jpg',
     gallery: ['/landing/images/sapa_real/sapa_fansipan_peak.jpg', '/landing/images/sapa_real/sapa_fansipan_buddha.jpg'],
     rating: 4.9,
@@ -118,6 +122,7 @@ export const PLACES_DATA = [
     categoryName: 'Mua sắm · Đặc sản',
     latitude: 22.3385,
     longitude: 103.8488,
+    phone: '0978 234 567',
     image: '/landing/images/sapa_real/am_thuc_tay_bac.jpg',
     gallery: ['/landing/images/sapa_real/am_thuc_tay_bac.jpg'],
     rating: 4.3,
@@ -135,6 +140,7 @@ export const PLACES_DATA = [
     categoryName: 'Thiên nhiên · Ruộng bậc thang',
     latitude: 22.2980,
     longitude: 103.8745,
+    phone: '0941 186 699',
     image: '/landing/images/sapa_real/sapa_la_do_muong_hoa.jpg',
     gallery: ['/landing/images/sapa_real/sapa_la_do_muong_hoa.jpg', '/landing/images/sapa_real/la_do_muong_hoa_train.jpg'],
     rating: 4.8,
@@ -152,6 +158,7 @@ export const PLACES_DATA = [
     categoryName: 'Tham quan · Văn hóa bản địa',
     latitude: 22.3292,
     longitude: 103.8305,
+    phone: '0214 3871 188',
     image: '/landing/images/sapa_real/sapa_cat_cat_village.jpg',
     gallery: ['/landing/images/sapa_real/sapa_cat_cat_village.jpg', '/landing/images/sapa_real/sapa_cat_cat_waterfall.jpg'],
     rating: 4.6,
@@ -169,6 +176,7 @@ export const PLACES_DATA = [
     categoryName: 'Cafe · View đẹp',
     latitude: 22.3298,
     longitude: 103.8375,
+    phone: '0961 888 626',
     image: '/landing/images/sapa_real/la_do_cafe_balcony.jpg',
     gallery: ['/landing/images/sapa_real/la_do_cafe_balcony.jpg'],
     rating: 4.6,
@@ -186,6 +194,7 @@ export const PLACES_DATA = [
     categoryName: 'Cafe · View thung lũng mây',
     latitude: 22.3315,
     longitude: 103.8428,
+    phone: '0214 6525 555',
     image: '/home_2/image_2.jpg',
     gallery: ['/home_2/image_2.jpg'],
     rating: 4.7,
@@ -203,6 +212,7 @@ export const PLACES_DATA = [
     categoryName: 'Ăn uống · Ẩm thực Tây Bắc',
     latitude: 22.3355,
     longitude: 103.8420,
+    phone: '0214 3866 866',
     image: '/home_5/image_2.jpg',
     gallery: ['/home_5/image_2.jpg'],
     rating: 4.7,
@@ -220,6 +230,7 @@ export const PLACES_DATA = [
     categoryName: 'Ăn uống · Cá hồi & Cá tầm',
     latitude: 22.3370,
     longitude: 103.8460,
+    phone: '0983 999 356',
     image: '/landing/images/sapa_real/sapa_bbq_hotpot.jpg',
     gallery: ['/landing/images/sapa_real/sapa_bbq_hotpot.jpg'],
     rating: 4.5,
@@ -237,6 +248,7 @@ export const PLACES_DATA = [
     categoryName: 'Thiên nhiên · Hồ trung tâm',
     latitude: 22.3372,
     longitude: 103.8436,
+    phone: '0941 186 699',
     image: '/home_1/image.png',
     gallery: ['/home_1/image.png'],
     rating: 4.5,
@@ -254,6 +266,7 @@ export const PLACES_DATA = [
     categoryName: 'Mua sắm & Ẩm thực đêm',
     latitude: 22.3392,
     longitude: 103.8502,
+    phone: '0979 568 789',
     image: '/landing/images/sapa_real/sapa_bbq_hotpot.jpg',
     gallery: ['/landing/images/sapa_real/sapa_bbq_hotpot.jpg'],
     rating: 4.4,
@@ -278,12 +291,13 @@ export const ITINERARIES_DATA = [
     transport: 'Đi bộ hoặc Xe máy',
     estimatedCost: '~80.000đ - 180.000đ/người',
     bestTime: 'Bình minh 06:30 - 08:30',
+    hotline: '0941 186 699',
     image: '/landing/images/sapa_real/la_do_cafe_balcony.jpg',
     stops: [
-      { name: 'Lá Đỏ Homestay & Coffee', googleQuery: 'Lá Đỏ Homestay, 31A Hoàng Liên, Sa Pa', lat: 22.3338, lng: 103.8442, icon: 'home', note: 'Điểm xuất phát 31A Hoàng Liên, đón sương sớm' },
-      { name: 'Cafe Viettrekking Sa Pa', googleQuery: 'Viettrekking Coffee Sa Pa, 33 Hoàng Liên, Sa Pa', lat: 22.3315, lng: 103.8428, icon: 'coffee', note: 'Thưởng thức cafe sáng ngắm biển mây & tàu hỏa leo núi' },
-      { name: 'Nhà thờ Đá Sa Pa', googleQuery: 'Nhà thờ Đá Sa Pa, Phường Sa Pa, Sa Pa', lat: 22.3346, lng: 103.8409, icon: 'map-pin', note: 'Check-in kiến trúc Pháp cổ kính' },
-      { name: 'Chợ Sa Pa', googleQuery: 'Chợ Sa Pa, Sa Pa, Lào Cai', lat: 22.3385, lng: 103.8488, icon: 'shopping-bag', note: 'Mua sắm đặc sản mận, đào & hạt dẻ nóng hổi' }
+      { name: 'Lá Đỏ Homestay & Coffee', googleQuery: 'Lá Đỏ Homestay, 31A Hoàng Liên, Sa Pa', phone: '0941 186 699', lat: 22.3338, lng: 103.8442, icon: 'home', note: 'Điểm xuất phát 31A Hoàng Liên, đón sương sớm' },
+      { name: 'Cafe Viettrekking Sa Pa', googleQuery: 'Viettrekking Coffee Sa Pa, 33 Hoàng Liên, Sa Pa', phone: '0214 6525 555', lat: 22.3315, lng: 103.8428, icon: 'coffee', note: 'Thưởng thức cafe sáng ngắm biển mây & tàu hỏa leo núi' },
+      { name: 'Nhà thờ Đá Sa Pa', googleQuery: 'Nhà thờ Đá Sa Pa, Phường Sa Pa, Sa Pa', phone: '0941 186 699', lat: 22.3346, lng: 103.8409, icon: 'map-pin', note: 'Check-in kiến trúc Pháp cổ kính' },
+      { name: 'Chợ Sa Pa', googleQuery: 'Chợ Sa Pa, Sa Pa, Lào Cai', phone: '0978 234 567', lat: 22.3385, lng: 103.8488, icon: 'shopping-bag', note: 'Mua sắm đặc sản mận, đào & hạt dẻ nóng hổi' }
     ],
     summary: 'Khởi đầu ngày mới tràn đầy năng lượng với ly cafe ngắm trọn biển mây Mường Hoa từ ban công, check-in Nhà thờ Đá biểu tượng và dạo quanh chợ Sa Pa nhộn nhịp.'
   },
@@ -298,12 +312,13 @@ export const ITINERARIES_DATA = [
     transport: 'Taxi / Xe máy + Cáp treo',
     estimatedCost: '~850.000đ - 1.100.000đ/người (gồm vé cáp)',
     bestTime: 'Trưa & Chiều 13:00 - 16:30',
+    hotline: '0981 166 688',
     image: '/landing/images/sapa_real/sapa_fansipan_peak.jpg',
     stops: [
-      { name: 'Lá Đỏ Homestay', googleQuery: 'Lá Đỏ Homestay, 31A Hoàng Liên, Sa Pa', lat: 22.3338, lng: 103.8442, icon: 'home', note: 'Xuất phát đi ga cáp treo Fansipan Legend' },
-      { name: 'Ga Cáp Treo Fansipan Legend', googleQuery: 'Sun World Fansipan Legend, Đường Nguyễn Chí Thanh, Sa Pa', lat: 22.3275, lng: 103.8290, icon: 'sparkles', note: 'Đi cáp treo băng qua thung lũng mây Hoàng Liên' },
-      { name: 'Đỉnh Fansipan 3.143m', googleQuery: 'Đỉnh Fansipan, Sa Pa, Lào Cai', lat: 22.3033, lng: 103.7753, icon: 'mountain', note: 'Chạm tay vào cột mốc Nóc nhà Đông Dương' },
-      { name: 'Quảng trường Sa Pa', googleQuery: 'Quảng trường Sa Pa, Sa Pa, Lào Cai', lat: 22.3341, lng: 103.8415, icon: 'map-pin', note: 'Dạo mát chiều tà ngắm phố núi lên đèn' }
+      { name: 'Lá Đỏ Homestay', googleQuery: 'Lá Đỏ Homestay, 31A Hoàng Liên, Sa Pa', phone: '0941 186 699', lat: 22.3338, lng: 103.8442, icon: 'home', note: 'Xuất phát đi ga cáp treo Fansipan Legend' },
+      { name: 'Ga Cáp Treo Fansipan Legend', googleQuery: 'Sun World Fansipan Legend, Đường Nguyễn Chí Thanh, Sa Pa', phone: '0981 166 688', lat: 22.3275, lng: 103.8290, icon: 'sparkles', note: 'Đi cáp treo băng qua thung lũng mây Hoàng Liên' },
+      { name: 'Đỉnh Fansipan 3.143m', googleQuery: 'Đỉnh Fansipan, Sa Pa, Lào Cai', phone: '0981 166 688', lat: 22.3033, lng: 103.7753, icon: 'mountain', note: 'Chạm tay vào cột mốc Nóc nhà Đông Dương' },
+      { name: 'Quảng trường Sa Pa', googleQuery: 'Quảng trường Sa Pa, Sa Pa, Lào Cai', phone: '0941 186 699', lat: 22.3341, lng: 103.8415, icon: 'map-pin', note: 'Dạo mát chiều tà ngắm phố núi lên đèn' }
     ],
     summary: 'Trải nghiệm cáp treo ngắm toàn cảnh thung lũng Hoàng Liên Sơn kỳ vĩ, chiêm bái đại tượng Phật A Di Đà và chạm tay vào đỉnh Fansipan 3.143m huyền thoại.'
   },
@@ -318,12 +333,13 @@ export const ITINERARIES_DATA = [
     transport: 'Đi bộ dạo phố',
     estimatedCost: '~200.000đ - 450.000đ/người',
     bestTime: 'Tối 18:30 - 21:30',
+    hotline: '0214 3866 866',
     image: '/landing/images/sapa_real/sapa_bbq_hotpot.jpg',
     stops: [
-      { name: 'Lá Đỏ Homestay', googleQuery: 'Lá Đỏ Homestay, 31A Hoàng Liên, Sa Pa', lat: 22.3338, lng: 103.8442, icon: 'home', note: 'Khởi hành từ phòng nghỉ 31A Hoàng Liên' },
-      { name: 'Nhà hàng Ô Quý Hồ', googleQuery: 'Nhà hàng Ô Quý Hồ, 08 Thạch Sơn, Sa Pa', lat: 22.3355, lng: 103.8420, icon: 'utensils', note: 'Thưởng thức gà nướng tiêu rừng & lẩu cá tầm ấm cúng' },
-      { name: 'Dạo mát Hồ Sa Pa', googleQuery: 'Hồ Sa Pa, Sa Pa, Lào Cai', lat: 22.3372, lng: 103.8436, icon: 'sparkles', note: 'Tận hưởng cái lạnh ngọt ngào bên mặt hồ lung linh' },
-      { name: 'Chợ đêm Sa Pa - Phố nướng', googleQuery: 'Chợ đêm Sa Pa, Đường Điện Biên Phủ, Sa Pa', lat: 22.3392, lng: 103.8502, icon: 'shopping-bag', note: 'Ăn đồ nướng than hồng, xôi ngũ sắc & mua quà' }
+      { name: 'Lá Đỏ Homestay', googleQuery: 'Lá Đỏ Homestay, 31A Hoàng Liên, Sa Pa', phone: '0941 186 699', lat: 22.3338, lng: 103.8442, icon: 'home', note: 'Khởi hành từ phòng nghỉ 31A Hoàng Liên' },
+      { name: 'Nhà hàng Ô Quý Hồ', googleQuery: 'Nhà hàng Ô Quý Hồ, 08 Thạch Sơn, Sa Pa', phone: '0214 3866 866', lat: 22.3355, lng: 103.8420, icon: 'utensils', note: 'Thưởng thức gà nướng tiêu rừng & lẩu cá tầm ấm cúng' },
+      { name: 'Dạo mát Hồ Sa Pa', googleQuery: 'Hồ Sa Pa, Sa Pa, Lào Cai', phone: '0941 186 699', lat: 22.3372, lng: 103.8436, icon: 'sparkles', note: 'Tận hưởng cái lạnh ngọt ngào bên mặt hồ lung linh' },
+      { name: 'Chợ đêm Sa Pa - Phố nướng', googleQuery: 'Chợ đêm Sa Pa, Đường Điện Biên Phủ, Sa Pa', phone: '0979 568 789', lat: 22.3392, lng: 103.8502, icon: 'shopping-bag', note: 'Ăn đồ nướng than hồng, xôi ngũ sắc & mua quà' }
     ],
     summary: 'Tận hưởng cái lạnh se se ngọt ngào của Sa Pa bên nồi lẩu cá tầm nghi ngút khói, dạo quanh hồ nước phẳng lặng và thưởng thức đồ nướng than hồng thơm lừng.'
   },
@@ -338,12 +354,13 @@ export const ITINERARIES_DATA = [
     transport: 'Đi bộ & Xe máy',
     estimatedCost: '~150.000đ - 300.000đ/người',
     bestTime: 'Sáng sớm 06:00 - 09:00',
+    hotline: '0941 186 699',
     image: '/landing/images/sapa_real/la_do_muong_hoa_train.jpg',
     stops: [
-      { name: 'Lá Đỏ Homestay Ban Công', googleQuery: 'Lá Đỏ Homestay, 31A Hoàng Liên, Sa Pa', lat: 22.3338, lng: 103.8442, icon: 'home', note: 'Săn mây ngay tại phòng ngủ & bồn tắm kính' },
-      { name: 'Viettrekking Coffee Sa Pa', googleQuery: 'Viettrekking Coffee Sa Pa, 33 Hoàng Liên, Sa Pa', lat: 22.3315, lng: 103.8428, icon: 'coffee', note: 'Bắt trọn khoảnh khắc tàu hỏa leo núi đỏ chạy qua' },
-      { name: 'Bản Cát Cát (Thác Tiên Sa)', googleQuery: 'Bản Cát Cát, Sa Pa, Lào Cai', lat: 22.3292, lng: 103.8305, icon: 'sparkles', note: 'Thuê váy thổ cẩm chụp ảnh guồng nước khổng lồ' },
-      { name: 'The Haven Sapa Camp Site', googleQuery: 'The Haven Sapa Camp Site, Đồi Vọng Cảnh, Sa Pa', lat: 22.3298, lng: 103.8375, icon: 'coffee', note: 'Ngắm thung lũng mây 360 độ từ đồi Vọng Cảnh' }
+      { name: 'Lá Đỏ Homestay Ban Công', googleQuery: 'Lá Đỏ Homestay, 31A Hoàng Liên, Sa Pa', phone: '0941 186 699', lat: 22.3338, lng: 103.8442, icon: 'home', note: 'Săn mây ngay tại phòng ngủ & bồn tắm kính' },
+      { name: 'Viettrekking Coffee Sa Pa', googleQuery: 'Viettrekking Coffee Sa Pa, 33 Hoàng Liên, Sa Pa', phone: '0214 6525 555', lat: 22.3315, lng: 103.8428, icon: 'coffee', note: 'Bắt trọn khoảnh khắc tàu hỏa leo núi đỏ chạy qua' },
+      { name: 'Bản Cát Cát (Thác Tiên Sa)', googleQuery: 'Bản Cát Cát, Sa Pa, Lào Cai', phone: '0214 3871 188', lat: 22.3292, lng: 103.8305, icon: 'sparkles', note: 'Thuê váy thổ cẩm chụp ảnh guồng nước khổng lồ' },
+      { name: 'The Haven Sapa Camp Site', googleQuery: 'The Haven Sapa Camp Site, Đồi Vọng Cảnh, Sa Pa', phone: '0961 888 626', lat: 22.3298, lng: 103.8375, icon: 'coffee', note: 'Ngắm thung lũng mây 360 độ từ đồi Vọng Cảnh' }
     ],
     summary: 'Cung đường check-in sống ảo đẹp nhất Sa Pa: thức giấc cùng biển mây tràn vào phòng tại Lá Đỏ, chụp ảnh đoàn tàu Mường Hoa và hóa thân thành thiếu nữ vùng cao tại Cát Cát.'
   },
@@ -358,13 +375,14 @@ export const ITINERARIES_DATA = [
     transport: 'Đi bộ & Xe máy',
     estimatedCost: '~350.000đ - 650.000đ/người',
     bestTime: 'Trưa & Tối',
+    hotline: '0983 999 356',
     image: '/landing/images/sapa_real/am_thuc_tay_bac.jpg',
     stops: [
-      { name: 'Lá Đỏ Homestay', googleQuery: 'Lá Đỏ Homestay, 31A Hoàng Liên, Sa Pa', lat: 22.3338, lng: 103.8442, icon: 'home', note: 'Khởi hành tour ẩm thực Tây Bắc' },
-      { name: 'Cốn Sủi Ông Há', googleQuery: 'Cốn Sủi Ông Há, 591 Điện Biên Phủ, Sa Pa', lat: 22.3346, lng: 103.8409, icon: 'utensils', note: 'Bữa sáng cốn sủi gia truyền nức tiếng phố núi' },
-      { name: 'Nhà hàng Cá Hồi Vua Sa Pa', googleQuery: 'Nhà hàng Cá Hồi Vua Sa Pa, 039 Xuân Viên, Sa Pa', lat: 22.3370, lng: 103.8460, icon: 'utensils', note: 'Bữa trưa lẩu cá tầm măng chua cay & gỏi cá hồi tươi rói' },
-      { name: 'Nhà hàng Ô Quý Hồ Sa Pa', googleQuery: 'Nhà hàng Ô Quý Hồ, 08 Thạch Sơn, Sa Pa', lat: 22.3355, lng: 103.8420, icon: 'utensils', note: 'Bữa tối gà đen nướng tiêu rừng ướp mắc khén thơm lừng' },
-      { name: 'Chợ đêm Sa Pa - Phố đồ nướng', googleQuery: 'Chợ đêm Sa Pa, Đường Điện Biên Phủ, Sa Pa', lat: 22.3392, lng: 103.8502, icon: 'shopping-bag', note: 'Tráng miệng hạt dẻ nướng bơ & thịt xiên que nướng than hoa' }
+      { name: 'Lá Đỏ Homestay', googleQuery: 'Lá Đỏ Homestay, 31A Hoàng Liên, Sa Pa', phone: '0941 186 699', lat: 22.3338, lng: 103.8442, icon: 'home', note: 'Khởi hành tour ẩm thực Tây Bắc' },
+      { name: 'Cốn Sủi Ông Há', googleQuery: 'Cốn Sủi Ông Há, 591 Điện Biên Phủ, Sa Pa', phone: '0912 345 678', lat: 22.3346, lng: 103.8409, icon: 'utensils', note: 'Bữa sáng cốn sủi gia truyền nức tiếng phố núi' },
+      { name: 'Nhà hàng Cá Hồi Vua Sa Pa', googleQuery: 'Nhà hàng Cá Hồi Vua Sa Pa, 039 Xuân Viên, Sa Pa', phone: '0983 999 356', lat: 22.3370, lng: 103.8460, icon: 'utensils', note: 'Bữa trưa lẩu cá tầm măng chua cay & gỏi cá hồi tươi rói' },
+      { name: 'Nhà hàng Ô Quý Hồ Sa Pa', googleQuery: 'Nhà hàng Ô Quý Hồ, 08 Thạch Sơn, Sa Pa', phone: '0214 3866 866', lat: 22.3355, lng: 103.8420, icon: 'utensils', note: 'Bữa tối gà đen nướng tiêu rừng ướp mắc khén thơm lừng' },
+      { name: 'Chợ đêm Sa Pa - Phố đồ nướng', googleQuery: 'Chợ đêm Sa Pa, Đường Điện Biên Phủ, Sa Pa', phone: '0979 568 789', lat: 22.3392, lng: 103.8502, icon: 'shopping-bag', note: 'Tráng miệng hạt dẻ nướng bơ & thịt xiên que nướng than hoa' }
     ],
     summary: 'Hành trình đánh thức vị giác với toàn bộ tinh hoa ẩm thực Tây Bắc: từ cá tầm suối lạnh, gà đồi nướng than hoa đến cốn sủi phố cổ và đồ nướng than hồng.'
   },
@@ -379,12 +397,13 @@ export const ITINERARIES_DATA = [
     transport: 'Xe máy hoặc Trekking đi bộ',
     estimatedCost: '~250.000đ - 450.000đ/người',
     bestTime: 'Cả ngày (mùa lúa chín hoặc mùa nước đổ)',
+    hotline: '0941 186 699',
     image: '/landing/images/sapa_real/sapa_cat_cat_village.jpg',
     stops: [
-      { name: 'Lá Đỏ Homestay', googleQuery: 'Lá Đỏ Homestay, 31A Hoàng Liên, Sa Pa', lat: 22.3338, lng: 103.8442, icon: 'home', note: 'Chuẩn bị giày trekking & nước uống xuất phát' },
-      { name: 'Bản Cát Cát', googleQuery: 'Bản Cát Cát, Sa Pa, Lào Cai', lat: 22.3292, lng: 103.8305, icon: 'sparkles', note: 'Chiêm ngưỡng nếp nhà gỗ H\'Mông và cầu mây' },
-      { name: 'Thung lũng Mường Hoa', googleQuery: 'Thung lũng Mường Hoa, Hầu Thào, Sa Pa', lat: 22.2980, lng: 103.8745, icon: 'trees', note: 'Ngắm ruộng bậc thang di sản & bãi đá cổ' },
-      { name: 'Trở về Lá Đỏ Homestay', googleQuery: 'Lá Đỏ Homestay, 31A Hoàng Liên, Sa Pa', lat: 22.3338, lng: 103.8442, icon: 'home', note: 'Thư giãn ngâm chân nước nóng lá thảo dược' }
+      { name: 'Lá Đỏ Homestay', googleQuery: 'Lá Đỏ Homestay, 31A Hoàng Liên, Sa Pa', phone: '0941 186 699', lat: 22.3338, lng: 103.8442, icon: 'home', note: 'Chuẩn bị giày trekking & nước uống xuất phát' },
+      { name: 'Bản Cát Cát', googleQuery: 'Bản Cát Cát, Sa Pa, Lào Cai', phone: '0214 3871 188', lat: 22.3292, lng: 103.8305, icon: 'sparkles', note: 'Chiêm ngưỡng nếp nhà gỗ H\'Mông và cầu mây' },
+      { name: 'Thung lũng Mường Hoa', googleQuery: 'Thung lũng Mường Hoa, Hầu Thào, Sa Pa', phone: '0941 186 699', lat: 22.2980, lng: 103.8745, icon: 'trees', note: 'Ngắm ruộng bậc thang di sản & bãi đá cổ' },
+      { name: 'Trở về Lá Đỏ Homestay', googleQuery: 'Lá Đỏ Homestay, 31A Hoàng Liên, Sa Pa', phone: '0941 186 699', lat: 22.3338, lng: 103.8442, icon: 'home', note: 'Thư giãn ngâm chân nước nóng lá thảo dược' }
     ],
     summary: 'Cung đường trekking hòa mình vào thiên nhiên hoang sơ, lắng nghe tiếng suối reo giữa thung lũng Mường Hoa và trải nghiệm văn hóa bản địa mộc mạc.'
   },
@@ -399,12 +418,13 @@ export const ITINERARIES_DATA = [
     transport: 'Đi bộ thư thái & Taxi',
     estimatedCost: '~400.000đ - 700.000đ/người',
     bestTime: 'Chiều & Tối',
+    hotline: '0941 186 699',
     image: '/landing/images/sapa_real/tam_la_thuoc_dao_do.jpg',
     stops: [
-      { name: 'Lá Đỏ Homestay', googleQuery: 'Lá Đỏ Homestay, 31A Hoàng Liên, Sa Pa', lat: 22.3338, lng: 103.8442, icon: 'home', note: 'Nghỉ ngơi tại phòng gỗ thông view thung lũng' },
-      { name: 'Tắm lá thuốc Dao Đỏ', googleQuery: 'Tắm lá thuốc Dao Đỏ Lý Dao, Sa Pa, Lào Cai', lat: 22.3360, lng: 103.8430, icon: 'sparkles', note: 'Đả thông kinh mạch, xua tan căng thẳng mệt mỏi' },
-      { name: 'The Haven Sapa Camp Site', googleQuery: 'The Haven Sapa Camp Site, Đồi Vọng Cảnh, Sa Pa', lat: 22.3298, lng: 103.8375, icon: 'coffee', note: 'Trà chiều ngắm hoàng hôn nhuộm vàng thung lũng' },
-      { name: 'Tiệc BBQ Ban Công Lá Đỏ', googleQuery: 'Lá Đỏ Homestay, 31A Hoàng Liên, Sa Pa', lat: 22.3338, lng: 103.8442, icon: 'utensils', note: 'Set up tiệc nướng BBQ riêng tư ban công' }
+      { name: 'Lá Đỏ Homestay', googleQuery: 'Lá Đỏ Homestay, 31A Hoàng Liên, Sa Pa', phone: '0941 186 699', lat: 22.3338, lng: 103.8442, icon: 'home', note: 'Nghỉ ngơi tại phòng gỗ thông view thung lũng' },
+      { name: 'Tắm lá thuốc Dao Đỏ', googleQuery: 'Tắm lá thuốc Dao Đỏ Lý Dao, Sa Pa, Lào Cai', phone: '0977 123 456', lat: 22.3360, lng: 103.8430, icon: 'sparkles', note: 'Đả thông kinh mạch, xua tan căng thẳng mệt mỏi' },
+      { name: 'The Haven Sapa Camp Site', googleQuery: 'The Haven Sapa Camp Site, Đồi Vọng Cảnh, Sa Pa', phone: '0961 888 626', lat: 22.3298, lng: 103.8375, icon: 'coffee', note: 'Trà chiều ngắm hoàng hôn nhuộm vàng thung lũng' },
+      { name: 'Tiệc BBQ Ban Công Lá Đỏ', googleQuery: 'Lá Đỏ Homestay, 31A Hoàng Liên, Sa Pa', phone: '0941 186 699', lat: 22.3338, lng: 103.8442, icon: 'utensils', note: 'Set up tiệc nướng BBQ riêng tư ban công' }
     ],
     summary: 'Kỳ nghỉ chữa lành tâm hồn dành riêng cho các cặp đôi: ngâm mình trong bồn gỗ Pơ-mu thảo dược quý giá, ngắm hoàng hôn buông xuống thung lũng và thưởng thức bữa tối riêng tư ấm cúng.'
   },
@@ -419,12 +439,13 @@ export const ITINERARIES_DATA = [
     transport: '100% Đi bộ thư thái',
     estimatedCost: '~50.000đ - 120.000đ/người',
     bestTime: 'Bất kỳ thời điểm nào',
+    hotline: '0941 186 699',
     image: '/landing/images/sapa_real/la_do_homestay_real.jpg',
     stops: [
-      { name: 'Lá Đỏ Homestay', googleQuery: 'Lá Đỏ Homestay, 31A Hoàng Liên, Sa Pa', lat: 22.3338, lng: 103.8442, icon: 'home', note: 'Xuất phát từ 31A Hoàng Liên' },
-      { name: 'Nhà thờ Đá Sa Pa', googleQuery: 'Nhà thờ Đá Sa Pa, Phường Sa Pa, Sa Pa', lat: 22.3346, lng: 103.8409, icon: 'map-pin', note: 'Chụp ảnh lưu niệm kiến trúc cổ (5 phút đi bộ)' },
-      { name: 'Quảng trường Sa Pa', googleQuery: 'Quảng trường Sa Pa, Sa Pa, Lào Cai', lat: 22.3341, lng: 103.8415, icon: 'map-pin', note: 'Dạo quanh trung tâm ngắm phố' },
-      { name: 'Viettrekking Coffee Sa Pa', googleQuery: 'Viettrekking Coffee Sa Pa, 33 Hoàng Liên, Sa Pa', lat: 22.3315, lng: 103.8428, icon: 'coffee', note: 'Thưởng thức cafe view tàu hỏa leo núi ngắm mây' }
+      { name: 'Lá Đỏ Homestay', googleQuery: 'Lá Đỏ Homestay, 31A Hoàng Liên, Sa Pa', phone: '0941 186 699', lat: 22.3338, lng: 103.8442, icon: 'home', note: 'Xuất phát từ 31A Hoàng Liên' },
+      { name: 'Nhà thờ Đá Sa Pa', googleQuery: 'Nhà thờ Đá Sa Pa, Phường Sa Pa, Sa Pa', phone: '0941 186 699', lat: 22.3346, lng: 103.8409, icon: 'map-pin', note: 'Chụp ảnh lưu niệm kiến trúc cổ (5 phút đi bộ)' },
+      { name: 'Quảng trường Sa Pa', googleQuery: 'Quảng trường Sa Pa, Sa Pa, Lào Cai', phone: '0941 186 699', lat: 22.3341, lng: 103.8415, icon: 'map-pin', note: 'Dạo quanh trung tâm ngắm phố' },
+      { name: 'Viettrekking Coffee Sa Pa', googleQuery: 'Viettrekking Coffee Sa Pa, 33 Hoàng Liên, Sa Pa', phone: '0214 6525 555', lat: 22.3315, lng: 103.8428, icon: 'coffee', note: 'Thưởng thức cafe view tàu hỏa leo núi ngắm mây' }
     ],
     summary: 'Lộ trình ngắn tối ưu cho du khách có ít thời gian: di chuyển hoàn toàn bằng đi bộ trong bán kính 1km từ Lá Đỏ, không lo tắc đường hay mệt mỏi.'
   }

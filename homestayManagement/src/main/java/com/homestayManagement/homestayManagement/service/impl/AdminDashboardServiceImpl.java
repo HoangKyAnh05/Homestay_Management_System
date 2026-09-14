@@ -33,15 +33,19 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
     private final InvoiceRepository invoiceRepository;
     private final BookingDetailRepository bookingDetailRepository;
     private final RoomRepository roomRepository;
+    private final com.homestayManagement.homestayManagement.repository.RoomIncidentRepository roomIncidentRepository;
 
+    @org.springframework.beans.factory.annotation.Autowired
     public AdminDashboardServiceImpl(
             InvoiceRepository invoiceRepository,
             BookingDetailRepository bookingDetailRepository,
-            RoomRepository roomRepository
+            RoomRepository roomRepository,
+            com.homestayManagement.homestayManagement.repository.RoomIncidentRepository roomIncidentRepository
     ) {
         this.invoiceRepository = invoiceRepository;
         this.bookingDetailRepository = bookingDetailRepository;
         this.roomRepository = roomRepository;
+        this.roomIncidentRepository = roomIncidentRepository;
     }
 
     @Override
@@ -57,11 +61,14 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
         LocalDateTime endExclusive = endDate.plusDays(1).atStartOfDay();
         List<Invoice> invoices = invoiceRepository.findByCreatedAtRangeForDashboard(startInclusive, endExclusive);
         List<BookingDetail> details = bookingDetailRepository.findDashboardDetails(startInclusive, endExclusive);
+        List<com.homestayManagement.homestayManagement.entity.RoomIncident> incidents = roomIncidentRepository != null
+                ? roomIncidentRepository.findByReportedAtRange(startInclusive, endExclusive)
+                : List.of();
         int totalRooms = (int) roomRepository.count();
 
         List<AdminDashboardRevenuePointResponse> revenueTrend = buildRevenueTrend(startDate, endDate, invoices);
         List<AdminDashboardOccupancyPointResponse> occupancyTrend = buildOccupancyTrend(startDate, endDate, details, totalRooms);
-        AdminDashboardKpiResponse kpis = buildKpis(invoices, details, totalRooms, occupancyTrend);
+        AdminDashboardKpiResponse kpis = buildKpis(invoices, details, incidents, totalRooms, occupancyTrend);
 
         return new AdminDashboardSummaryResponse(
                 startDate,
@@ -79,6 +86,7 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
     private AdminDashboardKpiResponse buildKpis(
             List<Invoice> invoices,
             List<BookingDetail> details,
+            List<com.homestayManagement.homestayManagement.entity.RoomIncident> incidents,
             int totalRooms,
             List<AdminDashboardOccupancyPointResponse> occupancyTrend
     ) {
@@ -86,6 +94,11 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
         BigDecimal serviceRevenue = invoices.stream().map(this::serviceCharge).reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal penaltyRevenue = invoices.stream().map(this::penaltyCharge).reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal totalRevenue = invoices.stream().map(this::totalAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal maintenanceExpense = incidents.stream()
+                .filter(i -> "HOMESTAY".equalsIgnoreCase(i.getLiability()))
+                .filter(i -> !"DISMISSED".equalsIgnoreCase(i.getStatus()))
+                .map(i -> i.getCompensationAmount() != null ? i.getCompensationAmount() : BigDecimal.ZERO)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
         long bookingCount = details.stream()
                 .map(detail -> detail.getBooking().getId())
                 .distinct()
@@ -103,6 +116,7 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
                 roomRevenue,
                 serviceRevenue,
                 penaltyRevenue,
+                maintenanceExpense,
                 bookingCount,
                 occupiedRoomNights,
                 totalRooms,

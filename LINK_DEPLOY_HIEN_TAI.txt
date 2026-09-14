@@ -3,9 +3,9 @@
 ======================================================================
 
  [1] LINK WEB HOMESTAY (Frontend + Backend API - VO HAN BANG THONG):
-     https://moments-olympic-inn-worked.trycloudflare.com
+     https://laser-cell-departments-savannah.trycloudflare.com
 
- * Uu diem: Dung luong vo han, xem video render thoai mai khong bi chan.
+ * Dung luong vo han, truy cap muot ma tren tat ca trinh duyet.
  * Moi may tinh, dien thoai deu co the truy cap duoc.
  * De tat he thong: Nhan dup vao file TAT_HE_THONG.bat
 ======================================================================

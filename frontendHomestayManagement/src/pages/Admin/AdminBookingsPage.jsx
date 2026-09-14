@@ -6,6 +6,7 @@ import { houseTypeName } from '../../utils/houseType'
 import SePayQrPayment from '../../components/SePayQrPayment/SePayQrPayment'
 import AdminLayout from './AdminLayout'
 import AdminChangeRoomModal from '../../components/AdminChangeRoom/AdminChangeRoomModal'
+import DateDropdownPicker from '../../components/Common/DateDropdownPicker'
 import './AdminBookingsPage.css'
 
 const API_BASE = (import.meta.env.VITE_API_URL || '') + '/api/admin/bookings'
@@ -890,8 +891,12 @@ function BookingDetailModal({ detail, loading, error, actionLoading, actionError
                       </label>
                       <label className="abk-edit-field">
                         <span>Ngày sinh</span>
-                        <input type="date" value={custForm.dateOfBirth}
-                          onChange={e => setCustForm(f => ({ ...f, dateOfBirth: e.target.value }))} />
+                        <DateDropdownPicker
+                          isDob={true}
+                          value={custForm.dateOfBirth}
+                          onChange={val => setCustForm(f => ({ ...f, dateOfBirth: val }))}
+                          placeholder="Chọn ngày sinh..."
+                        />
                       </label>
                     </div>
                     {custError && <p className="abk-edit-error">{custError}</p>}
@@ -1843,7 +1848,12 @@ function DirectBookingModal({ onClose, onCreated }) {
                   <input required type="email" placeholder="VD: khachhang@gmail.com" value={form.email} onChange={e => updateForm('email', e.target.value)} />
                 </label>
                 <label><span>Ngày sinh</span>
-                  <input type="date" value={form.dateOfBirth} onChange={e => updateForm('dateOfBirth', e.target.value)} />
+                  <DateDropdownPicker
+                    isDob={true}
+                    value={form.dateOfBirth || ''}
+                    onChange={val => updateForm('dateOfBirth', val)}
+                    allowEmpty={true}
+                  />
                 </label>
                 <label><span>CCCD người đại diện *</span>
                   <input required inputMode="numeric" maxLength="12" placeholder="Đủ 12 chữ số CCCD" value={form.identityDocumentNumber} onChange={e => updateForm('identityDocumentNumber', e.target.value)} />
@@ -2027,7 +2037,14 @@ function DirectBookingModal({ onClose, onCreated }) {
                             <label><span>Họ tên *</span><input required maxLength="100" placeholder="VD: Nguyễn Văn An" value={guest.fullName} onChange={e => updateGuest(room.roomId, guestIndex, 'fullName', e.target.value)} /></label>
                             <label><span>CCCD *</span><input required inputMode="numeric" maxLength="12" placeholder="12 chữ số CCCD" value={guest.identityDocumentNumber} onChange={e => updateGuest(room.roomId, guestIndex, 'identityDocumentNumber', e.target.value)} /></label>
                             <label><span>Điện thoại *</span><input required inputMode="numeric" maxLength="10" placeholder="10 số điện thoại" value={guest.phone} onChange={e => updateGuest(room.roomId, guestIndex, 'phone', e.target.value)} /></label>
-                            <label><span>Ngày sinh</span><input type="date" value={guest.dateOfBirth} onChange={e => updateGuest(room.roomId, guestIndex, 'dateOfBirth', e.target.value)} /></label>
+                            <label><span>Ngày sinh</span>
+                              <DateDropdownPicker
+                                isDob={true}
+                                value={guest.dateOfBirth || ''}
+                                onChange={val => updateGuest(room.roomId, guestIndex, 'dateOfBirth', val)}
+                                allowEmpty={true}
+                              />
+                            </label>
                             <label><span>Email</span><input type="email" maxLength="100" placeholder="email@example.com" value={guest.email} onChange={e => updateGuest(room.roomId, guestIndex, 'email', e.target.value)} /></label>
                             <label><span>Địa chỉ</span><input maxLength="255" placeholder="Địa chỉ thường trú" value={guest.address} onChange={e => updateGuest(room.roomId, guestIndex, 'address', e.target.value)} /></label>
                             {room.guests.length > 1 && <button type="button" className="abk-remove-guest-btn" onClick={() => removeGuest(room.roomId, guestIndex)}>Xóa</button>}
@@ -2979,12 +2996,17 @@ function AdminBookingsPage() {
             </button>
           </div>
 
-          <input
-            className="abk-date"
-            type="date"
-            value={weekStart}
-            onChange={e => setWeekStart(toDateKey(startOfWeek(toDate(e.target.value))))}
-          />
+          <div style={{ width: '160px' }}>
+            <DateDropdownPicker
+              value={weekStart}
+              onChange={val => {
+                if (val) setWeekStart(toDateKey(startOfWeek(toDate(val))))
+              }}
+              allowEmpty={false}
+              placeholder="Chọn ngày..."
+              className="date-dropdown-picker--compact"
+            />
+          </div>
           <select className="abk-select" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
             <option value="">Tất cả trạng thái</option>
             <option value="CONFIRMED">Đã xác nhận</option>

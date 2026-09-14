@@ -134,6 +134,33 @@
   color: #cbd5e1;
 }
 
+.place-detail-phone-row {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  color: #047857;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  padding: 0.3rem 0.5rem;
+  border-radius: 6px;
+  margin-top: 0.2rem;
+}
+
+.place-detail-phone-link {
+  color: #047857;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  transition: color 0.15s ease;
+}
+
+.place-detail-phone-link:hover {
+  color: #065f46;
+  text-decoration: underline;
+}
+
 .place-detail-desc {
   font-size: 0.775rem;
   color: #475569;

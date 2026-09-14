@@ -44,4 +44,11 @@ public interface RoomIncidentRepository extends JpaRepository<RoomIncident, Long
 
     @Query("SELECT DISTINCT i.room.id FROM RoomIncident i WHERE i.status IN ('REPORTED', 'IN_PROGRESS') AND i.room.id IS NOT NULL")
     List<Long> findRoomIdsWithInProgressIncidents();
+
+    @Query("SELECT i FROM RoomIncident i WHERE i.reportedAt >= :startInclusive AND i.reportedAt < :endExclusive")
+    List<RoomIncident> findByReportedAtRange(
+            @org.springframework.data.repository.query.Param("startInclusive") java.time.LocalDateTime startInclusive,
+            @org.springframework.data.repository.query.Param("endExclusive") java.time.LocalDateTime endExclusive
+    );
 }
+

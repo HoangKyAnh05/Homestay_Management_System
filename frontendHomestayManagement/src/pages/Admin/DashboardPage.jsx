@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { getStoredToken } from '../../services/authService'
 import AdminLayout from './AdminLayout'
+import DateDropdownPicker from '../../components/Common/DateDropdownPicker'
 import './DashboardPage.css'
 
 const API_BASE = (import.meta.env.VITE_API_URL || '') + '/api/admin/dashboard'
@@ -856,6 +857,26 @@ function triggerFileDownload(blob, fileName) {
     }
   }, [kpis, summary])
 
+  const maintenanceKpiInfo = useMemo(() => {
+    const maintCost = Number(kpis.maintenanceExpense || 0)
+    return {
+      title: 'Chi phí bảo trì & sửa chữa nội bộ',
+      subtitle: `Tổng chi phí Homestay tự chi trả trong kỳ: ${formatFullDate(fromDate)} đến ${formatFullDate(toDate)}`,
+      formula: 'Tổng Chi Phí Bảo Trì = SUM(Chi phí các sự cố có Trách nhiệm = Homestay tự chịu)',
+      calculation: `Ghi nhận tổng chi phí ${formatExactMoney(maintCost)} từ các sự cố phòng/thiết bị do Homestay chịu`,
+      breakdown: [
+        {
+          icon: '🛠️',
+          label: 'Chi phí sửa chữa & bảo trì',
+          value: formatExactMoney(maintCost),
+          percent: '100%',
+          desc: 'Chi phí vật tư, linh kiện thay thế, công thợ sửa chữa do Homestay chi trả',
+        },
+      ],
+      source: 'Bảng Báo cáo sự cố phòng (Room Incidents) với bên chịu trách nhiệm là Homestay',
+    }
+  }, [kpis, fromDate, toDate])
+
   return (
     <AdminLayout activePage="dashboard">
       <div className="dash-header">
@@ -863,9 +884,23 @@ function triggerFileDownload(blob, fileName) {
           <h1>Tổng quan hệ thống</h1>
           <p>Phân tích doanh thu, công suất phòng, booking và hiệu quả khai thác phòng.</p>
         </div>
-        <div className="dash-actions">
-          <input type="date" value={fromDate} onChange={event => setFromDate(event.target.value)} />
-          <input type="date" value={toDate} onChange={event => setToDate(event.target.value)} />
+        <div className="dash-actions" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ width: '160px' }}>
+            <DateDropdownPicker
+              value={fromDate}
+              onChange={(val) => setFromDate(val)}
+              placeholder="Từ ngày..."
+              className="date-dropdown-picker--compact"
+            />
+          </div>
+          <div style={{ width: '160px' }}>
+            <DateDropdownPicker
+              value={toDate}
+              onChange={(val) => setToDate(val)}
+              placeholder="Đến ngày..."
+              className="date-dropdown-picker--compact"
+            />
+          </div>
           <button type="button" onClick={loadSummary} disabled={loading}>{loading ? 'Đang tải...' : 'Làm mới'}</button>
           <button
             type="button"
@@ -901,6 +936,14 @@ function triggerFileDownload(blob, fileName) {
           hint="Tổng hóa đơn trong kỳ"
           tone="revenue"
           inspectInfo={revenueKpiInfo}
+          onInspectClick={handleInspectClick}
+        />
+        <KpiCard
+          label="Phí bảo trì nội bộ"
+          value={formatMoney(kpis.maintenanceExpense || 0)}
+          hint="Homestay tự bảo trì"
+          tone="maintenance"
+          inspectInfo={maintenanceKpiInfo}
           onInspectClick={handleInspectClick}
         />
         <KpiCard

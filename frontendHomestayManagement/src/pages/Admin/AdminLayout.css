@@ -286,6 +286,27 @@
   display: inline-block;
 }
 
+/* Numbered badge for bookings checkin/checkout counts */
+.admin-nav-count-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 10px;
+  background: #ef4444;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+  box-shadow: 0 2px 5px rgba(239, 68, 68, 0.4);
+  margin-left: auto;
+  margin-right: 6px;
+  flex-shrink: 0;
+}
+
+
 @keyframes adminRedDotPulse {
   0%, 100% {
     transform: scale(1);

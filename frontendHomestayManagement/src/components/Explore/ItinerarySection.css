@@ -747,6 +747,67 @@
   color: #f43f5e;
 }
 
+.itinerary-stop-head-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.itinerary-stop-phone-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: #047857;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  text-decoration: none;
+  transition: all 0.15s ease;
+}
+
+.itinerary-stop-phone-btn:hover {
+  background: #059669;
+  color: #ffffff;
+}
+
+.itinerary-hotline-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  padding: 0.35rem 0.6rem;
+  border-radius: 8px;
+  margin-bottom: 0.65rem;
+  font-size: 0.75rem;
+}
+
+.itinerary-hotline-icon {
+  color: #15803d;
+  font-weight: 600;
+}
+
+.itinerary-hotline-btn {
+  color: #166534;
+  font-weight: 700;
+  text-decoration: none;
+  background: #dcfce7;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+}
+
+.itinerary-hotline-btn:hover {
+  background: #16a34a;
+  color: #ffffff;
+}
+
 .itinerary-stop-link-icon {
   font-size: 0.6875rem;
   color: #94a3b8;

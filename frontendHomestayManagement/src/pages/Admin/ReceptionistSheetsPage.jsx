@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { getStoredToken } from '../../services/authService'
 import { formatDateTime as formatAppDateTime } from '../../utils/dateTimeFormat'
 import AdminLayout from './AdminLayout'
+import DateDropdownPicker from '../../components/Common/DateDropdownPicker'
 import './ReceptionistSheetsPage.css'
 
 const API_BASE = (import.meta.env.VITE_API_URL || '') + '/api/admin/sheets'
@@ -381,19 +382,13 @@ export default function ReceptionistSheetsPage() {
               )}
             </div>
 
-            <div className="rsheet-date-filter">
-              <input
-                type="date"
-                className="rsheet-date-input"
+            <div className="rsheet-date-filter" style={{ width: '160px' }}>
+              <DateDropdownPicker
                 value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                title="Lọc theo ngày"
+                onChange={(val) => setSelectedDate(val || '')}
+                placeholder="Lọc theo ngày..."
+                className="date-dropdown-picker--compact"
               />
-              {selectedDate && (
-                <button type="button" className="rsheet-date-clear" onClick={() => setSelectedDate('')} title="Bỏ lọc ngày">
-                  ×
-                </button>
-              )}
             </div>
           </div>
         </div>

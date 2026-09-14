@@ -416,22 +416,43 @@ export default function ItinerarySection({
                           {sIdx < item.stops.length - 1 && <span className="itinerary-step-line" />}
                         </div>
                         <div className="itinerary-stop-right">
-                          <a
-                            href={getGoogleMapsPlaceUrl(stop)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="itinerary-stop-header-link"
-                            title={`Bấm để mở địa điểm "${stop.name}" trên Google Maps`}
-                          >
-                            <StopIcon type={stop.icon} />
-                            <strong className="itinerary-stop-name">{stop.name}</strong>
-                            <span className="itinerary-stop-link-icon">↗</span>
-                          </a>
+                          <div className="itinerary-stop-head-box">
+                            <a
+                              href={getGoogleMapsPlaceUrl(stop)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="itinerary-stop-header-link"
+                              title={`Bấm để mở địa điểm "${stop.name}" trên Google Maps`}
+                            >
+                              <StopIcon type={stop.icon} />
+                              <strong className="itinerary-stop-name">{stop.name}</strong>
+                              <span className="itinerary-stop-link-icon">↗</span>
+                            </a>
+                            {stop.phone && (
+                              <a
+                                href={`tel:${stop.phone.replace(/\s+/g, '')}`}
+                                className="itinerary-stop-phone-btn"
+                                title={`Gọi ngay ${stop.phone}`}
+                              >
+                                📞 {stop.phone}
+                              </a>
+                            )}
+                          </div>
                           {stop.note && <p className="itinerary-stop-note">{stop.note}</p>}
                         </div>
                       </div>
                     ))}
                   </div>
+
+                  {/* Hotline Bar */}
+                  {item.hotline && (
+                    <div className="itinerary-hotline-strip">
+                      <span className="itinerary-hotline-icon">📞 Hotline hỗ trợ:</span>
+                      <a href={`tel:${item.hotline.replace(/\s+/g, '')}`} className="itinerary-hotline-btn">
+                        <strong>{item.hotline}</strong> (Gọi ngay)
+                      </a>
+                    </div>
+                  )}
 
                   {/* Action Buttons */}
                   <div className="itinerary-card-actions">
@@ -519,23 +540,42 @@ export default function ItinerarySection({
                   <div key={idx} className="itinerary-timeline-step">
                     <div className="itinerary-timeline-num">{idx + 1}</div>
                     <div className="itinerary-timeline-text">
-                      <a
-                        href={getGoogleMapsPlaceUrl(stop)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="itinerary-timeline-stop-head-link"
-                        title={`Bấm để mở địa điểm "${stop.name}" trên Google Maps`}
-                      >
-                        <StopIcon type={stop.icon} />
-                        <strong>{stop.name}</strong>
-                        <span className="itinerary-stop-link-icon">↗</span>
-                      </a>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+                        <a
+                          href={getGoogleMapsPlaceUrl(stop)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="itinerary-timeline-stop-head-link"
+                          title={`Bấm để mở địa điểm "${stop.name}" trên Google Maps`}
+                        >
+                          <StopIcon type={stop.icon} />
+                          <strong>{stop.name}</strong>
+                          <span className="itinerary-stop-link-icon">↗</span>
+                        </a>
+                        {stop.phone && (
+                          <a
+                            href={`tel:${stop.phone.replace(/\s+/g, '')}`}
+                            className="itinerary-stop-phone-btn"
+                            title={`Gọi ngay ${stop.phone}`}
+                          >
+                            📞 {stop.phone}
+                          </a>
+                        )}
+                      </div>
                       <p>{stop.note || 'Điểm dừng chân tham quan trải nghiệm'}</p>
                     </div>
                   </div>
                 ))}
               </div>
 
+              {activeModalItinerary.hotline && (
+                <div className="itinerary-hotline-strip" style={{ margin: '14px 0 6px' }}>
+                  <span className="itinerary-hotline-icon">📞 Hotline hỗ trợ lịch trình:</span>
+                  <a href={`tel:${activeModalItinerary.hotline.replace(/\s+/g, '')}`} className="itinerary-hotline-btn">
+                    <strong>{activeModalItinerary.hotline}</strong> (Bấm để gọi ngay)
+                  </a>
+                </div>
+              )}
 
               <div className="itinerary-modal-actions">
                 <button

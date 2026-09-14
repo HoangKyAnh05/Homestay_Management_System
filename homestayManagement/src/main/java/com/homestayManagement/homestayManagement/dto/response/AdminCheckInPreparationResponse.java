@@ -17,6 +17,7 @@ public record AdminCheckInPreparationResponse(
         AdminBookingRoomResponse assignedRoom,
         boolean preRegistered,
         List<AdminCustomerHistoryGuestResponse> registeredGuests,
-        List<AdminBookingRoomResponse> availableRooms
+        List<AdminBookingRoomResponse> availableRooms,
+        List<AdminBookingRoomResponse> otherAvailableRooms
 ) {
 }

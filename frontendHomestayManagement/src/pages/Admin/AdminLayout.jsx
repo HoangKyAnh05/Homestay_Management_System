@@ -178,6 +178,7 @@ function AdminLayoutInner({ activePage, children }) {
     users: false,
   })
 
+  const [bookingCounts, setBookingCounts] = useState({ todayCheckIns: 0, todayCheckOuts: 0 })
   const [marketingUnreadCount, setMarketingUnreadCount] = useState(0)
   const [hasPendingDailyReport, setHasPendingDailyReport] = useState(false)
   const [showNotificationDropdown, setShowNotificationDropdown] = useState(false)
@@ -297,29 +298,58 @@ function AdminLayoutInner({ activePage, children }) {
           const maxId = Math.max(...bookings.map(b => Number(b.bookingId || b.id || 0)))
           maxBookingIdRef.current = maxId
 
+          const now = new Date()
+          const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+
+          let inCount = 0
+          let outCount = 0
+          bookings.forEach(b => {
+            const details = Array.isArray(b.details) && b.details.length > 0 ? b.details : [b]
+            details.forEach(d => {
+              const ci = String(d.checkInTarget || d.checkInDate || d.checkIn || b.checkInDate || b.checkIn || b.checkInTarget || '').slice(0, 10)
+              const co = String(d.checkOutTarget || d.checkOutDate || d.checkOut || b.checkOutDate || b.checkOut || b.checkOutTarget || '').slice(0, 10)
+              const rec = d.checkInRecord || {}
+              const hasIn = Boolean(rec.actualCheckIn)
+              const hasOut = Boolean(rec.actualCheckOut)
+              const detailSt = String(d.detailStatus || b.bookingStatus || b.status || '').toUpperCase()
+
+              const stage = hasOut ? 'completed'
+                : hasIn ? 'staying'
+                : detailSt === 'CANCELLED' ? 'cancelled'
+                : 'waiting'
+
+              // Cần check-in hôm nay: chưa nhận phòng và ngày đến đúng hôm nay
+              if (stage === 'waiting' && ci === todayStr) {
+                inCount++
+              }
+              // Cần check-out hôm nay: đang ở và ngày đi đúng hôm nay
+              if (stage === 'staying' && co === todayStr) {
+                outCount++
+              }
+            })
+          })
+          setBookingCounts({ todayCheckIns: inCount, todayCheckOuts: outCount })
+
           const seenOrdersId = Number(localStorage.getItem('admin_seen_booking_orders_id') || 0)
           const seenCheckInId = Number(localStorage.getItem('admin_seen_checkin_logs_id') || 0)
 
           if (seenOrdersId === 0) {
             localStorage.setItem('admin_seen_booking_orders_id', String(maxId))
-            updated['booking-orders'] = false
+            updated['booking-orders'] = inCount > 0
           } else {
-            updated['booking-orders'] = maxId > seenOrdersId
+            updated['booking-orders'] = (maxId > seenOrdersId) || inCount > 0
           }
 
           if (seenCheckInId === 0) {
             localStorage.setItem('admin_seen_checkin_logs_id', String(maxId))
-            updated['check-in-logs'] = false
+            updated['check-in-logs'] = outCount > 0
           } else {
-            updated['check-in-logs'] = maxId > seenCheckInId
+            updated['check-in-logs'] = (maxId > seenCheckInId) || outCount > 0
           }
 
-          // If user is currently on active page, don't show red dot
-          if (activePage === 'booking-orders') updated['booking-orders'] = false
-          if (activePage === 'check-in-logs') updated['check-in-logs'] = false
-
-          updated.bookings = updated['booking-orders'] || updated['check-in-logs']
+          updated.bookings = updated['booking-orders'] || updated['check-in-logs'] || (inCount + outCount > 0)
         } else {
+          setBookingCounts({ todayCheckIns: 0, todayCheckOuts: 0 })
           updated['booking-orders'] = false
           updated['check-in-logs'] = false
           updated.bookings = false
@@ -497,12 +527,26 @@ function AdminLayoutInner({ activePage, children }) {
                   >
                     <span className="admin-nav-icon">
                       {item.icon}
-                      {collapsed && hasParentAlert && <span className="admin-nav-red-dot" title="Có thông báo cần xử lý" />}
+                      {collapsed && (
+                        item.key === 'bookings' && (bookingCounts.todayCheckIns + bookingCounts.todayCheckOuts > 0) ? (
+                          <span className="admin-nav-count-badge" title="Đơn cần xử lý hôm nay">
+                            {bookingCounts.todayCheckIns + bookingCounts.todayCheckOuts}
+                          </span>
+                        ) : hasParentAlert ? (
+                          <span className="admin-nav-red-dot" title="Có thông báo cần xử lý" />
+                        ) : null
+                      )}
                     </span>
                     {!collapsed && (
                       <>
                         <span className="admin-nav-label">{item.label}</span>
-                        {hasParentAlert && <span className="admin-nav-badge-dot" title="Có thông báo cần xử lý" />}
+                        {item.key === 'bookings' && (bookingCounts.todayCheckIns + bookingCounts.todayCheckOuts > 0) ? (
+                          <span className="admin-nav-count-badge" title="Đơn cần xử lý hôm nay">
+                            {bookingCounts.todayCheckIns + bookingCounts.todayCheckOuts}
+                          </span>
+                        ) : hasParentAlert ? (
+                          <span className="admin-nav-badge-dot" title="Có thông báo cần xử lý" />
+                        ) : null}
                         <span className={`admin-nav-chevron${open ? ' admin-nav-chevron--open' : ''}`}>
                           <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
                         </span>
@@ -514,6 +558,10 @@ function AdminLayoutInner({ activePage, children }) {
                     <div className="admin-nav-submenu">
                       {item.children.map(child => {
                         const hasChildAlert = Boolean(navAlerts[child.key])
+                        const isBookingOrders = child.key === 'booking-orders'
+                        const isCheckInLogs = child.key === 'check-in-logs'
+                        const count = isBookingOrders ? bookingCounts.todayCheckIns : isCheckInLogs ? bookingCounts.todayCheckOuts : 0
+
                         return (
                           <button
                             key={child.key}
@@ -525,7 +573,13 @@ function AdminLayoutInner({ activePage, children }) {
                             }}
                           >
                             <span className="admin-nav-subitem-text">{child.label}</span>
-                            {hasChildAlert && <span className="admin-nav-sub-dot" title="Có mục cần xử lý" />}
+                            {count > 0 ? (
+                              <span className="admin-nav-count-badge" title={isBookingOrders ? `Cần check-in hôm nay: ${count}` : `Cần check-out hôm nay: ${count}`}>
+                                {count}
+                              </span>
+                            ) : hasChildAlert ? (
+                              <span className="admin-nav-sub-dot" title="Có mục cần xử lý" />
+                            ) : null}
                           </button>
                         )
                       })}

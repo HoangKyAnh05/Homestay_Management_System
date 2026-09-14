@@ -4,6 +4,7 @@ import { getStoredToken, getStoredUser, logout } from '../../services/authServic
 import SePayQrPayment from '../../components/SePayQrPayment/SePayQrPayment'
 import RoomScheduleCalendarModal from '../../components/RoomScheduleCalendar/RoomScheduleCalendarModal'
 import CustomDateTimePicker from '../../components/DateTimePicker/CustomDateTimePicker'
+import DateDropdownPicker from '../../components/Common/DateDropdownPicker'
 import { clearBookingCart, isRoomSelectable, readBookingCart, writeBookingCart } from '../../utils/bookingCart'
 import { formatDateTime as formatAppDateTime } from '../../utils/dateTimeFormat'
 import { houseTypeName } from '../../utils/houseType'
@@ -1774,7 +1775,15 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
               <label><span>Họ tên *</span><input required placeholder="VD: Nguyễn Văn An" value={form.fullName} onChange={(e) => { setError(''); setForm({ ...form, fullName: e.target.value }) }} /></label>
               <label><span>Số điện thoại *</span><input required placeholder="VD: 0912345678" value={form.phone} onChange={(e) => { setError(''); setForm({ ...form, phone: e.target.value.replace(/[^\d+]/g, '').slice(0, 11) }) }} /></label>
               <label><span>Email *</span><input type="email" required placeholder="VD: email@example.com" value={form.email} onChange={(e) => { setError(''); setForm({ ...form, email: e.target.value }) }} /></label>
-              <label><span>Ngày sinh</span><input type="date" value={form.dateOfBirth} onChange={(e) => setForm({ ...form, dateOfBirth: e.target.value })} /></label>
+              <label>
+                <span>Ngày sinh</span>
+                <DateDropdownPicker
+                  isDob={true}
+                  value={form.dateOfBirth}
+                  onChange={(val) => setForm({ ...form, dateOfBirth: val })}
+                  placeholder="Chọn ngày sinh..."
+                />
+              </label>
               <label><span>Căn cước công dân *</span><input required maxLength={12} placeholder="Đủ 12 chữ số CCCD" value={form.identityDocumentNumber} onChange={(e) => { setError(''); setForm({ ...form, identityDocumentNumber: e.target.value.replace(/\D/g, '').slice(0, 12) }) }} /></label>
               <label className="public-booking-wide"><span>Địa chỉ</span><input placeholder="Địa chỉ thường trú" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} /></label>
             </div>

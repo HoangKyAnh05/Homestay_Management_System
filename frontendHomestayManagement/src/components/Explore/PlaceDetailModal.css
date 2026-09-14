@@ -247,13 +247,44 @@
   border-radius: 9999px;
 }
 
-/* Footer Actions */
-.place-modal-footer {
-  display: flex;
+.place-metric-card--phone {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
+.place-metric-phone-link {
+  color: #15803d;
+  font-size: 0.9375rem;
+  text-decoration: none;
+  font-weight: 600;
+  transition: color 0.15s ease;
+}
+
+.place-metric-phone-link:hover {
+  color: #166534;
+  text-decoration: underline;
+}
+
+.place-modal-phone-btn {
+  display: inline-flex;
   align-items: center;
-  gap: 0.75rem;
-  padding-top: 0.75rem;
-  border-top: 1px solid #e2e8f0;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.75rem 1.15rem;
+  background: #059669;
+  color: #ffffff;
+  border-radius: 12px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: none;
+  box-shadow: 0 4px 14px rgba(5, 150, 105, 0.3);
+  transition: all 0.2s;
+}
+
+.place-modal-phone-btn:hover {
+  background: #047857;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(5, 150, 105, 0.45);
 }
 
 .place-modal-directions-btn {

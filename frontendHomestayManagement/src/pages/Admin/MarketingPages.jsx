@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import AdminLayout, { navigate } from './AdminLayout'
 import { getStoredToken, getStoredUser } from '../../services/authService'
 import { readNdjsonStream } from '../../utils/readNdjsonStream'
+import DateDropdownPicker from '../../components/Common/DateDropdownPicker'
 import './MarketingPages.css'
 
 const API = (import.meta.env.VITE_API_URL || '') + '/api/admin/marketing'
@@ -3486,24 +3487,12 @@ BẮT BUỘC trả về đúng 1 JSON duy nhất, không giải thích ngoài:
 
               <div className="mkt-schedule-form" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', padding: '18px 24px 8px' }}>
                 <div className="mkt-field" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontWeight: 700, fontSize: '13px', color: '#1e293b' }}>📅 Ngày đăng (Bấm vào chọn)</label>
-                  <input
-                    type="date"
+                  <label style={{ fontWeight: 700, fontSize: '13px', color: '#1e293b' }}>📅 Ngày đăng (Chọn từ lịch)</label>
+                  <DateDropdownPicker
                     value={scheduleModal.date}
-                    min={toDateInputValue(new Date())}
-                    onClick={(e) => { try { e.target.showPicker?.() } catch (err) {} }}
-                    onFocus={(e) => { try { e.target.showPicker?.() } catch (err) {} }}
-                    onChange={(event) => setScheduleModal((current) => ({ ...current, date: event.target.value }))}
-                    style={{
-                      cursor: 'pointer',
-                      fontSize: '14px',
-                      fontWeight: 600,
-                      padding: '10px 14px',
-                      borderRadius: '10px',
-                      border: '1px solid #cbd5e1',
-                      background: '#f8fafc',
-                      color: '#0f172a',
-                    }}
+                    minDate={toDateInputValue(new Date())}
+                    onChange={(val) => setScheduleModal((current) => ({ ...current, date: val }))}
+                    placeholder="Chọn ngày đăng..."
                   />
                   {/* Mốc chọn nhanh ngày */}
                   <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '2px' }}>

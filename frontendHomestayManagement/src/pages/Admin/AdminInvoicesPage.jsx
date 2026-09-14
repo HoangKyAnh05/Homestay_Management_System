@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { getStoredToken } from '../../services/authService'
 import { formatDateTime as formatAppDateTime } from '../../utils/dateTimeFormat'
 import AdminLayout from './AdminLayout'
+import DateDropdownPicker from '../../components/Common/DateDropdownPicker'
 import './AdminInvoicesPage.css'
 
 const API = (import.meta.env.VITE_API_URL || '') + '/api/admin/invoices'
@@ -358,14 +359,14 @@ function AdminInvoicesPage() {
     }
   }
 
-  const changeFromDate = event => {
-    setFromDate(event.target.value)
+  const changeFromDate = (val) => {
+    setFromDate(val || '')
     setDatePreset('')
     setPage(1)
   }
 
-  const changeToDate = event => {
-    setToDate(event.target.value)
+  const changeToDate = (val) => {
+    setToDate(val || '')
     setDatePreset('')
     setPage(1)
   }
@@ -497,21 +498,23 @@ function AdminInvoicesPage() {
           <option value="TODAY"> Hôm nay</option>
         </select>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <input
-            type="date"
-            className="ain-select"
-            value={fromDate}
-            onChange={changeFromDate}
-            title="Từ ngày lập hóa đơn"
-          />
+          <div style={{ width: '145px' }}>
+            <DateDropdownPicker
+              value={fromDate}
+              onChange={changeFromDate}
+              placeholder="Từ ngày..."
+              className="date-dropdown-picker--compact"
+            />
+          </div>
           <span style={{ color: '#6b7280', fontSize: '13px' }}>-</span>
-          <input
-            type="date"
-            className="ain-select"
-            value={toDate}
-            onChange={changeToDate}
-            title="Đến ngày lập hóa đơn"
-          />
+          <div style={{ width: '145px' }}>
+            <DateDropdownPicker
+              value={toDate}
+              onChange={changeToDate}
+              placeholder="Đến ngày..."
+              className="date-dropdown-picker--compact"
+            />
+          </div>
         </div>
         {(search || methodFilter || statusFilter || fromDate || toDate) && (
           <button

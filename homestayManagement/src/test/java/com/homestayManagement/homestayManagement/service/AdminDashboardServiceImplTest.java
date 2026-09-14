@@ -32,12 +32,14 @@ class AdminDashboardServiceImplTest {
     private BookingDetailRepository bookingDetailRepository;
     @Mock
     private RoomRepository roomRepository;
+    @Mock
+    private com.homestayManagement.homestayManagement.repository.RoomIncidentRepository roomIncidentRepository;
 
     private AdminDashboardServiceImpl service;
 
     @BeforeEach
     void setUp() {
-        service = new AdminDashboardServiceImpl(invoiceRepository, bookingDetailRepository, roomRepository);
+        service = new AdminDashboardServiceImpl(invoiceRepository, bookingDetailRepository, roomRepository, roomIncidentRepository);
     }
 
     @Test
