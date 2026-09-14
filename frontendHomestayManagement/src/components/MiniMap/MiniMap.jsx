@@ -19,12 +19,18 @@ export default function MiniMap({ height = '360px', showExpandBtn = true }) {
         zoom: 14.5,
         zoomControl: false,
         attributionControl: false,
+        preferCanvas: true,
+        fadeAnimation: true,
+        markerZoomAnimation: true,
       });
 
-      // Standard OSM Tiles - No API key watermark
+      // Standard OSM Tiles - Optimized caching, no watermark
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
         subdomains: ['a', 'b', 'c'],
+        updateWhenIdle: true,
+        updateWhenZooming: false,
+        keepBuffer: 2,
       }).addTo(map);
 
       // Custom Homestay Pin (🍁 Lá Đỏ Homestay)

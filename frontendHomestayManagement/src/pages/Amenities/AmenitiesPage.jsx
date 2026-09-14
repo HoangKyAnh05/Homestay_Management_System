@@ -210,10 +210,11 @@ function AmenitiesHeader() {
 
   return (
     <header className="home-header amenities-header">
-      <a className="home-logo" href="/home">Home Stays</a>
+      <a className="home-logo" href="/home">Lá Đỏ Homestay</a>
       <nav className="home-nav" aria-label="Điều hướng chính">
         <a href="/home">Trang chủ</a>
         <a href="/landing" className="home-nav-landing-link" title="Khám phá không gian 3D Lá Đỏ Sanctuary">🍁 Lá Đỏ 3D</a>
+        <a href="/explore" title="Khám phá xung quanh Lá Đỏ Homestay & Sa Pa">Khám phá xung quanh</a>
         <a href="/rooms">Phòng</a>
         <a href="/wishlist">Yêu thích</a>
         <a href="/amenities" className="home-nav-active">Tiện nghi</a>

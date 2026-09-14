@@ -44,19 +44,26 @@ export default function ExploreMap({
     if (mapInstanceRef.current) return;
 
     try {
-      // Create Leaflet Map centered on Lá Đỏ
+      // Create Leaflet Map centered on Lá Đỏ (Optimized for weak machines & mobile)
       const map = L.map(mapContainerRef.current, {
         center: [HOMESTAY_LOCATION.lat, HOMESTAY_LOCATION.lng],
         zoom: 14.5,
-        zoomControl: false, // We provide custom clean controls
-        attributionControl: true,
+        zoomControl: false,
+        attributionControl: false,
+        preferCanvas: true,
+        fadeAnimation: true,
+        markerZoomAnimation: true,
+        inertia: true,
+        inertiaDeceleration: 3000,
       });
 
-      // Add OpenStreetMap Standard tiles (No API key watermark)
+      // Add OpenStreetMap Standard tiles (Optimized caching & no watermark)
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
         maxZoom: 19,
         subdomains: ['a', 'b', 'c'],
+        updateWhenIdle: true,
+        updateWhenZooming: false,
+        keepBuffer: 2,
       }).addTo(map);
 
       // Group layer for place markers
