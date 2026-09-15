@@ -174,11 +174,23 @@ public class AdminCheckInRegistrationServiceImpl implements AdminCheckInRegistra
                 .build();
         checkInRecordRepository.save(record);
 
+        String repEmail = request.representativeEmail();
+        if (repEmail == null || repEmail.isBlank()) {
+            if (!request.guests().isEmpty() && request.guests().getFirst().email() != null && !request.guests().getFirst().email().isBlank()) {
+                repEmail = request.guests().getFirst().email();
+            } else if (customer != null && customer.getEmail() != null && !customer.getEmail().isBlank()) {
+                repEmail = customer.getEmail();
+            }
+        }
+        if (repEmail == null || repEmail.isBlank()) {
+            repEmail = "guest_" + detail.getId() + "@ladohomestay.vn";
+        }
+
         StayAccessService.GrantResult grant = stayAccessService.grantAccess(
                 detail,
                 record,
                 request.guests().getFirst().fullName(),
-                request.representativeEmail()
+                repEmail
         );
         eventPublisher.publishEvent(new TemporaryResidenceExcelExportEvent(now.toLocalDate(), detail.getId()));
 
