@@ -7,6 +7,7 @@ import SePayQrPayment from '../../components/SePayQrPayment/SePayQrPayment'
 import AdminLayout from './AdminLayout'
 import AdminChangeRoomModal from '../../components/AdminChangeRoom/AdminChangeRoomModal'
 import DateDropdownPicker from '../../components/Common/DateDropdownPicker'
+import { calculateStayOverdueInfo } from '../../utils/stayOverdue'
 import './AdminCheckInLogsPage.css'
 
 const API_BASE = (import.meta.env.VITE_API_URL || '') + '/api/admin/bookings'
@@ -174,16 +175,18 @@ function detailStage(detail) {
   if (detail.checkInRecord?.actualCheckOut) return 'completed'
   if (detail.checkInRecord?.actualCheckIn) return 'staying'
   if (String(detail.detailStatus || '').toUpperCase() === 'CANCELLED') return 'cancelled'
+  if (detail.checkOutTarget && new Date(detail.checkOutTarget).getTime() < Date.now()) return 'overdue_noshow'
   return 'waiting'
 }
 
 function stageLabel(stage) {
   return {
     waiting: 'Chưa check-in',
+    overdue_noshow: 'Quá giờ trả phòng',
     staying: 'Đang lưu trú',
     completed: 'Đã trả phòng',
     cancelled: 'Đã hủy',
-  }[stage]
+  }[stage] || stage
 }
 
 function bookingMatches(booking, keyword) {
@@ -265,10 +268,12 @@ function resolveEvidenceUrl(url) {
 function DetailCard({ detail, actionLoading, housekeepingRequested, onAction }) {
   const stage = detailStage(detail)
   const isCompleted = stage === 'completed'
+  const isOverdueNoShow = stage === 'overdue_noshow'
   const canCheckIn = stage === 'waiting'
   const canCheckOut = stage === 'staying'
   const loading = actionLoading === detail.bookingDetailId
   const extHours = Number(detail.extensionHours || 0)
+  const overdueInfo = calculateStayOverdueInfo(detail.checkOutTarget, detail.checkInRecord, detail.detailStatus || (stage === 'staying' ? 'CHECKED_IN' : ''))
 
   const [showDetailModal, setShowDetailModal] = useState(false)
 
@@ -281,6 +286,11 @@ function DetailCard({ detail, actionLoading, housekeepingRequested, onAction }) 
         </div>
         <div className="acl-compact-status-group">
           <span className={`acl-stage acl-stage--${stage}`}>{stageLabel(stage)}</span>
+          {stage === 'staying' && overdueInfo.isOverdue && (
+            <span className="acl-stay-overdue-tag" title={overdueInfo.message}>
+              ⚠️ {overdueInfo.shortBadge}
+            </span>
+          )}
           <span className="acl-tag-rent">{rentTypeLabel(detail.rentType)}</span>
           <span className="acl-tag-price">{formatMoney(detail.priceAtBooking)}</span>
         </div>
@@ -323,6 +333,12 @@ function DetailCard({ detail, actionLoading, housekeepingRequested, onAction }) 
         </button>
 
         <div className="acl-compact-action-btns">
+          {isOverdueNoShow && (
+            <span className="acl-badge-overdue" title="Đơn đặt phòng này đã quá giờ trả phòng. Không thể thực hiện check-in.">
+              ⚠️ Đã quá giờ trả phòng, không thể check-in
+            </span>
+          )}
+
           {canCheckOut && (
             <button
               type="button"
@@ -2323,7 +2339,7 @@ function CheckInModal({ bookingDetailId, onClose, onCompleted }) {
             {error && <div className="acl-checkin-warning acl-checkin-warning--error">{error}</div>}
             <footer className="acl-checkin-actions">
               <button type="button" onClick={onClose}>Hủy</button>
-              <button type="submit" disabled={saving || !roomId || (!preparation.preRegistered && !preparation.availableRooms.length)}>
+              <button type="submit" disabled={saving || !roomId}>
                 {saving ? 'Đang check-in...' : `Xác nhận check-in ${guests.length} người`}
               </button>
             </footer>
@@ -2465,6 +2481,7 @@ function AdminCheckInLogsPage() {
 
   const allDetails = bookings.flatMap(booking => booking.details)
   const waitingCount = allDetails.filter(detail => detailStage(detail) === 'waiting').length
+  const overdueCount = allDetails.filter(detail => detailStage(detail) === 'overdue_noshow').length
   const stayingCount = allDetails.filter(detail => detailStage(detail) === 'staying').length
   const completedCount = allDetails.filter(detail => detailStage(detail) === 'completed').length
 
@@ -2567,6 +2584,7 @@ function AdminCheckInLogsPage() {
         <select value={stageFilter} onChange={event => setStageFilter(event.target.value)} aria-label="Trạng thái lưu trú">
           <option value="">Tất cả lưu trú</option>
           <option value="waiting">Chưa check-in</option>
+          <option value="overdue_noshow">Quá giờ trả phòng{overdueCount > 0 ? ` (${overdueCount})` : ''}</option>
           <option value="staying">Đang lưu trú</option>
           <option value="completed">Đã trả phòng</option>
           <option value="cancelled">Đã hủy</option>

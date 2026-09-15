@@ -279,6 +279,38 @@
   color: #92400e;
 }
 
+.acl-stage--overdue_noshow {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.acl-badge-overdue {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  background: #fee2e2;
+  border: 1.5px solid #fca5a5;
+  color: #b91c1c;
+  font-size: 12.5px;
+  font-weight: 800;
+}
+
+.acl-stay-overdue-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #fee2e2;
+  border: 1px solid #f87171;
+  color: #b91c1c;
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
 .acl-progress {
   display: block;
   height: 5px;
@@ -386,6 +418,11 @@
 .acl-detail--waiting {
   border-color: #fef08a;
   background: #fffdf5;
+}
+
+.acl-detail--overdue_noshow {
+  border-color: #fca5a5;
+  background: #fff8f8;
 }
 
 /* Compact Card Layout */

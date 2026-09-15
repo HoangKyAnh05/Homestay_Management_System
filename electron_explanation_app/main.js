@@ -179,3 +179,72 @@ ipcMain.handle('get-project-files', async () => {
     return { error: error.message };
   }
 });
+
+// IPC handler for Gemini 3.7 Flash generation
+ipcMain.handle('gemini-generate', async (event, payload) => {
+  try {
+    const prompt = typeof payload === 'string' ? payload : (payload?.prompt || '');
+    const modelId = payload?.modelId || 1; // 1 = Gemini 3.7 Flash
+    const thinkMode = payload?.thinkMode !== false;
+    const cookie = payload?.cookie || '';
+
+    // 1. Try local Spring Boot Proxy
+    try {
+      const response = await fetch('http://localhost:8080/api/gemini/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt, modelId, thinkMode, cookie })
+      });
+      if (response.ok) {
+        return await response.json();
+      }
+    } catch (ignored) {}
+
+    // Groq AI Integration
+    const groqKey = (cookie && cookie.startsWith('gsk_')) ? cookie : (process.env.GROQ_API_KEY || '');
+    const models = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant'];
+
+    let lastError = null;
+    for (const model of models) {
+      try {
+        const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${groqKey}`
+          },
+          body: JSON.stringify({
+            model,
+            messages: [{ role: 'user', content: prompt }],
+            temperature: 0.7
+          })
+        });
+
+        if (groqRes.ok) {
+          const data = await groqRes.json();
+          const content = data?.choices?.[0]?.message?.content;
+          if (content) {
+            return {
+              success: true,
+              content,
+              model: `Groq AI (${model})`,
+              finishReason: 'STOP'
+            };
+          }
+        } else {
+          lastError = new Error(`Groq HTTP ${groqRes.status}`);
+        }
+      } catch (err) {
+        lastError = err;
+      }
+    }
+
+    throw lastError || new Error('Không thể kết nối Groq AI.');
+  } catch (error) {
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+});
+

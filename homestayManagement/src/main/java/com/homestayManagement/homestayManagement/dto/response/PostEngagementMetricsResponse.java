@@ -14,11 +14,29 @@ public class PostEngagementMetricsResponse {
     private Long commentCount;
     private Long shareCount;
     private Long viewCount;
+    private Long reachCount;
+    private Double engagementRate;
     private LocalDateTime syncedAt;
     private List<PostCommentDto> comments = new ArrayList<>();
     private String note;
 
     public PostEngagementMetricsResponse() {}
+
+    public Long getReachCount() {
+        return reachCount;
+    }
+
+    public void setReachCount(Long reachCount) {
+        this.reachCount = reachCount;
+    }
+
+    public Double getEngagementRate() {
+        return engagementRate;
+    }
+
+    public void setEngagementRate(Double engagementRate) {
+        this.engagementRate = engagementRate;
+    }
 
     public Long getChannelId() {
         return channelId;

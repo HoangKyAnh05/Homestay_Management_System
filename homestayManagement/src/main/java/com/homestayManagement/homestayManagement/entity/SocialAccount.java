@@ -69,4 +69,29 @@ public class SocialAccount {
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
     }
+
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+    public String getPlatform() { return platform; }
+    public void setPlatform(String platform) { this.platform = platform; }
+    public String getAccountName() { return accountName; }
+    public void setAccountName(String accountName) { this.accountName = accountName; }
+    public String getPageUrl() { return pageUrl; }
+    public void setPageUrl(String pageUrl) { this.pageUrl = pageUrl; }
+    public String getExternalAccountId() { return externalAccountId; }
+    public void setExternalAccountId(String externalAccountId) { this.externalAccountId = externalAccountId; }
+    public String getAccessTokenEncrypted() { return accessTokenEncrypted; }
+    public void setAccessTokenEncrypted(String accessTokenEncrypted) { this.accessTokenEncrypted = accessTokenEncrypted; }
+    public String getRefreshTokenEncrypted() { return refreshTokenEncrypted; }
+    public void setRefreshTokenEncrypted(String refreshTokenEncrypted) { this.refreshTokenEncrypted = refreshTokenEncrypted; }
+    public LocalDateTime getTokenExpiresAt() { return tokenExpiresAt; }
+    public void setTokenExpiresAt(LocalDateTime tokenExpiresAt) { this.tokenExpiresAt = tokenExpiresAt; }
+    public boolean isActive() { return active; }
+    public void setActive(boolean active) { this.active = active; }
+    public Employee getConnectedBy() { return connectedBy; }
+    public void setConnectedBy(Employee connectedBy) { this.connectedBy = connectedBy; }
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 }

@@ -101,6 +101,7 @@ const NAV_ITEMS = [
     label: 'Marketing & AI Agent',
     icon: ICONS.marketing,
     children: [
+      { key: 'engagement-inbox', label: 'Tương tác & Bình luận', path: '/admin/marketing/engagement-inbox' },
       { key: 'ai-post-agent', label: 'AI Agent Đăng bài', path: '/admin/marketing/ai-agent' },
       { key: 'post-logs', label: 'Nhật ký Bài đăng', path: '/admin/marketing/post-logs' },
       { key: 'vouchers', label: 'Mã giảm giá (Vouchers)', path: '/admin/marketing/vouchers' },
@@ -560,7 +561,14 @@ function AdminLayoutInner({ activePage, children }) {
                         const hasChildAlert = Boolean(navAlerts[child.key])
                         const isBookingOrders = child.key === 'booking-orders'
                         const isCheckInLogs = child.key === 'check-in-logs'
-                        const count = isBookingOrders ? bookingCounts.todayCheckIns : isCheckInLogs ? bookingCounts.todayCheckOuts : 0
+                        const isEngagementInbox = child.key === 'engagement-inbox'
+                        const count = isBookingOrders
+                          ? bookingCounts.todayCheckIns
+                          : isCheckInLogs
+                          ? bookingCounts.todayCheckOuts
+                          : isEngagementInbox
+                          ? marketingUnreadCount
+                          : 0
 
                         return (
                           <button
@@ -574,7 +582,16 @@ function AdminLayoutInner({ activePage, children }) {
                           >
                             <span className="admin-nav-subitem-text">{child.label}</span>
                             {count > 0 ? (
-                              <span className="admin-nav-count-badge" title={isBookingOrders ? `Cần check-in hôm nay: ${count}` : `Cần check-out hôm nay: ${count}`}>
+                              <span
+                                className="admin-nav-count-badge"
+                                title={
+                                  isBookingOrders
+                                    ? `Cần check-in hôm nay: ${count}`
+                                    : isCheckInLogs
+                                    ? `Cần check-out hôm nay: ${count}`
+                                    : `Bình luận & tương tác mới: ${count}`
+                                }
+                              >
                                 {count}
                               </span>
                             ) : hasChildAlert ? (

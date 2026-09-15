@@ -6,6 +6,7 @@ contextBridge.exposeInMainWorld('api', {
   getProjectDirectory: () => ipcRenderer.invoke('get-project-directory'),
   selectFolder: () => ipcRenderer.invoke('select-folder'),
   setProjectDirectory: (customPath) => ipcRenderer.invoke('set-project-directory', customPath),
-  getProjectFiles: () => ipcRenderer.invoke('get-project-files')
+  getProjectFiles: () => ipcRenderer.invoke('get-project-files'),
+  geminiGenerate: (payload) => ipcRenderer.invoke('gemini-generate', payload),
 });
 

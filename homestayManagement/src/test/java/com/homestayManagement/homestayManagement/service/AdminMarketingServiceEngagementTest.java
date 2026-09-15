@@ -56,17 +56,20 @@ class AdminMarketingServiceEngagementTest {
     }
 
     @Test
-    void getEngagementFailsWhenExternalPostIdMissing() {
+    void getEngagementHandlesGracefullyWhenExternalPostIdMissing() {
         MarketingPostChannel channel = MarketingPostChannel.builder()
                 .id(1L)
                 .platform("FACEBOOK")
-                .status("PUBLISHED")
+                .status("DRAFT")
                 .externalPostId(null)
                 .build();
 
         when(channelRepository.findById(1L)).thenReturn(Optional.of(channel));
 
-        assertThrows(IllegalArgumentException.class, () -> service.getChannelEngagement(1L));
+        PostEngagementMetricsResponse response = service.getChannelEngagement(1L);
+        assertNotNull(response);
+        assertEquals(1L, response.getChannelId());
+        assertEquals("FACEBOOK", response.getPlatform());
     }
 
     @Test

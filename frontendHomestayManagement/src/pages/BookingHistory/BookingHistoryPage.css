@@ -2048,6 +2048,75 @@
   font-weight: 700;
 }
 
+/* Stay Alerts (Due Today & Overdue) */
+.history-stay-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 16px 20px;
+  border-radius: 14px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.05);
+}
+
+.history-stay-alert--overdue {
+  background: #fff5f5;
+  border: 1.5px solid #fca5a5;
+  color: #991b1b;
+}
+
+.history-stay-alert--due-today {
+  background: #f0f9ff;
+  border: 1.5px solid #7dd3fc;
+  color: #0369a1;
+}
+
+.history-stay-alert-icon {
+  font-size: 24px;
+  line-height: 1;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.history-stay-alert-content strong {
+  display: block;
+  font-size: 15px;
+  font-weight: 800;
+  margin-bottom: 4px;
+}
+
+.history-stay-alert-content p {
+  margin: 4px 0 0;
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+.history-room-overdue-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  background: #fee2e2;
+  border: 1px solid #f87171;
+  color: #b91c1c;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.history-room-duetoday-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  background: #e0f2fe;
+  border: 1px solid #7dd3fc;
+  color: #0369a1;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
 
 
 

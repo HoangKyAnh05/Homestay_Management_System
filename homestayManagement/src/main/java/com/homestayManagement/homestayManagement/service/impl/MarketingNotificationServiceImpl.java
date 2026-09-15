@@ -61,6 +61,26 @@ public class MarketingNotificationServiceImpl implements MarketingNotificationSe
             message = actor + " vừa tương tác với bài viết '" + postTitle + "'.";
         }
 
+        String externalUrl = channel.getExternalUrl();
+        if (!hasText(externalUrl) && hasText(channel.getPageUrl())) {
+            externalUrl = channel.getPageUrl();
+        } else if (!hasText(externalUrl) && channel.getSocialAccount() != null && hasText(channel.getSocialAccount().getPageUrl())) {
+            externalUrl = channel.getSocialAccount().getPageUrl();
+        }
+        if (!hasText(externalUrl)) {
+            if ("FACEBOOK".equalsIgnoreCase(channel.getPlatform())) {
+                externalUrl = "https://www.facebook.com";
+            } else if ("TIKTOK".equalsIgnoreCase(channel.getPlatform())) {
+                externalUrl = "https://www.tiktok.com";
+            } else if ("INSTAGRAM".equalsIgnoreCase(channel.getPlatform())) {
+                externalUrl = "https://www.instagram.com";
+            } else if ("YOUTUBE".equalsIgnoreCase(channel.getPlatform())) {
+                externalUrl = "https://www.youtube.com";
+            } else {
+                externalUrl = "https://www.facebook.com";
+            }
+        }
+
         MarketingNotification notification = MarketingNotification.builder()
                 .title(title)
                 .message(message)
@@ -69,7 +89,7 @@ public class MarketingNotificationServiceImpl implements MarketingNotificationSe
                 .channelId(channel.getId())
                 .postTitle(postTitle)
                 .actorName(actor)
-                .externalUrl(channel.getExternalUrl())
+                .externalUrl(externalUrl)
                 .isRead(false)
                 .createdAt(LocalDateTime.now())
                 .build();

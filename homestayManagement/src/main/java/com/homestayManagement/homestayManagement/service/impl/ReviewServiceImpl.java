@@ -119,6 +119,64 @@ public class ReviewServiceImpl implements ReviewService {
 
     @Override
     @Transactional
+    public ReviewResponseDto updateReview(Long reviewId, com.homestayManagement.homestayManagement.dto.UpdateCustomerReviewRequestDto request, String userEmail) {
+        Account account = accountRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy tài khoản người dùng"));
+
+        Customer customer = customerRepository.findByAccountId(account.getId())
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy thông tin khách hàng"));
+
+        Review review = reviewRepository.findById(reviewId)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đánh giá ID: " + reviewId));
+
+        if (!review.getAccount().getId().equals(account.getId()) &&
+                (review.getBooking() == null || !review.getBooking().getCustomer().getId().equals(customer.getId()))) {
+            throw new IllegalArgumentException("Bạn không có quyền chỉnh sửa đánh giá này");
+        }
+
+        String imgStr = request.getImageUrls() != null ? String.join(",", request.getImageUrls()) : null;
+        review.setRatingStars(request.getRatingStars());
+        review.setComment(request.getComment());
+        review.setImageUrls(imgStr);
+
+        Review updated = reviewRepository.save(review);
+        updateRoomTypeRatingStats(updated.getRoomType());
+
+        return mapToDto(updated);
+    }
+
+    @Override
+    @Transactional
+    public ReviewResponseDto updateReviewByBooking(Long bookingId, com.homestayManagement.homestayManagement.dto.UpdateCustomerReviewRequestDto request, String userEmail) {
+        Account account = accountRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy tài khoản người dùng"));
+
+        Customer customer = customerRepository.findByAccountId(account.getId())
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy thông tin khách hàng"));
+
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đơn đặt phòng ID: " + bookingId));
+
+        if (!booking.getCustomer().getId().equals(customer.getId())) {
+            throw new IllegalArgumentException("Bạn không có quyền chỉnh sửa đánh giá đơn đặt phòng này");
+        }
+
+        Review review = reviewRepository.findByBooking(booking)
+                .orElseThrow(() -> new IllegalArgumentException("Chưa có đánh giá nào cho đơn đặt phòng này để cập nhật"));
+
+        String imgStr = request.getImageUrls() != null ? String.join(",", request.getImageUrls()) : null;
+        review.setRatingStars(request.getRatingStars());
+        review.setComment(request.getComment());
+        review.setImageUrls(imgStr);
+
+        Review updated = reviewRepository.save(review);
+        updateRoomTypeRatingStats(updated.getRoomType());
+
+        return mapToDto(updated);
+    }
+
+    @Override
+    @Transactional
     public ReviewResponseDto updateReviewStatus(Long reviewId, com.homestayManagement.homestayManagement.dto.UpdateReviewStatusRequestDto request) {
         Review review = reviewRepository.findById(reviewId)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đánh giá ID: " + reviewId));

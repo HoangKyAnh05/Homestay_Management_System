@@ -32,4 +32,24 @@ public class CustomerReviewController {
     public ResponseEntity<ReviewResponseDto> getReviewByBooking(@PathVariable Long bookingId) {
         return ResponseEntity.ok(reviewService.getReviewByBooking(bookingId));
     }
+
+    @PutMapping("/{reviewId}")
+    public ResponseEntity<ReviewResponseDto> updateReview(
+            @PathVariable Long reviewId,
+            @Valid @RequestBody com.homestayManagement.homestayManagement.dto.UpdateCustomerReviewRequestDto request,
+            Authentication authentication
+    ) {
+        String email = authentication.getName();
+        return ResponseEntity.ok(reviewService.updateReview(reviewId, request, email));
+    }
+
+    @PutMapping("/booking/{bookingId}")
+    public ResponseEntity<ReviewResponseDto> updateReviewByBooking(
+            @PathVariable Long bookingId,
+            @Valid @RequestBody com.homestayManagement.homestayManagement.dto.UpdateCustomerReviewRequestDto request,
+            Authentication authentication
+    ) {
+        String email = authentication.getName();
+        return ResponseEntity.ok(reviewService.updateReviewByBooking(bookingId, request, email));
+    }
 }

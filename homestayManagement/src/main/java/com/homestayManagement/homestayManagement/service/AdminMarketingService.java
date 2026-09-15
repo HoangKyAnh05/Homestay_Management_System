@@ -52,4 +52,8 @@ public interface AdminMarketingService {
     List<com.homestayManagement.homestayManagement.dto.response.DetectedYouTubeChannelResponse> detectYouTubeChannels(String token, String channelQuery);
     com.homestayManagement.homestayManagement.dto.response.PostEngagementMetricsResponse getChannelEngagement(Long channelId);
     com.homestayManagement.homestayManagement.dto.response.PostCommentReplyResponse replyComment(Long channelId, String commentId, com.homestayManagement.homestayManagement.dto.request.PostCommentReplyRequest request);
+    com.homestayManagement.homestayManagement.dto.response.SuggestCommentReplyResponse suggestCommentReply(com.homestayManagement.homestayManagement.dto.request.SuggestCommentReplyRequest request);
+    List<MarketingPostResponse> listPosts();
+    java.util.Map<String, Object> syncAllMetrics();
+    java.util.Map<String, Object> seedDemoEngagement();
 }

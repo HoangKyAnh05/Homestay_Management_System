@@ -163,6 +163,8 @@ function ProfilePage() {
         </a>
         <nav className="profile-nav" aria-label="Điều hướng tài khoản">
           <a href="/home">Trang chủ</a>
+          <a href="/stay">Dịch vụ lưu trú</a>
+          <a href="/booking-history">Lịch sử đặt phòng</a>
           <button type="button" onClick={handleLogout}>
             Đăng xuất
           </button>

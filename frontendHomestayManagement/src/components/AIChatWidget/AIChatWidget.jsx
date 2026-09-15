@@ -2,14 +2,13 @@ import { useEffect, useRef, useState } from 'react'
 import './AIChatWidget.css'
 
 const getEffectiveApiKey = () => {
-  if (typeof window !== 'undefined' && window.localStorage?.getItem('GEMINI_API_KEY')) {
-    return window.localStorage.getItem('GEMINI_API_KEY').trim()
+  if (typeof window !== 'undefined') {
+    const groqKey = window.localStorage?.getItem('GROQ_API_KEY')?.trim()
+    if (groqKey) return groqKey
+    const geminiKey = window.localStorage?.getItem('GEMINI_API_KEY')?.trim()
+    if (geminiKey) return geminiKey
   }
-  try {
-    return atob('QVEuQWI4Uk42SlhNOEhqMTBuQk1nVHFac0F0S21CLXZVM1dUOUxsUEFPVVJCLW9QVXZZWXc=')
-  } catch {
-    return ''
-  }
+  return ''
 }
 
 const ADMIN_QUICK_PROMPTS = [
@@ -22,7 +21,7 @@ const ADMIN_QUICK_PROMPTS = [
 const INITIAL_MESSAGES = [{
   id: 1,
   role: 'assistant',
-  content: 'Xin chào Quản trị viên! Tôi là Trợ lý AI Quản Trị Hệ Thống Lá Đỏ Homestay Sa Pa (được hỗ trợ bởi Gemini AI). Tôi có thể hỗ trợ bạn tra cứu quy định vận hành, tư vấn chính sách, phân tích số liệu, gợi ý marketing hoặc xử lý tình huống phát sinh.',
+  content: 'Xin chào Quản trị viên! Tôi là Trợ lý AI Quản Trị Hệ Thống Lá Đỏ Homestay Sa Pa (được hỗ trợ bởi Groq & Gemini AI). Tôi có thể hỗ trợ bạn tra cứu quy định vận hành, tư vấn chính sách, phân tích số liệu, gợi ý marketing hoặc xử lý tình huống phát sinh.',
   time: 'Bây giờ',
 }]
 
@@ -78,25 +77,68 @@ function generateSmartAssistantResponse(query, history = []) {
   return `Chào Quản trị viên, tôi đã phân tích yêu cầu của bạn: **"${query}"**.\n\nĐể hỗ trợ bạn tốt nhất, bạn có thể thực hiện theo các bước sau:\n- Nếu liên quan đến **đơn đặt phòng hoặc khách hàng**: Vui lòng tra cứu tại mục **Quản lý Đặt & Trả phòng** hoặc **Quản lý Hóa đơn**.\n- Nếu liên quan đến **buồng phòng và kiểm tra phòng**: Tra cứu tại mục **Quản lý Housekeeping**.\n- Nếu liên quan đến **chương trình ưu đãi**: Tra cứu tại mục **Marketing & AI Agent**.\n\nNếu bạn muốn tôi soạn thảo nội dung bài đăng, viết tin nhắn chăm sóc khách hàng hoặc giải thích chính sách cụ thể, hãy cho tôi biết chi tiết nhé!`
 }
 
-async function callGeminiChat(prompt, chatHistory = [], customKey = '') {
+async function callAIChat(prompt, chatHistory = [], customKey = '') {
   const apiKey = (customKey || getEffectiveApiKey()).trim()
-  const candidateModels = [
-    'gemini-2.5-flash',
-    'gemini-2.0-flash',
-    'gemini-1.5-flash',
-    'gemini-1.5-pro',
-    'gemini-3.6-flash',
-    'gemini-flash-latest'
-  ]
 
-  const contents = [
-    {
-      role: 'user',
-      parts: [{ text: `${SYSTEM_PROMPT}\n\nLịch sử gần đây:\n${chatHistory.slice(-4).map(m => `${m.role === 'user' ? 'Admin' : 'AI'}: ${m.content}`).join('\n')}\n\nCâu hỏi hiện tại:\n${prompt}` }],
-    },
-  ]
+  // 1. Try Groq AI if key starts with gsk_
+  if (apiKey && apiKey.startsWith('gsk_')) {
+    const groqModels = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'mixtral-8x7b-32768']
+    const messages = [
+      { role: 'system', content: SYSTEM_PROMPT },
+      ...chatHistory.slice(-4).map((m) => ({
+        role: m.role === 'user' ? 'user' : 'assistant',
+        content: m.content,
+      })),
+      { role: 'user', content: prompt },
+    ]
 
-  if (apiKey) {
+    for (const model of groqModels) {
+      try {
+        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify({
+            model,
+            messages,
+            temperature: 0.7,
+            max_tokens: 1200,
+          }),
+        })
+
+        if (response.ok) {
+          const data = await response.json()
+          const text = data?.choices?.[0]?.message?.content
+          if (text && text.trim()) {
+            return text.trim()
+          }
+        }
+      } catch (err) {
+        console.warn('Groq fetch error for model', model, err)
+      }
+    }
+  }
+
+  // 2. Try Google Gemini if key is provided (starts with AIza or AQ.)
+  if (apiKey && (apiKey.startsWith('AIza') || apiKey.startsWith('AQ.'))) {
+    const candidateModels = [
+      'gemini-2.0-flash',
+      'gemini-1.5-flash',
+      'gemini-2.5-flash',
+      'gemini-flash-latest',
+    ]
+
+    const contents = [
+      {
+        role: 'user',
+        parts: [{
+          text: `${SYSTEM_PROMPT}\n\nLịch sử gần đây:\n${chatHistory.slice(-4).map((m) => `${m.role === 'user' ? 'Admin' : 'AI'}: ${m.content}`).join('\n')}\n\nCâu hỏi hiện tại:\n${prompt}`,
+        }],
+      },
+    ]
+
     for (const model of candidateModels) {
       try {
         const response = await fetch(
@@ -127,7 +169,33 @@ async function callGeminiChat(prompt, chatHistory = [], customKey = '') {
     }
   }
 
-  // Use the advanced built-in intelligence engine
+  // 3. Try Backend AI Proxy (/api/gemini/generate)
+  try {
+    const token = localStorage.getItem('homeStayAccessToken') || sessionStorage.getItem('homeStayAccessToken') || ''
+    const headers = { 'Content-Type': 'application/json' }
+    if (token) headers['Authorization'] = `Bearer ${token}`
+
+    const proxyRes = await fetch('/api/gemini/generate', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        prompt,
+        systemInstruction: SYSTEM_PROMPT,
+        cookie: apiKey,
+      }),
+    })
+
+    if (proxyRes.ok) {
+      const data = await proxyRes.json()
+      if (data?.content && data.content.trim()) {
+        return data.content.trim()
+      }
+    }
+  } catch (proxyErr) {
+    console.warn('Backend AI proxy error:', proxyErr)
+  }
+
+  // 4. Use the advanced built-in intelligence engine
   return generateSmartAssistantResponse(prompt, chatHistory)
 }
 
@@ -152,7 +220,7 @@ function ChatIcon() {
 export default function AIChatWidget({ userName }) {
   const [isOpen, setIsOpen] = useState(false)
   const [showConfig, setShowConfig] = useState(false)
-  const [apiKeyInput, setApiKeyInput] = useState(() => localStorage.getItem('GEMINI_API_KEY') || '')
+  const [apiKeyInput, setApiKeyInput] = useState(() => localStorage.getItem('GROQ_API_KEY') || localStorage.getItem('GEMINI_API_KEY') || '')
   const [messages, setMessages] = useState(INITIAL_MESSAGES)
   const [draft, setDraft] = useState('')
   const [isTyping, setIsTyping] = useState(false)
@@ -166,9 +234,15 @@ export default function AIChatWidget({ userName }) {
   }, [messages, isOpen, isTyping])
 
   const handleSaveApiKey = () => {
-    if (apiKeyInput.trim()) {
-      localStorage.setItem('GEMINI_API_KEY', apiKeyInput.trim())
+    const val = apiKeyInput.trim()
+    if (val) {
+      if (val.startsWith('gsk_')) {
+        localStorage.setItem('GROQ_API_KEY', val)
+      } else {
+        localStorage.setItem('GEMINI_API_KEY', val)
+      }
     } else {
+      localStorage.removeItem('GROQ_API_KEY')
       localStorage.removeItem('GEMINI_API_KEY')
     }
     setShowConfig(false)
@@ -190,7 +264,7 @@ export default function AIChatWidget({ userName }) {
     setIsTyping(true)
 
     try {
-      const responseText = await callGeminiChat(normalizedContent, messages, apiKeyInput)
+      const responseText = await callAIChat(normalizedContent, messages, apiKeyInput)
       setMessages((prev) => [
         ...prev,
         {
@@ -231,7 +305,7 @@ export default function AIChatWidget({ userName }) {
             </div>
             <div className="ai-chat-heading">
               <strong>Lá Đỏ Admin AI</strong>
-              <span><i /> Trợ lý Quản trị & Vận hành</span>
+              <span><i /> Trợ lý Quản trị & Vận hành (Groq AI)</span>
             </div>
             <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
               <button
@@ -257,11 +331,11 @@ export default function AIChatWidget({ userName }) {
 
           {showConfig && (
             <div style={{ padding: '10px 14px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', fontSize: 12 }}>
-              <strong style={{ display: 'block', color: '#0f172a', marginBottom: 4 }}>Cấu hình Gemini / AI API Key:</strong>
+              <strong style={{ display: 'block', color: '#0f172a', marginBottom: 4 }}>Cấu hình Groq / AI API Key:</strong>
               <div style={{ display: 'flex', gap: 6 }}>
                 <input
                   type="password"
-                  placeholder="Nhập API Key mới nếu có..."
+                  placeholder="Nhập Groq API Key (gsk_...) hoặc Gemini Key..."
                   value={apiKeyInput}
                   onChange={(e) => setApiKeyInput(e.target.value)}
                   style={{ flex: 1, padding: '6px 10px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: 12, background: '#fff', color: '#0f172a' }}
@@ -281,7 +355,7 @@ export default function AIChatWidget({ userName }) {
             <span><SparkleIcon /></span>
             <div>
               <strong>Chào {userName || 'Quản trị viên'}!</strong>
-              <p>Hệ thống AI Gemini đã sẵn sàng hỗ trợ vận hành homestay.</p>
+              <p>Hệ thống AI (Groq Llama 3.3 / Gemini) đã sẵn sàng hỗ trợ vận hành homestay.</p>
             </div>
           </div>
 

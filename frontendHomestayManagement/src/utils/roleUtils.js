@@ -69,6 +69,7 @@ export function roleCanAccess(role, path) {
       '/admin/housekeeping/incidents',
     ],
     ROLE_MARKETING: [
+      '/admin/marketing/engagement-inbox',
       '/admin/marketing/ai-agent',
       '/admin/marketing/post-logs',
       '/admin/marketing/vouchers',

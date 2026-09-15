@@ -13,12 +13,12 @@ import com.homestayManagement.homestayManagement.service.InvoiceExcelService;
 import com.homestayManagement.homestayManagement.service.TemporaryResidenceExcelService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
+import org.springframework.boot.autoconfigure.security.servlet.SecurityFilterAutoConfiguration;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
-import org.springframework.boot.security.autoconfigure.SecurityAutoConfiguration;
-import org.springframework.boot.security.autoconfigure.web.servlet.ServletWebSecurityAutoConfiguration;
 import org.springframework.context.annotation.Import;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
@@ -33,21 +33,21 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 
 @WebMvcTest(controllers = {AdminBookingController.class, AdminInvoiceController.class, HousekeepingController.class})
-@ImportAutoConfiguration({SecurityAutoConfiguration.class, ServletWebSecurityAutoConfiguration.class})
+@ImportAutoConfiguration({SecurityAutoConfiguration.class, SecurityFilterAutoConfiguration.class})
 @Import({SecurityConfig.class, JwtAuthenticationFilter.class})
 class ReceptionistAuthorizationTest {
 
     @Autowired private MockMvc mockMvc;
 
-    @MockitoBean private JwtService jwtService;
-    @MockitoBean private CustomUserDetailsService customUserDetailsService;
-    @MockitoBean private AdminBookingService adminBookingService;
-    @MockitoBean private AdminCheckInRegistrationService adminCheckInRegistrationService;
-    @MockitoBean private IdentityOcrService identityOcrService;
-    @MockitoBean private TemporaryResidenceExcelService temporaryResidenceExcelService;
-    @MockitoBean private AdminInvoiceService adminInvoiceService;
-    @MockitoBean private InvoiceExcelService invoiceExcelService;
-    @MockitoBean private HousekeepingService housekeepingService;
+    @MockBean private JwtService jwtService;
+    @MockBean private CustomUserDetailsService customUserDetailsService;
+    @MockBean private AdminBookingService adminBookingService;
+    @MockBean private AdminCheckInRegistrationService adminCheckInRegistrationService;
+    @MockBean private IdentityOcrService identityOcrService;
+    @MockBean private TemporaryResidenceExcelService temporaryResidenceExcelService;
+    @MockBean private AdminInvoiceService adminInvoiceService;
+    @MockBean private InvoiceExcelService invoiceExcelService;
+    @MockBean private HousekeepingService housekeepingService;
 
     @Test
     void receptionistCanLoadBookingData() throws Exception {

@@ -1,5 +1,7 @@
 package com.homestayManagement.homestayManagement.dto.response;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 public class PostCommentDto {
     private String id;
     private String authorName;
@@ -43,6 +45,11 @@ public class PostCommentDto {
         this.authorAvatarUrl = authorAvatarUrl;
     }
 
+    @JsonProperty("authorAvatar")
+    public String getAuthorAvatar() {
+        return authorAvatarUrl;
+    }
+
     public String getMessage() {
         return message;
     }
@@ -59,6 +66,11 @@ public class PostCommentDto {
         this.createdTime = createdTime;
     }
 
+    @JsonProperty("publishedAt")
+    public String getPublishedAt() {
+        return createdTime;
+    }
+
     public Long getLikeCount() {
         return likeCount;
     }
@@ -67,3 +79,4 @@ public class PostCommentDto {
         this.likeCount = likeCount;
     }
 }
+

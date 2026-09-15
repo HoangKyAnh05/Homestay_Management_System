@@ -33,6 +33,7 @@ export default function ExploreHeader() {
           Khám phá xung quanh
         </a>
         <a href="/rooms">Phòng</a>
+        <a href="/stay" title="Dịch vụ dành cho khách đang lưu trú">Dịch vụ lưu trú</a>
         <a href="/wishlist">Yêu thích</a>
         <a href="/amenities">Tiện nghi</a>
         <a
@@ -74,6 +75,9 @@ export default function ExploreHeader() {
               {currentUser.role === 'ROLE_ADMIN' && (
                 <a href="/admin">Quản lý Lá Đỏ Homestay</a>
               )}
+              <a href="/stay" onClick={(e) => { e.preventDefault(); setIsUserMenuOpen(false); window.location.assign('/stay'); }}>
+                Dịch vụ lưu trú
+              </a>
               <a href="/wishlist" onClick={(e) => { e.preventDefault(); setIsUserMenuOpen(false); window.location.assign('/wishlist'); }}>
                 Danh sách yêu thích
               </a>

@@ -202,6 +202,9 @@ public class AdminCheckInRegistrationServiceImpl implements AdminCheckInRegistra
         if (detail.getRoomType() == null) {
             throw new IllegalArgumentException("Booking chưa có loại nhà");
         }
+        if (detail.getCheckOutTarget() != null && LocalDateTime.now().isAfter(detail.getCheckOutTarget())) {
+            throw new IllegalArgumentException("Đơn đặt phòng đã quá giờ trả phòng, không thể thực hiện check-in");
+        }
         return detail;
     }
 

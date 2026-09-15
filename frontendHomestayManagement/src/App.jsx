@@ -45,6 +45,7 @@ import ReceptionistOverviewPage from './pages/Admin/ReceptionistOverviewPage'
 import ReceptionistSheetsPage from './pages/Admin/ReceptionistSheetsPage'
 
 import { MarketingAIAgentPage, MarketingPostLogsPage, MarketingVouchersPage } from './pages/Admin/MarketingPages'
+import MarketingEngagementInboxPage from './pages/Admin/MarketingEngagementInboxPage'
 
 function PageLoadingFallback() {
   return (
@@ -247,6 +248,7 @@ function App() {
       }
       if (currentPath === '/admin/receptionist') return <ReceptionistOverviewPage />
       if (currentPath === '/admin/sheets') return <ReceptionistSheetsPage />
+      if (currentPath === '/admin/marketing/engagement-inbox') return <MarketingEngagementInboxPage />
       if (currentPath === '/admin/marketing/ai-agent') return <MarketingAIAgentPage />
       if (currentPath === '/admin/marketing/post-logs') return <MarketingPostLogsPage />
       if (currentPath === '/admin/marketing/vouchers') return <MarketingVouchersPage />

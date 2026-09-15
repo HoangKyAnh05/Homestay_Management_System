@@ -64,4 +64,27 @@ public class SocialOAuthApp {
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
     }
+
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+    public String getPlatform() { return platform; }
+    public void setPlatform(String platform) { this.platform = platform; }
+    public String getClientId() { return clientId; }
+    public void setClientId(String clientId) { this.clientId = clientId; }
+    public String getClientSecret() { return clientSecret; }
+    public void setClientSecret(String clientSecret) { this.clientSecret = clientSecret; }
+    public String getAuthUrl() { return authUrl; }
+    public void setAuthUrl(String authUrl) { this.authUrl = authUrl; }
+    public String getTokenUrl() { return tokenUrl; }
+    public void setTokenUrl(String tokenUrl) { this.tokenUrl = tokenUrl; }
+    public String getRedirectUri() { return redirectUri; }
+    public void setRedirectUri(String redirectUri) { this.redirectUri = redirectUri; }
+    public String getScopes() { return scopes; }
+    public void setScopes(String scopes) { this.scopes = scopes; }
+    public boolean isActive() { return active; }
+    public void setActive(boolean active) { this.active = active; }
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 }

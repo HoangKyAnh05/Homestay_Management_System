@@ -2309,8 +2309,7 @@ export function MarketingAIAgentPage() {
     const topic = multiPostModal.title || 'Lá Đỏ Homestay Sa Pa - Trải nghiệm săn mây thung lũng Mường Hoa';
     setMultiPostModal((c) => ({ ...c, generatingAi: true, errorMsg: '' }));
 
-    const geminiApiKey = (localStorage.getItem('GEMINI_API_KEY') || import.meta.env.VITE_GEMINI_API_KEY || '').trim();
-    const openAiApiKey = (localStorage.getItem('OPENAI_API_KEY') || localStorage.getItem('AI_API_KEY') || import.meta.env.VITE_OPENAI_API_KEY || '').trim();
+    const groqOrGeminiKey = (localStorage.getItem('GROQ_API_KEY') || localStorage.getItem('GEMINI_API_KEY') || '').trim();
 
     const topicLabelMap = {
       SAN_MAY: 'Săn mây bồng bềnh & View thung lũng Mường Hoa',
@@ -2371,109 +2370,75 @@ BẮT BUỘC trả về đúng 1 JSON duy nhất, không giải thích ngoài:
 }`;
 
     try {
-      if (geminiApiKey && !geminiApiKey.startsWith('sk-')) {
-        const candidateModels = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-2.5-pro'];
-        for (const model of candidateModels) {
-          try {
-            const res = await axios.post(
-              `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`,
-              {
-                contents: [{ parts: [{ text: prompt }] }],
-                generationConfig: { responseMimeType: 'application/json', temperature: 0.7 }
-              },
-              { timeout: 15000 }
-            );
-            const raw = res.data?.candidates?.[0]?.content?.parts?.[0]?.text;
-            if (raw) {
-              const aiResult = JSON.parse(raw);
-              if (aiResult?.caption) {
-                setMultiPostModal((c) => ({
-                  ...c,
-                  title: aiResult.title || c.title,
-                  caption: aiResult.caption,
-                  hashtags: aiResult.hashtags || c.hashtags,
-                  generatingAi: false,
-                }));
-                return;
-              }
-            }
-          } catch (geminiErr) {
-            console.warn(`Gemini (${model}) caption gen error:`, geminiErr);
-          }
-        }
+      // 1. Call Backend AI Engine (/api/gemini/generate)
+      const token = localStorage.getItem('homeStayAccessToken') || sessionStorage.getItem('homeStayAccessToken') || '';
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
       }
 
-      if (openAiApiKey) {
+      const proxyRes = await fetch('/api/gemini/generate', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          prompt,
+          modelId: 1,
+          thinkMode: true,
+          cookie: groqOrGeminiKey,
+          responseFormat: 'json'
+        })
+      });
+
+      if (!proxyRes.ok) {
+        const errJson = await proxyRes.json().catch(() => ({}));
+        throw new Error(errJson.error || errJson.message || `Lỗi máy chủ AI (HTTP ${proxyRes.status})`);
+      }
+
+      const resData = await proxyRes.json();
+      if (!resData.success && resData.error) {
+        throw new Error(resData.error);
+      }
+
+      let finalTitle = resData.title || '';
+      let finalCaption = resData.caption || resData.content || '';
+      let finalHashtags = resData.hashtags || multiPostModal.hashtags;
+
+      // Extract JSON if returned in raw content/caption
+      const textToParse = resData.content || finalCaption;
+      if (textToParse && typeof textToParse === 'string') {
         try {
-          const res = await axios.post(
-            'https://api.openai.com/v1/chat/completions',
-            {
-              model: 'gpt-4o-mini',
-              messages: [
-                { role: 'system', content: 'Bạn là chuyên gia sáng tạo nội dung marketing cho homestay du lịch. Luôn trả về định dạng JSON hợp lệ.' },
-                { role: 'user', content: prompt }
-              ],
-              response_format: { type: 'json_object' },
-              temperature: 0.7
-            },
-            {
-              headers: {
-                Authorization: `Bearer ${openAiApiKey}`,
-                'Content-Type': 'application/json'
-              },
-              timeout: 20000
-            }
-          );
-          const raw = res.data?.choices?.[0]?.message?.content;
-          if (raw) {
-            const aiResult = JSON.parse(raw);
-            if (aiResult?.caption) {
-              setMultiPostModal((c) => ({
-                ...c,
-                title: aiResult.title || c.title,
-                caption: aiResult.caption,
-                hashtags: aiResult.hashtags || c.hashtags,
-                generatingAi: false,
-              }));
-              return;
-            }
+          let clean = textToParse.trim();
+          const match = clean.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+          if (match && match[1]) {
+            clean = match[1].trim();
           }
-        } catch (openAiErr) {
-          console.warn('OpenAI caption gen error, fallback to template:', openAiErr);
+          if (clean.startsWith('{') && clean.endsWith('}')) {
+            const obj = JSON.parse(clean);
+            if (obj.title) finalTitle = obj.title;
+            if (obj.caption) finalCaption = obj.caption;
+            if (obj.hashtags) finalHashtags = obj.hashtags;
+          }
+        } catch (e) {
+          console.warn('Could not parse JSON block from AI output:', e);
         }
       }
-    } catch (e) {
-      console.warn('AI caption gen failed, fallback:', e);
+
+      if (!finalCaption) {
+        throw new Error('AI không trả về nội dung hợp lệ.');
+      }
+
+      setMultiPostModal((c) => ({
+        ...c,
+        title: finalTitle || c.title,
+        caption: finalCaption,
+        hashtags: finalHashtags,
+        generatingAi: false,
+      }));
+    } catch (err) {
+      console.error('AI generation failed:', err);
+      setMultiPostModal((c) => ({ ...c, generatingAi: false }));
+      alert(`⚠️ Lỗi AI Content Generation:\n${err.message || 'Không thể kết nối API'}\n\nVui lòng kiểm tra API Key hoặc kết nối mạng.`);
     }
-
-    // High-converting Intelligent Fallback Generator with mandatory links
-    const mandatoryFooter = `\n\n👉 Tham gia Vòng Quay May Mắn nhận ngay Voucher giảm đến 50%: https://homestay-sapa.myvnc.com/giveaway\n🌐 Khám phá & Đặt phòng trực tiếp: https://homestay-sapa.myvnc.com\n📞 Hotline / Zalo tư vấn 24/7: 0941186699\n📍 Địa chỉ: Đường Hoàng Liên, Sa Pa, Lào Cai`;
-
-    let generatedTitle = '';
-    let generatedCaption = '';
-    let generatedHashtags = '#LaDoHomestay #SaPa #SanMaySaPa #ReviewSaPa #DuLichSaPa #VoucherHomestay #shorts #reels #fyp';
-
-    if (multiPostModal.aiTopicTag === 'SAN_MAY') {
-      generatedTitle = 'Thức dậy giữa biển mây bồng bềnh tại Lá Đỏ Homestay Sa Pa ☁️';
-      generatedCaption = `🌿 Bạn có từng mơ về một sớm mai mở toang cánh cửa kính là cả biển mây trắng muốt tràn vào tận giường ngủ?\n\n✨ Tại Lá Đỏ Homestay Sa Pa, bạn không cần phải chen chúc dậy sớm đi xa. Chỉ cần pha một tách trà nóng, tựa lưng bên khung cửa Panorama, ngắm nhìn thung lũng Mường Hoa ẩn hiện trong sương sớm và mây bay lững lờ ngang tầm mắt.\n\n${multiPostModal.aiCustomNote ? `💡 Lưu ý đặc biệt: ${multiPostModal.aiCustomNote}\n\n` : ''}🍃 Chuyến đi Sa Pa trọn vẹn nhất là khi bạn tìm được chốn dừng chân bình yên cho tâm hồn.${mandatoryFooter}`;
-    } else if (multiPostModal.aiTopicTag === 'VOUCHER_GIVEAWAY') {
-      generatedTitle = '🎁 SĂN VOUCHER GIẢM 50% PHÒNG VIEW MÂY LÁ ĐỎ HOMESTAY!';
-      generatedCaption = `🎉 CƠ HỘI DU LỊCH SA PA TIẾT KIỆM TỚI 50% - DUY NHẤT HÔM NAY!\n\nLá Đỏ Homestay gửi tặng bạn cơ hội tham gia VÒNG QUAY MAY MẮN với 100% tỷ lệ trúng thưởng:\n- 🏆 Giải Đặc Biệt: Voucher Giảm 50% tiền phòng view thung lũng\n- 🌟 Voucher Giảm 30% & 20% đặt phòng trong tuần\n- ☕ Tặng miễn phí đồ uống ngắm hoàng hôn & set BBQ sân vườn\n\n${multiPostModal.aiCustomNote ? `🔥 Ưu đãi thêm: ${multiPostModal.aiCustomNote}\n\n` : ''}👇 Nhanh tay quay thưởng ngay để giữ voucher cho kỳ nghỉ sắp tới:${mandatoryFooter}`;
-    } else if (multiPostModal.aiTopicTag === 'BBQ_SUNSET') {
-      generatedTitle = 'Chiều hoàng hôn Sa Pa bên bếp nướng BBQ se lạnh 🥩🔥';
-      generatedCaption = `⛅ Khi ráng chiều đỏ rực buông xuống thung lũng Mường Hoa, không gì tuyệt vời hơn được quây quần cùng người thương bên bếp than hồng xèo xèo thịt nướng.\n\n🍃 Không gian sân vườn thoáng đãng, view trọn dãy Hoàng Liên Sơn hùng vĩ, tiếng nhạc acoustic nhẹ nhàng cùng ly rượu ngô ấm nồng. Đến Lá Đỏ Homestay để tận hưởng những phút giây chill đúng nghĩa nhất!\n\n${multiPostModal.aiCustomNote ? `📌 Ghi chú: ${multiPostModal.aiCustomNote}\n\n` : ''}📞 Đặt lịch trước để giữ bàn view hoàng hôn đẹp nhất nhé:${mandatoryFooter}`;
-    } else {
-      generatedTitle = 'Lá Đỏ Homestay Sa Pa - Trọn vẹn phút giây chữa lành giữa mây trời Tây Bắc ✨';
-      generatedCaption = `🌿 Tạm gác lại những ồn ào vội vã của phố thị, Sa Pa mùa này đón bạn bằng làn sương trong lành, tiếng gió reo qua sườn đồi và những căn phòng gỗ ấm cúng view thung lũng tuyệt đẹp.\n\n🏡 Phòng nghỉ tiện nghi đầy đủ, bồn tắm kính ngắm núi, ban công ngắm mây và đội ngũ phục vụ tận tâm chu đáo như ở nhà.\n\n${multiPostModal.aiCustomNote ? `💡 Yêu cầu: ${multiPostModal.aiCustomNote}\n\n` : ''}🌸 Đặt phòng ngay hôm nay để nhận trọn vẹn ưu đãi và dịch vụ tốt nhất:${mandatoryFooter}`;
-    }
-
-    setMultiPostModal((c) => ({
-      ...c,
-      title: generatedTitle,
-      caption: generatedCaption,
-      hashtags: generatedHashtags,
-      generatingAi: false,
-    }));
   };
 
   const handleMultiPlatformPublish = async (e, instantPublish = false) => {
@@ -4099,14 +4064,14 @@ BẮT BUỘC trả về đúng 1 JSON duy nhất, không giải thích ngoài:
                         type="button"
                         onClick={handleAutoGenerateModalCaption}
                         disabled={multiPostModal.generatingAi}
-                        style={{ background: '#166534', color: '#ffffff', border: 0, padding: '6px 14px', borderRadius: '8px', fontWeight: 700, fontSize: '12px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px', boxShadow: '0 2px 6px rgba(22, 101, 52, 0.25)' }}
+                        style={{ background: 'linear-gradient(135deg, #2563eb, #7c3aed)', color: '#ffffff', border: 0, padding: '8px 16px', borderRadius: '8px', fontWeight: 800, fontSize: '13px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px', boxShadow: '0 3px 10px rgba(79, 70, 229, 0.35)', transition: 'all 0.2s' }}
                       >
                         {multiPostModal.generatingAi ? (
-                          <span className="mkt-spinner" style={{ width: 12, height: 12, display: 'inline-block' }} />
+                          <span className="mkt-spinner" style={{ width: 14, height: 14, display: 'inline-block' }} />
                         ) : (
-                          <Icon name="sparkles" size={13} />
+                          <Icon name="sparkles" size={15} />
                         )}
-                        <span>{multiPostModal.generatingAi ? 'Đang viết bài...' : 'Tự động sinh bằng AI'}</span>
+                        <span>{multiPostModal.generatingAi ? 'AI đang viết bài siêu tốc...' : '✨ Tự động sinh bài bằng AI (Groq / Llama 3.3)'}</span>
                       </button>
                     </div>
 

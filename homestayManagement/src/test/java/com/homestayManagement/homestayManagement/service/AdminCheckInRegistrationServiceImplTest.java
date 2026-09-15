@@ -36,9 +36,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
@@ -205,8 +203,38 @@ class AdminCheckInRegistrationServiceImplTest {
         assertEquals(2, response.guestCount());
     }
 
+    @Test
+    void prepareThrowsWhenCheckOutTargetHasPassed() {
+        TestData data = testData();
+        data.detail().setCheckOutTarget(LocalDateTime.now().minusHours(1));
+
+        when(bookingDetailRepository.findByIdForAdminDetail(40L)).thenReturn(Optional.of(data.detail()));
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> service.prepare(40L));
+        assertTrue(ex.getMessage().contains("quá giờ trả phòng"));
+    }
+
+    @Test
+    void completeThrowsWhenCheckOutTargetHasPassed() {
+        TestData data = testData();
+        data.detail().setCheckOutTarget(LocalDateTime.now().minusMinutes(30));
+
+        when(bookingDetailRepository.findByIdForAdminDetail(40L)).thenReturn(Optional.of(data.detail()));
+
+        List<AdminCheckInGuestRequest> guests = List.of(
+                new AdminCheckInGuestRequest("Người lớn", "012345678901", null, "booker@example.com", null, null, null, "VIETNAM")
+        );
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () ->
+                service.complete(40L, new AdminCompleteCheckInRequest(101L, "booker@example.com", guests))
+        );
+        assertTrue(ex.getMessage().contains("quá giờ trả phòng"));
+    }
+
     private TestData testData() {
-        LocalDateTime checkIn = LocalDateTime.of(2026, 6, 20, 14, 0);
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime checkIn = now.minusHours(2);
+        LocalDateTime checkOut = now.plusDays(1);
         Account account = Account.builder().id(1L).email("booker@example.com").build();
         Customer customer = Customer.builder().id(2L).account(account).fullName("Người đặt").build();
         Booking booking = Booking.builder().id(20L).customer(customer).bookingDate(checkIn.minusDays(2)).status("CONFIRMED").build();
@@ -214,7 +242,7 @@ class AdminCheckInRegistrationServiceImplTest {
         Room room = Room.builder().id(101L).roomNumber("101").roomType(roomType).build();
         BookingDetail detail = BookingDetail.builder()
                 .id(40L).booking(booking).roomType(roomType)
-                .checkInTarget(checkIn).checkOutTarget(checkIn.plusDays(1))
+                .checkInTarget(checkIn).checkOutTarget(checkOut)
                 .numberOfAdults(2).numberOfChildren(0).priceAtBooking(BigDecimal.valueOf(1_000_000))
                 .rentType("DAILY").status("CONFIRMED").build();
         return new TestData(customer, booking, roomType, room, detail);

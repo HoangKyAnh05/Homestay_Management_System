@@ -39,11 +39,10 @@ function GuestsIcon() {
 
 function formatMainDate(date) {
   if (!date) return 'Chọn ngày'
-  return new Intl.DateTimeFormat('vi-VN', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  }).format(date)
+  const day = String(date.getDate()).padStart(2, '0')
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const year = date.getFullYear()
+  return `${day}/${month}/${year}`
 }
 
 function formatWeekday(date) {
@@ -161,11 +160,6 @@ function MonthCalendar({ month, checkInDate, checkOutDate, onSelectDate, activeD
 function CalendarDropdown({ months, checkInDate, checkOutDate, onSelectDate, activeDateField }) {
   return (
     <div className="calendar-dropdown">
-      <div className="calendar-tabs">
-        <button className="is-active" type="button">Chọn ngày</button>
-        <button type="button">Linh hoạt</button>
-      </div>
-
       <div className="calendar-body">
         {months.map((month) => (
           <MonthCalendar

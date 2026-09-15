@@ -3,6 +3,7 @@ import { getStoredToken, getStoredUser, logout } from '../../services/authServic
 import { formatDateTime as formatAppDateTime } from '../../utils/dateTimeFormat'
 import { houseTypeName } from '../../utils/houseType'
 import { resolveImageUrl } from '../../utils/imageUrl'
+import { calculateStayOverdueInfo } from '../../utils/stayOverdue'
 import '../Home/HomePage.css'
 import './BookingHistoryPage.css'
 
@@ -85,6 +86,7 @@ function PublicHeader() {
         <a href="/landing" className="home-nav-landing-link" title="Khám phá không gian 3D Lá Đỏ Sanctuary">🍁 Lá Đỏ 3D</a>
         <a href="/explore" title="Khám phá xung quanh Lá Đỏ Homestay & Sa Pa">Khám phá xung quanh</a>
         <a href="/rooms">Phòng</a>
+        <a href="/stay" title="Dịch vụ dành cho khách đang lưu trú">Dịch vụ lưu trú</a>
         <a href="/wishlist">Yêu thích</a>
         <a href="/amenities">Tiện nghi</a>
         <a
@@ -114,6 +116,7 @@ function PublicHeader() {
           </button>
           {isOpen && (
             <div className="home-user-dropdown">
+              <a href="/stay" onClick={(e) => { e.preventDefault(); setIsOpen(false); window.location.assign('/stay'); }}>Dịch vụ lưu trú</a>
               <a href="/wishlist" onClick={(e) => { e.preventDefault(); setIsOpen(false); window.location.assign('/wishlist'); }}>Danh sách yêu thích</a>
               <a href="/vouchers" onClick={(e) => { e.preventDefault(); setIsOpen(false); window.location.assign('/vouchers'); }}>Kho mã giảm giá</a>
               <a href="/booking-history" onClick={(e) => { e.preventDefault(); setIsOpen(false); window.location.assign('/booking-history'); }}>Lịch sử đặt phòng</a>
@@ -1056,8 +1059,13 @@ function BookingHistoryPage() {
     setReviewError('')
     setReviewSubmitting(true)
     try {
-      const response = await fetch(`${API_BASE_URL}/customer/reviews`, {
-        method: 'POST',
+      const isEditing = Boolean(reviewData?.reviewId || reviewData?.id)
+      const url = isEditing
+        ? `${API_BASE_URL}/customer/reviews/booking/${detail.bookingId}`
+        : `${API_BASE_URL}/customer/reviews`
+      const method = isEditing ? 'PUT' : 'POST'
+      const response = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           bookingId: detail.bookingId,
@@ -1067,7 +1075,7 @@ function BookingHistoryPage() {
         }),
       })
       const data = await response.json().catch(() => ({}))
-      if (!response.ok) throw new Error(data.message || 'Không thể gửi đánh giá')
+      if (!response.ok) throw new Error(data.message || 'Không thể lưu đánh giá')
       setReviewData(data)
       setReviewOpen(false)
     } catch (err) {
@@ -1264,6 +1272,50 @@ function BookingHistoryPage() {
     safeHistoryPage * HISTORY_PAGE_SIZE
   )
 
+  const activeAlerts = useMemo(() => {
+    const overdueRooms = []
+    const dueTodayRooms = []
+
+    bookings.forEach((booking) => {
+      const isStaying = ['CHECKED_IN', 'CONFIRMED'].includes(String(booking.status || '').toUpperCase())
+      if (!isStaying) return
+
+      const roomsToCheck =
+        booking.bookingId === detail?.bookingId && detail?.rooms?.length
+          ? detail.rooms
+          : [
+              {
+                roomNumber: booking.firstRoomNumber,
+                checkOutTarget: booking.checkOutTarget,
+                status: booking.status,
+                bookingCode: bookingDisplay(booking),
+              },
+            ]
+
+      roomsToCheck.forEach((r) => {
+        const info = calculateStayOverdueInfo(r.checkOutTarget, null, booking.status)
+        if (info.isOverdue) {
+          overdueRooms.push({
+            roomNumber: r.roomNumber || booking.firstRoomNumber || 'Chưa gán',
+            checkOutTarget: r.checkOutTarget || booking.checkOutTarget,
+            bookingCode: bookingDisplay(booking),
+            overdueDays: info.overdueDays,
+            overdueHours: info.overdueHours,
+            message: info.message,
+          })
+        } else if (info.isDueToday) {
+          dueTodayRooms.push({
+            roomNumber: r.roomNumber || booking.firstRoomNumber || 'Chưa gán',
+            checkOutTarget: r.checkOutTarget || booking.checkOutTarget,
+            bookingCode: bookingDisplay(booking),
+          })
+        }
+      })
+    })
+
+    return { overdueRooms, dueTodayRooms }
+  }, [bookings, detail])
+
   useEffect(() => {
     if (historyPage > totalHistoryPages) setHistoryPage(totalHistoryPages)
   }, [historyPage, totalHistoryPages])
@@ -1286,6 +1338,44 @@ function BookingHistoryPage() {
           </div>
           <span>{bookings.length} booking</span>
         </section>
+
+        {activeAlerts.overdueRooms.length > 0 && (
+          <div className="history-stay-alert history-stay-alert--overdue">
+            <div className="history-stay-alert-icon">⚠️</div>
+            <div className="history-stay-alert-content">
+              <strong>Thông báo: Bạn đã trả phòng quá hạn!</strong>
+              {activeAlerts.overdueRooms.map((item, idx) => (
+                <p key={idx}>
+                  {item.overdueDays >= 1 ? (
+                    <>
+                      Bạn đã quá hạn trả phòng <strong>{item.roomNumber ? `Phòng ${item.roomNumber}` : 'phòng đã đặt'}</strong> (Booking {item.bookingCode}, hạn trả lúc {formatAppDateTime(item.checkOutTarget)}). Do đã quá hạn <strong>{item.overdueDays} ngày</strong>, bạn bị tính thành ở thêm <strong>{item.overdueDays} ngày</strong>. Vui lòng liên hệ Lễ tân để hoàn tất thủ tục trả phòng hoặc thanh toán phát sinh.
+                    </>
+                  ) : (
+                    <>
+                      <strong>{item.roomNumber ? `Phòng ${item.roomNumber}` : 'Phòng đã đặt'}</strong> (Booking {item.bookingCode}) đã quá giờ trả phòng lúc {formatAppDateTime(item.checkOutTarget)} ({item.overdueHours}h). Vui lòng hoàn tất thủ tục trả phòng hoặc liên hệ gia hạn lưu trú sớm nhất.
+                    </>
+                  )}
+                </p>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {activeAlerts.dueTodayRooms.length > 0 && activeAlerts.overdueRooms.length === 0 && (
+          <div className="history-stay-alert history-stay-alert--due-today">
+            <div className="history-stay-alert-icon">🔔</div>
+            <div className="history-stay-alert-content">
+              <strong>Nhắc nhở: Hôm nay bạn cần trả phòng</strong>
+              <p>
+                Hôm nay bạn cần trả phòng cho các phòng:{' '}
+                <strong>
+                  {activeAlerts.dueTodayRooms.map((r) => (r.roomNumber ? `Phòng ${r.roomNumber}` : 'Phòng đã đặt')).join(', ')}
+                </strong>{' '}
+                (hạn trả trước {formatAppDateTime(activeAlerts.dueTodayRooms[0].checkOutTarget)}). Vui lòng kiểm tra hành lý và liên hệ quầy lễ tân để làm thủ tục check-out.
+              </p>
+            </div>
+          </div>
+        )}
 
         {loading ? (
           <div className="history-state">Đang tải lịch sử đặt phòng...</div>
@@ -1477,11 +1567,22 @@ function BookingHistoryPage() {
                       {detail.rooms.map((room) => {
                         const roomExtHours = Number(room.extensionHours || 0)
                         const isUpgraded = room.notes && (room.notes.includes('Miễn phí') || room.notes.includes('Đổi phòng') || room.notes.includes('đổi từ') || room.notes.includes('Đã đổi'))
+                        const overdueInfo = calculateStayOverdueInfo(room.checkOutTarget, null, detail.status)
                         return (
                           <article key={room.bookingDetailId} className={room.notes ? 'has-room-change-note' : ''}>
                             <div>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                                 <strong>{room.roomNumber ? `Phòng ${room.roomNumber}` : 'Chưa gán phòng'}</strong>
+                                {['CHECKED_IN', 'CONFIRMED'].includes(String(detail.status || '').toUpperCase()) && overdueInfo.isOverdue && (
+                                  <span className="history-room-overdue-tag" title={overdueInfo.message}>
+                                    ⚠️ {overdueInfo.shortBadge} (Tính thêm {overdueInfo.overdueDays >= 1 ? `${overdueInfo.overdueDays} ngày` : 'phí trễ'})
+                                  </span>
+                                )}
+                                {['CHECKED_IN', 'CONFIRMED'].includes(String(detail.status || '').toUpperCase()) && !overdueInfo.isOverdue && overdueInfo.isDueToday && (
+                                  <span className="history-room-duetoday-tag">
+                                    🔔 Trả phòng hôm nay
+                                  </span>
+                                )}
                                 {roomExtHours > 0 && (
                                   <span className="history-room-extended-tag">
                                      Đã thuê thêm +{roomExtHours}h
@@ -1562,10 +1663,11 @@ function BookingHistoryPage() {
                           onClick={() => {
                             setReviewStars(reviewData?.ratingStars || 5)
                             setReviewComment(reviewData?.comment || '')
+                            setReviewImages(reviewData?.imageUrls || [])
                             setReviewOpen(true)
                           }}
                         >
-                          {reviewData ? ` ${reviewData.ratingStars} Sao (Sửa)` : ' Đánh giá ngay'}
+                          {reviewData ? `★ ${reviewData.ratingStars} Sao (Sửa)` : '★ Đánh giá ngay'}
                         </button>
                       )}
                       <button
@@ -1741,7 +1843,7 @@ function BookingHistoryPage() {
             <div className="history-feedback-actions" style={{ marginTop: '16px' }}>
               <button type="button" onClick={() => setReviewOpen(false)}>Hủy</button>
               <button type="submit" disabled={reviewSubmitting || !reviewComment.trim()}>
-                {reviewSubmitting ? 'Đang gửi...' : 'Gửi đánh giá'}
+                {reviewSubmitting ? 'Đang lưu...' : reviewData ? 'Cập nhật đánh giá' : 'Gửi đánh giá'}
               </button>
             </div>
           </form>

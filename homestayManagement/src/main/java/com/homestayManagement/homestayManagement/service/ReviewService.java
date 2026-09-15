@@ -11,6 +11,8 @@ public interface ReviewService {
     List<ReviewResponseDto> getReviewsByRoomType(Long roomTypeId);
     List<ReviewResponseDto> getFeaturedReviews();
     ReviewResponseDto getReviewByBooking(Long bookingId);
+    ReviewResponseDto updateReview(Long reviewId, com.homestayManagement.homestayManagement.dto.UpdateCustomerReviewRequestDto request, String userEmail);
+    ReviewResponseDto updateReviewByBooking(Long bookingId, com.homestayManagement.homestayManagement.dto.UpdateCustomerReviewRequestDto request, String userEmail);
     List<ReviewResponseDto> getAllReviews();
     ReviewResponseDto updateReviewStatus(Long reviewId, UpdateReviewStatusRequestDto request);
     List<ReviewResponseDto> syncGoogleReviews();

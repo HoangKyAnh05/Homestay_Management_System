@@ -21,6 +21,7 @@
   align-items: center;
   gap: 8px;
   width: 100%;
+  min-width: 140px;
   min-height: 42px;
   padding: 0 12px;
   background-color: #ffffff;
@@ -55,9 +56,8 @@
 .ddp-trigger-text {
   flex: 1;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
   text-align: left;
+  font-variant-numeric: tabular-nums;
 }
 
 .ddp-trigger--empty .ddp-trigger-text {

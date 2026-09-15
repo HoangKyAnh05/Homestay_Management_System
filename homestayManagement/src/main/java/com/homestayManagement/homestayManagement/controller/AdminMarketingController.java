@@ -192,6 +192,21 @@ public class AdminMarketingController {
         };
     }
 
+    @GetMapping("/posts")
+    public List<MarketingPostResponse> listPosts() {
+        return adminMarketingService.listPosts();
+    }
+
+    @PostMapping("/channels/sync-all-metrics")
+    public Map<String, Object> syncAllMetrics() {
+        return adminMarketingService.syncAllMetrics();
+    }
+
+    @PostMapping("/channels/seed-demo-engagement")
+    public Map<String, Object> seedDemoEngagement() {
+        return adminMarketingService.seedDemoEngagement();
+    }
+
     @GetMapping("/posts/{id}")
     public MarketingPostResponse getPost(@PathVariable Long id) {
         return adminMarketingService.getPost(id);
@@ -246,6 +261,13 @@ public class AdminMarketingController {
             @RequestBody @Valid com.homestayManagement.homestayManagement.dto.request.PostCommentReplyRequest request
     ) {
         return adminMarketingService.replyComment(channelId, commentId, request);
+    }
+
+    @PostMapping("/comments/suggest-reply")
+    public com.homestayManagement.homestayManagement.dto.response.SuggestCommentReplyResponse suggestCommentReply(
+            @RequestBody @Valid com.homestayManagement.homestayManagement.dto.request.SuggestCommentReplyRequest request
+    ) {
+        return adminMarketingService.suggestCommentReply(request);
     }
 
     @ExceptionHandler({IllegalArgumentException.class, IllegalStateException.class})
