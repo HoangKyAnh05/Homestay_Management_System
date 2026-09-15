@@ -252,9 +252,8 @@ function StayPage() {
     }
   }
 
-  const handleLogout = () => {
-    logout()
-    window.location.replace('/login?next=/stay')
+  const handleExitToHome = () => {
+    window.location.assign('/home')
   }
 
   return (
@@ -265,14 +264,14 @@ function StayPage() {
           <strong>Xin chào, {user?.fullName?.split(' ').at(-1) || 'bạn'}!</strong>
         </div>
         <div className="stay-header-actions">
-          <a href="/profile" className="stay-user-avatar" aria-label="Thông tin cá nhân">
+          <a href="/profile" className="stay-user-avatar" aria-label="Thông tin cá nhân" title="Thông tin cá nhân">
             {user?.avatarUrl
               ? <img src={resolveImageUrl(user.avatarUrl)} alt="" />
               : <span>{(user?.fullName || user?.email || 'H').trim().charAt(0).toUpperCase()}</span>}
           </a>
-          <button type="button" onClick={handleLogout} aria-label="Đăng xuất">
+          <a href="/home" className="stay-exit-btn" title="Về trang chủ" aria-label="Về trang chủ">
             <svg viewBox="0 0 24 24"><path d="M10 5H5v14h5M14 8l4 4-4 4M9 12h9" /></svg>
-          </button>
+          </a>
         </div>
       </header>
 

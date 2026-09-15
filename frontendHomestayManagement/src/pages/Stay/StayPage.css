@@ -65,7 +65,8 @@
 }
 
 .stay-user-avatar,
-.stay-header-actions > button {
+.stay-header-actions > button,
+.stay-header-actions > a {
   width: 40px;
   height: 40px;
   display: grid;
@@ -77,6 +78,8 @@
   background: #ffffff;
   text-decoration: none;
   box-shadow: 0 6px 18px rgba(22, 56, 43, 0.05);
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease, color 0.15s ease;
 }
 
 .stay-user-avatar img {
@@ -91,9 +94,16 @@
   font-weight: 800;
 }
 
-.stay-header-actions > button {
+.stay-header-actions > button,
+.stay-header-actions > a {
   border: 0;
-  cursor: pointer;
+}
+
+.stay-header-actions > a:hover,
+.stay-header-actions > button:hover {
+  background: #eef4f1;
+  color: var(--stay-green-deep);
+  transform: translateY(-1px);
 }
 
 .stay-header-actions svg {
