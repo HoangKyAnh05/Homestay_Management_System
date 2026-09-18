@@ -146,8 +146,10 @@ function bookingStatusClass(status) {
 }
 
 function overlapsDay(booking, day) {
+  if (!booking.checkInTarget || !booking.checkOutTarget) return false
   const start = new Date(booking.checkInTarget)
   const end = new Date(booking.checkOutTarget)
+  if (isNaN(start.getTime()) || isNaN(end.getTime())) return false
   const dayStart = new Date(day)
   dayStart.setHours(0, 0, 0, 0)
   const dayEnd = addDays(dayStart, 1)
@@ -2696,7 +2698,6 @@ function IntuitiveBookingCardsView({
 
 function AdminBookingsPage() {
   const { isInShift, guardAction } = useShiftGuard()
-  const [viewMode, setViewMode] = useState('CARDS') // 'CARDS' or 'TIMELINE'
   const [activeChangeRoomDetailId, setActiveChangeRoomDetailId] = useState(null)
   const [weekStart, setWeekStart] = useState(() => toDateKey(startOfWeek()))
   const [schedule, setSchedule] = useState({ rooms: [], bookings: [], weekStart, weekEnd: weekStart })
@@ -2827,12 +2828,21 @@ function AdminBookingsPage() {
   }, [schedule.weekStart, weekStart])
 
   const visibleBookings = useMemo(() => {
-    const adminBookings = schedule.bookings.filter(isAdminScheduleBookingVisible)
-    if (!statusFilter) return adminBookings
-    return adminBookings.filter(booking =>
-      [booking.bookingStatus, booking.detailStatus].some(status => normalizeStatus(status) === statusFilter)
-    )
-  }, [schedule.bookings, statusFilter])
+    let adminBookings = schedule.bookings.filter(isAdminScheduleBookingVisible)
+    if (statusFilter) {
+      adminBookings = adminBookings.filter(booking =>
+        [booking.bookingStatus, booking.detailStatus].some(status => normalizeStatus(status) === statusFilter)
+      )
+    }
+    const keyword = search.trim().toLowerCase()
+    if (keyword) {
+      adminBookings = adminBookings.filter(booking => {
+        const target = `${booking.roomNumber || ''} ${booking.roomTypeName || ''} ${booking.customerName || ''} ${booking.customerPhone || ''} ${booking.customerEmail || ''} ${booking.bookingId || ''} ${booking.bookingCode || ''} ${bookingDisplay(booking)}`.toLowerCase()
+        return target.includes(keyword)
+      })
+    }
+    return adminBookings
+  }, [schedule.bookings, statusFilter, search])
 
   const filteredRooms = useMemo(() => {
     const keyword = search.trim().toLowerCase()
@@ -2977,25 +2987,6 @@ function AdminBookingsPage() {
         </div>
 
         <div className="abk-toolbar-controls">
-          <div className="abk-view-mode-toggle">
-            <button
-              type="button"
-              className={`abk-mode-btn ${viewMode === 'CARDS' ? 'is-active' : ''}`}
-              onClick={() => setViewMode('CARDS')}
-            >
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
-              <span>Dạng Thẻ Trực Quan</span>
-            </button>
-            <button
-              type="button"
-              className={`abk-mode-btn ${viewMode === 'TIMELINE' ? 'is-active' : ''}`}
-              onClick={() => setViewMode('TIMELINE')}
-            >
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-              <span>Lịch Tuần</span>
-            </button>
-          </div>
-
           <div style={{ width: '160px' }}>
             <DateDropdownPicker
               value={weekStart}
@@ -3014,11 +3005,9 @@ function AdminBookingsPage() {
             <option value="COMPLETED">Hoàn tất</option>
             <option value="CANCELLED">Đã hủy</option>
           </select>
-          {viewMode === 'TIMELINE' && (
-            <select className="abk-select" value={pageSize} onChange={e => setPageSize(Number(e.target.value))}>
-              {PAGE_SIZE_OPTIONS.map(size => <option key={size} value={size}>{size} phòng/trang</option>)}
-            </select>
-          )}
+          <select className="abk-select" value={pageSize} onChange={e => setPageSize(Number(e.target.value))}>
+            {PAGE_SIZE_OPTIONS.map(size => <option key={size} value={size}>{size} phòng/trang</option>)}
+          </select>
         </div>
       </div>
 
@@ -3026,14 +3015,6 @@ function AdminBookingsPage() {
         <div className="abk-empty">Đang tải lịch đặt phòng...</div>
       ) : error ? (
         <div className="abk-empty abk-empty--error">{error}</div>
-      ) : viewMode === 'CARDS' ? (
-        <IntuitiveBookingCardsView
-          bookings={visibleBookings}
-          rooms={schedule.rooms}
-          onOpenDetail={openDetail}
-          onOpenChangeRoom={setActiveChangeRoomDetailId}
-          today={schedule.today}
-        />
       ) : (
         <>
           <section className="abk-schedule">
@@ -3081,7 +3062,7 @@ function AdminBookingsPage() {
                       </div>
                       {weekDays.map(day => {
                         const dayBookings = unassignedVisibleBookings
-                          .filter(booking => isCheckInDay(booking, day))
+                          .filter(booking => overlapsDay(booking, day))
                           .sort((a, b) => new Date(a.checkInTarget) - new Date(b.checkInTarget))
                         return (
                           <div className="abk-day-cell abk-day-cell--unassigned" key={`unassigned-${toDateKey(day)}`}>
@@ -3111,7 +3092,7 @@ function AdminBookingsPage() {
                       </div>
                       {weekDays.map(day => {
                         const dayBookings = visibleBookings
-                          .filter(booking => booking.roomId === room.id && isCheckInDay(booking, day))
+                          .filter(booking => booking.roomId === room.id && overlapsDay(booking, day))
                           .sort((a, b) => new Date(a.checkInTarget) - new Date(b.checkInTarget))
                         return (
                           <div className="abk-day-cell" key={`${room.id}-${toDateKey(day)}`}>

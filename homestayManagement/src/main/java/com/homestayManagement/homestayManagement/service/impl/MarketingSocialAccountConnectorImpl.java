@@ -46,7 +46,7 @@ public class MarketingSocialAccountConnectorImpl implements MarketingSocialAccou
             SocialOAuthSessionRepository sessionRepository,
             SocialAccountRepository socialAccountRepository,
             ObjectMapper objectMapper,
-            @Value("${app.frontend.base-url:http://localhost:5173}") String frontendBaseUrl,
+            @Value("${app.frontend.base-url:https://homestay-sapa.myvnc.com}") String frontendBaseUrl,
             @Value("${marketing.social.facebook.client-id:}") String facebookClientId,
             @Value("${marketing.social.facebook.client-secret:}") String facebookClientSecret,
             @Value("${marketing.social.facebook.redirect-uri:http://localhost:8080/api/marketing/social/oauth/callback}") String facebookRedirectUri,
@@ -181,6 +181,9 @@ public class MarketingSocialAccountConnectorImpl implements MarketingSocialAccou
         account.setAccountName(accountName);
         account.setPageUrl(pageUrl);
         account.setExternalAccountId(externalAccountId);
+        if (!hasText(account.getAvatarUrl()) && "FACEBOOK".equalsIgnoreCase(platform) && hasText(externalAccountId)) {
+            account.setAvatarUrl("https://graph.facebook.com/" + externalAccountId.trim() + "/picture?type=large");
+        }
         account.setAccessTokenEncrypted(encodeToken(accessToken));
         account.setRefreshTokenEncrypted(encodeToken(refreshToken));
         account.setTokenExpiresAt(expiresAt(expiresIn));
@@ -263,13 +266,17 @@ public class MarketingSocialAccountConnectorImpl implements MarketingSocialAccou
     }
 
     private MarketingConnectedAccountResponse toConnectedAccount(SocialAccount account) {
+        String avatar = account.getAvatarUrl();
+        if (!hasText(avatar) && "FACEBOOK".equalsIgnoreCase(account.getPlatform()) && hasText(account.getExternalAccountId())) {
+            avatar = "https://graph.facebook.com/" + account.getExternalAccountId().trim() + "/picture?type=large";
+        }
         return new MarketingConnectedAccountResponse(
                 account.getId(),
                 account.getExternalAccountId(),
                 account.getPlatform(),
                 account.getExternalAccountId(),
                 account.getAccountName(),
-                null,
+                avatar,
                 account.getPageUrl()
         );
     }

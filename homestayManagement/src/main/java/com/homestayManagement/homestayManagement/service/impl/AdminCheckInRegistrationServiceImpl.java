@@ -147,10 +147,12 @@ public class AdminCheckInRegistrationServiceImpl implements AdminCheckInRegistra
             if (blankToNull(rep.phone()) != null) {
                 customer.setPhone(blankToNull(rep.phone()));
             }
-            if (request.representativeEmail() != null && !request.representativeEmail().isBlank()) {
-                customer.setEmail(request.representativeEmail().trim().toLowerCase());
-            } else if (blankToNull(rep.email()) != null) {
-                customer.setEmail(blankToNull(rep.email()).toLowerCase());
+            String syncedEmail = request.representativeEmail() != null && !request.representativeEmail().isBlank()
+                    ? request.representativeEmail().trim().toLowerCase()
+                    : (blankToNull(rep.email()) != null ? blankToNull(rep.email()).toLowerCase() : null);
+
+            if (syncedEmail != null) {
+                customer.setEmail(syncedEmail);
             }
             if (blankToNull(rep.identityDocumentNumber()) != null) {
                 customer.setIdentityDocumentNumber(blankToNull(rep.identityDocumentNumber()));
@@ -162,6 +164,43 @@ public class AdminCheckInRegistrationServiceImpl implements AdminCheckInRegistra
                 customer.setAddress(blankToNull(rep.address()));
             }
             customerRepository.save(customer);
+
+            // Đồng bộ email và thông tin người đại diện cho tất cả các phòng khác cùng booking chưa check-in
+            if (syncedEmail != null && detail.getBooking() != null && detail.getBooking().getId() != null) {
+                List<BookingDetail> otherDetails = bookingDetailRepository.findByBookingId(detail.getBooking().getId());
+                if (otherDetails != null) {
+                    List<Long> otherDetailIds = otherDetails.stream()
+                            .filter(other -> other.getId() != null && !other.getId().equals(detail.getId())
+                                    && !"CHECKED_IN".equalsIgnoreCase(other.getStatus())
+                                    && !"CHECKED_OUT".equalsIgnoreCase(other.getStatus()))
+                            .map(BookingDetail::getId)
+                            .toList();
+                    if (!otherDetailIds.isEmpty()) {
+                        List<BookingGuest> otherGuests = bookingGuestRepository.findByBookingDetailIds(otherDetailIds);
+                        for (BookingGuest otherGuest : otherGuests) {
+                            if (otherGuest.isPrimaryGuest()) {
+                                otherGuest.setEmail(syncedEmail);
+                                if (blankToNull(rep.fullName()) != null) {
+                                    otherGuest.setFullName(blankToNull(rep.fullName()));
+                                }
+                                if (blankToNull(rep.phone()) != null) {
+                                    otherGuest.setPhone(blankToNull(rep.phone()));
+                                }
+                                if (blankToNull(rep.identityDocumentNumber()) != null) {
+                                    otherGuest.setIdentityDocumentNumber(blankToNull(rep.identityDocumentNumber()));
+                                }
+                                if (rep.dateOfBirth() != null) {
+                                    otherGuest.setDateOfBirth(rep.dateOfBirth());
+                                }
+                                if (blankToNull(rep.address()) != null) {
+                                    otherGuest.setAddress(blankToNull(rep.address()));
+                                }
+                            }
+                        }
+                        bookingGuestRepository.saveAll(otherGuests);
+                    }
+                }
+            }
         }
 
         CheckInRecord record = CheckInRecord.builder()
@@ -192,6 +231,24 @@ public class AdminCheckInRegistrationServiceImpl implements AdminCheckInRegistra
                 request.guests().getFirst().fullName(),
                 repEmail
         );
+
+        // Cấp quyền và gửi email truy cập cho tất cả khách ở cùng có nhập email
+        for (int i = 1; i < request.guests().size(); i++) {
+            AdminCheckInGuestRequest guest = request.guests().get(i);
+            String guestEmail = guest.email() != null ? guest.email().trim() : null;
+            if (guestEmail != null && !guestEmail.isBlank() && !guestEmail.equalsIgnoreCase(repEmail)) {
+                String guestName = (guest.fullName() != null && !guest.fullName().isBlank())
+                        ? guest.fullName().trim()
+                        : "Khách lưu trú " + (i + 1);
+                try {
+                    stayAccessService.grantAccess(detail, record, guestName, guestEmail);
+                } catch (Exception ex) {
+                    org.slf4j.LoggerFactory.getLogger(AdminCheckInRegistrationServiceImpl.class)
+                            .warn("Không thể cấp quyền truy cập lưu trú cho khách đi cùng {}: {}", guestEmail, ex.getMessage());
+                }
+            }
+        }
+
         eventPublisher.publishEvent(new TemporaryResidenceExcelExportEvent(now.toLocalDate(), detail.getId()));
 
         return new AdminCompleteCheckInResponse(
@@ -222,7 +279,7 @@ public class AdminCheckInRegistrationServiceImpl implements AdminCheckInRegistra
 
     private List<AdminBookingRoomResponse> findAvailableRooms(BookingDetail detail) {
         return roomRepository.findByRoomTypeId(detail.getRoomType().getId()).stream()
-                .filter(room -> "AVAILABLE".equalsIgnoreCase(room.getStatus()))
+                .filter(room -> !"MAINTENANCE".equalsIgnoreCase(room.getStatus()))
                 .filter(room -> isRoomAvailable(room.getId(), detail))
                 .map(room -> new AdminBookingRoomResponse(
                         room.getId(), room.getRoomNumber(), room.getRoomType().getName()
@@ -234,7 +291,7 @@ public class AdminCheckInRegistrationServiceImpl implements AdminCheckInRegistra
         Long currentTypeId = detail.getRoomType() != null ? detail.getRoomType().getId() : null;
         return roomRepository.findAll().stream()
                 .filter(room -> currentTypeId == null || room.getRoomType() == null || !currentTypeId.equals(room.getRoomType().getId()))
-                .filter(room -> "AVAILABLE".equalsIgnoreCase(room.getStatus()))
+                .filter(room -> !"MAINTENANCE".equalsIgnoreCase(room.getStatus()))
                 .filter(room -> isRoomAvailable(room.getId(), detail))
                 .map(room -> new AdminBookingRoomResponse(
                         room.getId(), room.getRoomNumber(), room.getRoomType() != null ? room.getRoomType().getName() : "Khác"
@@ -273,8 +330,7 @@ public class AdminCheckInRegistrationServiceImpl implements AdminCheckInRegistra
                 ).stream()
                 .filter(detail -> !detail.getId().equals(currentDetail.getId()))
                 .filter(detail -> detail.getRoom() != null && roomId.equals(detail.getRoom().getId()))
-                .noneMatch(detail -> OCCUPYING_STATUSES.contains(normalize(detail.getStatus()))
-                        && OCCUPYING_STATUSES.contains(normalize(detail.getBooking().getStatus())));
+                .noneMatch(com.homestayManagement.homestayManagement.service.support.BookingInventoryPolicy::blocksInventory);
     }
 
     private void validateGuests(BookingDetail detail, List<AdminCheckInGuestRequest> guests) {
@@ -332,9 +388,13 @@ public class AdminCheckInRegistrationServiceImpl implements AdminCheckInRegistra
     }
 
     private AdminBookingCustomerResponse toCustomerResponse(Customer customer) {
+        String email = customer.getEmail();
+        if ((email == null || email.isBlank()) && customer.getAccount() != null) {
+            email = customer.getAccount().getEmail();
+        }
         return new AdminBookingCustomerResponse(
                 customer.getId(), customer.getFullName(),
-                customer.getAccount() != null ? customer.getAccount().getEmail() : customer.getEmail(),
+                email,
                 customer.getPhone(), customer.getAddress(), customer.getDateOfBirth()
         );
     }

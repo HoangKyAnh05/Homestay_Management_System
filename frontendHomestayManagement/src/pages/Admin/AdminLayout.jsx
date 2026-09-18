@@ -180,6 +180,7 @@ function AdminLayoutInner({ activePage, children }) {
   })
 
   const [bookingCounts, setBookingCounts] = useState({ todayCheckIns: 0, todayCheckOuts: 0 })
+  const [checkoutAlerts, setCheckoutAlerts] = useState([])
   const [marketingUnreadCount, setMarketingUnreadCount] = useState(0)
   const [hasPendingDailyReport, setHasPendingDailyReport] = useState(false)
   const [showNotificationDropdown, setShowNotificationDropdown] = useState(false)
@@ -304,51 +305,72 @@ function AdminLayoutInner({ activePage, children }) {
 
           let inCount = 0
           let outCount = 0
+          const alertsList = []
           bookings.forEach(b => {
             const details = Array.isArray(b.details) && b.details.length > 0 ? b.details : [b]
             details.forEach(d => {
               const ci = String(d.checkInTarget || d.checkInDate || d.checkIn || b.checkInDate || b.checkIn || b.checkInTarget || '').slice(0, 10)
-              const co = String(d.checkOutTarget || d.checkOutDate || d.checkOut || b.checkOutDate || b.checkOut || b.checkOutTarget || '').slice(0, 10)
+              const coStr = d.checkOutTarget || d.checkOutDate || d.checkOut || b.checkOutDate || b.checkOut || b.checkOutTarget || ''
+              const co = String(coStr).slice(0, 10)
               const rec = d.checkInRecord || {}
               const hasIn = Boolean(rec.actualCheckIn)
               const hasOut = Boolean(rec.actualCheckOut)
               const detailSt = String(d.detailStatus || b.bookingStatus || b.status || '').toUpperCase()
+              const bSt = String(b.bookingStatus || b.status || '').toUpperCase()
+              const isCancelled = detailSt === 'CANCELLED' || detailSt === 'REJECTED' || detailSt === 'REFUNDED' || bSt === 'CANCELLED' || bSt === 'REJECTED'
 
               const stage = hasOut ? 'completed'
                 : hasIn ? 'staying'
-                : detailSt === 'CANCELLED' ? 'cancelled'
+                : isCancelled ? 'cancelled'
                 : 'waiting'
 
               // Cần check-in hôm nay: chưa nhận phòng và ngày đến đúng hôm nay
-              if (stage === 'waiting' && ci === todayStr) {
+              if (stage === 'waiting' && ci === todayStr && !isCancelled && !hasIn) {
                 inCount++
               }
-              // Cần check-out hôm nay: đang ở và ngày đi đúng hôm nay
-              if (stage === 'staying' && co === todayStr) {
-                outCount++
+
+              // Cần check-out & thông báo quá hạn check-out
+              if (stage === 'staying' && coStr) {
+                const checkOutDate = new Date(coStr)
+                const roomName = d.roomNumber ? `Phòng ${d.roomNumber}` : (d.roomTypeName || b.roomTypeName || 'Phòng')
+                const custName = b.customerName || d.customerName || 'Khách lưu trú'
+                const bookingCode = b.bookingCode || `#${b.bookingId || b.id || ''}`
+
+                if (now > checkOutDate) {
+                  const diffMs = now - checkOutDate
+                  const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
+                  const diffDays = Math.floor(diffHours / 24)
+                  const overdueText = diffDays > 0 ? `${diffDays} ngày` : `${Math.max(diffHours, 1)} giờ`
+
+                  alertsList.push({
+                    id: `overdue-${d.bookingDetailId || d.id || b.id || Math.random()}`,
+                    type: 'CHECKOUT_OVERDUE',
+                    title: `⚠️ Quá hạn trả phòng: ${roomName}`,
+                    message: `${custName} (${bookingCode}) đã quá hạn trả phòng ${overdueText} (hạn: ${checkOutDate.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })} ngày ${checkOutDate.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}). Vui lòng xử lý trả phòng hoặc thu phụ phí!`,
+                    severity: 'critical',
+                    path: '/admin/check-in-logs',
+                  })
+                  outCount++
+                } else if (co === todayStr) {
+                  alertsList.push({
+                    id: `due-today-${d.bookingDetailId || d.id || b.id || Math.random()}`,
+                    type: 'CHECKOUT_TODAY',
+                    title: `⏰ Đến hạn trả phòng hôm nay: ${roomName}`,
+                    message: `${custName} (${bookingCode}) đến hạn trả phòng hôm nay (trước ${checkOutDate.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}).`,
+                    severity: 'warning',
+                    path: '/admin/check-in-logs',
+                  })
+                  outCount++
+                }
               }
             })
           })
           setBookingCounts({ todayCheckIns: inCount, todayCheckOuts: outCount })
+          setCheckoutAlerts(alertsList)
 
-          const seenOrdersId = Number(localStorage.getItem('admin_seen_booking_orders_id') || 0)
-          const seenCheckInId = Number(localStorage.getItem('admin_seen_checkin_logs_id') || 0)
-
-          if (seenOrdersId === 0) {
-            localStorage.setItem('admin_seen_booking_orders_id', String(maxId))
-            updated['booking-orders'] = inCount > 0
-          } else {
-            updated['booking-orders'] = (maxId > seenOrdersId) || inCount > 0
-          }
-
-          if (seenCheckInId === 0) {
-            localStorage.setItem('admin_seen_checkin_logs_id', String(maxId))
-            updated['check-in-logs'] = outCount > 0
-          } else {
-            updated['check-in-logs'] = (maxId > seenCheckInId) || outCount > 0
-          }
-
-          updated.bookings = updated['booking-orders'] || updated['check-in-logs'] || (inCount + outCount > 0)
+          updated['booking-orders'] = false
+          updated['check-in-logs'] = inCount > 0
+          updated.bookings = inCount > 0
         } else {
           setBookingCounts({ todayCheckIns: 0, todayCheckOuts: 0 })
           updated['booking-orders'] = false
@@ -529,9 +551,9 @@ function AdminLayoutInner({ activePage, children }) {
                     <span className="admin-nav-icon">
                       {item.icon}
                       {collapsed && (
-                        item.key === 'bookings' && (bookingCounts.todayCheckIns + bookingCounts.todayCheckOuts > 0) ? (
-                          <span className="admin-nav-count-badge" title="Đơn cần xử lý hôm nay">
-                            {bookingCounts.todayCheckIns + bookingCounts.todayCheckOuts}
+                        item.key === 'bookings' && bookingCounts.todayCheckIns > 0 ? (
+                          <span className="admin-nav-count-badge" title="Khách cần check-in hôm nay">
+                            {bookingCounts.todayCheckIns}
                           </span>
                         ) : hasParentAlert ? (
                           <span className="admin-nav-red-dot" title="Có thông báo cần xử lý" />
@@ -541,9 +563,9 @@ function AdminLayoutInner({ activePage, children }) {
                     {!collapsed && (
                       <>
                         <span className="admin-nav-label">{item.label}</span>
-                        {item.key === 'bookings' && (bookingCounts.todayCheckIns + bookingCounts.todayCheckOuts > 0) ? (
-                          <span className="admin-nav-count-badge" title="Đơn cần xử lý hôm nay">
-                            {bookingCounts.todayCheckIns + bookingCounts.todayCheckOuts}
+                        {item.key === 'bookings' && bookingCounts.todayCheckIns > 0 ? (
+                          <span className="admin-nav-count-badge" title="Khách cần check-in hôm nay">
+                            {bookingCounts.todayCheckIns}
                           </span>
                         ) : hasParentAlert ? (
                           <span className="admin-nav-badge-dot" title="Có thông báo cần xử lý" />
@@ -559,13 +581,10 @@ function AdminLayoutInner({ activePage, children }) {
                     <div className="admin-nav-submenu">
                       {item.children.map(child => {
                         const hasChildAlert = Boolean(navAlerts[child.key])
-                        const isBookingOrders = child.key === 'booking-orders'
                         const isCheckInLogs = child.key === 'check-in-logs'
                         const isEngagementInbox = child.key === 'engagement-inbox'
-                        const count = isBookingOrders
+                        const count = isCheckInLogs
                           ? bookingCounts.todayCheckIns
-                          : isCheckInLogs
-                          ? bookingCounts.todayCheckOuts
                           : isEngagementInbox
                           ? marketingUnreadCount
                           : 0
@@ -585,10 +604,8 @@ function AdminLayoutInner({ activePage, children }) {
                               <span
                                 className="admin-nav-count-badge"
                                 title={
-                                  isBookingOrders
-                                    ? `Cần check-in hôm nay: ${count}`
-                                    : isCheckInLogs
-                                    ? `Cần check-out hôm nay: ${count}`
+                                  isCheckInLogs
+                                    ? `Khách cần check-in hôm nay: ${count}`
                                     : `Bình luận & tương tác mới: ${count}`
                                 }
                               >
@@ -725,24 +742,20 @@ function AdminLayoutInner({ activePage, children }) {
                 type="button"
                 aria-label="Thông báo"
                 onClick={() => {
-                  setShowNotificationDropdown((prev) => {
-                    const next = !prev
-                    if (next) fetchMarketingNotifications()
-                    return next
-                  })
+                  setShowNotificationDropdown((prev) => !prev)
                 }}
                 title={
-                  marketingUnreadCount > 0 || hasPendingDailyReport
-                    ? `${marketingUnreadCount + (hasPendingDailyReport ? 1 : 0)} thông báo mới`
-                    : 'Thông báo'
+                  (checkoutAlerts.length + (hasPendingDailyReport ? 1 : 0)) > 0
+                    ? `${checkoutAlerts.length + (hasPendingDailyReport ? 1 : 0)} thông báo phòng mới`
+                    : 'Thông báo phòng'
                 }
               >
                 <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-                {(marketingUnreadCount > 0 || hasPendingDailyReport) && (
+                {(checkoutAlerts.length + (hasPendingDailyReport ? 1 : 0)) > 0 && (
                   <span className="admin-bell-badge">
-                    {(marketingUnreadCount + (hasPendingDailyReport ? 1 : 0)) > 99
+                    {(checkoutAlerts.length + (hasPendingDailyReport ? 1 : 0)) > 99
                       ? '99+'
-                      : (marketingUnreadCount + (hasPendingDailyReport ? 1 : 0))}
+                      : (checkoutAlerts.length + (hasPendingDailyReport ? 1 : 0))}
                   </span>
                 )}
               </button>
@@ -751,33 +764,57 @@ function AdminLayoutInner({ activePage, children }) {
                 <div className="admin-notification-dropdown" onClick={(e) => e.stopPropagation()}>
                   <div className="admin-notif-header">
                     <div className="admin-notif-title">
-                      <span>Trung tâm thông báo</span>
-                      {(marketingUnreadCount > 0 || hasPendingDailyReport) && (
+                      <span>Trung tâm thông báo phòng & lưu trú</span>
+                      {(checkoutAlerts.length + (hasPendingDailyReport ? 1 : 0)) > 0 && (
                         <span className="admin-notif-pill">
-                          {marketingUnreadCount + (hasPendingDailyReport ? 1 : 0)} mới
+                          {checkoutAlerts.length + (hasPendingDailyReport ? 1 : 0)} mới
                         </span>
                       )}
                     </div>
-                    {marketingUnreadCount > 0 && (
-                      <button
-                        type="button"
-                        className="admin-notif-read-all-btn"
-                        onClick={markAllNotificationsAsRead}
-                      >
-                        Đã đọc tất cả
-                      </button>
-                    )}
                   </div>
 
                   <div className="admin-notif-body">
                     {loadingNotifications ? (
                       <div className="admin-notif-empty">Đang tải thông báo...</div>
-                    ) : marketingNotifications.length === 0 && !hasPendingDailyReport ? (
+                    ) : checkoutAlerts.length === 0 && !hasPendingDailyReport ? (
                       <div className="admin-notif-empty">
-                        Chưa có thông báo mới nào.
+                        Chưa có thông báo phòng hoặc lưu trú mới nào.
                       </div>
                     ) : (
                       <>
+                        {/* Thông báo Check-out & Quá hạn trả phòng cho Lễ tân & Admin */}
+                        {checkoutAlerts.map((alert) => (
+                          <div
+                            key={alert.id}
+                            className="admin-notif-item admin-notif-item--unread"
+                            style={{
+                              background: alert.severity === 'critical' ? '#fff1f2' : '#fffbeb',
+                              borderColor: alert.severity === 'critical' ? '#fecdd3' : '#fde68a',
+                              cursor: 'pointer',
+                            }}
+                            onClick={() => {
+                              setShowNotificationDropdown(false)
+                              navigate(alert.path)
+                            }}
+                          >
+                            <span className="admin-notif-icon">{alert.severity === 'critical' ? '⚠️' : '⏰'}</span>
+                            <div className="admin-notif-content">
+                              <div className="admin-notif-item-title" style={{ color: alert.severity === 'critical' ? '#be123c' : '#b45309', fontWeight: 700 }}>
+                                {alert.title}
+                              </div>
+                              <div className="admin-notif-item-message" style={{ color: '#334155' }}>
+                                {alert.message}
+                              </div>
+                              <div className="admin-notif-item-meta">
+                                <span style={{ color: alert.severity === 'critical' ? '#e11d48' : '#d97706', fontWeight: 600 }}>QUẢN LÝ LƯU TRÚ</span>
+                                <span>•</span>
+                                <span style={{ color: '#2563eb', fontWeight: 600 }}>Nhấn để mở Nhật ký check-in</span>
+                              </div>
+                            </div>
+                            <span className="admin-notif-dot" style={{ background: alert.severity === 'critical' ? '#e11d48' : '#f59e0b' }} />
+                          </div>
+                        ))}
+
                         {hasPendingDailyReport && (
                           <div
                             className="admin-notif-item admin-notif-item--unread"
@@ -805,35 +842,6 @@ function AdminLayoutInner({ activePage, children }) {
                             <span className="admin-notif-dot" style={{ background: '#ea580c' }} />
                           </div>
                         )}
-                        {marketingNotifications.map((item) => (
-                          <div
-                            key={item.id}
-                            className={`admin-notif-item ${!item.isRead ? 'admin-notif-item--unread' : ''}`}
-                            onClick={() => {
-                              if (!item.isRead) markNotificationAsRead(item.id)
-                              if (item.type === 'DAILY_REPORT') {
-                                setShowNotificationDropdown(false)
-                                setShowAdminReportsModal(true)
-                              } else if (item.externalUrl) {
-                                window.open(item.externalUrl, '_blank')
-                              }
-                            }}
-                          >
-                            <span className="admin-notif-icon">
-                              {item.type === 'DAILY_REPORT' ? '📄' : item.type === 'LIKE' ? '❤️' : item.type === 'COMMENT' ? '💬' : '🔔'}
-                            </span>
-                            <div className="admin-notif-content">
-                              <div className="admin-notif-item-title">{item.title}</div>
-                              <div className="admin-notif-item-message">{item.message}</div>
-                              <div className="admin-notif-item-meta">
-                                <span>{item.platform || 'HỆ THỐNG'}</span>
-                                <span>•</span>
-                                <span>{item.createdAt ? new Date(item.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : ''}</span>
-                              </div>
-                            </div>
-                            {!item.isRead && <span className="admin-notif-dot" />}
-                          </div>
-                        ))}
                       </>
                     )}
                   </div>

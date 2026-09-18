@@ -22,6 +22,22 @@ public record PublicBookingRoomRequest(
         @Min(value = 0, message = "So tre em khong hop le")
         Integer numberOfChildren,
 
+        String guestName,
+
+        String guestEmail,
+
+        String guestPhone,
+
         List<@Valid PublicBookingServiceRequest> services
 ) {
+    public PublicBookingRoomRequest(
+            Long roomId,
+            Long roomTypeId,
+            Integer quantity,
+            Integer numberOfAdults,
+            Integer numberOfChildren,
+            List<PublicBookingServiceRequest> services
+    ) {
+        this(roomId, roomTypeId, quantity, numberOfAdults, numberOfChildren, null, null, null, services);
+    }
 }

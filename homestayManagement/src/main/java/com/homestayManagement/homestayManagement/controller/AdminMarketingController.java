@@ -270,6 +270,29 @@ public class AdminMarketingController {
         return adminMarketingService.suggestCommentReply(request);
     }
 
+    @PostMapping("/comments/sync-scanned")
+    public Map<String, Object> syncScannedComments(
+            @RequestBody com.homestayManagement.homestayManagement.dto.request.SyncScannedCommentsRequest request
+    ) {
+        return adminMarketingService.syncScannedComments(request);
+    }
+
+    @GetMapping("/comments/all-synced")
+    public Map<String, Object> getAllSyncedExtensionComments() {
+        return adminMarketingService.getAllSyncedExtensionComments();
+    }
+
+    @PostMapping("/comments/reply-synced")
+    public Map<String, Object> replySyncedComment(
+            @RequestBody Map<String, String> body
+    ) {
+        String commentId = body.getOrDefault("commentId", "");
+        String platform = body.getOrDefault("platform", "FACEBOOK");
+        String message = body.getOrDefault("message", "");
+        String responderName = body.getOrDefault("responderName", "Lá Đỏ Homestay Sa Pa (Quản trị viên)");
+        return adminMarketingService.replyToSyncedComment(commentId, platform, message, responderName);
+    }
+
     @ExceptionHandler({IllegalArgumentException.class, IllegalStateException.class})
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public Map<String, String> handleMarketingBadRequest(RuntimeException exception) {

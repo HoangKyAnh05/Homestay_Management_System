@@ -7,4 +7,5 @@ import java.util.List;
 public interface AdminInvoiceService {
     List<AdminInvoiceResponse> getAllInvoices();
     AdminInvoiceResponse getInvoice(Long id);
+    String getInvoiceHtml(Long id);
 }

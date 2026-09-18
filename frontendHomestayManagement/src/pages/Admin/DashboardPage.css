@@ -28,8 +28,8 @@
   flex-shrink: 0;
 }
 
-.dash-actions input,
-.dash-actions button {
+.dash-actions > input,
+.dash-actions > button {
   height: 40px;
   border: 1px solid #cbd5e1;
   border-radius: 8px;
@@ -43,31 +43,31 @@
   -webkit-text-fill-color: #0f172a !important;
 }
 
-.dash-actions input {
+.dash-actions > input {
   padding: 0 12px;
   min-width: 140px;
   cursor: pointer;
   color: #0f172a !important;
 }
 
-.dash-actions input::-webkit-datetime-edit,
-.dash-actions input::-webkit-datetime-edit-fields-wrapper,
-.dash-actions input::-webkit-datetime-edit-text,
-.dash-actions input::-webkit-datetime-edit-month-field,
-.dash-actions input::-webkit-datetime-edit-day-field,
-.dash-actions input::-webkit-datetime-edit-year-field {
+.dash-actions > input::-webkit-datetime-edit,
+.dash-actions > input::-webkit-datetime-edit-fields-wrapper,
+.dash-actions > input::-webkit-datetime-edit-text,
+.dash-actions > input::-webkit-datetime-edit-month-field,
+.dash-actions > input::-webkit-datetime-edit-day-field,
+.dash-actions > input::-webkit-datetime-edit-year-field {
   color: #0f172a !important;
   -webkit-text-fill-color: #0f172a !important;
   font-weight: 700 !important;
 }
 
-.dash-actions input::-webkit-calendar-picker-indicator {
+.dash-actions > input::-webkit-calendar-picker-indicator {
   cursor: pointer;
   opacity: 0.75;
   filter: contrast(1.2);
 }
 
-.dash-actions button {
+.dash-actions > button {
   padding: 0 16px;
   border-color: #111827;
   background: #111827;
@@ -80,18 +80,18 @@
   gap: 6px;
 }
 
-.dash-actions button.dash-btn-excel {
+.dash-actions > button.dash-btn-excel {
   background: #059669;
   border-color: #059669;
   color: #ffffff;
 }
 
-.dash-actions button.dash-btn-excel:hover:not(:disabled) {
+.dash-actions > button.dash-btn-excel:hover:not(:disabled) {
   background: #047857;
   border-color: #047857;
 }
 
-.dash-actions button:disabled {
+.dash-actions > button:disabled {
   border-color: #e5e7eb;
   background: #f3f4f6;
   color: #9ca3af;
@@ -1013,11 +1013,11 @@
   }
 
   .dash-actions,
-  .dash-actions button {
+  .dash-actions > button {
     width: 100%;
   }
 
-  .dash-actions input {
+  .dash-actions > input {
     flex: 1 1 140px;
     min-width: 0;
   }

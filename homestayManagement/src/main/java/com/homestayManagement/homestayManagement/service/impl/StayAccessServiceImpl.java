@@ -85,30 +85,42 @@ public class StayAccessServiceImpl implements StayAccessService {
             String representativeName,
             String representativeEmail
     ) {
-        if (stayAccessRepository.findByBookingDetailId(bookingDetail.getId()).isPresent()) {
-            throw new IllegalArgumentException("Phòng này đã được cấp quyền truy cập lưu trú");
+        String email = normalizeEmail(representativeEmail);
+        StayAccess existing = stayAccessRepository.findByBookingDetailIdAndAccountEmail(bookingDetail.getId(), email).orElse(null);
+        if (existing != null) {
+            return new GrantResult(existing.getId(), email, existing.getStatus(), false, false);
         }
 
-        String email = normalizeEmail(representativeEmail);
-        Account account = accountRepository.findByEmailIgnoreCase(email)
-                .orElseGet(() -> createCustomerAccount(email));
-        requireCustomerAccount(account);
+        String tempPassword = null;
+        Account account = accountRepository.findByEmailIgnoreCase(email).orElse(null);
+        boolean isNew = (account == null);
+        if (isNew) {
+            tempPassword = "LaDo#" + (100000 + SECURE_RANDOM.nextInt(900000));
+            account = createCustomerAccount(email, tempPassword);
+        } else {
+            requireCustomerAccount(account);
+            if (!account.isActive() || account.getPassword() == null || account.getPassword().isBlank()) {
+                tempPassword = "LaDo#" + (100000 + SECURE_RANDOM.nextInt(900000));
+                account.setPassword(passwordEncoder.encode(tempPassword));
+                account.setActive(true);
+                accountRepository.save(account);
+            }
+        }
         ensureCustomerProfile(account, representativeName);
 
         LocalDateTime now = LocalDateTime.now();
-        boolean activationRequired = !account.isActive();
         StayAccess access = StayAccess.builder()
                 .account(account)
                 .bookingDetail(bookingDetail)
                 .checkInRecord(checkInRecord)
                 .representativeName(representativeName.trim())
-                .status(activationRequired ? StayAccess.INVITED : StayAccess.ACTIVE)
+                .status(StayAccess.ACTIVE)
                 .invitedAt(now)
-                .activatedAt(activationRequired ? null : now)
+                .activatedAt(now)
                 .build();
         access = stayAccessRepository.save(access);
 
-        String activationToken = activationRequired ? createActivationToken(account) : null;
+        String quickLoginToken = jwtService.generateToken(account);
         Room room = bookingDetail.getRoom();
         eventPublisher.publishEvent(new StayAccessEmailEvent(
                 email,
@@ -116,14 +128,16 @@ public class StayAccessServiceImpl implements StayAccessService {
                 room != null ? room.getRoomNumber() : "chưa xác định",
                 bookingDetail.getBooking().getBookingCode(),
                 bookingDetail.getCheckOutTarget(),
-                activationToken
+                null,
+                tempPassword,
+                quickLoginToken
         ));
 
         return new GrantResult(
                 access.getId(),
                 email,
                 access.getStatus(),
-                activationRequired,
+                false,
                 true
         );
     }
@@ -131,13 +145,40 @@ public class StayAccessServiceImpl implements StayAccessService {
     @Override
     @Transactional
     public void expireAccess(Long bookingDetailId) {
-        stayAccessRepository.findByBookingDetailId(bookingDetailId).ifPresent(access -> {
+        stayAccessRepository.findAllByBookingDetailId(bookingDetailId).forEach(access -> {
             if (!StayAccess.EXPIRED.equals(access.getStatus())) {
                 access.setStatus(StayAccess.EXPIRED);
                 access.setExpiresAt(LocalDateTime.now());
                 stayAccessRepository.save(access);
             }
         });
+    }
+
+    @Override
+    @Transactional
+    public AuthResponse quickLogin(String token) {
+        if (token == null || token.isBlank()) {
+            throw new IllegalArgumentException("Token truy cập không hợp lệ");
+        }
+        String email = jwtService.extractEmail(token);
+        if (email == null || email.isBlank()) {
+            throw new IllegalArgumentException("Token truy cập không hợp lệ hoặc đã hết hạn");
+        }
+        Account account = accountRepository.findByEmailIgnoreCase(email)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy tài khoản người dùng"));
+        requireCustomerAccount(account);
+        if (!account.isActive()) {
+            account.setActive(true);
+            accountRepository.save(account);
+            LocalDateTime now = LocalDateTime.now();
+            stayAccessRepository.findByAccountIdAndStatus(account.getId(), StayAccess.INVITED).forEach(access -> {
+                access.setStatus(StayAccess.ACTIVE);
+                access.setActivatedAt(now);
+                stayAccessRepository.save(access);
+            });
+        }
+        String freshJwt = jwtService.generateToken(account);
+        return new AuthResponse("Bearer", freshJwt, toUserResponse(account));
     }
 
     @Override
@@ -265,15 +306,19 @@ public class StayAccessServiceImpl implements StayAccessService {
         return new StayServiceOrderResponse(access.getId(), roomNumber, serviceResponse);
     }
 
-    private Account createCustomerAccount(String email) {
+    private Account createCustomerAccount(String email, String plainPassword) {
         Role customerRole = roleRepository.findByName(CUSTOMER_ROLE)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy vai trò khách hàng"));
         return accountRepository.save(Account.builder()
                 .email(email)
-                .password(passwordEncoder.encode(UUID.randomUUID().toString()))
+                .password(passwordEncoder.encode(plainPassword))
                 .role(customerRole)
-                .isActive(false)
+                .isActive(true)
                 .build());
+    }
+
+    private Account createCustomerAccount(String email) {
+        return createCustomerAccount(email, "LaDo#" + (100000 + SECURE_RANDOM.nextInt(900000)));
     }
 
     private void ensureCustomerProfile(Account account, String representativeName) {

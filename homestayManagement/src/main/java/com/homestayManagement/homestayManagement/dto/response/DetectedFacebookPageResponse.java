@@ -5,18 +5,24 @@ public class DetectedFacebookPageResponse {
     private String name;
     private String category;
     private String pageUrl;
+    private String avatarUrl;
     private String accessToken;
     private String type; // "PAGE" or "USER"
 
     public DetectedFacebookPageResponse() {}
 
     public DetectedFacebookPageResponse(String id, String name, String category, String pageUrl, String accessToken, String type) {
+        this(id, name, category, pageUrl, accessToken, type, null);
+    }
+
+    public DetectedFacebookPageResponse(String id, String name, String category, String pageUrl, String accessToken, String type, String avatarUrl) {
         this.id = id;
         this.name = name;
         this.category = category;
         this.pageUrl = pageUrl;
         this.accessToken = accessToken;
         this.type = type;
+        this.avatarUrl = avatarUrl;
     }
 
     public String getId() {
@@ -57,6 +63,14 @@ public class DetectedFacebookPageResponse {
 
     public void setAccessToken(String accessToken) {
         this.accessToken = accessToken;
+    }
+
+    public String getAvatarUrl() {
+        return avatarUrl;
+    }
+
+    public void setAvatarUrl(String avatarUrl) {
+        this.avatarUrl = avatarUrl;
     }
 
     public String getType() {

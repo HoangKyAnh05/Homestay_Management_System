@@ -202,7 +202,7 @@ ipcMain.handle('gemini-generate', async (event, payload) => {
 
     // Groq AI Integration
     const groqKey = (cookie && cookie.startsWith('gsk_')) ? cookie : (process.env.GROQ_API_KEY || '');
-    const models = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant'];
+    const models = ['openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'qwen/qwen3.8-27b', 'groq/compound', 'deepseek-r1-distill-llama-70b', 'llama-3.3-70b-versatile', 'llama-3.1-8b-instant'];
 
     let lastError = null;
     for (const model of models) {

@@ -1339,27 +1339,6 @@ function BookingHistoryPage() {
           <span>{bookings.length} booking</span>
         </section>
 
-        {activeAlerts.overdueRooms.length > 0 && (
-          <div className="history-stay-alert history-stay-alert--overdue">
-            <div className="history-stay-alert-icon">⚠️</div>
-            <div className="history-stay-alert-content">
-              <strong>Thông báo: Bạn đã trả phòng quá hạn!</strong>
-              {activeAlerts.overdueRooms.map((item, idx) => (
-                <p key={idx}>
-                  {item.overdueDays >= 1 ? (
-                    <>
-                      Bạn đã quá hạn trả phòng <strong>{item.roomNumber ? `Phòng ${item.roomNumber}` : 'phòng đã đặt'}</strong> (Booking {item.bookingCode}, hạn trả lúc {formatAppDateTime(item.checkOutTarget)}). Do đã quá hạn <strong>{item.overdueDays} ngày</strong>, bạn bị tính thành ở thêm <strong>{item.overdueDays} ngày</strong>. Vui lòng liên hệ Lễ tân để hoàn tất thủ tục trả phòng hoặc thanh toán phát sinh.
-                    </>
-                  ) : (
-                    <>
-                      <strong>{item.roomNumber ? `Phòng ${item.roomNumber}` : 'Phòng đã đặt'}</strong> (Booking {item.bookingCode}) đã quá giờ trả phòng lúc {formatAppDateTime(item.checkOutTarget)} ({item.overdueHours}h). Vui lòng hoàn tất thủ tục trả phòng hoặc liên hệ gia hạn lưu trú sớm nhất.
-                    </>
-                  )}
-                </p>
-              ))}
-            </div>
-          </div>
-        )}
 
         {activeAlerts.dueTodayRooms.length > 0 && activeAlerts.overdueRooms.length === 0 && (
           <div className="history-stay-alert history-stay-alert--due-today">

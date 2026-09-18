@@ -21,308 +21,741 @@ const PLATFORM_ICONS = {
       <path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.24 1.07-.14 1.61.24 1.64 1.82 2.89 3.5 2.77 1.81-.02 3.25-1.54 3.3-3.34.02-3.95.01-7.9.01-11.85z"/>
     </svg>
   ),
-  BLOG: (
-    <svg className="platform-icon blog" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
-      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
-    </svg>
-  ),
 }
 
-const AI_TONES = [
-  { key: 'WARM', label: '🌿 Thân thiện & Lịch thiệp', desc: 'Xưng hô ấm áp, mến khách' },
-  { key: 'BOOKING_INQUIRY', label: '📅 Tư vấn & Check phòng', desc: 'Mời kiểm tra ngày & báo giá tốt' },
-  { key: 'GRATITUDE', label: '❤️ Cảm ơn & Tri ân', desc: 'Ghi nhận đóng góp chân thành' },
-  { key: 'PROMO', label: '🎁 Voucher ưu đãi 10%', desc: 'Tặng mã giảm giá khuyến mãi' },
-]
+export const parseCommentTimestamp = (comment) => {
+  if (!comment) return Date.now()
 
-const QUICK_TEMPLATES = [
-  { label: 'Chào & cảm ơn', text: 'Dạ chào bạn! Cảm ơn bạn đã luôn quan tâm và ủng hộ Lá Đỏ Homestay Sa Pa nhé ạ! Chúc bạn ngày mới an lành! 🌸✨' },
-  { label: 'Mời check lịch phòng', text: 'Dạ chào bạn! Hiện bên mình còn một số phòng view núi và săn mây cực đẹp ạ. Bạn dự định đi vào ngày nào để Lá Đỏ kiểm tra và báo giá ưu đãi nhất nhé!' },
-  { label: 'Hướng dẫn nhắn tin riêng', text: 'Dạ bạn nhắn tin trực tiếp cho Fanpage/Zalo để nhân viên tư vấn gửi hình ảnh phòng thực tế và hỗ trợ giữ lịch nhanh nhất ạ! 🌿' },
-  { label: 'Tặng mã voucher giảm 10%', text: 'Dạ cảm ơn bạn! Lá Đỏ Homestay gửi tặng bạn mã voucher giảm 10% khi đặt phòng trực tiếp trong tháng này nhé. Nhắn inbox ngay để nhận ưu đãi nha! 🎁' },
-]
+  // 1. If timestampMs is a valid numeric epoch timestamp (> 1000000000000)
+  if (typeof comment.timestampMs === 'number' && comment.timestampMs > 1000000000000) {
+    return comment.timestampMs
+  }
+  if (typeof comment.timestampMs === 'string' && !isNaN(Number(comment.timestampMs)) && Number(comment.timestampMs) > 1000000000000) {
+    return Number(comment.timestampMs)
+  }
+
+  const raw = comment.publishedAt || comment.createdTime || comment.createdAt || ''
+  if (!raw || typeof raw !== 'string') return Date.now()
+
+  const str = raw.trim().toLowerCase()
+
+  // 2. Relative strings
+  if (str === 'vừa xong' || str === 'just now') {
+    return Date.now()
+  }
+  if (str === 'hôm qua' || str === 'yesterday') {
+    return Date.now() - 24 * 60 * 60 * 1000
+  }
+
+  // Minute match: "31 phút", "31 phút trước", "15m", "15 min"
+  const minMatch = str.match(/(\d+)\s*(phút|min|m|minute|minutes)\b/i)
+  if (minMatch) {
+    const mins = parseInt(minMatch[1], 10)
+    if (!isNaN(mins)) return Date.now() - mins * 60 * 1000
+  }
+
+  // Hour match: "3 giờ", "3 giờ trước", "2h", "2 hr", "2 hours"
+  const hrMatch = str.match(/(\d+)\s*(giờ|hour|hours|h|hr|hrs)\b/i)
+  if (hrMatch) {
+    const hrs = parseInt(hrMatch[1], 10)
+    if (!isNaN(hrs)) return Date.now() - hrs * 60 * 60 * 1000
+  }
+
+  // Day match: "2 ngày", "2 ngày trước", "3d", "3 days"
+  const dayMatch = str.match(/(\d+)\s*(ngày|day|days|d)\b/i)
+  if (dayMatch) {
+    const days = parseInt(dayMatch[1], 10)
+    if (!isNaN(days)) return Date.now() - days * 24 * 60 * 60 * 1000
+  }
+
+  // Week match: "1 tuần", "2 tuần trước", "1w"
+  const wkMatch = str.match(/(\d+)\s*(tuần|week|weeks|w)\b/i)
+  if (wkMatch) {
+    const wks = parseInt(wkMatch[1], 10)
+    if (!isNaN(wks)) return Date.now() - wks * 7 * 24 * 60 * 60 * 1000
+  }
+
+  // Month match: "1 tháng", "2 tháng trước", "1 mo"
+  const moMatch = str.match(/(\d+)\s*(tháng|month|months|mo)\b/i)
+  if (moMatch) {
+    const mos = parseInt(moMatch[1], 10)
+    if (!isNaN(mos)) return Date.now() - mos * 30 * 24 * 60 * 60 * 1000
+  }
+
+  // Year match: "1 năm", "2 năm trước", "1y"
+  const yrMatch = str.match(/(\d+)\s*(năm|year|years|y|yr)\b/i)
+  if (yrMatch) {
+    const yrs = parseInt(yrMatch[1], 10)
+    if (!isNaN(yrs)) return Date.now() - yrs * 365 * 24 * 60 * 60 * 1000
+  }
+
+  // 3. DD/MM/YYYY or DD-MM-YYYY
+  const ddmmyyyyMatch = str.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/)
+  if (ddmmyyyyMatch) {
+    const d = parseInt(ddmmyyyyMatch[1], 10)
+    const m = parseInt(ddmmyyyyMatch[2], 10) - 1
+    const y = parseInt(ddmmyyyyMatch[3], 10)
+    const parsedDate = new Date(y, m, d)
+    if (!isNaN(parsedDate.getTime())) return parsedDate.getTime()
+  }
+
+  // 4. Standard Date.parse
+  const parsed = Date.parse(raw)
+  if (!isNaN(parsed)) return parsed
+
+  return Date.now()
+}
+
+const formatCommentTime = (timeStr, timestampMs) => {
+  if (typeof timestampMs === 'number' && timestampMs > 1000000000000) {
+    const d = new Date(timestampMs)
+    return isNaN(d.getTime()) ? (timeStr || 'Vừa xong') : d.toLocaleString('vi-VN')
+  }
+  if (!timeStr) return 'Vừa xong'
+  if (typeof timeStr === 'string' && (timeStr.includes('trước') || timeStr.includes('ago') || timeStr.includes('Vừa') || timeStr.includes('phút') || timeStr.includes('giờ') || timeStr.includes('ngày') || timeStr.includes('m') || timeStr.includes('h') || timeStr.includes('d'))) {
+    return timeStr
+  }
+  try {
+    const d = new Date(timeStr)
+    return isNaN(d.getTime()) ? String(timeStr) : d.toLocaleString('vi-VN')
+  } catch {
+    return String(timeStr)
+  }
+}
+
+export const formatDisplayDateVN = (dateStr) => {
+  if (!dateStr) return ''
+  try {
+    const parts = dateStr.split('-')
+    if (parts.length === 3) {
+      return `${parts[2]}/${parts[1]}/${parts[0]}`
+    }
+    const d = new Date(dateStr)
+    if (!isNaN(d.getTime())) {
+      const dd = String(d.getDate()).padStart(2, '0')
+      const mm = String(d.getMonth() + 1).padStart(2, '0')
+      const yyyy = d.getFullYear()
+      return `${dd}/${mm}/${yyyy}`
+    }
+    return dateStr
+  } catch {
+    return dateStr
+  }
+}
+
+function generateCalendarDays(year, monthIndex) {
+  const firstDay = new Date(year, monthIndex, 1)
+  const lastDay = new Date(year, monthIndex + 1, 0)
+  const leadingDays = (firstDay.getDay() + 6) % 7 // Monday = 0
+  const totalDays = lastDay.getDate()
+  const prevMonthLastDay = new Date(year, monthIndex, 0).getDate()
+
+  const cells = []
+  // Leading days from previous month
+  for (let i = leadingDays - 1; i >= 0; i--) {
+    const d = prevMonthLastDay - i
+    const m = monthIndex === 0 ? 11 : monthIndex - 1
+    const y = monthIndex === 0 ? year - 1 : year
+    cells.push({
+      day: d,
+      month: m,
+      year: y,
+      isCurrentMonth: false,
+      dateStr: `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+    })
+  }
+
+  // Current month days
+  for (let d = 1; d <= totalDays; d++) {
+    cells.push({
+      day: d,
+      month: monthIndex,
+      year: year,
+      isCurrentMonth: true,
+      dateStr: `${year}-${String(monthIndex + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+    })
+  }
+
+  // Trailing days to fill grid
+  const remaining = (7 - (cells.length % 7)) % 7
+  for (let t = 1; t <= remaining; t++) {
+    const m = monthIndex === 11 ? 0 : monthIndex + 1
+    const y = monthIndex === 11 ? year + 1 : year
+    cells.push({
+      day: t,
+      month: m,
+      year: y,
+      isCurrentMonth: false,
+      dateStr: `${y}-${String(m + 1).padStart(2, '0')}-${String(t).padStart(2, '0')}`
+    })
+  }
+
+  return cells
+}
+
+export const cleanAuthorName = (author) => {
+  if (!author) return 'Khách hàng'
+  let clean = String(author).split('\n')[0].trim()
+  clean = clean.replace(/^@/, '')
+  clean = clean.replace(/•\s*.*/g, '')
+  clean = clean.replace(/\s*·?\s*\d+\s*(giờ|phút|ngày|tháng|năm|tuần|giây|h|m|d|w|s|hr|min|yr)\s*(trước|ago)?\b.*/gi, '')
+  clean = clean.replace(/\s*·?\s*(vừa xong|just now|hôm qua|yesterday)\b.*/gi, '')
+  return clean.trim() || 'Khách hàng'
+}
+
+export const cleanDisplayMessage = (rawMsg, authorName) => {
+  if (!rawMsg) return ''
+  let text = String(rawMsg).trim()
+  if (authorName) {
+    const cleanAuth = String(authorName).replace(/^@/, '').trim()
+    if (cleanAuth) {
+      const authRegex = new RegExp('^@?' + cleanAuth.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*(•|·|-)?\\s*', 'gi')
+      text = text.replace(authRegex, '')
+    }
+  }
+  text = text.replace(/^@[a-zA-Z0-9_.-]+\s*(•|·|-)?\s*/gi, '')
+  text = text.replace(/^[•·\s]*\d+\s*(phút|giờ|ngày|tháng|năm|tuần|giây|m|h|d|s|hr|min|yr|minutos|horas|hours|minutes|days|weeks|months|years)\s*(trước|ago)?\s*/gi, '')
+  text = text.replace(/^[•·\s]*(vừa xong|just now|hôm qua|yesterday)\s*/gi, '')
+  text = text
+    .replace(/✨\s*(ai\s*lá\s*đỏ|ai\s*lado|ai)/gi, '')
+    .replace(/\b(ai\s*lá\s*đỏ|ai\s*lado)\b/gi, '')
+    .replace(/\b\d+\s*(phản hồi|câu trả lời|repl(y|ies))\b/gi, '')
+    .replace(/\b(xem|view)\s+(\d+\s+)?(phản hồi|câu trả lời|repl(y|ies))\b/gi, '')
+    .replace(/\b(phản hồi|reply|trả lời)\b/gi, '')
+    .replace(/\b(thích|like|dislike|không thích|chia sẻ|share)\b/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+  return text || rawMsg
+}
+
+const isOwnPageComment = (c) => {
+  if (!c) return false
+  const author = (c.authorName || '').toLowerCase().trim()
+  const msg = (c.message || '').toLowerCase().trim()
+
+  // Filter out system UI widgets, sponsored ads, domain cards, and post promotion CTAs
+  const systemKeywords = [
+    'đáng chú ý', 'quảng bá thước phim', 'quảng bá bài viết', 'tạo quảng cáo',
+    'được tài trợ', 'sponsored', 'start tiktok ads', 'tiktok ads', 'quản lý trang',
+    'giới thiệu', 'chi tiết', 'xem thông tin chi tiết', 'gợi ý cho bạn', 'bài viết đề xuất',
+    'tin ảnh và video', 'thước phim', 'reels', 'bí quyết dành cho trang', 'cài đặt ngay',
+    'tìm hiểu thêm', 'gửi tin nhắn', 'mọi người sẽ không nhìn thấy phần này', 'trừ khi bạn ghim',
+    'không có thông tin chi tiết', 'travel this national day', 'cebupacificr.com',
+    'canva giáo dục', 'canva.com', 'residential proxies', 'web.io', 'getstarted.tiktok.com',
+    'elevenlabs.io', 'đăng ký canva', 'shopee', 'shopeeshopee', 'lazada', 'tiki', 'suno.com', 'suno',
+    'the perfect sound', 'sound for your content'
+  ]
+
+  if (systemKeywords.some(kw => author.includes(kw) || msg.includes(kw))) {
+    return true
+  }
+
+  // Filter pure domain text or domain extensions (e.g. .vn, .com, canva.com, web.io, shopee.vn)
+  if (
+    msg === '.vn' ||
+    msg === '.com' ||
+    msg === '.net' ||
+    msg === '.org' ||
+    msg.startsWith('.vn') ||
+    msg.startsWith('.com') ||
+    /^\.?[a-z0-9-]*\.(com|io|vn|net|org|edu|ai|co|info|biz|me|store|shop)(\s+.*)?$/i.test(msg)
+  ) {
+    return true
+  }
+
+  // Filter messages that have no meaningful text (just punctuation or 1-2 chars)
+  if (msg.replace(/[\p{P}\p{S}\s]/gu, '').length < 2) {
+    return true
+  }
+
+  const brandKeywords = [
+    'lá đỏ homestay', 'la do homestay', 'lado homestay', 'lá đỏ', 'lado official',
+    'quản trị viên', 'admin', 'tác giả', 'author', 'homestay lá đỏ', 'lá đỏ homestay sa pa', 'quản trị viên homestay'
+  ]
+  if (brandKeywords.some(kw => author.includes(kw))) return true
+  const signatures = [
+    'chào mừng bạn đến với lá đỏ',
+    'hẹn gặp bạn tại lá đỏ',
+    'cảm ơn bạn đã quan tâm lá đỏ',
+    'để cùng ngắm mây mường hoa'
+  ]
+  if (signatures.some(sig => msg.includes(sig))) return true
+  return false
+}
 
 export default function MarketingEngagementInboxPage() {
-  const [posts, setPosts] = useState([])
-  const [selectedChannel, setSelectedChannel] = useState(null)
-  const [metrics, setMetrics] = useState(null)
-  const [comments, setComments] = useState([])
-  const [loadingPosts, setLoadingPosts] = useState(false)
-  const [loadingComments, setLoadingComments] = useState(false)
-  const [syncingAll, setSyncingAll] = useState(false)
+  // Main Synced Comments State (From all 3 extensions)
+  const [allComments, setAllComments] = useState([])
+  const [syncedCounts, setSyncedCounts] = useState({
+    total: 0,
+    facebook: 0,
+    tiktok: 0,
+    youtube: 0
+  })
+  const [loading, setLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
-  const [platformFilter, setPlatformFilter] = useState('ALL')
-  const [statusFilter, setStatusFilter] = useState('ALL') // ALL, UNREPLIED, REPLIED
+  const [activePlatformTab, setActivePlatformTab] = useState('ALL') // 'ALL' | 'FACEBOOK' | 'TIKTOK' | 'YOUTUBE'
+  const [statusFilter, setStatusFilter] = useState('ALL') // 'ALL' | 'UNREPLIED' | 'REPLIED'
+  const [dateFilter, setDateFilter] = useState('ALL') // 'ALL' | 'TODAY' | '7DAYS' | '30DAYS' | 'CUSTOM'
+  const [customStartDate, setCustomStartDate] = useState('')
+  const [customEndDate, setCustomEndDate] = useState('')
+  const [showCalendarPopover, setShowCalendarPopover] = useState(false)
+  const [calendarViewDate, setCalendarViewDate] = useState(new Date())
+  const [activeDatePicking, setActiveDatePicking] = useState('START') // 'START' | 'END'
+  const calendarPopoverRef = useRef(null)
 
-  // Reply Composer State
-  const [activeCommentId, setActiveCommentId] = useState(null)
-  const [replyText, setReplyText] = useState('')
-  const [selectedTone, setSelectedTone] = useState('WARM')
-  const [generatingAi, setGeneratingAi] = useState(false)
-  const [submittingReply, setSubmittingReply] = useState(false)
-  const [replyStatusMap, setReplyStatusMap] = useState({}) // commentId -> status: 'UNREPLIED' | 'REPLIED' | 'FLAGGED'
+  // Auto Scan State for 3 platforms
+  const [scanningPlatform, setScanningPlatform] = useState(null)
+  const [lastSyncStatus, setLastSyncStatus] = useState({
+    FACEBOOK: null,
+    TIKTOK: null,
+    YOUTUBE: null,
+  })
 
-  // Live Toast & Notifications
+  // Customizable Target URLs with LocalStorage persistence
+  const FB_DEFAULT = 'https://www.facebook.com/profile.php?id=61590865271672'
+  const TT_DEFAULT = 'https://www.tiktok.com/tiktokstudio/comment'
+  const YT_DEFAULT = 'https://studio.youtube.com/channel/UCCpVihhnIhiappSzpZa46DA/comments/inbox?filter=%5B%7B%22isDisabled%22%3Afalse%2C%22isPinned%22%3Atrue%2C%22name%22%3A%22SORT_BY%22%2C%22value%22%3A%22SORT_BY_MOST_RELEVANT%22%7D%2C%7B%22name%22%3A%22ENGAGED_STATUS%22%2C%22value%22%3A%5B%22COMMENT_CATEGORY_NOT_ENGAGED%22%5D%7D%2C%7B%22name%22%3A%22PARENT_ENTITY_CONTENT_TYPE%22%2C%22value%22%3A%5B%22PARENT_ENTITY_CONTENT_TYPE_WATCH%22%2C%22PARENT_ENTITY_CONTENT_TYPE_SHORT%22%2C%22PARENT_ENTITY_CONTENT_TYPE_CREATOR_POST%22%5D%7D%5D'
+
+  const [urls, setUrls] = useState({
+    FACEBOOK: localStorage.getItem('lado_scan_url_fb') || FB_DEFAULT,
+    TIKTOK: localStorage.getItem('lado_scan_url_tt') || TT_DEFAULT,
+    YOUTUBE: localStorage.getItem('lado_scan_url_yt') || YT_DEFAULT,
+  })
+
+  const updateScanUrl = (platform, val) => {
+    setUrls(prev => {
+      const next = { ...prev, [platform]: val }
+      if (platform === 'FACEBOOK') localStorage.setItem('lado_scan_url_fb', val)
+      if (platform === 'TIKTOK') localStorage.setItem('lado_scan_url_tt', val)
+      if (platform === 'YOUTUBE') localStorage.setItem('lado_scan_url_yt', val)
+      return next
+    })
+  }
+
+  // Live Toast Alert
   const [toastMessage, setToastMessage] = useState(null)
-  const [notifications, setNotifications] = useState([])
-  const audioRef = useRef(null)
+  const pollTimerRef = useRef(null)
 
-  // Load Posts & Channels
-  const fetchPosts = async () => {
-    setLoadingPosts(true)
+  // Fetch all synced comments from backend
+  const fetchAllSyncedComments = async (silent = false) => {
+    if (!silent) setLoading(true)
     const token = getStoredToken()
     try {
-      const res = await fetch(`${API_BASE}/api/admin/marketing/posts`, {
+      const res = await fetch(`${API_BASE}/api/admin/marketing/comments/all-synced`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       if (res.ok) {
         const data = await res.json()
-        const postList = Array.isArray(data) ? data : []
-        setPosts(postList)
+        const rawList = Array.isArray(data.allComments) ? data.allComments : []
+        const commentsList = rawList.filter(c => !isOwnPageComment(c))
+        setAllComments(commentsList)
+        setSyncedCounts({
+          total: commentsList.length,
+          facebook: commentsList.filter(c => c.platform === 'FACEBOOK').length,
+          tiktok: commentsList.filter(c => c.platform === 'TIKTOK').length,
+          youtube: commentsList.filter(c => c.platform === 'YOUTUBE').length,
+        })
+      }
+    } catch (err) {
+      console.error('Error fetching all synced comments:', err)
+    } finally {
+      if (!silent) setLoading(false)
+    }
+  }
 
-        // Find all channels from published posts
-        const allChannels = []
-        postList.forEach((p) => {
-          if (Array.isArray(p.channels)) {
-            p.channels.forEach((c) => {
-              allChannels.push({
-                ...c,
-                postTitle: p.title,
-                postBrief: p.brief,
-                postCreatedAt: p.createdAt,
-              })
-            })
+  // Handle 1-Click Auto Scan for 3 platforms
+  const handleTriggerAutoScan = (platform) => {
+    setActivePlatformTab(platform)
+    let baseUrl = ''
+    if (platform === 'FACEBOOK') {
+      baseUrl = (urls.FACEBOOK && urls.FACEBOOK.startsWith('http')) ? urls.FACEBOOK : FB_DEFAULT
+    } else if (platform === 'TIKTOK') {
+      baseUrl = (urls.TIKTOK && urls.TIKTOK.startsWith('http')) ? urls.TIKTOK : TT_DEFAULT
+    } else if (platform === 'YOUTUBE') {
+      baseUrl = (urls.YOUTUBE && urls.YOUTUBE.startsWith('http')) ? urls.YOUTUBE : YT_DEFAULT
+    } else {
+      baseUrl = FB_DEFAULT
+    }
+
+    // 1. Post message to Extension Bridge
+    try {
+      window.postMessage({
+        type: 'LADO_TRIGGER_AUTO_SCAN',
+        platform: platform,
+        reset: true
+      }, '*')
+    } catch (e) {}
+
+    // 2. Set chrome.storage.local directly if available
+    try {
+      if (typeof window !== 'undefined' && window.chrome && window.chrome.storage && window.chrome.storage.local) {
+        window.chrome.storage.local.set({
+          pendingAutoScan: {
+            platform: platform,
+            reset: true,
+            timestamp: Date.now()
           }
         })
+      }
+    } catch (e) {}
 
-        if (allChannels.length > 0 && !selectedChannel) {
-          selectChannel(allChannels[0])
+    // 3. For Facebook append query param, for YouTube/TikTok open clean URL
+    let scanUrl = baseUrl
+    if (platform === 'FACEBOOK') {
+      const separator = baseUrl.includes('?') ? '&' : '?'
+      scanUrl = `${baseUrl}${separator}lado_auto_scan=true&reset=true`
+    }
+
+    // Open target tab
+    window.open(scanUrl, '_blank')
+
+    setScanningPlatform(platform)
+    showToast(`🚀 Đã mở tab ${platform}! Extension đang tự động xóa dữ liệu cũ, quét bình luận và đồng bộ về đây...`, 'info')
+
+    // Fast Polling loop (every 1.5s for 30 seconds) to capture incoming comments
+    if (pollTimerRef.current) clearInterval(pollTimerRef.current)
+    let pollCount = 0
+
+    pollTimerRef.current = setInterval(async () => {
+      pollCount++
+      await fetchAllSyncedComments(true)
+
+      if (pollCount >= 20) {
+        clearInterval(pollTimerRef.current)
+        setScanningPlatform(null)
+        setLastSyncStatus((prev) => ({
+          ...prev,
+          [platform]: { time: new Date().toLocaleTimeString('vi-VN'), success: true }
+        }))
+        showToast(`✅ Đã hoàn tất chu kỳ quét và đồng bộ từ ${platform}!`, 'success')
+      }
+    }, 1500)
+  }
+
+  // Helper to normalize Facebook direct post/reel URLs
+  const normalizeFacebookPostUrl = (rawUrl) => {
+    if (!rawUrl || typeof rawUrl !== 'string') return ''
+    try {
+      const clean = rawUrl.trim()
+      if (clean.includes('/people/') || clean.includes('/messages') || clean.includes('/notifications') || clean.includes('/friends')) {
+        return ''
+      }
+      const full = clean.startsWith('http') ? clean : 'https://www.facebook.com' + (clean.startsWith('/') ? '' : '/') + clean
+      const u = new URL(full)
+      const path = u.pathname
+
+      // Reel / Reels / Share Reel
+      const reelMatch = path.match(/\/(?:reel|reels|share\/r)\/(\d+)/i) || u.search.match(/reel_id=(\d+)/i)
+      if (reelMatch && reelMatch[1]) {
+        return `https://www.facebook.com/reel/${reelMatch[1]}`
+      }
+
+      // Watch / Video
+      const videoMatch = path.match(/\/videos\/(\d+)/i) || u.searchParams.get('v')
+      if (videoMatch) {
+        const vId = typeof videoMatch === 'string' ? videoMatch : videoMatch[1]
+        if (vId && /^\d+$/.test(vId)) {
+          return `https://www.facebook.com/watch/?v=${vId}`
         }
       }
-    } catch (err) {
-      console.error('Error fetching marketing posts:', err)
-    } finally {
-      setLoadingPosts(false)
-    }
-  }
 
-  // Load Channel Engagement & Comments
-  const selectChannel = async (channel) => {
-    setSelectedChannel(channel)
-    setLoadingComments(true)
-    setActiveCommentId(null)
-    setReplyText('')
-    const token = getStoredToken()
-    try {
-      const res = await fetch(`${API_BASE}/api/admin/marketing/channels/${channel.id}/engagement`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      if (res.ok) {
-        const data = await res.json()
-        setMetrics(data)
-        const commentList = Array.isArray(data.comments) ? data.comments : []
-        setComments(commentList)
-      } else {
-        setMetrics(null)
-        setComments([])
+      // Permalink / Story FBID
+      const storyFbid = u.searchParams.get('story_fbid') || u.searchParams.get('fbid')
+      const pageId = u.searchParams.get('id') || '61590865271672'
+      if (storyFbid && /^\d+$/.test(storyFbid)) {
+        return `https://www.facebook.com/permalink.php?story_fbid=${storyFbid}&id=${pageId}`
       }
-    } catch (err) {
-      console.error('Error fetching engagement metrics:', err)
-    } finally {
-      setLoadingComments(false)
+
+      // Direct Post / Share Post
+      const postMatch = path.match(/\/(?:posts|share\/p)\/([a-zA-Z0-9_-]+)/i)
+      if (postMatch && postMatch[1]) {
+        return full.split('?')[0]
+      }
+
+      // Photo permalink
+      if (path.includes('photo') && (u.searchParams.has('fbid') || u.searchParams.has('set'))) {
+        return full
+      }
+
+      return ''
+    } catch (e) {
+      return ''
     }
   }
 
-  // Sync all channels metrics
-  const handleSyncAll = async () => {
-    setSyncingAll(true)
-    const token = getStoredToken()
+  // Helper to normalize TikTok URLs
+  const normalizeTikTokUrl = (rawUrl) => {
+    if (!rawUrl || typeof rawUrl !== 'string') return ''
     try {
-      const res = await fetch(`${API_BASE}/api/admin/marketing/channels/sync-all-metrics`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      if (res.ok) {
-        const result = await res.json()
-        showToast(`Đã đồng bộ chỉ số từ mạng xã hội (${result.syncedCount || 0} bài đăng)!`, 'success')
-        await fetchPosts()
-        if (selectedChannel) {
-          await selectChannel(selectedChannel)
+      const clean = rawUrl.trim()
+      if (!clean) return ''
+      if (clean.startsWith('http://') || clean.startsWith('https://')) {
+        return clean
+      }
+      if (clean.startsWith('@') || clean.startsWith('/')) {
+        return `https://www.tiktok.com${clean.startsWith('/') ? '' : '/'}${clean}`
+      }
+      if (clean.includes('tiktok.com')) {
+        return `https://${clean}`
+      }
+      return ''
+    } catch (e) {
+      return ''
+    }
+  }
+
+  // Helper to normalize YouTube URLs
+  const normalizeYouTubeUrl = (rawUrl) => {
+    if (!rawUrl || typeof rawUrl !== 'string') return ''
+    try {
+      const clean = rawUrl.trim()
+      if (!clean) return ''
+      if (clean.startsWith('http://') || clean.startsWith('https://')) {
+        return clean
+      }
+      if (clean.startsWith('/watch') || clean.startsWith('watch?')) {
+        return `https://www.youtube.com${clean.startsWith('/') ? '' : '/'}${clean}`
+      }
+      if (clean.startsWith('/video') || clean.startsWith('/channel') || clean.startsWith('/comments')) {
+        return `https://studio.youtube.com${clean.startsWith('/') ? '' : '/'}${clean}`
+      }
+      if (clean.includes('youtube.com') || clean.includes('youtu.be')) {
+        return `https://${clean}`
+      }
+      if (/^[a-zA-Z0-9_-]{11}$/.test(clean)) {
+        return `https://www.youtube.com/watch?v=${clean}`
+      }
+      return ''
+    } catch (e) {
+      return ''
+    }
+  }
+
+  // Go Directly to Post/Video on Social Platform to Reply
+  const handleGoToPlatformReply = (comment) => {
+    if (!comment) return
+    const platform = (comment.platform || 'FACEBOOK').toUpperCase().trim()
+    const rawTargetUrl = (comment.postUrl || comment.commentUrl || comment.videoUrl || '').trim()
+    let targetUrl = ''
+
+    if (platform === 'FACEBOOK') {
+      const normalized = normalizeFacebookPostUrl(rawTargetUrl)
+      targetUrl = normalized || urls.FACEBOOK || FB_DEFAULT
+    } else if (platform === 'TIKTOK') {
+      targetUrl = TT_DEFAULT
+    } else if (platform === 'YOUTUBE') {
+      targetUrl = YT_DEFAULT
+    } else {
+      targetUrl = rawTargetUrl || FB_DEFAULT
+    }
+
+    const cleanMsg = cleanDisplayMessage(comment.message, comment.authorName)
+    const cleanAuthor = cleanAuthorName(comment.authorName)
+
+    // 1. Post message to Extension Bridge
+    try {
+      window.postMessage({
+        type: 'LADO_SET_PENDING_HIGHLIGHT',
+        payload: {
+          commentText: cleanMsg,
+          authorName: cleanAuthor,
+          platform: platform,
+          postUrl: targetUrl,
+          timestamp: Date.now()
         }
-      } else {
-        showToast('Đồng bộ thất bại, vui lòng kiểm tra kết nối tài khoản.', 'error')
-      }
-    } catch (err) {
-      showToast('Lỗi khi gửi yêu cầu đồng bộ.', 'error')
-    } finally {
-      setSyncingAll(false)
-    }
-  }
+      }, '*')
+    } catch (e) {}
 
-  // AI Suggestion Reply
-  const handleGenerateAiReply = async (comment, tone = selectedTone) => {
-    setGeneratingAi(true)
-    const token = getStoredToken()
+    // 2. Also try direct extension storage if available
     try {
-      const res = await fetch(`${API_BASE}/api/admin/marketing/comments/suggest-reply`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          postTitle: selectedChannel?.postTitle || '',
-          postContent: selectedChannel?.content || selectedChannel?.postBrief || '',
-          commentText: comment.message || '',
-          tone: tone,
-        }),
-      })
-
-      if (res.ok) {
-        const data = await res.json()
-        if (data.suggestedReply) {
-          setReplyText(data.suggestedReply)
-          showToast('Đã tạo câu trả lời gợi ý bằng AI!', 'info')
-        }
-      } else {
-        showToast('Không thể lấy gợi ý AI, sử dụng mẫu mặc định.', 'warning')
+      if (typeof window !== 'undefined' && window.chrome && window.chrome.storage && window.chrome.storage.local) {
+        window.chrome.storage.local.set({
+          pendingHighlight: {
+            commentText: cleanMsg,
+            authorName: cleanAuthor,
+            platform: platform,
+            postUrl: targetUrl,
+            timestamp: Date.now()
+          }
+        })
       }
-    } catch (err) {
-      console.error('AI suggest reply error:', err)
-    } finally {
-      setGeneratingAi(false)
-    }
-  }
+    } catch (e) {}
 
-  // Submit Reply
-  const handleSubmitReply = async (commentId) => {
-    if (!replyText.trim()) {
-      showToast('Vui lòng nhập nội dung phản hồi.', 'warning')
-      return
-    }
+    // Open clean target page in new tab
+    window.open(targetUrl, '_blank')
 
-    setSubmittingReply(true)
-    const token = getStoredToken()
-    try {
-      const res = await fetch(`${API_BASE}/api/admin/marketing/channels/${selectedChannel.id}/comments/${commentId}/reply`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          message: replyText.trim(),
-          responderName: 'Lá Đỏ Homestay Sa Pa (Quản trị viên)',
-        }),
-      })
-
-      if (res.ok) {
-        const data = await res.json()
-        showToast('Đã xuất bản câu trả lời thành công!', 'success')
-        setReplyStatusMap((prev) => ({ ...prev, [commentId]: 'REPLIED' }))
-        
-        // Add new reply to comments list locally
-        setComments((prev) =>
-          prev.map((c) => {
-            if (c.id === commentId) {
-              const existingReplies = Array.isArray(c.replies) ? c.replies : []
-              return {
-                ...c,
-                replies: [
-                  ...existingReplies,
-                  {
-                    id: data.replyId || `rep_${Date.now()}`,
-                    authorName: data.responderName || 'Lá Đỏ Homestay Sa Pa',
-                    authorAvatar: data.responderAvatar || '',
-                    message: replyText.trim(),
-                    publishedAt: new Date().toISOString(),
-                    isAdmin: true,
-                  },
-                ],
-              }
-            }
-            return c
-          })
-        )
-
-        setReplyText('')
-        setActiveCommentId(null)
-      } else {
-        showToast('Gửi câu trả lời thất bại.', 'error')
-      }
-    } catch (err) {
-      showToast('Lỗi mạng khi gửi câu trả lời.', 'error')
-    } finally {
-      setSubmittingReply(false)
-    }
+    const platformName = platform === 'FACEBOOK' ? 'Facebook' : platform === 'YOUTUBE' ? 'YouTube Studio' : 'TikTok Studio'
+    showToast(`🚀 Đang chuyển sang ${platformName}! Extension sẽ tự động định vị khoanh đỏ bình luận của ${cleanAuthor} và mở sẵn ô trả lời AI!`, 'info')
   }
 
   const showToast = (text, type = 'info') => {
     setToastMessage({ text, type, id: Date.now() })
     setTimeout(() => {
       setToastMessage(null)
-    }, 4000)
+    }, 4500)
   }
 
-  // Initial Load
+  // Initial Load & Polling setup
   useEffect(() => {
-    fetchPosts()
+    fetchAllSyncedComments()
+
+    // Background periodic poll every 5s
+    const bgTimer = setInterval(() => {
+      fetchAllSyncedComments(true)
+    }, 5000)
+
+    return () => {
+      clearInterval(bgTimer)
+      if (pollTimerRef.current) clearInterval(pollTimerRef.current)
+    }
   }, [])
 
-  // Flatten all channels from posts
-  const allChannelsList = useMemo(() => {
-    const list = []
-    posts.forEach((p) => {
-      if (Array.isArray(p.channels)) {
-        p.channels.forEach((c) => {
-          list.push({
-            ...c,
-            postTitle: p.title,
-            postBrief: p.brief,
-            postCreatedAt: p.createdAt,
-          })
-        })
+  // Auto-close calendar popover when clicking outside
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (calendarPopoverRef.current && !calendarPopoverRef.current.contains(e.target)) {
+        setShowCalendarPopover(false)
       }
-    })
-    return list
-  }, [posts])
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
-  // Filtered Channels
-  const filteredChannels = useMemo(() => {
-    return allChannelsList.filter((c) => {
-      const matchPlatform = platformFilter === 'ALL' || c.platform === platformFilter
-      const q = searchQuery.toLowerCase()
-      const matchSearch =
-        !searchQuery ||
-        (c.postTitle && c.postTitle.toLowerCase().includes(q)) ||
-        (c.pageName && c.pageName.toLowerCase().includes(q)) ||
-        (c.content && c.content.toLowerCase().includes(q))
-      return matchPlatform && matchSearch
-    })
-  }, [allChannelsList, platformFilter, searchQuery])
+  // Date strings and calendar cells
+  const todayStr = useMemo(() => {
+    const n = new Date()
+    return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`
+  }, [])
 
-  // Filtered Comments
-  const filteredComments = useMemo(() => {
-    return comments.filter((comment) => {
-      const status = replyStatusMap[comment.id] || (comment.replies && comment.replies.length > 0 ? 'REPLIED' : 'UNREPLIED')
-      if (statusFilter === 'UNREPLIED' && status === 'REPLIED') return false
-      if (statusFilter === 'REPLIED' && status !== 'REPLIED') return false
-      if (statusFilter === 'FLAGGED' && status !== 'FLAGGED') return false
+  const calendarDays = useMemo(() => {
+    return generateCalendarDays(calendarViewDate.getFullYear(), calendarViewDate.getMonth())
+  }, [calendarViewDate])
+
+  const handlePrevMonth = () => {
+    setCalendarViewDate(new Date(calendarViewDate.getFullYear(), calendarViewDate.getMonth() - 1, 1))
+  }
+
+  const handleNextMonth = () => {
+    setCalendarViewDate(new Date(calendarViewDate.getFullYear(), calendarViewDate.getMonth() + 1, 1))
+  }
+
+  const handleDayCellClick = (dateStr) => {
+    if (activeDatePicking === 'START' || !customStartDate) {
+      setCustomStartDate(dateStr)
+      if (customEndDate && dateStr > customEndDate) {
+        setCustomEndDate('')
+      }
+      setActiveDatePicking('END')
+      setDateFilter('CUSTOM')
+    } else {
+      if (dateStr < customStartDate) {
+        setCustomStartDate(dateStr)
+        setCustomEndDate('')
+        setActiveDatePicking('END')
+      } else {
+        setCustomEndDate(dateStr)
+        setDateFilter('CUSTOM')
+        setShowCalendarPopover(false)
+      }
+    }
+  }
+
+  const handleQuickCalendarPreset = (type) => {
+    const now = new Date()
+    const fmt = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+
+    if (type === 'TODAY') {
+      const t = fmt(now)
+      setCustomStartDate(t)
+      setCustomEndDate(t)
+    } else if (type === 'YESTERDAY') {
+      const y = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1)
+      const yt = fmt(y)
+      setCustomStartDate(yt)
+      setCustomEndDate(yt)
+    } else if (type === '7DAYS') {
+      const s = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7)
+      setCustomStartDate(fmt(s))
+      setCustomEndDate(fmt(now))
+    } else if (type === '30DAYS') {
+      const s = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 30)
+      setCustomStartDate(fmt(s))
+      setCustomEndDate(fmt(now))
+    } else if (type === 'THIS_MONTH') {
+      const first = new Date(now.getFullYear(), now.getMonth(), 1)
+      setCustomStartDate(fmt(first))
+      setCustomEndDate(fmt(now))
+    }
+    setDateFilter('CUSTOM')
+    setShowCalendarPopover(false)
+  }
+
+  // Base list filtered by platform and date (for summary cards & counts)
+  const platformAndDateComments = useMemo(() => {
+    const now = new Date()
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+    const sevenDaysAgo = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7).getTime()
+    const thirtyDaysAgo = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 30).getTime()
+
+    return allComments.filter((c) => {
+      if (isOwnPageComment(c)) return false
+      if (activePlatformTab !== 'ALL' && c.platform !== activePlatformTab) return false
+
+      if (dateFilter !== 'ALL') {
+        const commentTime = parseCommentTimestamp(c)
+        if (dateFilter === 'TODAY') {
+          if (commentTime < startOfToday) return false
+        } else if (dateFilter === '7DAYS') {
+          if (commentTime < sevenDaysAgo) return false
+        } else if (dateFilter === '30DAYS') {
+          if (commentTime < thirtyDaysAgo) return false
+        } else if (dateFilter === 'CUSTOM') {
+          if (customStartDate) {
+            const startMs = new Date(customStartDate + 'T00:00:00').getTime()
+            if (!isNaN(startMs) && commentTime < startMs) return false
+          }
+          if (customEndDate) {
+            const endMs = new Date(customEndDate + 'T23:59:59.999').getTime()
+            if (!isNaN(endMs) && commentTime > endMs) return false
+          }
+        }
+      }
       return true
     })
-  }, [comments, statusFilter, replyStatusMap])
+  }, [allComments, activePlatformTab, dateFilter, customStartDate, customEndDate])
 
-  // Stats
-  const totalCommentsCount = comments.length
-  const unrepliedCount = comments.filter(
-    (c) => (replyStatusMap[c.id] || (c.replies && c.replies.length > 0 ? 'REPLIED' : 'UNREPLIED')) === 'UNREPLIED'
-  ).length
+  // Filtered comments based on active platform tab & status & date & search query
+  const filteredComments = useMemo(() => {
+    return platformAndDateComments.filter((c) => {
+      // Status filter
+      const isReplied = Array.isArray(c.replies) && c.replies.length > 0
+      if (statusFilter === 'UNREPLIED' && isReplied) return false
+      if (statusFilter === 'REPLIED' && !isReplied) return false
+
+      // Search query
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase()
+        const matchAuthor = (c.authorName || '').toLowerCase().includes(q)
+        const matchMsg = (c.message || '').toLowerCase().includes(q)
+        const matchVideo = (c.videoTitle || '').toLowerCase().includes(q)
+        if (!matchAuthor && !matchMsg && !matchVideo) return false
+      }
+
+      return true
+    })
+  }, [platformAndDateComments, statusFilter, searchQuery])
+
+  // Current tab counts based on date selection
+  const currentTabTotal = platformAndDateComments.length
+  const currentTabUnreplied = platformAndDateComments.filter((c) => !c.replies || c.replies.length === 0).length
+  const currentTabReplied = currentTabTotal - currentTabUnreplied
+  const responseRate = currentTabTotal > 0 ? Math.round((currentTabReplied / currentTabTotal) * 100) : 100
 
   return (
     <AdminLayout activePage="engagement-inbox">
       <div className="engagement-inbox-shell">
-        {/* Floating Toast */}
+        {/* Floating Toast Alert */}
         {toastMessage && (
           <div className={`inbox-toast-alert toast-${toastMessage.type}`}>
             <span className="toast-icon">
@@ -335,461 +768,545 @@ export default function MarketingEngagementInboxPage() {
           </div>
         )}
 
-        {/* Top KPI & Action Bar */}
+        {/* Top Header Card */}
         <header className="inbox-header-card">
           <div className="inbox-header-title-wrap">
             <div className="inbox-badge-live">
-              <span className="live-pulse" /> LIVE STREAM
+              <span className="live-pulse" /> ĐỒNG BỘ REAL-TIME EXTENSION
             </div>
-            <h1>Hộp thư Tương tác & Trả lời Bình luận</h1>
+            <h1>Bảng Thống kê & Quản lý Tương tác Đa nền tảng</h1>
             <p className="inbox-subtitle">
-              Quản lý phản hồi khách hàng tập trung trên Facebook Fanpage, YouTube, TikTok và Travel Blog cùng Trợ lý AI Lá Đỏ.
+              Tự động quét và thu thập bình luận khách hàng từ <b>Facebook Fanpage</b>, <b>TikTok Studio</b> và <b>YouTube Studio</b> với Trợ lý AI Lá Đỏ.
             </p>
-          </div>
-
-          <div className="inbox-header-actions">
-            <button
-              className={`btn-sync-all ${syncingAll ? 'syncing' : ''}`}
-              onClick={handleSyncAll}
-              disabled={syncingAll}
-              title="Đồng bộ lại toàn bộ số like, share, comment từ MXH"
-            >
-              <svg className="sync-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
-              </svg>
-              <span>{syncingAll ? 'Đang đồng bộ...' : 'Đồng bộ chỉ số MXH'}</span>
-            </button>
           </div>
         </header>
 
-        {/* 4 Stats Cards */}
-        <div className="inbox-summary-grid">
-          <div className="summary-card stat-posts">
-            <div className="stat-icon-wrap">📢</div>
-            <div className="stat-content">
-              <span className="stat-label">Tổng bài đăng</span>
-              <strong className="stat-val">{allChannelsList.length}</strong>
-              <span className="stat-hint">kênh xuất bản</span>
+        {/* 🌟 3 QUICK ACTION BUTTONS: AUTO-SCAN & SYNC SUITE */}
+        <section className="auto-scan-control-suite">
+          <div className="suite-header-compact">
+            <div className="suite-title-box">
+              <span className="suite-icon">⚡</span>
+              <div>
+                <h3 className="suite-title">TỰ ĐỘNG QUÉT & ĐỒNG BỘ BÌNH LUẬN (1-CLICK AUTO-SCAN)</h3>
+                <p className="suite-desc">
+                  Chọn nền tảng mạng xã hội bên dưới để tiện ích tự động mở trang, quét toàn bộ bình luận mới nhất và đồng bộ trực tiếp vào Hộp thư.
+                </p>
+              </div>
             </div>
+            {scanningPlatform && (
+              <div className="suite-active-scanner-badge">
+                <span className="scanner-live-dot" />
+                <span>Đang quét <strong>{scanningPlatform}</strong>...</span>
+              </div>
+            )}
           </div>
 
+          <div className="auto-scan-buttons-row">
+            {/* Button 1: Facebook Fanpage */}
+            <button
+              type="button"
+              className={`btn-scan-action btn-scan-fb ${scanningPlatform === 'FACEBOOK' ? 'scanning-active' : ''}`}
+              onClick={() => handleTriggerAutoScan('FACEBOOK')}
+              disabled={scanningPlatform === 'FACEBOOK'}
+              title="Mở Facebook Fanpage và tự động quét bình luận"
+            >
+              <div className="btn-scan-content">
+                <div className="btn-scan-main">
+                  {PLATFORM_ICONS.FACEBOOK}
+                  <span className="btn-scan-text">
+                    {scanningPlatform === 'FACEBOOK' ? 'Đang quét Facebook...' : '🚀 Quét Facebook Fanpage'}
+                  </span>
+                </div>
+                <span className="btn-scan-count">{syncedCounts.facebook} bình luận</span>
+              </div>
+            </button>
+
+            {/* Button 2: TikTok Studio */}
+            <button
+              type="button"
+              className={`btn-scan-action btn-scan-tt ${scanningPlatform === 'TIKTOK' ? 'scanning-active' : ''}`}
+              onClick={() => handleTriggerAutoScan('TIKTOK')}
+              disabled={scanningPlatform === 'TIKTOK'}
+              title="Mở TikTok Studio và tự động quét bình luận"
+            >
+              <div className="btn-scan-content">
+                <div className="btn-scan-main">
+                  {PLATFORM_ICONS.TIKTOK}
+                  <span className="btn-scan-text">
+                    {scanningPlatform === 'TIKTOK' ? 'Đang quét TikTok...' : '🚀 Quét TikTok Studio'}
+                  </span>
+                </div>
+                <span className="btn-scan-count">{syncedCounts.tiktok} bình luận</span>
+              </div>
+            </button>
+
+            {/* Button 3: YouTube Studio */}
+            <button
+              type="button"
+              className={`btn-scan-action btn-scan-yt ${scanningPlatform === 'YOUTUBE' ? 'scanning-active' : ''}`}
+              onClick={() => handleTriggerAutoScan('YOUTUBE')}
+              disabled={scanningPlatform === 'YOUTUBE'}
+              title="Mở YouTube Studio và tự động quét bình luận"
+            >
+              <div className="btn-scan-content">
+                <div className="btn-scan-main">
+                  {PLATFORM_ICONS.YOUTUBE}
+                  <span className="btn-scan-text">
+                    {scanningPlatform === 'YOUTUBE' ? 'Đang quét YouTube...' : '🚀 Quét YouTube Studio'}
+                  </span>
+                </div>
+                <span className="btn-scan-count">{syncedCounts.youtube} bình luận</span>
+              </div>
+            </button>
+          </div>
+        </section>
+
+        {/* 🌟 PLATFORM NAVIGATOR TABS */}
+        <div className="platform-navigator-bar">
+          <button
+            className={`nav-tab-btn ${activePlatformTab === 'ALL' ? 'active' : ''}`}
+            onClick={() => setActivePlatformTab('ALL')}
+          >
+            <span className="tab-icon">🌟</span>
+            <span>Tất cả nền tảng</span>
+            <span className="tab-badge">{syncedCounts.total}</span>
+          </button>
+
+          <button
+            className={`nav-tab-btn tab-fb ${activePlatformTab === 'FACEBOOK' ? 'active' : ''}`}
+            onClick={() => setActivePlatformTab('FACEBOOK')}
+          >
+            {PLATFORM_ICONS.FACEBOOK}
+            <span>Facebook Fanpage</span>
+            <span className="tab-badge">{syncedCounts.facebook}</span>
+          </button>
+
+          <button
+            className={`nav-tab-btn tab-tt ${activePlatformTab === 'TIKTOK' ? 'active' : ''}`}
+            onClick={() => setActivePlatformTab('TIKTOK')}
+          >
+            {PLATFORM_ICONS.TIKTOK}
+            <span>TikTok Studio</span>
+            <span className="tab-badge">{syncedCounts.tiktok}</span>
+          </button>
+
+          <button
+            className={`nav-tab-btn tab-yt ${activePlatformTab === 'YOUTUBE' ? 'active' : ''}`}
+            onClick={() => setActivePlatformTab('YOUTUBE')}
+          >
+            {PLATFORM_ICONS.YOUTUBE}
+            <span>YouTube Studio</span>
+            <span className="tab-badge">{syncedCounts.youtube}</span>
+          </button>
+        </div>
+
+        {/* 🌟 4 DYNAMIC MODERN STATS CARDS */}
+        <div className="inbox-summary-grid">
           <div className="summary-card stat-comments">
             <div className="stat-icon-wrap">💬</div>
             <div className="stat-content">
-              <span className="stat-label">Bình luận bài này</span>
-              <strong className="stat-val">{totalCommentsCount}</strong>
-              <span className="stat-hint">lượt tương tác</span>
+              <span className="stat-label">Tổng bình luận đã quét</span>
+              <strong className="stat-val">{currentTabTotal}</strong>
+              <span className="stat-hint">{activePlatformTab === 'ALL' ? '3 nền tảng MXH' : activePlatformTab}</span>
             </div>
           </div>
 
           <div className="summary-card stat-unreplied">
             <div className="stat-icon-wrap">⚡</div>
             <div className="stat-content">
-              <span className="stat-label">Chưa trả lời</span>
-              <strong className="stat-val">{unrepliedCount}</strong>
-              <span className="stat-hint">cần chăm sóc</span>
+              <span className="stat-label">Chưa phản hồi</span>
+              <strong className="stat-val">{currentTabUnreplied}</strong>
+              <span className="stat-hint">cần chăm sóc ngay</span>
+            </div>
+          </div>
+
+          <div className="summary-card stat-posts">
+            <div className="stat-icon-wrap">✅</div>
+            <div className="stat-content">
+              <span className="stat-label">Đã phản hồi</span>
+              <strong className="stat-val">{currentTabReplied}</strong>
+              <span className="stat-hint">đã gửi câu trả lời</span>
             </div>
           </div>
 
           <div className="summary-card stat-rate">
             <div className="stat-icon-wrap">📈</div>
             <div className="stat-content">
-              <span className="stat-label">Tỷ lệ tương tác</span>
-              <strong className="stat-val">
-                {metrics?.engagementRate != null ? `${Number(metrics.engagementRate).toFixed(1)}%` : '4.8%'}
-              </strong>
-              <span className="stat-hint">trên toàn bộ lượt xem</span>
+              <span className="stat-label">Tỷ lệ phản hồi</span>
+              <strong className="stat-val">{responseRate}%</strong>
+              <span className="stat-hint">hiệu suất chăm sóc khách</span>
             </div>
           </div>
         </div>
 
-        {/* Main 2-Column Layout */}
-        <div className="inbox-main-layout">
-          {/* Left Column: Channels & Posts Selector */}
-          <aside className="inbox-channels-sidebar">
-            <div className="sidebar-search-box">
-              <svg className="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="11" cy="11" r="8"/>
-                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-              </svg>
-              <input
-                type="text"
-                placeholder="Tìm bài đăng hoặc kênh..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-              {searchQuery && (
-                <button className="clear-search" onClick={() => setSearchQuery('')}>✕</button>
-              )}
+        {/* 🌟 UNIFIED COMMENTS MANAGEMENT FEED */}
+        <section className="comments-management-section">
+          <div className="section-toolbar">
+            <div className="toolbar-top-row">
+              <div className="toolbar-search-box">
+                <svg className="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="11" cy="11" r="8"/>
+                  <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
+                <input
+                  type="text"
+                  placeholder="Tìm kiếm theo tên khách, nội dung bình luận hoặc video..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+                {searchQuery && (
+                  <button className="clear-search" onClick={() => setSearchQuery('')}>✕</button>
+                )}
+              </div>
+
+              <div className="toolbar-filter-chips">
+                <span className="filter-label">Trạng thái:</span>
+                <button
+                  className={`chip-btn ${statusFilter === 'ALL' ? 'active' : ''}`}
+                  onClick={() => setStatusFilter('ALL')}
+                >
+                  Tất cả ({currentTabTotal})
+                </button>
+                <button
+                  className={`chip-btn ${statusFilter === 'UNREPLIED' ? 'active' : ''}`}
+                  onClick={() => setStatusFilter('UNREPLIED')}
+                >
+                  ⚡ Chưa trả lời ({currentTabUnreplied})
+                </button>
+                <button
+                  className={`chip-btn ${statusFilter === 'REPLIED' ? 'active' : ''}`}
+                  onClick={() => setStatusFilter('REPLIED')}
+                >
+                  ✅ Đã trả lời ({currentTabReplied})
+                </button>
+              </div>
             </div>
 
-            {/* Platform Filter Tabs */}
-            <div className="platform-filter-tabs">
-              <button
-                className={`tab-btn ${platformFilter === 'ALL' ? 'active' : ''}`}
-                onClick={() => setPlatformFilter('ALL')}
-              >
-                Tất cả
-              </button>
-              <button
-                className={`tab-btn ${platformFilter === 'FACEBOOK' ? 'active' : ''}`}
-                onClick={() => setPlatformFilter('FACEBOOK')}
-              >
-                Facebook
-              </button>
-              <button
-                className={`tab-btn ${platformFilter === 'YOUTUBE' ? 'active' : ''}`}
-                onClick={() => setPlatformFilter('YOUTUBE')}
-              >
-                YouTube
-              </button>
-              <button
-                className={`tab-btn ${platformFilter === 'TIKTOK' ? 'active' : ''}`}
-                onClick={() => setPlatformFilter('TIKTOK')}
-              >
-                TikTok
-              </button>
-            </div>
+            {/* Date Filter Row */}
+            <div className="toolbar-date-row" ref={calendarPopoverRef}>
+              <div className="toolbar-date-chips">
+                <span className="filter-label date-label">
+                  <svg className="date-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                    <line x1="16" y1="2" x2="16" y2="6"/>
+                    <line x1="8" y1="2" x2="8" y2="6"/>
+                    <line x1="3" y1="10" x2="21" y2="10"/>
+                  </svg>
+                  Ngày bình luận:
+                </span>
+                <button
+                  type="button"
+                  className={`chip-date-btn ${dateFilter === 'ALL' ? 'active' : ''}`}
+                  onClick={() => {
+                    setDateFilter('ALL')
+                    setShowCalendarPopover(false)
+                  }}
+                >
+                  Tất cả thời gian
+                </button>
+                <button
+                  type="button"
+                  className={`chip-date-btn ${dateFilter === 'TODAY' ? 'active' : ''}`}
+                  onClick={() => {
+                    setDateFilter('TODAY')
+                    setShowCalendarPopover(false)
+                  }}
+                >
+                  Hôm nay
+                </button>
+                <button
+                  type="button"
+                  className={`chip-date-btn ${dateFilter === '7DAYS' ? 'active' : ''}`}
+                  onClick={() => {
+                    setDateFilter('7DAYS')
+                    setShowCalendarPopover(false)
+                  }}
+                >
+                  7 ngày qua
+                </button>
+                <button
+                  type="button"
+                  className={`chip-date-btn ${dateFilter === '30DAYS' ? 'active' : ''}`}
+                  onClick={() => {
+                    setDateFilter('30DAYS')
+                    setShowCalendarPopover(false)
+                  }}
+                >
+                  30 ngày qua
+                </button>
+                <button
+                  type="button"
+                  className={`chip-date-btn ${dateFilter === 'CUSTOM' ? 'active' : ''}`}
+                  onClick={() => {
+                    setDateFilter('CUSTOM')
+                    setShowCalendarPopover(!showCalendarPopover)
+                  }}
+                >
+                  📅 Chọn ngày theo lịch...
+                </button>
+              </div>
 
-            {/* Channel List */}
-            <div className="channels-scroll-list">
-              {loadingPosts ? (
-                <div className="inbox-loading-state">
-                  <div className="spinner" />
-                  <p>Đang tải danh sách bài đăng...</p>
-                </div>
-              ) : filteredChannels.length === 0 ? (
-                <div className="inbox-empty-state">
-                  <p>Không có bài đăng nào phù hợp bộ lọc.</p>
-                </div>
-              ) : (
-                filteredChannels.map((chan) => {
-                  const isSelected = selectedChannel?.id === chan.id
-                  const platformKey = chan.platform || 'FACEBOOK'
-                  return (
-                    <div
-                      key={chan.id}
-                      className={`channel-item-card ${isSelected ? 'selected' : ''}`}
-                      onClick={() => selectChannel(chan)}
+              {/* Custom Click-Only Date Trigger Controls */}
+              {dateFilter === 'CUSTOM' && (
+                <div className="custom-date-trigger-container">
+                  <div className="custom-date-buttons-bar">
+                    <button
+                      type="button"
+                      className={`btn-date-selector ${activeDatePicking === 'START' && showCalendarPopover ? 'active-picker' : ''}`}
+                      onClick={() => {
+                        setActiveDatePicking('START')
+                        setShowCalendarPopover(true)
+                      }}
                     >
-                      <div className="channel-item-header">
-                        <span className={`channel-platform-tag tag-${platformKey.toLowerCase()}`}>
-                          {PLATFORM_ICONS[platformKey]}
-                          {platformKey}
+                      <span className="selector-title">Từ ngày:</span>
+                      <strong className="selector-date-text">
+                        {customStartDate ? formatDisplayDateVN(customStartDate) : 'Chọn ngày bắt đầu'}
+                      </strong>
+                      <span className="selector-cal-icon">📅</span>
+                    </button>
+
+                    <span className="date-arrow-icon">➔</span>
+
+                    <button
+                      type="button"
+                      className={`btn-date-selector ${activeDatePicking === 'END' && showCalendarPopover ? 'active-picker' : ''}`}
+                      onClick={() => {
+                        setActiveDatePicking('END')
+                        setShowCalendarPopover(true)
+                      }}
+                    >
+                      <span className="selector-title">Đến ngày:</span>
+                      <strong className="selector-date-text">
+                        {customEndDate ? formatDisplayDateVN(customEndDate) : 'Chọn ngày kết thúc'}
+                      </strong>
+                      <span className="selector-cal-icon">📅</span>
+                    </button>
+
+                    {(customStartDate || customEndDate) && (
+                      <button
+                        type="button"
+                        className="btn-clear-custom-date"
+                        onClick={() => {
+                          setCustomStartDate('')
+                          setCustomEndDate('')
+                          setDateFilter('ALL')
+                          setShowCalendarPopover(false)
+                        }}
+                        title="Bỏ lọc theo khoảng ngày"
+                      >
+                        ✕ Xóa bộ lọc
+                      </button>
+                    )}
+                  </div>
+
+                  {/* 🌟 ULTRA-CLEAN CLICK-TO-PICK CALENDAR POPOVER */}
+                  {showCalendarPopover && (
+                    <div className="calendar-click-popover">
+                      {/* Top guide banner */}
+                      <div className="cal-guide-header">
+                        <span className="cal-guide-icon">👉</span>
+                        <span>
+                          {activeDatePicking === 'START'
+                            ? 'Click ngày trên lịch để chọn ngày bắt đầu (Từ ngày):'
+                            : 'Click ngày trên lịch để chọn ngày kết thúc (Đến ngày):'}
                         </span>
-                        <span className="channel-status-badge">{chan.status || 'PUBLISHED'}</span>
+                        <div className="cal-active-tag">
+                          {activeDatePicking === 'START' ? 'Đang chọn: Từ ngày' : 'Đang chọn: Đến ngày'}
+                        </div>
                       </div>
-                      <h4 className="channel-post-title" title={chan.postTitle}>
-                        {chan.postTitle || 'Bài đăng marketing'}
-                      </h4>
-                      <p className="channel-page-name">
-                        📍 {chan.pageName || 'Lá Đỏ Homestay Sa Pa'}
-                      </p>
-                    </div>
-                  )
-                })
-              )}
-            </div>
-          </aside>
 
-          {/* Right Column: Active Conversation Stream */}
-          <main className="inbox-thread-pane">
-            {selectedChannel ? (
-              <>
-                {/* Active Post Summary Banner */}
-                <div className="selected-post-banner">
-                  <div className="post-banner-header">
-                    <div className="post-platform-info">
-                      {PLATFORM_ICONS[selectedChannel.platform || 'FACEBOOK']}
-                      <div>
-                        <h3>{selectedChannel.postTitle || 'Bài viết'}</h3>
-                        <p className="post-meta">
-                          Kênh: <strong>{selectedChannel.pageName || 'Lá Đỏ Homestay Fanpage'}</strong>
-                          {selectedChannel.externalUrl && (
-                            <a
-                              href={selectedChannel.externalUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="view-external-link"
+                      {/* Quick presets row */}
+                      <div className="cal-presets-row">
+                        <button type="button" onClick={() => handleQuickCalendarPreset('TODAY')}>Hôm nay</button>
+                        <button type="button" onClick={() => handleQuickCalendarPreset('YESTERDAY')}>Hôm qua</button>
+                        <button type="button" onClick={() => handleQuickCalendarPreset('7DAYS')}>7 ngày qua</button>
+                        <button type="button" onClick={() => handleQuickCalendarPreset('30DAYS')}>30 ngày qua</button>
+                        <button type="button" onClick={() => handleQuickCalendarPreset('THIS_MONTH')}>Tháng này</button>
+                      </div>
+
+                      {/* Month navigator */}
+                      <div className="cal-month-nav">
+                        <button type="button" className="btn-nav-arrow" onClick={handlePrevMonth} title="Tháng trước">
+                          ◀
+                        </button>
+                        <span className="cal-month-title">
+                          Tháng {calendarViewDate.getMonth() + 1}, {calendarViewDate.getFullYear()}
+                        </span>
+                        <button type="button" className="btn-nav-arrow" onClick={handleNextMonth} title="Tháng sau">
+                          ▶
+                        </button>
+                      </div>
+
+                      {/* Weekday headers */}
+                      <div className="cal-weekdays-grid">
+                        <span>T2</span>
+                        <span>T3</span>
+                        <span>T4</span>
+                        <span>T5</span>
+                        <span>T6</span>
+                        <span>T7</span>
+                        <span>CN</span>
+                      </div>
+
+                      {/* Days grid */}
+                      <div className="cal-days-grid">
+                        {calendarDays.map((cell, idx) => {
+                          const isStart = cell.dateStr === customStartDate
+                          const isEnd = cell.dateStr === customEndDate
+                          const inRange = customStartDate && customEndDate && cell.dateStr > customStartDate && cell.dateStr < customEndDate
+                          const isToday = cell.dateStr === todayStr
+
+                          let cellClasses = ['cal-day-btn']
+                          if (!cell.isCurrentMonth) cellClasses.push('not-current-month')
+                          if (isToday) cellClasses.push('is-today')
+                          if (isStart) cellClasses.push('is-start-date')
+                          if (isEnd) cellClasses.push('is-end-date')
+                          if (inRange) cellClasses.push('in-range')
+
+                          return (
+                            <button
+                              key={`${cell.dateStr}_${idx}`}
+                              type="button"
+                              className={cellClasses.join(' ')}
+                              onClick={() => handleDayCellClick(cell.dateStr)}
+                              title={formatDisplayDateVN(cell.dateStr)}
                             >
-                              Xem trên {selectedChannel.platform} ↗
-                            </a>
+                              {cell.day}
+                            </button>
+                          )
+                        })}
+                      </div>
+
+                      {/* Bottom Footer Actions */}
+                      <div className="cal-popover-footer">
+                        <div className="cal-selected-summary">
+                          {customStartDate && (
+                            <span>Từ: <b>{formatDisplayDateVN(customStartDate)}</b></span>
                           )}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* 4 Post KPI Mini-Cards */}
-                  <div className="post-kpi-bar">
-                    <div className="kpi-mini">
-                      <span className="kpi-icon">❤️</span>
-                      <div>
-                        <span className="kpi-num">{metrics?.likeCount || 0}</span>
-                        <span className="kpi-lbl">Thích</span>
-                      </div>
-                    </div>
-                    <div className="kpi-mini">
-                      <span className="kpi-icon">💬</span>
-                      <div>
-                        <span className="kpi-num">{metrics?.commentCount || comments.length}</span>
-                        <span className="kpi-lbl">Bình luận</span>
-                      </div>
-                    </div>
-                    <div className="kpi-mini">
-                      <span className="kpi-icon">🔄</span>
-                      <div>
-                        <span className="kpi-num">{metrics?.shareCount || 0}</span>
-                        <span className="kpi-lbl">Chia sẻ</span>
-                      </div>
-                    </div>
-                    <div className="kpi-mini">
-                      <span className="kpi-icon">👁️</span>
-                      <div>
-                        <span className="kpi-num">{metrics?.viewCount || metrics?.reachCount || 0}</span>
-                        <span className="kpi-lbl">Lượt xem</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Filter Comment Status */}
-                <div className="comments-filter-toolbar">
-                  <div className="filter-group">
-                    <span className="toolbar-label">Lọc bình luận:</span>
-                    <button
-                      className={`filter-chip ${statusFilter === 'ALL' ? 'active' : ''}`}
-                      onClick={() => setStatusFilter('ALL')}
-                    >
-                      Tất cả ({comments.length})
-                    </button>
-                    <button
-                      className={`filter-chip ${statusFilter === 'UNREPLIED' ? 'active' : ''}`}
-                      onClick={() => setStatusFilter('UNREPLIED')}
-                    >
-                      ⚡ Chưa trả lời ({unrepliedCount})
-                    </button>
-                    <button
-                      className={`filter-chip ${statusFilter === 'REPLIED' ? 'active' : ''}`}
-                      onClick={() => setStatusFilter('REPLIED')}
-                    >
-                      ✅ Đã trả lời ({comments.length - unrepliedCount})
-                    </button>
-                  </div>
-                </div>
-
-                {/* Comments List */}
-                <div className="comments-stream-container">
-                  {loadingComments ? (
-                    <div className="inbox-loading-state">
-                      <div className="spinner" />
-                      <p>Đang tải danh sách bình luận...</p>
-                    </div>
-                  ) : filteredComments.length === 0 ? (
-                    <div className="inbox-empty-comments">
-                      <div className="empty-icon">💬</div>
-                      <h4>Chưa có bình luận nào phù hợp</h4>
-                      <p>Bình luận mới từ khách hàng sẽ xuất hiện tự động tại đây khi có tương tác.</p>
-                    </div>
-                  ) : (
-                    filteredComments.map((comment) => {
-                      const isReplying = activeCommentId === comment.id
-                      const isReplied =
-                        replyStatusMap[comment.id] === 'REPLIED' ||
-                        (comment.replies && comment.replies.length > 0)
-
-                      return (
-                        <div key={comment.id} className={`comment-bubble-card ${isReplying ? 'replying' : ''}`}>
-                          <div className="comment-main-row">
-                            <img
-                              src={
-                                comment.authorAvatar ||
-                                'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop'
-                              }
-                              alt={comment.authorName}
-                              className="comment-avatar"
-                            />
-                            <div className="comment-body">
-                              <div className="comment-author-bar">
-                                <strong className="author-name">{comment.authorName || 'Khách hàng'}</strong>
-                                <span className="comment-time">
-                                  {comment.publishedAt
-                                    ? new Date(comment.publishedAt).toLocaleString('vi-VN')
-                                    : 'Vừa xong'}
-                                </span>
-                                {isReplied ? (
-                                  <span className="badge-replied">✅ Đã trả lời</span>
-                                ) : (
-                                  <span className="badge-unreplied">⚡ Chưa trả lời</span>
-                                )}
-                              </div>
-                              <p className="comment-content-text">{comment.message}</p>
-
-                              {/* Comment Meta & Action Controls */}
-                              <div className="comment-actions-bar">
-                                <button
-                                  className={`action-btn-reply ${isReplying ? 'active' : ''}`}
-                                  onClick={() => {
-                                    if (isReplying) {
-                                      setActiveCommentId(null)
-                                      setReplyText('')
-                                    } else {
-                                      setActiveCommentId(comment.id)
-                                      setReplyText('')
-                                    }
-                                  }}
-                                >
-                                  ✍️ {isReplying ? 'Đóng soạn thảo' : 'Trả lời bình luận'}
-                                </button>
-
-                                <button
-                                  className="action-btn-ai"
-                                  onClick={() => {
-                                    setActiveCommentId(comment.id)
-                                    handleGenerateAiReply(comment, selectedTone)
-                                  }}
-                                  title="Trợ lý AI phân tích và đề xuất câu trả lời chuẩn xác"
-                                >
-                                  ✨ Gợi ý AI (1-Click)
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Existing Replies Thread */}
-                          {comment.replies && comment.replies.length > 0 && (
-                            <div className="nested-replies-list">
-                              {comment.replies.map((rep) => (
-                                <div key={rep.id} className="nested-reply-item">
-                                  <img
-                                    src={
-                                      rep.authorAvatar ||
-                                      'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=100&auto=format&fit=crop'
-                                    }
-                                    alt={rep.authorName}
-                                    className="reply-avatar"
-                                  />
-                                  <div className="reply-body">
-                                    <div className="reply-header">
-                                      <strong className="reply-author">
-                                        {rep.authorName} {rep.isAdmin && <span className="admin-tag">Admin</span>}
-                                      </strong>
-                                      <span className="reply-time">
-                                        {rep.publishedAt
-                                          ? new Date(rep.publishedAt).toLocaleString('vi-VN')
-                                          : 'Vừa xong'}
-                                      </span>
-                                    </div>
-                                    <p className="reply-text">{rep.message}</p>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-
-                          {/* Inline Reply Composer Box */}
-                          {isReplying && (
-                            <div className="inline-reply-composer">
-                              <div className="composer-header">
-                                <span className="composer-title">
-                                  Phản hồi với tư cách: <strong>Lá Đỏ Homestay Sa Pa (Quản trị viên)</strong>
-                                </span>
-                              </div>
-
-                              {/* AI Style Presets */}
-                              <div className="ai-tones-selector">
-                                <span className="tones-title">💡 Chọn phong cách AI:</span>
-                                <div className="tones-chips-grid">
-                                  {AI_TONES.map((tone) => (
-                                    <button
-                                      key={tone.key}
-                                      type="button"
-                                      className={`tone-chip ${selectedTone === tone.key ? 'active' : ''}`}
-                                      onClick={() => {
-                                        setSelectedTone(tone.key)
-                                        handleGenerateAiReply(comment, tone.key)
-                                      }}
-                                      title={tone.desc}
-                                    >
-                                      {tone.label}
-                                    </button>
-                                  ))}
-                                </div>
-                              </div>
-
-                              {/* Quick Templates */}
-                              <div className="quick-templates-bar">
-                                <span className="tpl-title">Mẫu nhanh:</span>
-                                {QUICK_TEMPLATES.map((tpl, i) => (
-                                  <button
-                                    key={i}
-                                    type="button"
-                                    className="tpl-btn"
-                                    onClick={() => setReplyText(tpl.text)}
-                                  >
-                                    {tpl.label}
-                                  </button>
-                                ))}
-                              </div>
-
-                              {/* Textarea */}
-                              <div className="composer-textarea-wrap">
-                                <textarea
-                                  rows={3}
-                                  placeholder="Nhập nội dung câu trả lời gửi đến khách hàng..."
-                                  value={replyText}
-                                  onChange={(e) => setReplyText(e.target.value)}
-                                  disabled={generatingAi || submittingReply}
-                                />
-                                {generatingAi && (
-                                  <div className="ai-generating-overlay">
-                                    <div className="spinner small" />
-                                    <span>AI đang tạo câu trả lời tối ưu...</span>
-                                  </div>
-                                )}
-                              </div>
-
-                              {/* Composer Footer Actions */}
-                              <div className="composer-footer">
-                                <span className="char-count">{replyText.length} ký tự</span>
-                                <div className="composer-btn-group">
-                                  <button
-                                    type="button"
-                                    className="btn-cancel-reply"
-                                    onClick={() => {
-                                      setActiveCommentId(null)
-                                      setReplyText('')
-                                    }}
-                                  >
-                                    Hủy
-                                  </button>
-                                  <button
-                                    type="button"
-                                    className="btn-submit-reply"
-                                    onClick={() => handleSubmitReply(comment.id)}
-                                    disabled={submittingReply || !replyText.trim()}
-                                  >
-                                    {submittingReply ? 'Đang xuất bản...' : 'Gửi câu trả lời 🚀'}
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
+                          {customEndDate && (
+                            <span> - Đến: <b>{formatDisplayDateVN(customEndDate)}</b></span>
                           )}
                         </div>
-                      )
-                    })
+                        <button
+                          type="button"
+                          className="btn-done-calendar"
+                          onClick={() => setShowCalendarPopover(false)}
+                        >
+                          Xong / Đóng
+                        </button>
+                      </div>
+                    </div>
                   )}
                 </div>
-              </>
-            ) : (
-              <div className="inbox-no-channel-selected">
-                <div className="empty-icon">👈</div>
-                <h3>Chọn một bài đăng từ danh sách bên trái</h3>
-                <p>Xem toàn bộ chỉ số like, share, bình luận và trả lời tương tác nhanh chóng.</p>
+              )}
+            </div>
+          </div>
+
+          {/* Comments List */}
+          <div className="comments-feed-container">
+            {loading ? (
+              <div className="inbox-loading-state">
+                <div className="spinner" />
+                <p>Đang tải danh sách bình luận đã quét...</p>
               </div>
+            ) : filteredComments.length === 0 ? (
+              <div className="inbox-empty-comments">
+                <div className="empty-icon">💬</div>
+                <h4>Chưa có bình luận nào cho bộ lọc này</h4>
+                <p>Bấm nút <b>🚀 Quét mạng xã hội</b> ở trên để tiện ích quét các bình luận mới nhất về hệ thống!</p>
+              </div>
+            ) : (
+              filteredComments.map((comment) => {
+                const isReplied = Array.isArray(comment.replies) && comment.replies.length > 0
+                const platformKey = comment.platform || 'FACEBOOK'
+
+                return (
+                  <div key={comment.id} className="comment-card">
+                    <div className="comment-card-top-bar">
+                      <span className={`platform-badge tag-${platformKey.toLowerCase()}`}>
+                        {PLATFORM_ICONS[platformKey]}
+                        <span>{platformKey}</span>
+                      </span>
+
+                      {comment.videoTitle && (
+                        <span className="comment-video-title" title={comment.videoTitle}>
+                          🎬 {comment.videoTitle}
+                        </span>
+                      )}
+
+                      {isReplied ? (
+                        <span className="badge-replied">✅ Đã trả lời</span>
+                      ) : (
+                        <span className="badge-unreplied">⚡ Chưa trả lời</span>
+                      )}
+                    </div>
+
+                    <div className="comment-main-row">
+                      <img
+                        src={
+                          comment.authorAvatar ||
+                          'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop'
+                        }
+                        alt={comment.authorName}
+                        className="comment-avatar"
+                        onError={(e) => {
+                          e.target.src = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop'
+                        }}
+                      />
+                      <div className="comment-body">
+                        <div className="comment-author-bar">
+                          <strong className="author-name">{cleanAuthorName(comment.authorName)}</strong>
+                          <span className="comment-time">
+                            {formatCommentTime(comment.publishedAt, comment.timestampMs)}
+                          </span>
+                        </div>
+
+                        <p className="comment-content-text">{cleanDisplayMessage(comment.message, comment.authorName)}</p>
+
+                        {/* Action Controls - Mở bài viết trực tiếp trên nền tảng để trả lời */}
+                        <div className="comment-actions-bar">
+                          <button
+                            type="button"
+                            className={`action-btn-go-platform btn-go-${platformKey.toLowerCase()}`}
+                            onClick={() => handleGoToPlatformReply(comment)}
+                            title={`Mở bài viết trên ${platformKey} để trả lời bằng AI Lá Đỏ`}
+                          >
+                            <span className="btn-icon">↗️</span>
+                            <span>
+                              Mở {platformKey === 'FACEBOOK' ? 'bài viết Facebook' : platformKey === 'YOUTUBE' ? 'video YouTube' : 'TikTok'} để trả lời
+                            </span>
+                            <span className="ai-badge-hint">✨ Có nút AI Lá Đỏ</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Nested Replies List */}
+                    {Array.isArray(comment.replies) && comment.replies.length > 0 && (
+                      <div className="nested-replies-list">
+                        {comment.replies.map((reply) => (
+                          <div key={reply.id} className="nested-reply-card">
+                            <div className="reply-avatar-box">
+                              <span className="reply-admin-icon">🍁</span>
+                            </div>
+                            <div className="reply-content-box">
+                              <div className="reply-author-line">
+                                <strong>{reply.authorName || 'Lá Đỏ Homestay Sa Pa'}</strong>
+                                <span className="reply-admin-tag">Quản trị viên</span>
+                                <span className="reply-time">{formatCommentTime(reply.publishedAt, reply.timestampMs)}</span>
+                              </div>
+                              <p className="reply-text">{reply.message}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )
+              })
             )}
-          </main>
-        </div>
+          </div>
+        </section>
       </div>
     </AdminLayout>
   )

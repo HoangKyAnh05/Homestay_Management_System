@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lá Đỏ Homestay - TikTok AI Assistant</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup-container">
+    <!-- Header -->
+    <header class="popup-header">
+      <div class="brand-row">
+        <span class="logo-leaf">🍁</span>
+        <div class="brand-info">
+          <h2>Lá Đỏ Homestay</h2>
+          <span class="badge-sub">🎵 Trợ lý AI TikTok Auto Reply</span>
+        </div>
+      </div>
+      <div id="statusIndicator" class="status-indicator online">
+        <span class="dot"></span>
+        <span id="statusText">Đã kết nối</span>
+      </div>
+    </header>
+
+    <!-- COMMENTS VIEW -->
+    <main class="tab-content active" id="tabComments">
+      <!-- Quick Actions Bar -->
+      <div class="comments-toolbar">
+        <button id="btnScanTop" class="btn-tool primary" title="Quét toàn bộ bình luận trên video TikTok hoặc TikTok Studio đang mở">
+          <span>🔍 Quét bình luận TikTok</span>
+        </button>
+        <button id="btnGenerateAllAi" class="btn-tool" title="Tự động tạo câu trả lời AI cho tất cả bình luận">
+          <span>✨ Tạo AI tất cả</span>
+        </button>
+        <button id="btnClearComments" class="btn-tool danger" title="Xóa danh sách bình luận đã quét">
+          <span>🗑️ Xóa</span>
+        </button>
+      </div>
+
+      <!-- Video Context Banner -->
+      <div class="video-context-bar" id="videoContextBar" style="display: none;">
+        <span class="video-icon">🎵</span>
+        <span class="video-title-text" id="videoTitleDisplay">Đang xem bình luận TikTok...</span>
+      </div>
+
+      <!-- Date Range Filter Bar -->
+      <div class="date-filter-box" id="dateFilterBox">
+        <div class="date-inputs-row">
+          <div class="date-field">
+            <span class="date-lbl">Từ:</span>
+            <input type="date" id="filterStartDate" class="date-input">
+          </div>
+          <div class="date-field">
+            <span class="date-lbl">Đến:</span>
+            <input type="date" id="filterEndDate" class="date-input">
+          </div>
+          <button id="btnApplyDateFilter" class="btn-filter-go" title="Áp dụng lọc theo ngày">
+            <span>Lọc</span>
+          </button>
+          <button id="btnResetDateFilter" class="btn-filter-reset" title="Xem tất cả">
+            <span>Tất cả</span>
+          </button>
+        </div>
+        <div class="date-quick-chips">
+          <button class="date-chip active" data-range="all">Toàn bộ</button>
+          <button class="date-chip" data-range="today">Hôm nay</button>
+          <button class="date-chip" data-range="7days">7 ngày qua</button>
+          <button class="date-chip" data-range="30days">30 ngày qua</button>
+          <span class="filter-count-badge" id="filterCountBadge"></span>
+        </div>
+      </div>
+
+      <!-- Live Comments List -->
+      <div class="comments-list" id="commentsListContainer">
+        <!-- Dynamic Cards Inserted by popup.js -->
+      </div>
+
+      <!-- Empty State -->
+      <div class="empty-state" id="commentsEmptyState">
+        <div class="empty-icon">🎵</div>
+        <h3>Chưa có bình luận TikTok nào</h3>
+        <p>Mở tab <strong>TikTok Studio</strong> (hoặc Video / Photo TikTok) rồi bấm nút quét bên dưới!</p>
+        <button id="btnScanEmpty" class="btn-primary">
+          <span>🔍 Quét bình luận TikTok ngay</span>
+        </button>
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="popup-footer">
+      <span>Lá Đỏ Homestay Sa Pa • TikTok Auto AI Assistant v1.0.0</span>
+    </footer>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

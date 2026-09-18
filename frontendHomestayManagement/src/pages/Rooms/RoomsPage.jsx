@@ -533,6 +533,9 @@ function createRoomUnit(room, unitIndex, criteria, totalRoomCount, template = nu
     room,
     numberOfAdults: template?.numberOfAdults ?? defaultAdults,
     numberOfChildren: template?.numberOfChildren ?? defaultChildren,
+    guestName: template?.guestName || '',
+    guestEmail: template?.guestEmail || '',
+    guestPhone: template?.guestPhone || '',
     services: [],
   }
 }
@@ -1449,7 +1452,9 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
       if (item.key !== unitKey) return item
       const nextValue = field === 'numberOfAdults'
         ? Math.max(1, Math.min(Number(item.room.maxAdults || 1), numericValue || 1))
-        : Math.max(0, Math.min(Number(item.room.maxChildren || 0), numericValue || 0))
+        : field === 'numberOfChildren'
+        ? Math.max(0, Math.min(Number(item.room.maxChildren || 0), numericValue || 0))
+        : value
       return { ...item, [field]: nextValue }
     }))
   }
@@ -1647,6 +1652,9 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
           quantity: 1,
           numberOfAdults: Number(unit.numberOfAdults || 1),
           numberOfChildren: Number(unit.numberOfChildren || 0),
+          guestName: unit.guestName?.trim() || (unit.unitIndex === 1 ? form.fullName?.trim() : null),
+          guestEmail: unit.guestEmail?.trim() || (unit.unitIndex === 1 ? form.email?.trim() : null),
+          guestPhone: unit.guestPhone?.trim() || (unit.unitIndex === 1 ? form.phone?.trim() : null),
           services: unit.services.map((item) => ({
             type: item.type,
             serviceId: item.serviceId,
@@ -1970,6 +1978,29 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
                       </label>
                     </div>
 
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '8px', marginTop: '8px', padding: '8px 10px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                      <label style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <span style={{ fontSize: '11.5px', color: '#64748b', fontWeight: 600 }}>Họ tên người ở phòng {unit.unitIndex}</span>
+                        <input
+                          type="text"
+                          placeholder={unit.unitIndex === 1 ? (form.fullName || 'Họ tên người đặt') : `Khách ở phòng ${unit.unitIndex}`}
+                          value={unit.guestName || ''}
+                          onChange={(e) => updateRoomGuest(unit.key, 'guestName', e.target.value)}
+                          style={{ padding: '6px 9px', fontSize: '12.5px', border: '1px solid #cbd5e1', borderRadius: '6px', background: '#ffffff' }}
+                        />
+                      </label>
+                      <label style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <span style={{ fontSize: '11.5px', color: '#64748b', fontWeight: 600 }}>Email nhận thông tin phòng {unit.unitIndex}</span>
+                        <input
+                          type="email"
+                          placeholder={unit.unitIndex === 1 ? (form.email || 'Email người đặt') : `Email người ở phòng ${unit.unitIndex}`}
+                          value={unit.guestEmail || ''}
+                          onChange={(e) => updateRoomGuest(unit.key, 'guestEmail', e.target.value)}
+                          style={{ padding: '6px 9px', fontSize: '12.5px', border: '1px solid #cbd5e1', borderRadius: '6px', background: '#ffffff' }}
+                        />
+                      </label>
+                    </div>
+
                     <div className="multi-room-unit-services">
                       <div className="multi-room-unit-service-head">
                         <div>
@@ -2086,15 +2117,15 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
         </div>
 
         {error && (
-          <div className="public-booking-error" style={{ padding: '12px 16px', borderRadius: 8, background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', fontWeight: 600, fontSize: 13, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span>️</span>
+          <div className="public-booking-error" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span>⚠️</span>
             <span>{error}</span>
           </div>
         )}
-        {checkingSchedule && <div className="public-booking-warning">Đang kiểm tra lịch phòng...</div>}
-        {scheduleError && <div className="public-booking-warning">{scheduleError}</div>}
-        {scheduleNotice && <div className="public-booking-search-note">{scheduleNotice}</div>}
-        {loadingMeta && <div className="public-booking-error">Đang tải thông tin đặt phòng...</div>}
+        {checkingSchedule && <div className="public-booking-warning">⏳ Đang kiểm tra lịch phòng...</div>}
+        {scheduleError && <div className="public-booking-warning">⚠️ {scheduleError}</div>}
+        {scheduleNotice && <div className="public-booking-search-note" style={{ margin: '8px 22px 0' }}>{scheduleNotice}</div>}
+        {loadingMeta && <div className="public-booking-error">⏳ Đang tải thông tin đặt phòng...</div>}
 
         <div className="public-booking-summary">
           <span>Tiền phòng: <strong>{formatPrice(roomTotal)}{isHourlyPolicy(selectedPolicy) ? ' / giờ đầu' : ''}</strong></span>

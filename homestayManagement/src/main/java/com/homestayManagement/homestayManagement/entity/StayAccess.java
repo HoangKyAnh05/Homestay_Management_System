@@ -9,11 +9,11 @@ import java.time.LocalDateTime;
 @Table(
         name = "stay_accesses",
         uniqueConstraints = {
-                @UniqueConstraint(name = "uk_stay_access_booking_detail", columnNames = "booking_detail_id"),
-                @UniqueConstraint(name = "uk_stay_access_check_in_record", columnNames = "check_in_record_id")
+                @UniqueConstraint(name = "uk_stay_access_bd_account", columnNames = {"booking_detail_id", "account_id"})
         },
         indexes = {
-                @Index(name = "idx_stay_access_account_status", columnList = "account_id,status")
+                @Index(name = "idx_stay_access_account_status", columnList = "account_id,status"),
+                @Index(name = "idx_stay_access_booking_detail", columnList = "booking_detail_id")
         }
 )
 @Getter
@@ -36,12 +36,12 @@ public class StayAccess {
     @JoinColumn(name = "account_id", nullable = false)
     private Account account;
 
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "booking_detail_id", nullable = false, unique = true)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "booking_detail_id", nullable = false)
     private BookingDetail bookingDetail;
 
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "check_in_record_id", nullable = false, unique = true)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "check_in_record_id", nullable = false)
     private CheckInRecord checkInRecord;
 
     @Column(name = "representative_name", nullable = false, length = 100)

@@ -29,7 +29,7 @@ public class StayAccessEmailListener {
     public StayAccessEmailListener(
             JavaMailSender mailSender,
             @Value("${app.mail.from}") String mailFrom,
-            @Value("${app.frontend.base-url:http://localhost:5173}") String frontendBaseUrl
+            @Value("${app.frontend.base-url:https://homestay-sapa.myvnc.com}") String frontendBaseUrl
     ) {
         this.mailSender = mailSender;
         this.mailFrom = mailFrom;
@@ -40,15 +40,31 @@ public class StayAccessEmailListener {
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void sendStayAccessEmail(StayAccessEmailEvent event) {
         try {
-            String actionUrl = event.activationRequired()
-                    ? frontendBaseUrl + "/stay/activate?token=" + event.activationToken()
-                    : frontendBaseUrl + "/stay";
-            String actionText = event.activationRequired()
-                    ? "Đặt mật khẩu và kích hoạt tài khoản"
-                    : "Mở trang dịch vụ lưu trú";
+            String actionUrl;
+            if (event.quickLoginToken() != null && !event.quickLoginToken().isBlank()) {
+                actionUrl = frontendBaseUrl + "/stay?token=" + event.quickLoginToken();
+            } else if (event.activationRequired()) {
+                actionUrl = frontendBaseUrl + "/stay/activate?token=" + event.activationToken();
+            } else {
+                actionUrl = frontendBaseUrl + "/stay";
+            }
+
+            String actionText = "Mở trang dịch vụ lưu trú";
             String checkoutText = event.checkOutTarget() != null
                     ? event.checkOutTarget().format(DATE_TIME_FORMAT)
                     : "Chưa xác định";
+
+            StringBuilder credsText = new StringBuilder();
+            if (event.temporaryPassword() != null && !event.temporaryPassword().isBlank()) {
+                credsText.append("""
+                        THÔNG TIN ĐĂNG NHẬP:
+                        - Tài khoản (Email): %s
+                        - Mật khẩu tạm thời: %s
+                        (Bạn có thể đăng nhập trên thiết bị khác bằng thông tin này)
+
+                        """.formatted(event.email(), event.temporaryPassword()));
+            }
+
             String plainText = """
                     Xin chào %s,
 
@@ -56,18 +72,19 @@ public class StayAccessEmailListener {
                     Quyền truy cập có hiệu lực đến khi phòng hoàn tất checkout.
                     Thời gian trả phòng dự kiến: %s.
 
-                    %s:
+                    %s%s (Nhấn vào liên kết để truy cập trực tiếp):
                     %s
 
                     Không chia sẻ đường dẫn kích hoạt hoặc thông tin đăng nhập với người khác.
 
                     Trân trọng,
-                    Home Stays
+                    Lá Đỏ Homestay
                     """.formatted(
                     event.representativeName(),
                     event.roomNumber(),
                     event.bookingCode(),
                     checkoutText,
+                    credsText.toString(),
                     actionText,
                     actionUrl
             );
@@ -76,7 +93,7 @@ public class StayAccessEmailListener {
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
             helper.setFrom(mailFrom);
             helper.setTo(event.email());
-            helper.setSubject("Chào mừng bạn đến phòng " + event.roomNumber() + " - Home Stays");
+            helper.setSubject("Chào mừng bạn đến phòng " + event.roomNumber() + " - Lá Đỏ Homestay");
             helper.setText(plainText, buildHtmlEmail(event, actionText, actionUrl, checkoutText));
             mailSender.send(message);
         } catch (MessagingException | RuntimeException exception) {
@@ -96,9 +113,34 @@ public class StayAccessEmailListener {
         String checkout = escape(checkoutText);
         String buttonText = escape(actionText);
         String safeUrl = escape(actionUrl);
+        String tempPwd = event.temporaryPassword() != null ? escape(event.temporaryPassword()) : null;
+        String userEmail = escape(event.email());
+
+        String credsHtml = "";
+        if (tempPwd != null && !tempPwd.isBlank()) {
+            credsHtml = """
+                    <tr>
+                      <td style="padding:0 36px 14px;">
+                        <table role="presentation" width="100%%" cellspacing="0" cellpadding="0" style="border:1px dashed #bbf7d0;border-radius:16px;background:#f0fdf4;padding:16px 20px;">
+                          <tr>
+                            <td>
+                              <div style="font-size:12px;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">🔑 Thông tin đăng nhập trang dịch vụ</div>
+                              <div style="font-size:14px;color:#1e293b;line-height:1.8;">
+                                <div>• <strong>Tài khoản (Email):</strong> %s</div>
+                                <div>• <strong>Mật khẩu tạm thời:</strong> <span style="font-family:Consolas,monospace;font-size:15px;font-weight:700;background:#dcfce7;padding:3px 8px;border-radius:6px;color:#14532d;letter-spacing:1px;">%s</span></div>
+                                <div style="margin-top:6px;font-size:12px;color:#64748b;">Bạn có thể nhấn nút mở trang dịch vụ bên dưới để truy cập tự động ngay lập tức, hoặc dùng Email &amp; Mật khẩu ở trên để đăng nhập tại bất kỳ thiết bị nào.</div>
+                              </div>
+                            </td>
+                          </tr>
+                        </table>
+                      </td>
+                    </tr>
+                    """.formatted(userEmail, tempPwd);
+        }
+
         String activationNote = event.activationRequired()
-                ? "Liên kết kích hoạt chỉ sử dụng một lần và có hiệu lực trong 24 giờ."
-                : "Tài khoản hiện tại của bạn đã được cấp thêm quyền truy cập cho phòng này.";
+                ? "Liên kết kích hoạt và truy cập tự động có hiệu lực trong thời gian bạn lưu trú tại phòng."
+                : "Tài khoản của bạn đã được liên kết với phòng lưu trú này.";
 
         return """
                 <!doctype html>
@@ -115,7 +157,7 @@ public class StayAccessEmailListener {
                         <table role="presentation" width="100%%" cellspacing="0" cellpadding="0" style="max-width:600px;background:#ffffff;border-radius:24px;overflow:hidden;box-shadow:0 18px 50px rgba(20,66,49,.12);">
                           <tr>
                             <td style="padding:34px 36px;background:#174f3b;color:#ffffff;">
-                              <div style="font-family:Georgia,serif;font-size:27px;font-weight:700;color:#ffffff;">Home Stays</div>
+                              <div style="font-family:Georgia,serif;font-size:27px;font-weight:700;color:#ffffff;">Lá Đỏ Homestay</div>
                               <div style="margin-top:18px;font-size:11px;font-weight:700;letter-spacing:2px;color:#e2bd70;">CHÀO MỪNG BẠN ĐẾN LƯU TRÚ</div>
                               <h1 style="margin:8px 0 0;font-family:Georgia,serif;font-size:34px;line-height:1.15;font-weight:700;">Phòng của bạn đã sẵn sàng</h1>
                             </td>
@@ -123,7 +165,7 @@ public class StayAccessEmailListener {
                           <tr>
                             <td style="padding:34px 36px 12px;">
                               <p style="margin:0 0 10px;font-size:17px;line-height:1.65;">Xin chào <strong>%s</strong>,</p>
-                              <p style="margin:0;color:#65736d;font-size:15px;line-height:1.7;">Bạn đã được cấp quyền truy cập trang dịch vụ trong thời gian lưu trú. Từ đây bạn có thể xem thông tin phòng, gọi tiện ích và theo dõi các dịch vụ đã sử dụng.</p>
+                              <p style="margin:0;color:#65736d;font-size:15px;line-height:1.7;">Bạn đã được cấp quyền truy cập trang dịch vụ trong thời gian lưu trú tại homestay. Từ đây bạn có thể xem thông tin phòng, gọi tiện ích, thuê đồ và theo dõi các dịch vụ đã sử dụng.</p>
                             </td>
                           </tr>
                           <tr>
@@ -154,6 +196,7 @@ public class StayAccessEmailListener {
                               </table>
                             </td>
                           </tr>
+                          %s
                           <tr>
                             <td align="center" style="padding:10px 36px 18px;">
                               <a href="%s" style="display:block;padding:16px 22px;border-radius:14px;background:#174f3b;color:#ffffff;text-decoration:none;font-size:15px;font-weight:700;">%s&nbsp;&nbsp;→</a>
@@ -166,8 +209,8 @@ public class StayAccessEmailListener {
                           </tr>
                           <tr>
                             <td align="center" style="padding:22px 30px;background:#edf2ee;color:#75817b;font-size:12px;line-height:1.6;">
-                              Cần hỗ trợ? Hãy liên hệ lễ tân Home Stays.<br>
-                              © 2026 Home Stays · Một kỳ nghỉ nhẹ nhàng hơn.
+                              Cần hỗ trợ? Hãy liên hệ lễ tân Lá Đỏ Homestay.<br>
+                              © 2026 Lá Đỏ Homestay · Một kỳ nghỉ trọn vẹn tại Sa Pa.
                             </td>
                           </tr>
                         </table>
@@ -181,6 +224,7 @@ public class StayAccessEmailListener {
                 room,
                 booking,
                 checkout,
+                credsHtml,
                 safeUrl,
                 buttonText,
                 escape(activationNote)

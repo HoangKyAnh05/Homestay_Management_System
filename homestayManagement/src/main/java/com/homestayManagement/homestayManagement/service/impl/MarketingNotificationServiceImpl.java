@@ -27,6 +27,14 @@ public class MarketingNotificationServiceImpl implements MarketingNotificationSe
         this.channelRepository = channelRepository;
     }
 
+    @org.springframework.context.event.EventListener(org.springframework.boot.context.event.ApplicationReadyEvent.class)
+    @Transactional
+    public void cleanupLegacyFakeNotifications() {
+        try {
+            notificationRepository.deleteFakeNotifications();
+        } catch (Exception ignored) {}
+    }
+
     @Override
     @Transactional
     public MarketingNotificationResponse recordInteraction(Long channelId, SocialInteractionRequest request) {

@@ -99,3 +99,31 @@ export function calculateStayOverdueInfo(checkOutTarget, checkInRecord = null, s
     shortBadge,
   }
 }
+
+export function formatExtensionTime(hours) {
+  const h = Number(hours) || 0
+  if (h <= 0) return ''
+  if (h < 24) {
+    return `+${h}h`
+  }
+  const days = Math.floor(h / 24)
+  const rem = h % 24
+  if (rem === 0) {
+    return `+${days} ngày`
+  }
+  return `+${days} ngày ${rem}h`
+}
+
+export function formatExtensionTitle(hours) {
+  const h = Number(hours) || 0
+  if (h <= 0) return ''
+  if (h < 24) {
+    return `Khách đã thuê thêm ${h} giờ`
+  }
+  const days = Math.floor(h / 24)
+  const rem = h % 24
+  if (rem === 0) {
+    return `Khách đã thuê thêm ${days} ngày`
+  }
+  return `Khách đã thuê thêm ${days} ngày ${rem} giờ`
+}

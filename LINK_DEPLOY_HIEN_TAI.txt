@@ -3,9 +3,9 @@
 ======================================================================
 
  [1] LINK WEB HOMESTAY (Frontend + Backend API - VO HAN BANG THONG):
-     https://laser-cell-departments-savannah.trycloudflare.com
+     https://finances-merchant-terrain-mai.trycloudflare.com
 
- * Dung luong vo han, truy cap muot ma tren tat ca trinh duyet.
+ * Uu diem: Dung luong vo han, xem video render thoai mai khong bi chan.
  * Moi may tinh, dien thoai deu co the truy cap duoc.
  * De tat he thong: Nhan dup vao file TAT_HE_THONG.bat
 ======================================================================

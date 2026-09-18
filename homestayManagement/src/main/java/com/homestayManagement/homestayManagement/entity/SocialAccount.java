@@ -30,6 +30,9 @@ public class SocialAccount {
     @Column(name = "page_url", length = 500)
     private String pageUrl;
 
+    @Column(name = "avatar_url", length = 1000)
+    private String avatarUrl;
+
     @Column(name = "external_account_id", length = 160)
     private String externalAccountId;
 

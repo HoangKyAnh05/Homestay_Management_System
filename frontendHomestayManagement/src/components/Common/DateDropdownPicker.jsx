@@ -38,10 +38,23 @@ export default function DateDropdownPicker({
   id,
 }) {
   const [isOpen, setIsOpen] = useState(false)
+  const [popoverAlign, setPopoverAlign] = useState('left')
   const containerRef = useRef(null)
   const today = new Date()
   const currentYear = today.getFullYear()
   const todayIso = today.toISOString().slice(0, 10)
+
+  // Auto-detect popover boundary alignment
+  useEffect(() => {
+    if (isOpen && containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect()
+      if (rect.left + 330 > window.innerWidth - 12) {
+        setPopoverAlign('right')
+      } else {
+        setPopoverAlign('left')
+      }
+    }
+  }, [isOpen])
 
   // Effective min / max dates
   const effectiveMaxDate = maxDate || (isDob ? todayIso : undefined)
@@ -289,7 +302,10 @@ export default function DateDropdownPicker({
 
       {/* Calendar Popover Dropdown */}
       {isOpen && (
-        <div className="ddp-popover" onClick={(e) => e.stopPropagation()}>
+        <div
+          className={`ddp-popover ${popoverAlign === 'right' ? 'ddp-popover--right' : ''}`}
+          onClick={(e) => e.stopPropagation()}
+        >
           {/* Calendar Header with Fast Selectors */}
           <div className="ddp-popover-header">
             <button

@@ -24,6 +24,8 @@ public interface StayAccessService {
 
     AuthResponse activate(ActivateStayAccountRequest request);
 
+    AuthResponse quickLogin(String token);
+
     List<StaySummaryResponse> getCurrentStays(String email);
 
     List<PublicAmenityResponse> getAvailableServices();

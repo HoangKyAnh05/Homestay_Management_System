@@ -137,7 +137,7 @@ public class GeminiWebServiceImpl implements GeminiWebService {
         if (hasText(defaultGroqModel)) {
             models.add(defaultGroqModel.trim());
         }
-        for (String m : List.of("llama-3.3-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768", "gemma2-9b-it")) {
+        for (String m : List.of("openai/gpt-oss-120b", "openai/gpt-oss-20b", "qwen/qwen3.8-27b", "groq/compound", "groq/compound-mini", "deepseek-r1-distill-llama-70b", "llama-3.3-70b-versatile", "llama-3.1-8b-instant")) {
             if (!models.contains(m)) {
                 models.add(m);
             }
@@ -162,6 +162,7 @@ public class GeminiWebServiceImpl implements GeminiWebService {
                         .uri(URI.create(endpoint))
                         .header("Content-Type", "application/json")
                         .header("Authorization", "Bearer " + apiKey)
+                        .header("User-Agent", "Mozilla/5.0")
                         .timeout(Duration.ofSeconds(30))
                         .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(reqBody), StandardCharsets.UTF_8))
                         .build();
@@ -178,9 +179,11 @@ public class GeminiWebServiceImpl implements GeminiWebService {
                         }
                     }
                 } else {
+                    log.warn("Groq model {} failed with HTTP {}: {}", model, res.statusCode(), res.body());
                     lastEx = new IllegalStateException("Groq API error HTTP " + res.statusCode() + ": " + res.body());
                 }
             } catch (Exception ex) {
+                log.warn("Groq model {} request exception: {}", model, ex.getMessage());
                 lastEx = ex;
             }
         }

@@ -45,6 +45,9 @@ public class MarketingNotification {
     @Column(name = "external_url", length = 500)
     private String externalUrl;
 
+    @Column(name = "parent_comment_id", length = 255)
+    private String parentCommentId;
+
     @Builder.Default
     @Column(name = "is_read", nullable = false)
     private Boolean isRead = false;
@@ -59,6 +62,15 @@ public class MarketingNotification {
         }
         if (isRead == null) {
             isRead = false;
+        }
+        if (title == null || title.isBlank()) {
+            title = "Thông báo tiếp thị";
+        }
+        if (message == null || message.isBlank()) {
+            message = "Có cập nhật tương tác mới trên kênh mạng xã hội.";
+        }
+        if (type == null || type.isBlank()) {
+            type = "NOTIFICATION";
         }
     }
 }

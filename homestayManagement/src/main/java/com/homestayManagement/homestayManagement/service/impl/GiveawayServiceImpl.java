@@ -33,7 +33,7 @@ public class GiveawayServiceImpl implements GiveawayService {
     private final MarketingSocialPublisher marketingSocialPublisher;
     private final SecureRandom secureRandom = new SecureRandom();
 
-    @Value("${app.public-base-url:http://localhost:5173}")
+    @Value("${app.public-base-url:https://homestay-sapa.myvnc.com}")
     private String publicBaseUrl;
 
     public GiveawayServiceImpl(

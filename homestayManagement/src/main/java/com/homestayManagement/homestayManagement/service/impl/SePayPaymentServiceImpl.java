@@ -33,9 +33,11 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HexFormat;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -47,6 +49,7 @@ public class SePayPaymentServiceImpl implements SePayPaymentService {
     private static final long WEBHOOK_MAX_AGE_SECONDS = 300;
     private final BookingRepository bookingRepository;
     private final BookingDetailRepository bookingDetailRepository;
+    private final BookingGuestRepository bookingGuestRepository;
     private final RoomRepository roomRepository;
     private final RoomTypeRepository roomTypeRepository;
     private final BookingServiceItemRepository bookingServiceItemRepository;
@@ -68,6 +71,7 @@ public class SePayPaymentServiceImpl implements SePayPaymentService {
     public SePayPaymentServiceImpl(
             BookingRepository bookingRepository,
             BookingDetailRepository bookingDetailRepository,
+            BookingGuestRepository bookingGuestRepository,
             RoomRepository roomRepository,
             RoomTypeRepository roomTypeRepository,
             BookingServiceItemRepository bookingServiceItemRepository,
@@ -89,6 +93,7 @@ public class SePayPaymentServiceImpl implements SePayPaymentService {
     ) {
         this.bookingRepository = bookingRepository;
         this.bookingDetailRepository = bookingDetailRepository;
+        this.bookingGuestRepository = bookingGuestRepository;
         this.roomRepository = roomRepository;
         this.roomTypeRepository = roomTypeRepository;
         this.bookingServiceItemRepository = bookingServiceItemRepository;
@@ -375,7 +380,23 @@ public class SePayPaymentServiceImpl implements SePayPaymentService {
 
     private void publishGuestPaymentConfirmationEmail(Booking booking, List<BookingDetail> bookingDetails, Payment payment) {
         Customer customer = booking.getCustomer();
-        if (customer == null || customer.getAccount() != null || customer.getEmail() == null || customer.getEmail().isBlank()) {
+        if (customer == null || customer.getAccount() != null) {
+            return;
+        }
+        Set<String> recipientEmails = new LinkedHashSet<>();
+        if (customer.getEmail() != null && !customer.getEmail().isBlank()) {
+            recipientEmails.add(customer.getEmail().trim().toLowerCase());
+        }
+        List<Long> detailIds = bookingDetails.stream().map(BookingDetail::getId).filter(Objects::nonNull).toList();
+        if (!detailIds.isEmpty()) {
+            List<BookingGuest> guests = bookingGuestRepository.findByBookingDetailIds(detailIds);
+            for (BookingGuest guest : guests) {
+                if (guest.getEmail() != null && !guest.getEmail().isBlank()) {
+                    recipientEmails.add(guest.getEmail().trim().toLowerCase());
+                }
+            }
+        }
+        if (recipientEmails.isEmpty()) {
             return;
         }
         Invoice invoice = payment.getInvoice();
@@ -384,25 +405,27 @@ public class SePayPaymentServiceImpl implements SePayPaymentService {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal serviceCharge = invoice != null ? zero(invoice.getServiceCharge()) : BigDecimal.ZERO;
         BigDecimal totalAmount = invoice != null ? zero(invoice.getTotalAmount()) : roomCharge.add(serviceCharge);
-        eventPublisher.publishEvent(new PublicBookingConfirmationEmailEvent(
-                customer.getEmail(),
-                customer.getFullName(),
-                booking.getBookingCode(),
-                bookingDetails.stream().map(BookingDetail::getCheckInTarget).filter(Objects::nonNull).min(LocalDateTime::compareTo).orElse(null),
-                bookingDetails.stream().map(BookingDetail::getCheckOutTarget).filter(Objects::nonNull).max(LocalDateTime::compareTo).orElse(null),
-                roomCharge,
-                serviceCharge,
-                totalAmount,
-                false,
-                zero(payment.getAmount()),
-                true,
-                bookingDetails.stream().map(detail -> new PublicBookingConfirmationEmailEvent.RoomLine(
-                        roomTypeName(detail),
-                        detail.getNumberOfAdults(),
-                        detail.getNumberOfChildren(),
-                        finalRoomAmount(detail)
-                )).toList()
-        ));
+        for (String email : recipientEmails) {
+            eventPublisher.publishEvent(new PublicBookingConfirmationEmailEvent(
+                    email,
+                    customer.getFullName(),
+                    booking.getBookingCode(),
+                    bookingDetails.stream().map(BookingDetail::getCheckInTarget).filter(Objects::nonNull).min(LocalDateTime::compareTo).orElse(null),
+                    bookingDetails.stream().map(BookingDetail::getCheckOutTarget).filter(Objects::nonNull).max(LocalDateTime::compareTo).orElse(null),
+                    roomCharge,
+                    serviceCharge,
+                    totalAmount,
+                    false,
+                    zero(payment.getAmount()),
+                    true,
+                    bookingDetails.stream().map(detail -> new PublicBookingConfirmationEmailEvent.RoomLine(
+                            roomTypeName(detail),
+                            detail.getNumberOfAdults(),
+                            detail.getNumberOfChildren(),
+                            finalRoomAmount(detail)
+                    )).toList()
+            ));
+        }
     }
 
     private String roomTypeName(BookingDetail detail) {
@@ -668,9 +691,14 @@ public class SePayPaymentServiceImpl implements SePayPaymentService {
     }
 
     private SePayPaymentResponse toResponse(Booking booking, Payment payment, String transferContent) {
-        LocalDateTime holdExpiresAt = booking != null && booking.getPaymentHoldExpiresAt() != null
-                ? booking.getPaymentHoldExpiresAt()
-                : (booking != null && booking.getBookingDate() != null ? booking.getBookingDate().plusMinutes(5) : LocalDateTime.now().plusMinutes(5));
+        LocalDateTime holdExpiresAt;
+        if (payment != null && "CHECKOUT".equalsIgnoreCase(payment.getPaymentPurpose())) {
+            holdExpiresAt = LocalDateTime.now().plusMinutes(5);
+        } else {
+            holdExpiresAt = booking != null && booking.getPaymentHoldExpiresAt() != null
+                    ? booking.getPaymentHoldExpiresAt()
+                    : (booking != null && booking.getBookingDate() != null ? booking.getBookingDate().plusMinutes(5) : LocalDateTime.now().plusMinutes(5));
+        }
         long remainingSeconds = Math.max(0, java.time.Duration.between(LocalDateTime.now(), holdExpiresAt).getSeconds());
         return new SePayPaymentResponse(
                 booking != null ? booking.getId() : null,

@@ -4,4 +4,6 @@ import com.homestayManagement.homestayManagement.dto.email.CheckoutInvoiceEmailS
 
 public interface CheckoutInvoiceEmailService {
     CheckoutInvoiceEmailSnapshot buildSnapshot(Long invoiceId);
+    String renderHtml(Long invoiceId);
+    String renderHtml(CheckoutInvoiceEmailSnapshot invoice);
 }

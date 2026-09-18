@@ -79,6 +79,7 @@ dependencies = [
     "plotly>=5.17.0,<6.0.0",
     "json5>=0.10.0,<1.0.0",
     "jieba>=0.42.1", # Note: jieba is not compatible with Python 3.12+
+    "pymysql>=1.2.0",
 ]
 
 [project.urls]

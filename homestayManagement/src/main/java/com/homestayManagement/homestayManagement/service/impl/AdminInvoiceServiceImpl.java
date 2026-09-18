@@ -35,6 +35,7 @@ public class AdminInvoiceServiceImpl implements AdminInvoiceService {
     private final RoomAmenitiesUsageRepository roomAmenitiesUsageRepository;
     private final AppliedPenaltyRepository appliedPenaltyRepository;
     private final CheckInRecordRepository checkInRecordRepository;
+    private final com.homestayManagement.homestayManagement.service.CheckoutInvoiceEmailService checkoutInvoiceEmailService;
 
     public AdminInvoiceServiceImpl(
             InvoiceRepository invoiceRepository,
@@ -42,7 +43,9 @@ public class AdminInvoiceServiceImpl implements AdminInvoiceService {
             ServiceUsageRepository serviceUsageRepository,
             RoomAmenitiesUsageRepository roomAmenitiesUsageRepository,
             AppliedPenaltyRepository appliedPenaltyRepository,
-            CheckInRecordRepository checkInRecordRepository
+            CheckInRecordRepository checkInRecordRepository,
+            @org.springframework.beans.factory.annotation.Autowired(required = false)
+            com.homestayManagement.homestayManagement.service.CheckoutInvoiceEmailService checkoutInvoiceEmailService
     ) {
         this.invoiceRepository = invoiceRepository;
         this.paymentRepository = paymentRepository;
@@ -50,6 +53,7 @@ public class AdminInvoiceServiceImpl implements AdminInvoiceService {
         this.roomAmenitiesUsageRepository = roomAmenitiesUsageRepository;
         this.appliedPenaltyRepository = appliedPenaltyRepository;
         this.checkInRecordRepository = checkInRecordRepository;
+        this.checkoutInvoiceEmailService = checkoutInvoiceEmailService;
     }
 
     @Override
@@ -66,6 +70,15 @@ public class AdminInvoiceServiceImpl implements AdminInvoiceService {
         Invoice invoice = invoiceRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy hóa đơn"));
         return toResponse(invoice);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public String getInvoiceHtml(Long id) {
+        if (checkoutInvoiceEmailService == null) {
+            throw new IllegalStateException("Dịch vụ hóa đơn điện tử chưa sẵn sàng");
+        }
+        return checkoutInvoiceEmailService.renderHtml(id);
     }
 
     private AdminInvoiceResponse toResponse(Invoice invoice) {

@@ -30,12 +30,12 @@ function SePayQrPayment({
 
   // 5-minute countdown (300 seconds default or derived from remainingSeconds / holdExpiresAt)
   const [timeLeft, setTimeLeft] = useState(() => {
-    if (payment?.remainingSeconds != null) {
-      return Math.max(0, Math.min(Number(payment.remainingSeconds), 300))
+    if (payment?.remainingSeconds != null && Number(payment.remainingSeconds) > 0) {
+      return Math.min(Number(payment.remainingSeconds), 300)
     }
     if (payment?.holdExpiresAt) {
       const diff = Math.floor((new Date(payment.holdExpiresAt).getTime() - Date.now()) / 1000)
-      return diff > 0 ? Math.min(diff, 300) : 0
+      if (diff > 0) return Math.min(diff, 300)
     }
     return 300
   })
@@ -70,7 +70,7 @@ function SePayQrPayment({
       })
       const data = await response.json().catch(() => ({}))
       if (!response.ok) throw new Error(data.message || 'Không thể kiểm tra trạng thái thanh toán')
-      const currentSt = String(data[statusField] || '').toUpperCase()
+      const currentSt = String(data[statusField] || data.detailStatus || data.bookingStatus || data.status || '').toUpperCase()
       if (currentSt === successStatus) {
         setState('success')
         onSuccess(data)
@@ -101,7 +101,7 @@ function SePayQrPayment({
         })
         const data = await response.json().catch(() => ({}))
         if (!response.ok) throw new Error(data.message || 'Không thể kiểm tra trạng thái thanh toán')
-        const currentSt = String(data[statusField] || '').toUpperCase()
+        const currentSt = String(data[statusField] || data.detailStatus || data.bookingStatus || data.status || '').toUpperCase()
         if (currentSt === successStatus) {
           setState('success')
           onSuccess(data)
@@ -173,7 +173,7 @@ function SePayQrPayment({
             <span style={{ fontSize: '48px', display: 'block', marginBottom: '12px' }}>⏰</span>
             <h2 style={{ fontSize: '20px', color: '#dc2626', marginBottom: '8px' }}>Mã QR thanh toán đã hết hạn (5 phút)</h2>
             <p style={{ color: '#4b5563', fontSize: '14px', lineHeight: '1.6', maxWidth: '420px', margin: '0 auto 20px' }}>
-              Theo quy định, đơn đặt phòng chưa thanh toán sau 5 phút đã tự động được hủy. Số lượng phòng giữ chỗ đã được giải phóng tự động để khách hàng khác có thể đặt.
+              Mã QR thanh toán đã hết thời gian hiệu lực (5 phút). Quý khách vui lòng tạo lại mã QR hoặc liên hệ lễ tân để tiếp tục thanh toán.
             </p>
             <button
               type="button"
@@ -188,7 +188,7 @@ function SePayQrPayment({
               }}
               onClick={onClose}
             >
-              Đóng & Đặt phòng lại
+              Đóng
             </button>
           </div>
         ) : (

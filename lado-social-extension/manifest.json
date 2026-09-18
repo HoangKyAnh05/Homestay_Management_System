@@ -1,0 +1,77 @@
+{
+  "manifest_version": 3,
+  "name": "Lá Đỏ Homestay - Trợ lý AI Phản hồi Đa nền tảng",
+  "version": "1.1.0",
+  "description": "Tự động quét bình luận và trả lời bằng Trợ lý AI trên Facebook, TikTok & YouTube cho Lá Đỏ Homestay Sa Pa.",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting",
+    "tabs"
+  ],
+  "host_permissions": [
+    "*://*.youtube.com/*",
+    "https://studio.youtube.com/*",
+    "*://*.facebook.com/*",
+    "*://*.tiktok.com/*",
+    "https://www.tiktok.com/*",
+    "*://localhost:*/*",
+    "*://127.0.0.1:*/*",
+    "https://*/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Lá Đỏ Homestay Social AI Suite",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.youtube.com/*",
+        "https://studio.youtube.com/*"
+      ],
+      "js": ["content-youtube.js"],
+      "css": ["styles.css"],
+      "all_frames": true,
+      "run_at": "document_start"
+    },
+    {
+      "matches": ["*://*.facebook.com/*"],
+      "js": ["content-facebook.js"],
+      "css": ["styles.css"],
+      "all_frames": true,
+      "run_at": "document_start"
+    },
+    {
+      "matches": [
+        "*://*.tiktok.com/*",
+        "https://www.tiktok.com/*"
+      ],
+      "js": ["content-tiktok.js"],
+      "css": ["styles.css"],
+      "all_frames": true,
+      "run_at": "document_start"
+    },
+    {
+      "matches": [
+        "*://localhost:*/*",
+        "*://127.0.0.1:*/*",
+        "https://*/*"
+      ],
+      "js": ["content-bridge.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

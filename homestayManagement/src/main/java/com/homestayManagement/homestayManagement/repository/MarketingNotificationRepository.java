@@ -15,9 +15,15 @@ public interface MarketingNotificationRepository extends JpaRepository<Marketing
 
     List<MarketingNotification> findTop50ByIsReadFalseOrderByCreatedAtDesc();
 
+    List<MarketingNotification> findAllByChannelIdAndTypeOrderByCreatedAtAsc(Long channelId, String type);
+
     long countByIsReadFalse();
 
     @Modifying
     @Query("UPDATE MarketingNotification m SET m.isRead = true WHERE m.isRead = false")
     void markAllAsRead();
+
+    @Modifying
+    @Query("DELETE FROM MarketingNotification m WHERE m.actorName LIKE 'Người dùng %'")
+    void deleteFakeNotifications();
 }

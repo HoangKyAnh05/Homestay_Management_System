@@ -591,7 +591,7 @@ function SocialEngagementModal({ modal, setModal, onSimulateInteraction, onRefre
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
                           <strong style={{ fontSize: '13px', color: '#0f172a' }}>{cm.authorName}</strong>
                           <small style={{ color: '#94a3b8', fontSize: '11px' }}>
-                            {cm.createdTime ? new Date(cm.createdTime).toLocaleString('vi-VN') : ''}
+                            {cm.createdTime ? (cm.createdTime.includes('trước') || cm.createdTime.includes('ago') ? cm.createdTime : (isNaN(new Date(cm.createdTime).getTime()) ? cm.createdTime : new Date(cm.createdTime).toLocaleString('vi-VN'))) : ''}
                           </small>
                         </div>
                         <p style={{ margin: '0 0 6px 0', fontSize: '13px', color: '#334155', lineHeight: 1.4 }}>
@@ -2077,7 +2077,7 @@ export function MarketingAIAgentPage() {
 
   const [testingAccounts, setTestingAccounts] = useState({})
   const [accountStatusMessages, setAccountStatusMessages] = useState({})
-  const [isSocialChannelsCollapsed, setIsSocialChannelsCollapsed] = useState(false)
+  const [isSocialChannelsCollapsed, setIsSocialChannelsCollapsed] = useState(true)
 
   const handleTestAccount = async (account) => {
     setTestingAccounts((prev) => ({ ...prev, [account.id]: true }))
@@ -2220,6 +2220,7 @@ export function MarketingAIAgentPage() {
           platform: page.platform || 'FACEBOOK',
           accountName: page.name,
           externalAccountId: page.id,
+          avatarUrl: page.thumbnailUrl || page.avatarUrl || (page.platform === 'FACEBOOK' ? `https://graph.facebook.com/${page.id}/picture?type=large` : null),
           accessToken: page.accessToken || apiConfigModal.tokenInput.trim(),
           pageUrl: page.pageUrl || (page.platform === 'YOUTUBE' ? `https://youtube.com/channel/${page.id}` : `https://facebook.com/${page.id}`),
         }),
@@ -2254,6 +2255,7 @@ export function MarketingAIAgentPage() {
           platform: apiConfigModal.platform,
           accountName: apiConfigModal.accountName.trim(),
           externalAccountId: apiConfigModal.externalAccountId.trim() || apiConfigModal.accountName.trim(),
+          avatarUrl: apiConfigModal.avatarUrl || (apiConfigModal.platform === 'FACEBOOK' && apiConfigModal.externalAccountId ? `https://graph.facebook.com/${apiConfigModal.externalAccountId.trim()}/picture?type=large` : null),
           accessToken: apiConfigModal.accessToken.trim(),
           pageUrl: apiConfigModal.pageUrl.trim(),
         }),
@@ -2437,7 +2439,7 @@ BẮT BUỘC trả về đúng 1 JSON duy nhất, không giải thích ngoài:
     } catch (err) {
       console.error('AI generation failed:', err);
       setMultiPostModal((c) => ({ ...c, generatingAi: false }));
-      alert(`⚠️ Lỗi AI Content Generation:\n${err.message || 'Không thể kết nối API'}\n\nVui lòng kiểm tra API Key hoặc kết nối mạng.`);
+      alert(`⚠️ Thông báo AI Marketing:\nAI đang sinh hoặc hệ thống chưa phản hồi (${err.message || 'Lỗi kết nối'}). Vui lòng thử lại trong giây lát!`);
     }
   };
 
@@ -2722,7 +2724,29 @@ BẮT BUỘC trả về đúng 1 JSON duy nhất, không giải thích ngoài:
           }
         />
 
-        {error && <p className="mkt-alert">{error}</p>}
+        {error && (
+          <div className="mkt-alert" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '12px 0 16px', gap: '12px' }}>
+            <span>⚠️ {error}</span>
+            <button
+              type="button"
+              onClick={() => setError('')}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '18px',
+                fontWeight: 700,
+                color: 'inherit',
+                lineHeight: 1,
+                padding: '2px 6px',
+                borderRadius: '4px',
+              }}
+              title="Đóng thông báo"
+            >
+              ×
+            </button>
+          </div>
+        )}
 
         {/* 🌟 Quản lý tài khoản mạng xã hội (Clean Modern Theme) */}
         <section className="mkt-social-accounts-manager">
@@ -2776,6 +2800,7 @@ BẮT BUỘC trả về đúng 1 JSON duy nhất, không giải thích ngoài:
                   const isYt = acc.platform === 'YOUTUBE'
                   const isTesting = testingAccounts[acc.id]
                   const statusMsg = accountStatusMessages[acc.id]
+                  const avatarUrl = acc.avatarUrl || (isFb && acc.externalAccountId ? `https://graph.facebook.com/${acc.externalAccountId}/picture?type=large` : null)
 
                   return (
                     <article className="mkt-social-card-item" key={acc.id}>
@@ -2787,7 +2812,24 @@ BẮT BUỘC trả về đúng 1 JSON duy nhất, không giải thích ngoài:
                               background: isFb ? '#1877f2' : isYt ? '#ff0000' : '#0284c7'
                             }}
                           >
-                            {acc.accountName?.charAt(0)?.toUpperCase() || (isFb ? 'F' : 'Y')}
+                            {avatarUrl ? (
+                              <img
+                                src={avatarUrl}
+                                alt={acc.accountName}
+                                className="mkt-social-avatar-img"
+                                onError={(e) => {
+                                  e.currentTarget.style.display = 'none'
+                                  const fallback = e.currentTarget.parentElement?.querySelector('.mkt-social-avatar-fallback')
+                                  if (fallback) fallback.style.display = 'flex'
+                                }}
+                              />
+                            ) : null}
+                            <span
+                              className="mkt-social-avatar-fallback"
+                              style={{ display: avatarUrl ? 'none' : 'flex' }}
+                            >
+                              {acc.accountName?.charAt(0)?.toUpperCase() || (isFb ? 'F' : 'Y')}
+                            </span>
                           </div>
                           <div className="mkt-social-card-info">
                             <strong>{acc.accountName}</strong>
@@ -3870,10 +3912,15 @@ BẮT BUỘC trả về đúng 1 JSON duy nhất, không giải thích ngoài:
                           }}
                         >
                           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            {page.thumbnailUrl ? (
-                              <img src={page.thumbnailUrl} alt="" style={{ width: '38px', height: '38px', borderRadius: '50%', objectFit: 'cover' }} />
+                            {(page.thumbnailUrl || page.avatarUrl || (page.platform === 'FACEBOOK' ? `https://graph.facebook.com/${page.id}/picture?type=large` : null)) ? (
+                              <img
+                                src={page.thumbnailUrl || page.avatarUrl || `https://graph.facebook.com/${page.id}/picture?type=large`}
+                                alt=""
+                                style={{ width: '38px', height: '38px', borderRadius: '50%', objectFit: 'cover' }}
+                                onError={(e) => { e.currentTarget.style.display = 'none' }}
+                              />
                             ) : (
-                              <span style={{ fontSize: '24px' }}>{page.platform === 'YOUTUBE' ? '' : ''}</span>
+                              <span style={{ fontSize: '24px' }}>{page.platform === 'YOUTUBE' ? '▶️' : '📘'}</span>
                             )}
                             <div>
                               <strong style={{ fontSize: '14px', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -4071,7 +4118,7 @@ BẮT BUỘC trả về đúng 1 JSON duy nhất, không giải thích ngoài:
                         ) : (
                           <Icon name="sparkles" size={15} />
                         )}
-                        <span>{multiPostModal.generatingAi ? 'AI đang viết bài siêu tốc...' : '✨ Tự động sinh bài bằng AI (Groq / Llama 3.3)'}</span>
+                        <span>{multiPostModal.generatingAi ? 'AI đang sinh...' : '✨ Tạo bài AI'}</span>
                       </button>
                     </div>
 

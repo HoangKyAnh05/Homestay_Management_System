@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { getStoredToken, getStoredUser, logout } from '../../services/authService'
+import { getStoredToken, getStoredUser, logout, stayQuickLogin } from '../../services/authService'
 import { houseTypeName } from '../../utils/houseType'
 import { resolveImageUrl } from '../../utils/imageUrl'
 import './StayPage.css'
@@ -123,25 +123,55 @@ function StayPage() {
   }
 
   useEffect(() => {
-    if (!getStoredToken()) {
-      window.location.replace('/login?next=/stay')
-      return undefined
-    }
     let cancelled = false
-    fetchPortalData()
-      .then(data => {
+
+    async function initStayPortal() {
+      setLoading(true)
+      setError('')
+
+      const params = new URLSearchParams(window.location.search)
+      const tokenParam = params.get('token')
+
+      if (tokenParam) {
+        try {
+          await stayQuickLogin(tokenParam)
+          params.delete('token')
+          const cleanSearch = params.toString() ? `?${params.toString()}` : ''
+          window.history.replaceState({}, document.title, window.location.pathname + cleanSearch)
+        } catch (loginErr) {
+          if (!cancelled) {
+            setError(loginErr.message || 'Liên kết truy cập không hợp lệ hoặc đã hết hạn. Vui lòng đăng nhập bằng email và mật khẩu được cung cấp.')
+            setLoading(false)
+          }
+          return
+        }
+      }
+
+      if (!getStoredToken()) {
+        window.location.replace('/login?next=/stay')
+        return
+      }
+
+      try {
+        const data = await fetchPortalData()
         if (!cancelled) {
           setStays(data.stays)
           setServices(data.services)
           setSelectedAccessId(data.stays[0]?.accessId ? String(data.stays[0].accessId) : '')
         }
-      })
-      .catch(loadError => {
-        if (!cancelled) setError(loadError.message)
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
+      } catch (loadError) {
+        if (!cancelled) {
+          setError(loadError.message)
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false)
+        }
+      }
+    }
+
+    initStayPortal()
+
     return () => {
       cancelled = true
     }
@@ -277,7 +307,41 @@ function StayPage() {
 
       <div className="stay-content">
         {loading && <div className="stay-state">Đang chuẩn bị thông tin kỳ lưu trú...</div>}
-        {!loading && error && <div className="stay-error" role="alert">{error}</div>}
+        {!loading && error && (
+          <div className="stay-error" role="alert" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+            <div>{error}</div>
+            <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
+              <a
+                href="/login?next=/stay"
+                style={{
+                  padding: '8px 16px',
+                  background: '#2563eb',
+                  color: '#fff',
+                  borderRadius: 8,
+                  textDecoration: 'none',
+                  fontWeight: 600,
+                  fontSize: 14,
+                }}
+              >
+                Đăng nhập với Email & Mật khẩu
+              </a>
+              <a
+                href="/home"
+                style={{
+                  padding: '8px 16px',
+                  background: '#f1f5f9',
+                  color: '#475569',
+                  borderRadius: 8,
+                  textDecoration: 'none',
+                  fontWeight: 600,
+                  fontSize: 14,
+                }}
+              >
+                Về trang chủ
+              </a>
+            </div>
+          </div>
+        )}
         {!loading && !error && stays.length === 0 && (
           <section className="stay-empty">
             <span>🏠</span>

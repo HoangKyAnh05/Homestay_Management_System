@@ -7,6 +7,7 @@ public record SocialAccountResponse(
         String platform,
         String accountName,
         String pageUrl,
+        String avatarUrl,
         String externalAccountId,
         boolean active,
         LocalDateTime tokenExpiresAt

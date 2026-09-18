@@ -10,4 +10,6 @@ public interface MarketingPostChannelRepository extends JpaRepository<MarketingP
     List<MarketingPostChannel> findByPostIdOrderByIdAsc(Long postId);
     long countByStatus(String status);
     List<MarketingPostChannel> findTop20ByStatusAndScheduledAtLessThanEqualAndPostedAtIsNullOrderByScheduledAtAsc(String status, LocalDateTime scheduledAt);
+    java.util.Optional<MarketingPostChannel> findFirstByPlatformOrderByIdDesc(String platform);
+    java.util.Optional<MarketingPostChannel> findFirstByPlatformIgnoreCaseOrderByIdDesc(String platform);
 }

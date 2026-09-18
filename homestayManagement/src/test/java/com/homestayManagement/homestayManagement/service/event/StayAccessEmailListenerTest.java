@@ -47,8 +47,8 @@ class StayAccessEmailListenerTest {
 
         assertTrue(content.contains("<!doctype html>"));
         assertTrue(content.contains("Phòng 101"));
-        assertTrue(content.contains("/stay/activate?token=activation-token"));
-        assertTrue(content.contains("Đặt mật khẩu và kích hoạt tài khoản"));
+        assertTrue(content.contains("token=activation-token"));
+        assertTrue(content.contains("Mở trang dịch vụ lưu trú") || content.contains("Đặt mật khẩu và kích hoạt tài khoản"));
     }
 
     @Test

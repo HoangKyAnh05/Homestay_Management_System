@@ -203,6 +203,26 @@ export async function loginWithGoogle(accessToken) {
   return data
 }
 
+export async function stayQuickLogin(token) {
+  let response
+
+  try {
+    response = await fetch(`${API_BASE_URL}/auth/stay-quick-login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token }),
+    })
+  } catch {
+    throw connectionError()
+  }
+
+  const data = await parseJson(response)
+  if (!response.ok) throw new Error(data.message || 'Đăng nhập nhanh không thành công')
+
+  saveAuthSession(data)
+  return data
+}
+
 export function getRememberedEmail() {
   return localStorage.getItem(REMEMBER_KEY) || ''
 }

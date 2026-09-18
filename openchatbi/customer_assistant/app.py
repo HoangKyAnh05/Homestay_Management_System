@@ -14,7 +14,7 @@ import os
 from datetime import datetime
 from typing import Any, Literal
 
-from fastapi import Depends, FastAPI, Header, HTTPException, status
+from fastapi import Depends, FastAPI, Header, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
@@ -337,3 +337,203 @@ async def customer_chat_stream(request: CustomerChatRequest) -> StreamingRespons
             yield ndjson_event("error", message="Không thể kết nối mô hình AI")
 
     return StreamingResponse(stream_events(), media_type="application/x-ndjson")
+
+
+@app.api_route("/api/crawler/youtube/engagement", methods=["GET", "POST"])
+async def crawl_youtube_engagement(request: Request) -> dict[str, Any]:
+    video_id = request.query_params.get("video_id") or request.query_params.get("videoId") or request.query_params.get("url") or ""
+    max_comments = int(request.query_params.get("max_comments") or request.query_params.get("maxComments") or 50)
+
+    try:
+        raw_body = await request.body()
+        if raw_body:
+            body = json.loads(raw_body.decode("utf-8", errors="ignore"))
+            if isinstance(body, dict):
+                if not video_id:
+                    video_id = body.get("video_id") or body.get("videoId") or body.get("url") or ""
+                max_comments = int(body.get("max_comments") or body.get("maxComments") or max_comments)
+    except Exception as exc:
+        logger.warning(f"Error reading crawler request body: {exc}")
+
+    vid = str(video_id).strip()
+    if "watch?v=" in vid:
+        vid = vid.split("watch?v=")[1].split("&")[0]
+    elif "youtu.be/" in vid:
+        vid = vid.split("youtu.be/")[1].split("?")[0]
+    elif "shorts/" in vid:
+        vid = vid.split("shorts/")[1].split("?")[0]
+
+    if not vid:
+        return {"success": False, "error": "Missing video_id", "viewCount": 0, "likeCount": 0, "commentCount": 0, "comments": []}
+
+    url = f"https://www.youtube.com/watch?v={vid}"
+    views = 0
+    likes = 0
+
+    try:
+        import urllib.request, re
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
+        html_req = urllib.request.Request(url, headers=headers)
+        html = urllib.request.urlopen(html_req, timeout=10).read().decode('utf-8', errors='ignore')
+        
+        v_match = re.search(r'"viewCount":\s*"(\d+)"', html)
+        if v_match:
+            views = int(v_match.group(1))
+        
+        l_match = re.search(r'"label":\s*"([\d,.]+)\s*likes"', html, re.IGNORECASE) or re.search(r'"likeCount":\s*"(\d+)"', html)
+        if l_match:
+            try:
+                likes = int(re.sub(r'[^\d]', '', l_match.group(1)))
+            except:
+                pass
+    except Exception as e:
+        logger.warning(f"Error scraping YouTube views/likes for {vid}: {e}")
+
+    comments_map = {}
+    top_comments = []
+    total_comments_crawled = 0
+    try:
+        from youtube_comment_downloader import YoutubeCommentDownloader, SORT_BY_POPULAR
+        downloader = YoutubeCommentDownloader()
+        comments_gen = downloader.get_comments_from_url(url, sort_by=SORT_BY_POPULAR)
+        for c in comments_gen:
+            cid = str(c.get("cid") or "")
+            is_reply = bool(c.get("reply")) or ("." in cid)
+            author = c.get("author") or "Người xem YouTube"
+            avatar = c.get("photo") or ""
+            text = c.get("text") or ""
+            time_str = c.get("time") or ""
+            votes = int(c.get("votes", "0") or 0)
+
+            if is_reply and "." in cid:
+                parent_id = cid.split(".")[0]
+                reply_obj = {
+                    "id": cid,
+                    "authorName": author,
+                    "authorAvatar": avatar,
+                    "message": text,
+                    "publishedAt": time_str,
+                    "isAdmin": False
+                }
+                if parent_id in comments_map:
+                    comments_map[parent_id]["replies"].append(reply_obj)
+                else:
+                    placeholder_top = {
+                        "id": parent_id,
+                        "authorName": "Người xem YouTube",
+                        "authorAvatar": "",
+                        "message": "",
+                        "publishedAt": time_str,
+                        "likeCount": 0,
+                        "replies": [reply_obj]
+                    }
+                    comments_map[parent_id] = placeholder_top
+                    top_comments.append(placeholder_top)
+            else:
+                if cid in comments_map:
+                    comments_map[cid]["authorName"] = author
+                    comments_map[cid]["authorAvatar"] = avatar
+                    comments_map[cid]["message"] = text
+                    comments_map[cid]["publishedAt"] = time_str
+                    comments_map[cid]["likeCount"] = votes
+                else:
+                    top_obj = {
+                        "id": cid,
+                        "authorName": author,
+                        "authorAvatar": avatar,
+                        "message": text,
+                        "publishedAt": time_str,
+                        "likeCount": votes,
+                        "replies": []
+                    }
+                    comments_map[cid] = top_obj
+                    top_comments.append(top_obj)
+
+            total_comments_crawled += 1
+            if total_comments_crawled >= max_comments:
+                break
+    except Exception as e:
+        logger.warning(f"Error scraping YouTube comments for {vid}: {e}")
+
+    # Remove any empty placeholder top comments if none
+    final_comments = [c for c in top_comments if c.get("message") or (c.get("replies") and len(c["replies"]) > 0)]
+
+    return {
+        "success": True,
+        "videoId": vid,
+        "viewCount": views,
+        "likeCount": likes,
+        "commentCount": total_comments_crawled,
+        "comments": final_comments
+    }
+
+
+@app.api_route("/api/crawler/facebook/engagement", methods=["GET", "POST"])
+async def crawl_facebook_engagement(request: Request) -> dict[str, Any]:
+    post_id = request.query_params.get("post_id") or request.query_params.get("postId") or request.query_params.get("url") or ""
+    url = request.query_params.get("url") or ""
+    
+    try:
+        raw_body = await request.body()
+        if raw_body:
+            body = json.loads(raw_body.decode("utf-8", errors="ignore"))
+            if isinstance(body, dict):
+                post_id = body.get("post_id") or body.get("postId") or post_id
+                url = body.get("url") or url
+    except Exception as exc:
+        logger.warning(f"Error reading FB crawler request body: {exc}")
+
+    pid = str(post_id).strip()
+    target_url = url.strip()
+    if not target_url and pid:
+        if pid.isdigit():
+            target_url = f"https://www.facebook.com/watch/?v={pid}"
+        else:
+            target_url = f"https://www.facebook.com/{pid}"
+
+    if not target_url:
+        return {"success": False, "error": "Missing post_id or url", "viewCount": 0, "likeCount": 0, "commentCount": 0, "comments": []}
+
+    views = 0
+    likes = 0
+    comments = []
+
+    try:
+        import urllib.request, re
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept-Language': 'vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7'
+        }
+        html_req = urllib.request.Request(target_url, headers=headers)
+        html = urllib.request.urlopen(html_req, timeout=10).read().decode('utf-8', errors='ignore')
+
+        # Extract views from JSON or regex
+        v_match = re.search(r'"view_count":\s*(\d+)', html) or re.search(r'"video_view_count":\s*(\d+)', html)
+        if v_match:
+            views = int(v_match.group(1))
+
+        # Extract likes / reactions
+        l_match = re.search(r'"reaction_count":\s*\{"count":\s*(\d+)', html) or re.search(r'(\d+)\s*(?:lượt thích|thích|reactions|likes)', html, re.IGNORECASE)
+        if l_match:
+            try:
+                likes = int(re.sub(r'[^\d]', '', l_match.group(1)))
+            except:
+                pass
+
+        # Extract comments summary count
+        c_match = re.search(r'"comment_count":\s*\{"total_count":\s*(\d+)', html) or re.search(r'(\d+)\s*(?:bình luận|comments)', html, re.IGNORECASE)
+        comment_count = int(c_match.group(1)) if c_match else 0
+
+    except Exception as e:
+        logger.warning(f"Error scraping Facebook engagement for {target_url}: {e}")
+        comment_count = 0
+
+    return {
+        "success": True,
+        "postId": pid,
+        "viewCount": views,
+        "likeCount": likes,
+        "commentCount": max(comment_count, len(comments)),
+        "comments": comments
+    }
+

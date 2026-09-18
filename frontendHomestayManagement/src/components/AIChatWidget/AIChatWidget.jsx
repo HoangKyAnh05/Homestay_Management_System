@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import './AIChatWidget.css'
 
+const DEFAULT_DEEPSEEK_KEY = ''
+
 const getEffectiveApiKey = () => {
   if (typeof window !== 'undefined') {
     const groqKey = window.localStorage?.getItem('GROQ_API_KEY')?.trim()
@@ -8,7 +10,7 @@ const getEffectiveApiKey = () => {
     const geminiKey = window.localStorage?.getItem('GEMINI_API_KEY')?.trim()
     if (geminiKey) return geminiKey
   }
-  return ''
+  return DEFAULT_DEEPSEEK_KEY
 }
 
 const ADMIN_QUICK_PROMPTS = [
@@ -21,7 +23,7 @@ const ADMIN_QUICK_PROMPTS = [
 const INITIAL_MESSAGES = [{
   id: 1,
   role: 'assistant',
-  content: 'Xin chào Quản trị viên! Tôi là Trợ lý AI Quản Trị Hệ Thống Lá Đỏ Homestay Sa Pa (được hỗ trợ bởi Groq & Gemini AI). Tôi có thể hỗ trợ bạn tra cứu quy định vận hành, tư vấn chính sách, phân tích số liệu, gợi ý marketing hoặc xử lý tình huống phát sinh.',
+  content: 'Xin chào Quản trị viên! Tôi là Trợ lý AI Quản Trị Hệ Thống Lá Đỏ Homestay Sa Pa (được hỗ trợ bởi DeepSeek-R1 & Groq AI). Tôi có thể hỗ trợ bạn tra cứu quy định vận hành, tư vấn chính sách, phân tích số liệu, gợi ý marketing hoặc xử lý tình huống phát sinh.',
   time: 'Bây giờ',
 }]
 
@@ -80,9 +82,15 @@ function generateSmartAssistantResponse(query, history = []) {
 async function callAIChat(prompt, chatHistory = [], customKey = '') {
   const apiKey = (customKey || getEffectiveApiKey()).trim()
 
-  // 1. Try Groq AI if key starts with gsk_
+  // 1. Try DeepSeek-R1 / Groq AI if key starts with gsk_
   if (apiKey && apiKey.startsWith('gsk_')) {
-    const groqModels = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'mixtral-8x7b-32768']
+    const groqModels = [
+      'deepseek-r1-distill-llama-70b',
+      'deepseek-r1-distill-qwen-32b',
+      'llama-3.3-70b-versatile',
+      'llama-3.1-8b-instant',
+      'mixtral-8x7b-32768',
+    ]
     const messages = [
       { role: 'system', content: SYSTEM_PROMPT },
       ...chatHistory.slice(-4).map((m) => ({

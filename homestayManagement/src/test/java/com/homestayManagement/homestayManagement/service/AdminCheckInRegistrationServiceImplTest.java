@@ -231,6 +231,42 @@ class AdminCheckInRegistrationServiceImplTest {
         assertTrue(ex.getMessage().contains("quá giờ trả phòng"));
     }
 
+    @Test
+    void completeSynchronizesRepresentativeEmailToOtherUncheckedInRoomsOfSameBooking() {
+        TestData data = testData();
+        BookingDetail otherDetail = BookingDetail.builder()
+                .id(41L).booking(data.booking()).roomType(data.roomType())
+                .checkInTarget(data.detail().getCheckInTarget()).checkOutTarget(data.detail().getCheckOutTarget())
+                .status("CONFIRMED").build();
+
+        BookingGuest otherPrimaryGuest = BookingGuest.builder()
+                .id(55L).booking(data.booking()).bookingDetail(otherDetail)
+                .fullName("Người đặt cũ").email("old@example.com").primaryGuest(true).build();
+
+        Employee employee = Employee.builder().id(70L).fullName("Lễ tân").build();
+        List<AdminCheckInGuestRequest> guests = List.of(
+                new AdminCheckInGuestRequest("Người đặt mới", "001", null, "newemail@example.com", "0911223344", null, null, "VIETNAM"),
+                new AdminCheckInGuestRequest("Khách thứ hai", "002", null, null, null, null, null, "VIETNAM")
+        );
+
+        when(bookingDetailRepository.findByIdForAdminDetail(40L)).thenReturn(Optional.of(data.detail()));
+        when(bookingDetailRepository.findByBookingId(20L)).thenReturn(List.of(data.detail(), otherDetail));
+        when(checkInRecordRepository.findByBookingDetailId(40L)).thenReturn(Optional.empty());
+        when(roomRepository.findByIdForCheckIn(101L)).thenReturn(Optional.of(data.room()));
+        when(bookingDetailRepository.findOverlappingSchedule(any(), any())).thenReturn(List.of(data.detail()));
+        when(employeeRepository.findByAccountEmail("staff@example.com")).thenReturn(Optional.of(employee));
+        when(bookingGuestRepository.findByBookingDetailIds(List.of(41L))).thenReturn(List.of(otherPrimaryGuest));
+        when(stayAccessService.grantAccess(any(), any(), any(), any()))
+                .thenReturn(new StayAccessService.GrantResult(81L, "newemail@example.com", "ACTIVE", false, true));
+
+        service.complete(40L, new AdminCompleteCheckInRequest(101L, "newemail@example.com", guests));
+
+        assertEquals("newemail@example.com", data.customer().getEmail());
+        assertEquals("newemail@example.com", otherPrimaryGuest.getEmail());
+        assertEquals("Người đặt mới", otherPrimaryGuest.getFullName());
+        assertEquals("0911223344", otherPrimaryGuest.getPhone());
+    }
+
     private TestData testData() {
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime checkIn = now.minusHours(2);

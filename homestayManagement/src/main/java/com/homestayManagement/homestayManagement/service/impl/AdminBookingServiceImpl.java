@@ -1348,10 +1348,14 @@ public class AdminBookingServiceImpl implements AdminBookingService {
     }
 
     private AdminBookingCustomerResponse toCustomerResponse(Customer customer) {
+        String email = customer.getEmail();
+        if ((email == null || email.isBlank()) && customer.getAccount() != null) {
+            email = customer.getAccount().getEmail();
+        }
         return new AdminBookingCustomerResponse(
                 customer.getId(),
                 customer.getFullName(),
-                customer.getAccount() != null ? customer.getAccount().getEmail() : customer.getEmail(),
+                email,
                 customer.getPhone(),
                 customer.getAddress(),
                 customer.getDateOfBirth()

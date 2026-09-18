@@ -10,6 +10,7 @@ import com.homestayManagement.homestayManagement.entity.InventoryService;
 import com.homestayManagement.homestayManagement.entity.Payment;
 import com.homestayManagement.homestayManagement.entity.ServiceUsage;
 import com.homestayManagement.homestayManagement.repository.BookingDetailRepository;
+import com.homestayManagement.homestayManagement.repository.BookingGuestRepository;
 import com.homestayManagement.homestayManagement.repository.BookingRepository;
 import com.homestayManagement.homestayManagement.repository.BookingServiceItemRepository;
 import com.homestayManagement.homestayManagement.repository.InventoryServiceRepository;
@@ -33,6 +34,7 @@ import javax.crypto.spec.SecretKeySpec;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Optional;
@@ -41,6 +43,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -55,6 +58,8 @@ class SePayPaymentServiceImplTest {
     private BookingRepository bookingRepository;
     @Mock
     private BookingDetailRepository bookingDetailRepository;
+    @Mock
+    private BookingGuestRepository bookingGuestRepository;
     @Mock
     private RoomRepository roomRepository;
     @Mock
@@ -85,6 +90,7 @@ class SePayPaymentServiceImplTest {
         service = new SePayPaymentServiceImpl(
                 bookingRepository,
                 bookingDetailRepository,
+                bookingGuestRepository,
                 roomRepository,
                 roomTypeRepository,
                 bookingServiceItemRepository,
@@ -207,8 +213,8 @@ class SePayPaymentServiceImplTest {
         assertEquals(10L, response.bookingId());
         assertEquals(BigDecimal.valueOf(300_000), response.amount());
         assertEquals("HMS30", response.transferContent());
-        assertNull(booking.getPaymentHoldExpiresAt());
-        assertNull(response.holdExpiresAt());
+        assertNotNull(booking.getPaymentHoldExpiresAt());
+        assertNotNull(response.holdExpiresAt());
     }
 
     @Test
@@ -298,6 +304,39 @@ class SePayPaymentServiceImplTest {
         assertEquals(BigDecimal.valueOf(4_750), response.amount());
         assertEquals("HMS31", response.paymentCode());
         assertEquals("HMS31", response.transferContent());
+        assertTrue(response.remainingSeconds() > 0);
+    }
+
+    @Test
+    void createCheckoutPaymentSetsFreshExpirationEvenIfBookingDateIsInPast() {
+        Booking pastBooking = Booking.builder()
+                .id(10L)
+                .status("CHECKED_IN")
+                .bookingDate(LocalDateTime.now().minusDays(2))
+                .paymentHoldExpiresAt(LocalDateTime.now().minusDays(2))
+                .build();
+        BookingDetail detail = BookingDetail.builder().id(40L).booking(pastBooking).status("CHECKED_IN").build();
+        Invoice invoice = Invoice.builder().id(20L).booking(pastBooking).build();
+
+        when(bookingRepository.findByIdForPaymentUpdate(10L)).thenReturn(Optional.of(pastBooking));
+        when(bookingDetailRepository.findById(40L)).thenReturn(Optional.of(detail));
+        when(invoiceRepository.findByBookingIdForAdmin(10L)).thenReturn(Optional.of(invoice));
+        when(paymentRepository.findFirstByInvoiceIdAndBookingDetailIdAndPaymentMethodAndPaymentPurposeAndStatusOrderByIdDesc(
+                20L, 40L, "SEPAY", "CHECKOUT", "PENDING"
+        )).thenReturn(Optional.empty());
+        when(paymentRepository.save(any(Payment.class))).thenAnswer(invocation -> {
+            Payment payment = invocation.getArgument(0);
+            if (payment.getId() == null) {
+                payment.setId(32L);
+            }
+            return payment;
+        });
+
+        var response = service.createCheckoutPayment(10L, 40L, BigDecimal.valueOf(50_000));
+
+        assertNotNull(response);
+        assertTrue(response.remainingSeconds() > 200, "Checkout payment must have a fresh validity timer");
+        assertTrue(response.holdExpiresAt().isAfter(LocalDateTime.now()));
     }
 
     @Test

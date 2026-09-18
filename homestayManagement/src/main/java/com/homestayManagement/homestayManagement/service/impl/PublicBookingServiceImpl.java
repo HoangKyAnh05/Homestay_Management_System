@@ -28,6 +28,12 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -392,7 +398,37 @@ public class PublicBookingServiceImpl implements PublicBookingService {
         BigDecimal depositAmount = hourlyPrepaymentRequired
                 ? roomCharge
                 : depositPolicy != null ? calculateDepositAmount(depositPolicy, totalAmount) : totalAmount;
-        savePrimaryBookingGuest(booking, firstDetail, customer, request.identityDocumentNumber());
+
+        for (int i = 0; i < savedDetails.size(); i++) {
+            BookingDetail detail = savedDetails.get(i);
+            PublicBookingRoomRequest roomReq = (i < roomLines.size()) ? roomLines.get(i).request() : null;
+            String guestName = (roomReq != null && roomReq.guestName() != null && !roomReq.guestName().isBlank())
+                    ? roomReq.guestName().trim()
+                    : customer.getFullName();
+            String guestEmail = (roomReq != null && roomReq.guestEmail() != null && !roomReq.guestEmail().isBlank())
+                    ? roomReq.guestEmail().trim().toLowerCase()
+                    : (i == 0 ? (customer.getEmail() != null ? customer.getEmail().trim().toLowerCase() : null) : null);
+            String guestPhone = (roomReq != null && roomReq.guestPhone() != null && !roomReq.guestPhone().isBlank())
+                    ? roomReq.guestPhone().trim()
+                    : (i == 0 ? customer.getPhone() : null);
+            String cccd = (i == 0) ? blankToNull(request.identityDocumentNumber()) : null;
+
+            bookingGuestRepository.save(BookingGuest.builder()
+                    .booking(booking)
+                    .bookingDetail(detail)
+                    .fullName(guestName != null ? guestName : "Khách lưu trú")
+                    .identityDocumentType("CCCD")
+                    .identityDocumentNumber(cccd)
+                    .email(guestEmail)
+                    .phone(guestPhone)
+                    .dateOfBirth(i == 0 ? customer.getDateOfBirth() : null)
+                    .address(i == 0 ? customer.getAddress() : null)
+                    .nationality("VIETNAM")
+                    .primaryGuest(true)
+                    .note(i == 0 ? "Người đại diện booking online" : "Khách lưu trú phòng " + (i + 1))
+                    .build());
+        }
+
         int earnedMemberPoints = memberBooking ? calculateEarnedMemberPoints(totalAmount) : 0;
         if (memberBooking) {
             addMemberPoints(customer, earnedMemberPoints);
@@ -485,28 +521,43 @@ public class PublicBookingServiceImpl implements PublicBookingService {
             boolean requiresDeposit,
             BigDecimal depositAmount
     ) {
-        if (memberBooking || requiresDeposit || customer.getEmail() == null || customer.getEmail().isBlank()) {
+        if (memberBooking || requiresDeposit) {
             return;
         }
-        eventPublisher.publishEvent(new PublicBookingConfirmationEmailEvent(
-                customer.getEmail(),
-                customer.getFullName(),
-                booking.getBookingCode(),
-                savedDetails.stream().map(BookingDetail::getCheckInTarget).min(LocalDateTime::compareTo).orElse(null),
-                savedDetails.stream().map(BookingDetail::getCheckOutTarget).max(LocalDateTime::compareTo).orElse(null),
-                roomCharge,
-                serviceCharge,
-                totalAmount,
-                requiresDeposit,
-                depositAmount,
-                false,
-                savedDetails.stream().map(detail -> new PublicBookingConfirmationEmailEvent.RoomLine(
-                        roomTypeName(detail),
-                        detail.getNumberOfAdults(),
-                        detail.getNumberOfChildren(),
-                        finalRoomAmount(detail)
-                )).toList()
-        ));
+        Set<String> recipientEmails = new LinkedHashSet<>();
+        if (customer != null && customer.getEmail() != null && !customer.getEmail().isBlank()) {
+            recipientEmails.add(customer.getEmail().trim().toLowerCase());
+        }
+        List<Long> detailIds = savedDetails.stream().map(BookingDetail::getId).filter(Objects::nonNull).toList();
+        if (!detailIds.isEmpty()) {
+            List<BookingGuest> guests = bookingGuestRepository.findByBookingDetailIds(detailIds);
+            for (BookingGuest guest : guests) {
+                if (guest.getEmail() != null && !guest.getEmail().isBlank()) {
+                    recipientEmails.add(guest.getEmail().trim().toLowerCase());
+                }
+            }
+        }
+        for (String email : recipientEmails) {
+            eventPublisher.publishEvent(new PublicBookingConfirmationEmailEvent(
+                    email,
+                    customer != null ? customer.getFullName() : "Quý khách",
+                    booking.getBookingCode(),
+                    savedDetails.stream().map(BookingDetail::getCheckInTarget).min(LocalDateTime::compareTo).orElse(null),
+                    savedDetails.stream().map(BookingDetail::getCheckOutTarget).max(LocalDateTime::compareTo).orElse(null),
+                    roomCharge,
+                    serviceCharge,
+                    totalAmount,
+                    requiresDeposit,
+                    depositAmount,
+                    false,
+                    savedDetails.stream().map(detail -> new PublicBookingConfirmationEmailEvent.RoomLine(
+                            roomTypeName(detail),
+                            detail.getNumberOfAdults(),
+                            detail.getNumberOfChildren(),
+                            finalRoomAmount(detail)
+                    )).toList()
+            ));
+        }
     }
 
     private String roomTypeName(BookingDetail detail) {

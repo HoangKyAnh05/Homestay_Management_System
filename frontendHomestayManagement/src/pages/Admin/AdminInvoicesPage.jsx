@@ -59,7 +59,7 @@ function hasInvoiceVoucher(invoice) {
   return Boolean(invoice?.voucherCode) || Number(invoice?.roomDiscountAmount || 0) > 0
 }
 
-function InvoiceDetailModal({ invoice, onClose, onExportExcel, exporting }) {
+function InvoiceDetailModal({ invoice, onClose, onExportExcel, exporting, onViewHtml }) {
   return (
     <div className="ain-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="ain-modal">
@@ -69,6 +69,14 @@ function InvoiceDetailModal({ invoice, onClose, onExportExcel, exporting }) {
             <p>Booking {bookingDisplay(invoice)} · {invoice.customerName}</p>
           </div>
           <div className="ain-modal-actions">
+            <button
+              type="button"
+              className="ain-modal-excel-btn"
+              style={{ background: '#0284c7', borderColor: '#0284c7', color: '#fff' }}
+              onClick={() => onViewHtml && onViewHtml(invoice.id)}
+            >
+              📄 Xem HĐ Điện tử
+            </button>
             <button
               type="button"
               className="ain-modal-excel-btn"
@@ -268,6 +276,29 @@ function AdminInvoicesPage() {
       setError(err.message || 'Lỗi khi xuất file Excel')
     } finally {
       setExporting(false)
+    }
+  }
+
+  const handleViewHtml = async (invoiceId) => {
+    try {
+      const res = await fetch(`${API}/${invoiceId}/html`, {
+        headers: authHeaders()
+      })
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}))
+        throw new Error(errData.message || 'Không thể tải bản thể hiện hóa đơn điện tử')
+      }
+      const htmlContent = await res.text()
+      const previewWindow = window.open('', '_blank')
+      if (previewWindow) {
+        previewWindow.document.open()
+        previewWindow.document.write(htmlContent)
+        previewWindow.document.close()
+      } else {
+        alert('Trình duyệt đã chặn cửa sổ bật lên (popup). Vui lòng cho phép mở popup để xem hóa đơn.')
+      }
+    } catch (err) {
+      alert(err.message || 'Lỗi khi mở hóa đơn điện tử')
     }
   }
 
@@ -667,6 +698,7 @@ function AdminInvoicesPage() {
           onClose={() => setDetailInvoice(null)}
           onExportExcel={handleExportExcel}
           exporting={exporting}
+          onViewHtml={handleViewHtml}
         />
       )}
     </AdminLayout>

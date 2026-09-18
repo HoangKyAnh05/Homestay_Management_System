@@ -3,6 +3,7 @@ import { getStoredToken, getStoredUser } from '../../services/authService'
 import { navigate } from './AdminLayout'
 import AdminLayout from './AdminLayout'
 import DailyClosingModal from '../../components/DailyClosingReport/DailyClosingModal'
+import { formatExtensionTime, formatExtensionTitle } from '../../utils/stayOverdue'
 import './ReceptionistOverviewPage.css'
 
 const API_BASE = (import.meta.env.VITE_API_URL || '') + '/api/admin/bookings'
@@ -229,11 +230,15 @@ function ReceptionistOverviewPage() {
                       <td>{formatDateTime((booking.details || [])[0]?.checkInTarget)}</td>
                       <td>
                         {formatDateTime((booking.details || [])[0]?.checkOutTarget)}
-                        {(booking.details || []).reduce((sum, d) => sum + (Number(d.extensionHours) || 0), 0) > 0 && (
-                          <span style={{ display: 'inline-block', marginLeft: '6px', padding: '2px 6px', borderRadius: '4px', background: '#e0f2fe', color: '#0369a1', fontSize: '11px', fontWeight: 600 }} title={`Khách thuê thêm ${(booking.details || []).reduce((sum, d) => sum + (Number(d.extensionHours) || 0), 0)} giờ`}>
-                            +{(booking.details || []).reduce((sum, d) => sum + (Number(d.extensionHours) || 0), 0)}h
-                          </span>
-                        )}
+                        {(() => {
+                          const totalExt = (booking.details || []).reduce((sum, d) => sum + (Number(d.extensionHours) || 0), 0)
+                          if (totalExt <= 0) return null
+                          return (
+                            <span style={{ display: 'inline-block', marginLeft: '6px', padding: '2px 6px', borderRadius: '4px', background: '#e0f2fe', color: '#0369a1', fontSize: '11px', fontWeight: 600 }} title={formatExtensionTitle(totalExt)}>
+                              {formatExtensionTime(totalExt)}
+                            </span>
+                          )
+                        })()}
                       </td>
                       <td><strong>{formatMoney(booking.totalAmount)}</strong></td>
                       <td><span className={statusClass(booking.bookingStatus)}>{statusLabel(booking.bookingStatus)}</span></td>

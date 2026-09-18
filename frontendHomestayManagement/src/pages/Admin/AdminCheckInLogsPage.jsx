@@ -7,7 +7,7 @@ import SePayQrPayment from '../../components/SePayQrPayment/SePayQrPayment'
 import AdminLayout from './AdminLayout'
 import AdminChangeRoomModal from '../../components/AdminChangeRoom/AdminChangeRoomModal'
 import DateDropdownPicker from '../../components/Common/DateDropdownPicker'
-import { calculateStayOverdueInfo } from '../../utils/stayOverdue'
+import { calculateStayOverdueInfo, formatExtensionTime, formatExtensionTitle } from '../../utils/stayOverdue'
 import './AdminCheckInLogsPage.css'
 
 const API_BASE = (import.meta.env.VITE_API_URL || '') + '/api/admin/bookings'
@@ -81,11 +81,13 @@ function getYearRange(refDate = new Date()) {
 }
 
 function defaultFromDate() {
-  return getWeekRange().from
+  const pastWeek = new Date()
+  pastWeek.setDate(pastWeek.getDate() - 7)
+  return toDateInputValue(pastWeek)
 }
 
 function defaultToDate() {
-  return getWeekRange().to
+  return ''
 }
 
 function formatDate(value) {
@@ -227,8 +229,8 @@ function BookingListItem({ booking, active, onSelect }) {
         <strong>Booking {bookingDisplay(booking)}</strong>
         <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
           {totalExtHours > 0 && (
-            <span className="acl-booking-extend-pill" title={`Khách đã thuê thêm ${totalExtHours} giờ`}>
-              +{totalExtHours}h
+            <span className="acl-booking-extend-pill" title={formatExtensionTitle(totalExtHours)}>
+              {formatExtensionTime(totalExtHours)}
             </span>
           )}
           <span className={`acl-pill acl-pill--${String(booking.bookingStatus || '').toLowerCase()}`}>
@@ -609,7 +611,7 @@ function StayDetailModal({ detail, stage, onClose }) {
                 )}
                 {Number(detailData.extensionAmount || 0) > 0 && (
                   <div className="acl-billing-row">
-                    <span>Phí thuê thêm giờ (+{detailData.extensionHours}h):</span>
+                    <span>Phí thuê thêm ({formatExtensionTime(detailData.extensionHours)}):</span>
                     <strong>+{formatMoney(detailData.extensionAmount)}</strong>
                   </div>
                 )}
@@ -2375,9 +2377,10 @@ function AdminCheckInLogsPage() {
       setFromDate(range.from)
       setToDate(range.to)
     } else if (nextPeriod === 'week') {
-      const range = getWeekRange()
-      setFromDate(range.from)
-      setToDate(range.to)
+      const pastWeek = new Date()
+      pastWeek.setDate(pastWeek.getDate() - 7)
+      setFromDate(toDateInputValue(pastWeek))
+      setToDate('')
     } else if (nextPeriod === 'month') {
       const range = getMonthRange()
       setFromDate(range.from)
@@ -2415,9 +2418,11 @@ function AdminCheckInLogsPage() {
     if (!silent) setLoading(true)
     setError('')
     try {
-      const params = new URLSearchParams({ fromDate, toDate })
+      const params = new URLSearchParams()
+      if (fromDate) params.append('fromDate', fromDate)
+      if (toDate) params.append('toDate', toDate)
       const [response, housekeepingResponse] = await Promise.all([
-        fetch(`${API_BASE}/check-in-logs?${params}`, { headers: authHeaders() }),
+        fetch(`${API_BASE}/check-in-logs?${params.toString()}`, { headers: authHeaders() }),
         fetch((import.meta.env.VITE_API_URL || '') + '/api/housekeeping/tasks?status=ALL', { headers: authHeaders() }),
       ])
       const [data, housekeepingData] = await Promise.all([

@@ -40,6 +40,14 @@ public class AdminInvoiceController {
         return adminInvoiceService.getInvoice(id);
     }
 
+    @GetMapping(value = "/{id}/html", produces = MediaType.TEXT_HTML_VALUE)
+    public ResponseEntity<String> getInvoiceHtml(@PathVariable Long id) {
+        String html = adminInvoiceService.getInvoiceHtml(id);
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType("text/html; charset=UTF-8"))
+                .body(html);
+    }
+
     @GetMapping("/export-excel")
     public ResponseEntity<byte[]> exportExcel(
             @RequestParam(value = "fromDate", required = false)

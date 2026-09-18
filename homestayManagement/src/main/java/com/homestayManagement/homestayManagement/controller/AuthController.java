@@ -78,6 +78,11 @@ public class AuthController {
         return stayAccessService.activate(request);
     }
 
+    @PostMapping("/stay-quick-login")
+    public AuthResponse stayQuickLogin(@Valid @RequestBody com.homestayManagement.homestayManagement.dto.request.StayQuickLoginRequest request) {
+        return stayAccessService.quickLogin(request.token());
+    }
+
     @PostMapping("/logout")
     public ResponseEntity<Map<String, String>> logout() {
         return ResponseEntity.ok(Map.of("message", "Đăng xuất thành công"));

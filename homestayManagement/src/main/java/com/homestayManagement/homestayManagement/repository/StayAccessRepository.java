@@ -12,6 +12,11 @@ public interface StayAccessRepository extends JpaRepository<StayAccess, Long> {
 
     Optional<StayAccess> findByBookingDetailId(Long bookingDetailId);
 
+    List<StayAccess> findAllByBookingDetailId(Long bookingDetailId);
+
+    @Query("select sa from StayAccess sa where sa.bookingDetail.id = :bookingDetailId and lower(sa.account.email) = lower(:email)")
+    Optional<StayAccess> findByBookingDetailIdAndAccountEmail(@Param("bookingDetailId") Long bookingDetailId, @Param("email") String email);
+
     @Query("""
             select sa from StayAccess sa
             join fetch sa.account a

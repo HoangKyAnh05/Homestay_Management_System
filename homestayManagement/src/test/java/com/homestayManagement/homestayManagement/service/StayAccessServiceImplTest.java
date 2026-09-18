@@ -70,10 +70,11 @@ class StayAccessServiceImplTest {
         Customer customer = Customer.builder()
                 .id(2L).account(data.account()).fullName("Khách cũ").build();
 
-        when(stayAccessRepository.findByBookingDetailId(40L)).thenReturn(Optional.empty());
+        when(stayAccessRepository.findByBookingDetailIdAndAccountEmail(any(), any())).thenReturn(Optional.empty());
         when(accountRepository.findByEmailIgnoreCase("guest@example.com"))
                 .thenReturn(Optional.of(data.account()));
         when(customerRepository.findByAccountId(1L)).thenReturn(Optional.of(customer));
+        when(jwtService.generateToken(any(Account.class))).thenReturn("mock-quick-token");
         when(stayAccessRepository.save(any())).thenAnswer(invocation -> {
             StayAccess access = invocation.getArgument(0);
             access.setId(80L);
@@ -98,9 +99,9 @@ class StayAccessServiceImplTest {
     }
 
     @Test
-    void grantAccessCreatesInactiveCustomerAndActivationLinkForNewEmail() {
+    void grantAccessCreatesActiveCustomerWithTempPasswordForNewEmail() {
         StayData data = stayData();
-        when(stayAccessRepository.findByBookingDetailId(40L)).thenReturn(Optional.empty());
+        when(stayAccessRepository.findByBookingDetailIdAndAccountEmail(any(), any())).thenReturn(Optional.empty());
         when(accountRepository.findByEmailIgnoreCase("new@example.com")).thenReturn(Optional.empty());
         when(roleRepository.findByName("ROLE_CUSTOMER")).thenReturn(Optional.of(data.role()));
         when(passwordEncoder.encode(anyString())).thenReturn("hashed-random-password");
@@ -116,21 +117,22 @@ class StayAccessServiceImplTest {
             access.setId(92L);
             return access;
         });
+        when(jwtService.generateToken(any(Account.class))).thenReturn("mock-quick-login-token");
 
         var result = service.grantAccess(
                 data.detail(), data.record(), "Khách mới", "new@example.com"
         );
 
-        assertTrue(result.activationRequired());
-        assertEquals(StayAccess.INVITED, result.status());
+        assertFalse(result.activationRequired());
+        assertEquals(StayAccess.ACTIVE, result.status());
         verify(customerRepository).save(any(Customer.class));
-        verify(activationTokenRepository).save(any(AccountActivationToken.class));
 
         ArgumentCaptor<StayAccessEmailEvent> eventCaptor =
                 ArgumentCaptor.forClass(StayAccessEmailEvent.class);
         verify(eventPublisher).publishEvent(eventCaptor.capture());
-        assertTrue(eventCaptor.getValue().activationRequired());
-        assertFalse(eventCaptor.getValue().activationToken().isBlank());
+        assertFalse(eventCaptor.getValue().activationRequired());
+        assertNotNull(eventCaptor.getValue().temporaryPassword());
+        assertEquals("mock-quick-login-token", eventCaptor.getValue().quickLoginToken());
     }
 
     @Test
@@ -231,7 +233,7 @@ class StayAccessServiceImplTest {
     private StayData stayData() {
         Role role = Role.builder().id(10L).name("ROLE_CUSTOMER").build();
         Account account = Account.builder()
-                .id(1L).email("guest@example.com").role(role).isActive(true).build();
+                .id(1L).email("guest@example.com").password("existing-pass").role(role).isActive(true).build();
         Customer bookingCustomer = Customer.builder()
                 .id(2L).account(account).fullName("Người đặt").build();
         Booking booking = Booking.builder()

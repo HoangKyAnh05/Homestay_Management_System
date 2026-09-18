@@ -8,8 +8,21 @@ public record StayAccessEmailEvent(
         String roomNumber,
         String bookingCode,
         LocalDateTime checkOutTarget,
-        String activationToken
+        String activationToken,
+        String temporaryPassword,
+        String quickLoginToken
 ) {
+    public StayAccessEmailEvent(
+            String email,
+            String representativeName,
+            String roomNumber,
+            String bookingCode,
+            LocalDateTime checkOutTarget,
+            String activationToken
+    ) {
+        this(email, representativeName, roomNumber, bookingCode, checkOutTarget, activationToken, null, null);
+    }
+
     public boolean activationRequired() {
         return activationToken != null && !activationToken.isBlank();
     }

@@ -30,7 +30,13 @@ function defaultFromDate() {
 }
 
 function defaultToDate() {
-  return toDateInputValue(new Date())
+  const date = new Date()
+  const currentDay = date.getDate()
+  date.setMonth(date.getMonth() + 1)
+  if (date.getDate() !== currentDay) {
+    date.setDate(0)
+  }
+  return toDateInputValue(date)
 }
 
 function formatMoney(value) {
@@ -885,7 +891,7 @@ function triggerFileDownload(blob, fileName) {
           <p>Phân tích doanh thu, công suất phòng, booking và hiệu quả khai thác phòng.</p>
         </div>
         <div className="dash-actions" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <div style={{ width: '160px' }}>
+          <div style={{ width: '175px', minWidth: '165px' }}>
             <DateDropdownPicker
               value={fromDate}
               onChange={(val) => setFromDate(val)}
@@ -893,7 +899,7 @@ function triggerFileDownload(blob, fileName) {
               className="date-dropdown-picker--compact"
             />
           </div>
-          <div style={{ width: '160px' }}>
+          <div style={{ width: '175px', minWidth: '165px' }}>
             <DateDropdownPicker
               value={toDate}
               onChange={(val) => setToDate(val)}

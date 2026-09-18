@@ -9,6 +9,7 @@ public record SocialAccountRequest(
         @NotBlank @Size(max = 30) String platform,
         @NotBlank @Size(max = 120) String accountName,
         @Size(max = 500) String pageUrl,
+        @Size(max = 1000) String avatarUrl,
         @Size(max = 160) String externalAccountId,
         String accessToken,
         String refreshToken,
