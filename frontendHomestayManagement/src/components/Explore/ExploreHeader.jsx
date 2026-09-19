@@ -26,8 +26,8 @@ export default function ExploreHeader() {
 
       <nav className="home-nav" aria-label="Điều hướng chính">
         <a href="/home">Trang chủ</a>
-        <a href="/landing" className="home-nav-landing-link" title="Khám phá không gian 3D Lá Đỏ Sanctuary">
-          🍁 Lá Đỏ 3D
+        <a href="/landing" className="home-nav-landing-link" title="Khám phá không gian 3D Lá Đỏ Tour & Săn Mây">
+          🍁 Lá Đỏ 3D Tour
         </a>
         <a href="/explore" className="home-nav-active">
           Khám phá xung quanh

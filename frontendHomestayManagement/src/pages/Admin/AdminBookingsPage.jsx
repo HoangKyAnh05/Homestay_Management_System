@@ -1001,21 +1001,6 @@ function BookingDetailModal({ detail, loading, error, actionLoading, actionError
                         <input required type="number" min={0} value={bookForm.numberOfChildren}
                           onChange={e => setBookForm(f => ({ ...f, numberOfChildren: e.target.value }))} />
                       </label>
-                      <label className="abk-edit-field abk-edit-field--wide">
-                        <span>Đổi gói thuê <small>(để trống = giữ nguyên giá cũ)</small></span>
-                        <select value={bookForm.pricePolicyId}
-                          onChange={e => setBookForm(f => ({ ...f, pricePolicyId: e.target.value }))}>
-                          <option value="">— Giữ nguyên gói hiện tại ({detail.rentType}) —</option>
-                          {pricePolicies.map(p => (
-                            <option key={p.id} value={p.id}>
-                              {p.policyName}{p.limitHours ? ` · ${p.limitHours}h` : ''}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                    </div>
-                    <div className="abk-edit-hint">
-                      ℹ️ Giá sẽ được tính lại theo gói thuê và ngày check-in mới nếu bạn đổi gói.
                     </div>
                     {bookError && <p className="abk-edit-error">{bookError}</p>}
                     <div className="abk-edit-actions">
@@ -1331,9 +1316,9 @@ function DirectBookingModal({ onClose, onCreated }) {
         const policies = Array.isArray(pp) ? pp : []
         setPricePolicies(policies)
         setPriceConfigs(Array.isArray(pc) ? pc : [])
-        // Tự động chọn gói đầu tiên
-        if (policies.length > 0) {
-          setForm(f => ({ ...f, pricePolicyId: String(policies[0].id) }))
+        const dailyPolicy = policies.find(p => p.rentType === 'DAILY' || (p.policyName && p.policyName.toLowerCase().includes('ngày'))) || policies[0]
+        if (dailyPolicy) {
+          setForm(f => ({ ...f, pricePolicyId: String(dailyPolicy.id) }))
         }
       })
       .catch(() => {}) // non-critical
@@ -1873,44 +1858,7 @@ function DirectBookingModal({ onClose, onCreated }) {
                 <label><span>Trả phòng dự kiến</span>
                   <input required type="datetime-local" value={form.checkOutTarget} onChange={e => updateForm('checkOutTarget', e.target.value)} />
                 </label>
-                {/* Loại thuê — lấy từ price_policies DB */}
-                <label className="abk-form-wide"><span>Gói thuê</span>
-                  <select
-                    required
-                    value={form.pricePolicyId}
-                    onChange={e => updateForm('pricePolicyId', e.target.value)}
-                  >
-                    <option value="">— Chọn gói thuê —</option>
-                    {pricePolicies.map(p => (
-                      <option key={p.id} value={p.id}>
-                        {p.policyName}
-                        {p.limitHours ? ` · ${p.limitHours}h` : ''}
-                        {p.standardCheckIn ? ` · Check-in ${p.standardCheckIn}` : ''}
-                        {p.standardCheckOut ? ` → ${p.standardCheckOut}` : ''}
-                      </option>
-                    ))}
-                  </select>
-                </label>
               </div>
-
-              {/* Preview gói đang chọn */}
-              {selectedPolicy && (
-                <div className="abk-policy-preview">
-                  <span className="abk-policy-preview-badge">
-                    {selectedPolicy.rentType}
-                    {selectedPolicy.limitHours ? ` · ${selectedPolicy.limitHours} giờ` : ''}
-                  </span>
-                  {selectedPolicy.standardCheckIn && (
-                    <span> Nhận phòng chuẩn: {selectedPolicy.standardCheckIn}</span>
-                  )}
-                  {selectedPolicy.standardCheckOut && (
-                    <span> Trả phòng chuẩn: {selectedPolicy.standardCheckOut}</span>
-                  )}
-                  <span className={`abk-day-type${isWeekend ? ' abk-day-type--weekend' : ''}`}>
-                    {isWeekend ? ' Cuối tuần' : ' Ngày thường'}
-                  </span>
-                </div>
-              )}
 
               {/* ── Tuỳ chọn phương thức thanh toán ── */}
               <h4>Phương thức thanh toán</h4>
@@ -1978,8 +1926,8 @@ function DirectBookingModal({ onClose, onCreated }) {
                   return (
                     <div className="abk-selected-room" key={room.roomId}>
                       <div className="abk-selected-room-info">
-                        <strong>Phòng {room.roomNumber}</strong>
-                        <span>{houseTypeName(room, 'Chưa phân loại')} · Tối đa {room.maxAdults || 0} người lớn, {room.maxChildren || 0} trẻ em</span>
+                        <strong>{houseTypeName(room, 'Chưa phân loại')}</strong>
+                        <span>Phòng {room.roomNumber} · Tối đa {room.maxAdults || 0} người lớn, {room.maxChildren || 0} trẻ em</span>
                         <span className="abk-selected-room-deposit">{formatDeposit(room)}</span>
                         {price != null && (
                           <span className="abk-selected-room-price">
@@ -1992,13 +1940,13 @@ function DirectBookingModal({ onClose, onCreated }) {
                       </div>
                       <label>
                         <span>Người lớn</span>
-                        <input type="number" min="1" max={room.maxAdults || undefined}
+                        <input type="number" min="1"
                           value={room.numberOfAdults}
                           onChange={e => updateSelectedRoom(room.roomId, 'numberOfAdults', e.target.value)} />
                       </label>
                       <label>
                         <span>Trẻ em</span>
-                        <input type="number" min="0" max={room.maxChildren || undefined}
+                        <input type="number" min="0"
                           value={room.numberOfChildren}
                           onChange={e => updateSelectedRoom(room.roomId, 'numberOfChildren', e.target.value)} />
                       </label>
@@ -2083,8 +2031,8 @@ function DirectBookingModal({ onClose, onCreated }) {
                         onClick={() => toggleRoom(room)}
                       >
                         <div className="abk-room-option-main">
-                          <strong>Phòng {room.roomNumber}</strong>
-                          <span>{houseTypeName(room, 'Chưa phân loại')}</span>
+                          <strong>{houseTypeName(room, 'Chưa phân loại')}</strong>
+                          <span className="abk-room-number-tag">Phòng {room.roomNumber}</span>
                           <span>Tối đa {room.maxAdults || 0} NL · {room.maxChildren || 0} TE</span>
                           {room.depositPolicyName && (
                             <span className="abk-room-deposit-hint">

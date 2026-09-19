@@ -1493,7 +1493,7 @@ function BookingHistoryPage() {
                         <div>
                           <span>Trạng thái xử lý:</span>
                           <strong className={detail.refundStatus === 'REFUNDED' ? 'refund-status--completed' : 'refund-status--pending'}>
-                            {detail.refundStatus === 'REFUNDED' ? '✓ Đã hoàn tiền thành công' : Number(detail.refundAmount || 0) > 0 ? ' Đang chờ Lễ tân chuyển khoản' : 'Không áp dụng hoàn tiền'}
+                            {detail.refundStatus === 'REFUNDED' ? '✓ Đã hoàn tiền thành công' : Number(detail.refundAmount || 0) > 0 ? ' Đang chờ chuyển khoản' : 'Không áp dụng hoàn tiền'}
                           </strong>
                         </div>
                       </div>
@@ -1505,7 +1505,7 @@ function BookingHistoryPage() {
                       )}
                       {Number(detail.refundAmount || 0) > 0 && detail.refundStatus !== 'REFUNDED' && (
                         <div className="history-cancellation-support-note">
-                           Lễ tân sẽ chủ động liên hệ với quý khách qua Zalo/SĐT để xác nhận và thực hiện chuyển khoản hoàn tiền theo đúng quy định.
+                          Hệ thống / Quản trị viên sẽ kiểm tra và thực hiện chuyển khoản hoàn tiền cho quý khách theo đúng quy định.
                         </div>
                       )}
                     </div>
@@ -1592,6 +1592,18 @@ function BookingHistoryPage() {
                         )
                       })}
                     </div>
+
+                    {['CONFIRMED', 'CHECKED_IN'].includes(String(detail.status || '').toUpperCase()) && (
+                      <div className="history-room-change-contact-notice">
+                        <span className="notice-icon">ℹ️</span>
+                        <div className="notice-content">
+                          <span>Nếu quý khách muốn đổi phòng hoặc báo sự cố, vui lòng liên hệ trực tiếp với <strong>Lễ tân</strong>:</span>
+                          <a href="tel:0941186699" className="notice-phone-link">
+                            📞 0941 186 699 (Lễ tân 24/7)
+                          </a>
+                        </div>
+                      </div>
+                    )}
                   </section>
 
                   <section className="history-detail-section">

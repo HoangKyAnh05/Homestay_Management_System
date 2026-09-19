@@ -76,8 +76,8 @@ export default function MiniMap({ height = '360px', showExpandBtn = true }) {
               <span class="minimap-place-name">${place.name} · ${formattedDistance}</span>
             </div>
           `,
-          iconSize: null,
-          iconAnchor: [0, 0],
+          iconSize: [140, 28],
+          iconAnchor: [70, 14],
         });
 
         const marker = L.marker([place.latitude, place.longitude], {

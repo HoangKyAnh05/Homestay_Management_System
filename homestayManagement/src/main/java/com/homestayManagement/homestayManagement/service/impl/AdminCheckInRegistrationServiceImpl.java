@@ -122,6 +122,22 @@ public class AdminCheckInRegistrationServiceImpl implements AdminCheckInRegistra
 
         Employee employee = getCurrentEmployee();
         LocalDateTime now = LocalDateTime.now();
+        int actualAdults = 0;
+        int actualChildren = 0;
+        java.time.LocalDate checkInDate = now.toLocalDate();
+        for (AdminCheckInGuestRequest g : request.guests()) {
+            if (g.dateOfBirth() != null && java.time.Period.between(g.dateOfBirth(), checkInDate).getYears() < 10) {
+                actualChildren++;
+            } else {
+                actualAdults++;
+            }
+        }
+        if (actualAdults == 0) {
+            actualAdults = 1;
+        }
+        detail.setNumberOfAdults(actualAdults);
+        detail.setNumberOfChildren(actualChildren);
+
         detail.setRoom(room);
         detail.setRoomAssignmentStatus("ASSIGNED");
         detail.setAssignedAt(now);
@@ -334,13 +350,15 @@ public class AdminCheckInRegistrationServiceImpl implements AdminCheckInRegistra
     }
 
     private void validateGuests(BookingDetail detail, List<AdminCheckInGuestRequest> guests) {
-        int expectedCount = valueOrZero(detail.getNumberOfAdults()) + valueOrZero(detail.getNumberOfChildren());
-        if (guests.size() != expectedCount) {
-            throw new IllegalArgumentException("Cần nhập đủ thông tin cho " + expectedCount + " người lưu trú");
+        if (guests == null || guests.isEmpty()) {
+            throw new IllegalArgumentException("Vui lòng nhập thông tin người lưu trú");
         }
         Set<String> identities = new HashSet<>();
         java.time.LocalDate today = java.time.LocalDate.now();
         for (AdminCheckInGuestRequest guest : guests) {
+            if (guest.fullName() == null || guest.fullName().trim().isBlank()) {
+                throw new IllegalArgumentException("Họ tên người lưu trú không được để trống");
+            }
             boolean isUnder10 = false;
             if (guest.dateOfBirth() != null) {
                 int age = java.time.Period.between(guest.dateOfBirth(), today).getYears();

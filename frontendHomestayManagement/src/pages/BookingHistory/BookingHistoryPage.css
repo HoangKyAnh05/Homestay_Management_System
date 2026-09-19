@@ -2008,33 +2008,53 @@
   cursor: not-allowed;
 }
 
-/* Customer Change Room Styles */
-.history-change-room-btn {
+/* Customer Change Room Notice */
+.history-room-change-contact-notice {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin-top: 14px;
+}
+
+.history-room-change-contact-notice .notice-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.history-room-change-contact-notice .notice-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  width: 100%;
+  font-size: 13.5px;
+  color: #475569;
+}
+
+.history-room-change-contact-notice .notice-phone-link {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 8px 14px;
-  background: #f0f9ff;
-  border: 1px solid #bae6fd;
-  color: #0284c7;
-  font-size: 13px;
-  font-weight: 700;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.history-change-room-btn:hover {
+  gap: 6px;
   background: #0284c7;
   color: #ffffff;
-  border-color: #0284c7;
-  transform: translateY(-1px);
+  font-weight: 700;
+  font-size: 13px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  text-decoration: none;
+  transition: all 0.2s;
+  box-shadow: 0 2px 6px rgba(2, 132, 199, 0.25);
 }
 
-.history-change-room-btn--compact {
-  padding: 5px 10px;
-  font-size: 12px;
-  border-radius: 6px;
+.history-room-change-contact-notice .notice-phone-link:hover {
+  background: #0369a1;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(2, 132, 199, 0.35);
 }
 
 .history-room-upgrade-badge {

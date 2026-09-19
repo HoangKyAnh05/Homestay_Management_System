@@ -204,6 +204,33 @@ class AdminCheckInRegistrationServiceImplTest {
     }
 
     @Test
+    void completeAllowsCheckingInSingleGuestWhenBookedForTwo() {
+        TestData data = testData();
+        Employee employee = Employee.builder().id(70L).fullName("Lễ tân").build();
+        List<AdminCheckInGuestRequest> guests = List.of(
+                new AdminCheckInGuestRequest("Người lớn duy nhất", "012345678901", java.time.LocalDate.now().minusYears(25), "booker@example.com", "0901234567", null, null, "VIETNAM")
+        );
+
+        when(bookingDetailRepository.findByIdForAdminDetail(40L)).thenReturn(Optional.of(data.detail()));
+        when(checkInRecordRepository.findByBookingDetailId(40L)).thenReturn(Optional.empty());
+        when(roomRepository.findByIdForCheckIn(101L)).thenReturn(Optional.of(data.room()));
+        when(bookingDetailRepository.findOverlappingSchedule(any(), any())).thenReturn(List.of(data.detail()));
+        when(employeeRepository.findByAccountEmail("staff@example.com")).thenReturn(Optional.of(employee));
+        when(stayAccessService.grantAccess(any(), any(), any(), any()))
+                .thenReturn(new StayAccessService.GrantResult(81L, "booker@example.com", "ACTIVE", false, true));
+
+        var response = service.complete(
+                40L,
+                new AdminCompleteCheckInRequest(101L, "booker@example.com", guests)
+        );
+
+        assertEquals("CHECKED_IN", data.detail().getStatus());
+        assertEquals(1, response.guestCount());
+        assertEquals(1, data.detail().getNumberOfAdults());
+        assertEquals(0, data.detail().getNumberOfChildren());
+    }
+
+    @Test
     void prepareThrowsWhenCheckOutTargetHasPassed() {
         TestData data = testData();
         data.detail().setCheckOutTarget(LocalDateTime.now().minusHours(1));

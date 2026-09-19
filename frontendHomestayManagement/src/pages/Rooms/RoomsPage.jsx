@@ -580,7 +580,7 @@ function PublicHeader() {
       <a className="home-logo" href="/home">Lá Đỏ Homestay</a>
       <nav className="home-nav" aria-label="Điều hướng chính">
         <a href="/home">Trang chủ</a>
-        <a href="/landing" className="home-nav-landing-link" title="Khám phá không gian 3D Lá Đỏ Sanctuary">🍁 Lá Đỏ 3D</a>
+        <a href="/landing" className="home-nav-landing-link" title="Khám phá không gian 3D Lá Đỏ Tour & Săn Mây">🍁 Lá Đỏ 3D Tour</a>
         <a href="/explore" title="Khám phá xung quanh Lá Đỏ Homestay & Sa Pa">Khám phá xung quanh</a>
         <a href="/rooms" className="home-nav-active">Phòng</a>
         <a href="/stay" title="Dịch vụ dành cho khách đang lưu trú">Dịch vụ lưu trú</a>
@@ -635,6 +635,7 @@ function PublicHeader() {
 
 function RoomCard({ room, selected, onToggle, criteria }) {
   const typeOnly = isRoomTypeSearchResult(room)
+  const hasSearchedDates = Boolean(criteria?.checkInDate && criteria?.checkOutDate && !criteria?.isDefaultRoomTypeList)
   const title = houseTypeName(room)
   const imageUrl = room.primaryImageUrl || room.imageUrls?.[0]
   const targetDate = criteria?.checkInDate
@@ -753,11 +754,13 @@ function RoomCard({ room, selected, onToggle, criteria }) {
 
           <span className={`public-room-badge${!isAvailable ? ' is-maintenance' : ''}`}>
             {isMaintenance
-              ? '️ Tạm bảo trì'
+              ? '⚠️ Tạm bảo trì'
               : isBooked || (typeOnly && Number(room.availableRooms || 0) <= 0)
-              ? (typeOnly && Number(room.availableRooms || 0) <= 0 ? ' Còn 0 phòng' : ' Đã kín lịch')
-              : typeOnly
-              ? `Còn ${room.availableRooms || 0} phòng`
+              ? (typeOnly && Number(room.availableRooms || 0) <= 0 ? '❌ Hết phòng trống' : '🔒 Đã kín lịch')
+              : hasSearchedDates
+              ? `Còn ${room.availableRooms || 0} phòng trống`
+              : (typeOnly && room.availableRooms != null)
+              ? `Tổng ${room.availableRooms} phòng`
               : 'Sẵn sàng đặt'}
           </span>
           <button
@@ -1932,124 +1935,6 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
             />
           </section>
 
-          <section className="multi-room-config-section">
-            <div className="multi-room-config-heading">
-              <div>
-                <h3>Cấu hình từng phòng</h3>
-                <p>Chọn số khách và dịch vụ riêng cho từng phòng trong booking.</p>
-              </div>
-            </div>
-            <div className="multi-room-units">
-              {roomUnits.map((unit) => {
-                const unitServiceTotal = unit.services.reduce(
-                  (sum, service) => sum + Number(service.price || 0) * Number(service.quantity || 0),
-                  0,
-                )
-                return (
-                  <article className="multi-room-unit" key={unit.key}>
-                    <div className="multi-room-unit-head">
-                      <div>
-                        <span>Phòng {unit.unitIndex}</span>
-                        <strong>{houseTypeName(unit.room)}</strong>
-                      </div>
-                      <b>{formatPrice(roomPriceItems.find((item) => roomKey(item.room) === unit.typeKey)?.price || roomPrice(unit.room))}</b>
-                    </div>
-
-                    <div className="multi-room-unit-guests">
-                      <label>
-                        <span>Người lớn</span>
-                        <input
-                          type="number"
-                          min="1"
-                          max={unit.room.maxAdults || undefined}
-                          value={unit.numberOfAdults}
-                          onChange={(event) => updateRoomGuest(unit.key, 'numberOfAdults', event.target.value)}
-                        />
-                      </label>
-                      <label>
-                        <span>Trẻ em</span>
-                        <input
-                          type="number"
-                          min="0"
-                          max={unit.room.maxChildren || undefined}
-                          value={unit.numberOfChildren}
-                          onChange={(event) => updateRoomGuest(unit.key, 'numberOfChildren', event.target.value)}
-                        />
-                      </label>
-                    </div>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '8px', marginTop: '8px', padding: '8px 10px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                      <label style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                        <span style={{ fontSize: '11.5px', color: '#64748b', fontWeight: 600 }}>Họ tên người ở phòng {unit.unitIndex}</span>
-                        <input
-                          type="text"
-                          placeholder={unit.unitIndex === 1 ? (form.fullName || 'Họ tên người đặt') : `Khách ở phòng ${unit.unitIndex}`}
-                          value={unit.guestName || ''}
-                          onChange={(e) => updateRoomGuest(unit.key, 'guestName', e.target.value)}
-                          style={{ padding: '6px 9px', fontSize: '12.5px', border: '1px solid #cbd5e1', borderRadius: '6px', background: '#ffffff' }}
-                        />
-                      </label>
-                      <label style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                        <span style={{ fontSize: '11.5px', color: '#64748b', fontWeight: 600 }}>Email nhận thông tin phòng {unit.unitIndex}</span>
-                        <input
-                          type="email"
-                          placeholder={unit.unitIndex === 1 ? (form.email || 'Email người đặt') : `Email người ở phòng ${unit.unitIndex}`}
-                          value={unit.guestEmail || ''}
-                          onChange={(e) => updateRoomGuest(unit.key, 'guestEmail', e.target.value)}
-                          style={{ padding: '6px 9px', fontSize: '12.5px', border: '1px solid #cbd5e1', borderRadius: '6px', background: '#ffffff' }}
-                        />
-                      </label>
-                    </div>
-
-                    <div className="multi-room-unit-services">
-                      <div className="multi-room-unit-service-head">
-                        <div>
-                          <strong>Dịch vụ của phòng này</strong>
-                          <span>{unit.services.length ? `${unit.services.length} dịch vụ đã chọn` : 'Chưa chọn dịch vụ'}</span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setServiceForm({ optionKey: '', quantity: 1 })
-                            setServiceDialogRoomKey(unit.key)
-                          }}
-                        >
-                          + Thêm dịch vụ
-                        </button>
-                      </div>
-
-                      {unit.services.length > 0 && (
-                        <div className="multi-room-service-list">
-                          {unit.services.map((service) => (
-                            <div key={`${service.type}-${service.serviceId}`}>
-                              <span>
-                                <b>{service.name}</b>
-                                <small>{formatPrice(service.price)} × {service.quantity}</small>
-                              </span>
-                              <strong>{formatPrice(Number(service.price) * service.quantity)}</strong>
-                              <button
-                                type="button"
-                                aria-label={`Xóa ${service.name} khỏi phòng ${unit.unitIndex}`}
-                                onClick={() => removeRoomService(unit.key, service)}
-                              >
-                                ×
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      <div className="multi-room-unit-subtotal">
-                        <span>Dịch vụ phòng</span>
-                        <strong>{formatPrice(unitServiceTotal)}</strong>
-                      </div>
-                    </div>
-                  </article>
-                )
-              })}
-            </div>
-          </section>
-
           {serviceDialogRoom && (
             <div
               className="public-service-dialog-overlay"
@@ -2219,7 +2104,15 @@ function BookingCart({ selectedRooms, requestedRooms, onRemove, onOpenBooking, c
   )
 }
 function RoomsPage() {
-  const searchCriteria = useMemo(() => parseSearchCriteria(), [])
+  const initialCriteria = useMemo(() => parseSearchCriteria(), [])
+  const [searchCriteria, setSearchCriteria] = useState(initialCriteria)
+  const [sidebarDates, setSidebarDates] = useState({
+    checkInDate: initialCriteria?.checkInDate || '',
+    checkOutDate: initialCriteria?.checkOutDate || '',
+    rooms: Number(initialCriteria?.rooms || 1),
+    adults: Number(initialCriteria?.adults || 2),
+    children: Number(initialCriteria?.children || 0),
+  })
   const [rooms, setRooms] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -2229,6 +2122,47 @@ function RoomsPage() {
   const [createdBooking, setCreatedBooking] = useState(null)
   const [luckyReward, setLuckyReward] = useState(null)
   const [unavailableNotice, setUnavailableNotice] = useState('')
+
+  const handleSidebarSearch = () => {
+    if (!sidebarDates.checkInDate || !sidebarDates.checkOutDate) {
+      alert('Vui lòng chọn cả ngày nhận phòng và ngày trả phòng.')
+      return
+    }
+    if (sidebarDates.checkOutDate <= sidebarDates.checkInDate) {
+      alert('Ngày trả phòng phải sau ngày nhận phòng.')
+      return
+    }
+    const nextCriteria = {
+      checkInDate: sidebarDates.checkInDate,
+      checkOutDate: sidebarDates.checkOutDate,
+      rooms: sidebarDates.rooms || 1,
+      adults: sidebarDates.adults || 1,
+      children: sidebarDates.children || 0,
+      isDefaultRoomTypeList: false,
+    }
+    setSearchCriteria(nextCriteria)
+    const newParams = new URLSearchParams({
+      checkInDate: nextCriteria.checkInDate,
+      checkOutDate: nextCriteria.checkOutDate,
+      rooms: String(nextCriteria.rooms),
+      adults: String(nextCriteria.adults),
+      children: String(nextCriteria.children),
+    })
+    window.history.replaceState(null, '', `${window.location.pathname}?${newParams.toString()}`)
+  }
+
+  const handleResetSidebarSearch = () => {
+    const defaultCrit = defaultRoomTypeCriteria()
+    setSidebarDates({
+      checkInDate: '',
+      checkOutDate: '',
+      rooms: 1,
+      adults: 2,
+      children: 0,
+    })
+    setSearchCriteria(defaultCrit)
+    window.history.replaceState(null, '', window.location.pathname)
+  }
 
   useEffect(() => {
     const hasSearchDates = Boolean(searchCriteria?.checkInDate && searchCriteria?.checkOutDate)
@@ -2349,6 +2283,110 @@ function RoomsPage() {
             />
 
             <div className="rooms-toolbar">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <span style={{ fontSize: '13px', fontWeight: 800, color: '#1e3a2b', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span>📅</span>
+                  <span>Tìm phòng theo ngày</span>
+                </span>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <span style={{ fontSize: '11.5px', color: '#4b5563', fontWeight: 600 }}>Ngày nhận phòng:</span>
+                  <DateDropdownPicker
+                    value={sidebarDates.checkInDate}
+                    onChange={(val) => {
+                      setSidebarDates((prev) => {
+                        const next = { ...prev, checkInDate: val }
+                        if (val && (!prev.checkOutDate || prev.checkOutDate <= val)) {
+                          const d = new Date(val)
+                          d.setDate(d.getDate() + 1)
+                          next.checkOutDate = d.toISOString().slice(0, 10)
+                        }
+                        return next
+                      })
+                    }}
+                    placeholder="Chọn ngày nhận..."
+                    minDate={new Date().toISOString().slice(0, 10)}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <span style={{ fontSize: '11.5px', color: '#4b5563', fontWeight: 600 }}>Ngày trả phòng:</span>
+                  <DateDropdownPicker
+                    value={sidebarDates.checkOutDate}
+                    onChange={(val) => setSidebarDates((prev) => ({ ...prev, checkOutDate: val }))}
+                    placeholder="Chọn ngày trả..."
+                    minDate={sidebarDates.checkInDate || new Date().toISOString().slice(0, 10)}
+                  />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: 2 }}>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: 4, minHeight: 'auto', padding: '6px 10px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8 }}>
+                    <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 600 }}>Số phòng</span>
+                    <input
+                      type="number"
+                      min="1"
+                      max="10"
+                      value={sidebarDates.rooms}
+                      onChange={(e) => setSidebarDates((prev) => ({ ...prev, rooms: Math.max(1, Number(e.target.value) || 1) }))}
+                      style={{ fontSize: '13px', fontWeight: 700, padding: 0 }}
+                    />
+                  </label>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: 4, minHeight: 'auto', padding: '6px 10px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8 }}>
+                    <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 600 }}>Người lớn</span>
+                    <input
+                      type="number"
+                      min="1"
+                      value={sidebarDates.adults}
+                      onChange={(e) => setSidebarDates((prev) => ({ ...prev, adults: Math.max(1, Number(e.target.value) || 1) }))}
+                      style={{ fontSize: '13px', fontWeight: 700, padding: 0 }}
+                    />
+                  </label>
+                </div>
+
+                <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+                  <button
+                    type="button"
+                    onClick={handleSidebarSearch}
+                    style={{
+                      flex: 1,
+                      padding: '8px 12px',
+                      background: '#1e3a2b',
+                      color: '#ffffff',
+                      border: 0,
+                      borderRadius: 10,
+                      fontWeight: 700,
+                      fontSize: '13px',
+                      cursor: 'pointer',
+                      boxShadow: '0 2px 6px rgba(30, 58, 43, 0.25)',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    🔍 Tìm kiếm
+                  </button>
+                  {Boolean(searchCriteria?.checkInDate && searchCriteria?.checkOutDate) && (
+                    <button
+                      type="button"
+                      onClick={handleResetSidebarSearch}
+                      title="Xem tất cả loại phòng"
+                      style={{
+                        padding: '8px 12px',
+                        background: '#f1f5f9',
+                        color: '#475569',
+                        border: '1px solid #cbd5e1',
+                        borderRadius: 10,
+                        fontWeight: 600,
+                        fontSize: '12px',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Bỏ lọc
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <hr style={{ border: 0, borderTop: '1px solid #e5e7eb', margin: '4px 0' }} />
+
               <label className="rooms-price-filter">
                 <span>Giá tối đa: {formatPrice(maxPrice)}</span>
                 <input

@@ -1795,6 +1795,38 @@ function CheckInModal({ bookingDetailId, onClose, onCompleted }) {
     )))
   }
 
+  const addGuest = () => {
+    setGuests(current => [
+      ...current,
+      {
+        fullName: '',
+        identityDocumentNumber: '',
+        dateOfBirth: '',
+        email: '',
+        phone: '',
+        address: '',
+        gender: '',
+        nationality: 'VIETNAM',
+      },
+    ])
+  }
+
+  const removeGuest = (indexToRemove) => {
+    if (indexToRemove === 0) return // Giữ khách đại diện
+    setGuests(current => current.filter((_, idx) => idx !== indexToRemove))
+    setIdentityImages(current => {
+      const next = {}
+      let newIdx = 0
+      for (let i = 0; i < guests.length; i++) {
+        if (i !== indexToRemove) {
+          if (current[i]) next[newIdx] = current[i]
+          newIdx++
+        }
+      }
+      return next
+    })
+  }
+
   const selectIdentityImage = (index, side, file) => {
     if (!file) return
     const currentImages = identityImages[index] || {}
@@ -2174,7 +2206,37 @@ function CheckInModal({ bookingDetailId, onClose, onCompleted }) {
 
             <section className="acl-checkin-section">
               <div className="acl-checkin-section-head">
-                <div><span>02</span><div><h3>Thông tin người lưu trú</h3><p>{preparation.preRegistered ? `Đã đăng ký ${guests.length} người lưu trú.` : `Nhập đủ ${guests.length} người lưu trú.`}</p></div></div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', flexWrap: 'wrap', gap: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <span>02</span>
+                    <div>
+                      <h3>Thông tin người lưu trú</h3>
+                      <p>{preparation.preRegistered ? `Đã đăng ký ${guests.length} người lưu trú.` : `Đang thiết lập ${guests.length} người lưu trú.`}</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={addGuest}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      padding: '7px 14px',
+                      background: '#ecfdf5',
+                      border: '1.5px solid #10b981',
+                      borderRadius: 8,
+                      color: '#047857',
+                      fontSize: '13px',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    <span>+</span>
+                    <span>Thêm người lưu trú</span>
+                  </button>
+                </div>
               </div>
               <div className="acl-guest-forms">
                 {guests.map((guest, index) => {
@@ -2196,7 +2258,30 @@ function CheckInModal({ bookingDetailId, onClose, onCompleted }) {
                               )}
                             </>
                           ) : (
-                            <span>{isUnder10 ? 'Trẻ em (<10 tuổi)' : isAdult ? 'Người lớn' : 'Trẻ em'}</span>
+                            <>
+                              <span>{isUnder10 ? 'Trẻ em (<10 tuổi)' : isAdult ? 'Người lớn' : 'Trẻ em'}</span>
+                              <button
+                                type="button"
+                                onClick={() => removeGuest(index)}
+                                title={`Xóa người lưu trú ${index + 1}`}
+                                style={{
+                                  background: '#fee2e2',
+                                  border: '1px solid #f87171',
+                                  color: '#b91c1c',
+                                  borderRadius: '6px',
+                                  padding: '2px 8px',
+                                  fontSize: '11.5px',
+                                  fontWeight: 700,
+                                  cursor: 'pointer',
+                                  marginLeft: '6px',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '3px'
+                                }}
+                              >
+                                ✕ Xóa
+                              </button>
+                            </>
                           )}
                         </div>
                         <div className="acl-guest-form-actions">
