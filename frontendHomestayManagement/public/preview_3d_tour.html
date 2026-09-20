@@ -1,0 +1,940 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lá Đỏ 3D Virtual Tour & Săn Mây Sa Pa</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;1,400&display=swap" rel="stylesheet">
+  <!-- Three.js CDN for 3D WebGL Atmosphere -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+  <style>
+    :root {
+      --bg-dark: #05130e;
+      --bg-card: rgba(18, 38, 30, 0.75);
+      --primary-green: #10b981;
+      --gold-accent: #f59e0b;
+      --text-main: #f3f4f6;
+      --text-sub: #9ca3af;
+      --border-glass: rgba(255, 255, 255, 0.14);
+      --theme-glow: rgba(16, 185, 129, 0.25);
+    }
+
+    /* Mood Theme Classes */
+    body.mood-dawn {
+      --bg-dark: #0f1c1a;
+      --theme-glow: rgba(245, 158, 11, 0.35);
+    }
+    body.mood-sunset {
+      --bg-dark: #1f0f18;
+      --theme-glow: rgba(225, 29, 72, 0.35);
+    }
+    body.mood-night {
+      --bg-dark: #050d0b;
+      --theme-glow: rgba(56, 189, 248, 0.25);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;tôi muốn bạn hãy sửa lại phần landing page cho đẹp hơn
+      
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      overflow-x: hidden;
+      line-height: 1.6;
+      transition: background-color 0.8s ease;
+    }
+
+    /* 3D WebGL Canvas Background */
+    #webgl-canvas-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none;
+      z-index: 1;
+    }
+    #webgl-canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* Dynamic Ambient Background Images */
+    .ambient-bg {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      background-size: cover;
+      background-position: center;
+      transition: opacity 1s ease, filter 1s ease, transform 1.2s ease;
+      opacity: 0.35;
+      filter: brightness(0.85) contrast(1.1);
+    }
+    .ambient-bg.active {
+      opacity: 0.45;
+    }
+    .ambient-overlay {
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(circle at 50% 30%, transparent 20%, rgba(5, 19, 14, 0.85) 80%);
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    /* Main Container */
+    .app-wrap {
+      position: relative;
+      z-index: 2;
+    }
+
+    /* Top Navigation Header */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px 5%;
+      border-bottom: 1px solid var(--border-glass);
+      backdrop-filter: blur(12px);
+      background: rgba(5, 19, 14, 0.5);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: #fff;
+      text-decoration: none;
+    }
+    .brand-icon {
+      font-size: 1.5rem;
+      animation: float-leaf 3s infinite ease-in-out;
+    }
+    @keyframes float-leaf {
+      0%, 100% { transform: translateY(0) rotate(0deg); }
+      50% { transform: translateY(-5px) rotate(8deg); }
+    }
+    .nav-tags {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .tag-badge {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--border-glass);
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 0.85rem;
+      backdrop-filter: blur(10px);
+      color: #e5e7eb;
+    }
+    .tag-link-rooms {
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.3), rgba(5, 150, 105, 0.4));
+      border: 1px solid rgba(52, 211, 153, 0.5);
+      color: #6ee7b7;
+      text-decoration: none;
+      font-weight: 600;
+      transition: all 0.3s;
+    }
+    .tag-link-rooms:hover {
+      background: #10b981;
+      color: #fff;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+    }
+
+    /* Hero Section */
+    .hero-section {
+      min-height: 85vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: 60px 5% 40px;
+    }
+    .hero-tagline {
+      color: var(--gold-accent);
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      margin-bottom: 16px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .hero-title {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(2.5rem, 5vw, 4.2rem);
+      font-weight: 700;
+      line-height: 1.15;
+      margin-bottom: 20px;
+      background: linear-gradient(135deg, #ffffff 40%, #a7f3d0 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      max-width: 950px;
+      text-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+    .hero-desc {
+      font-size: 1.15rem;
+      color: #d1d5db;
+      max-width: 750px;
+      margin-bottom: 40px;
+      line-height: 1.65;
+    }
+
+    /* Mood Selector & Audio Dock */
+    .controls-dock {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 20px;
+      flex-wrap: wrap;
+      margin-bottom: 30px;
+    }
+    .mood-box {
+      background: var(--bg-card);
+      border: 1px solid var(--border-glass);
+      padding: 6px;
+      border-radius: 999px;
+      display: flex;
+      gap: 6px;
+      backdrop-filter: blur(16px);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    }
+    .mood-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-sub);
+      padding: 10px 20px;
+      border-radius: 999px;
+      cursor: pointer;
+      font-size: 0.92rem;
+      font-weight: 600;
+      transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .mood-btn:hover {
+      color: #fff;
+      background: rgba(255,255,255,0.06);
+    }
+    .mood-btn.active {
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.3), rgba(52, 211, 153, 0.2));
+      color: #6ee7b7;
+      border: 1px solid rgba(52, 211, 153, 0.6);
+      box-shadow: 0 0 20px rgba(52, 211, 153, 0.3);
+    }
+
+    /* Ambient Audio Button */
+    .sound-toggle-btn {
+      background: var(--bg-card);
+      border: 1px solid var(--border-glass);
+      padding: 10px 22px;
+      border-radius: 999px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      backdrop-filter: blur(16px);
+      cursor: pointer;
+      color: #a7f3d0;
+      font-size: 0.92rem;
+      font-weight: 600;
+      transition: all 0.3s;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    }
+    .sound-toggle-btn:hover {
+      border-color: #34d399;
+      transform: translateY(-2px);
+      box-shadow: 0 10px 25px rgba(16, 185, 129, 0.3);
+    }
+    .sound-waves {
+      display: flex;
+      gap: 3px;
+      align-items: center;
+      height: 16px;
+    }
+    .wave-bar {
+      width: 3px;
+      background: #34d399;
+      border-radius: 2px;
+      height: 6px;
+      transition: height 0.3s;
+    }
+    .sound-playing .wave-bar {
+      animation: sound-anim 0.8s infinite ease-in-out alternate;
+    }
+    .sound-playing .wave-bar:nth-child(2) { animation-delay: 0.2s; }
+    .sound-playing .wave-bar:nth-child(3) { animation-delay: 0.4s; }
+    .sound-playing .wave-bar:nth-child(4) { animation-delay: 0.1s; }
+    @keyframes sound-anim {
+      0% { height: 4px; }
+      100% { height: 18px; }
+    }
+
+    /* 3D Interactive Showroom Section */
+    .showroom-section {
+      padding: 80px 5% 120px;
+      max-width: 1440px;
+      margin: 0 auto;
+    }
+    .section-head {
+      text-align: center;
+      margin-bottom: 60px;
+    }
+    .section-head .badge {
+      background: rgba(245, 158, 11, 0.15);
+      border: 1px solid rgba(245, 158, 11, 0.4);
+      color: #fbbf24;
+      padding: 4px 14px;
+      border-radius: 999px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      display: inline-block;
+      margin-bottom: 12px;
+    }
+    .section-head h2 {
+      font-family: 'Playfair Display', serif;
+      font-size: 2.6rem;
+      color: #fff;
+      margin-bottom: 14px;
+    }
+    .section-head p {
+      color: var(--text-sub);
+      font-size: 1.05rem;
+      max-width: 680px;
+      margin: 0 auto;
+    }
+
+    /* 3D Perspective Cards Grid */
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 28px;
+      perspective: 1200px;
+    }
+    .tilt-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-glass);
+      border-radius: 24px;
+      overflow: hidden;
+      backdrop-filter: blur(20px);
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
+      cursor: pointer;
+      transition: transform 0.15s ease-out, border-color 0.3s ease, box-shadow 0.3s ease;
+      transform-style: preserve-3d;
+      will-change: transform;
+      position: relative;
+    }
+    .tilt-card:hover {
+      border-color: rgba(52, 211, 153, 0.6);
+      box-shadow: 0 25px 50px rgba(16, 185, 129, 0.2), 0 0 30px rgba(52, 211, 153, 0.15);
+    }
+    .card-img-wrap {
+      position: relative;
+      height: 240px;
+      overflow: hidden;
+    }
+    .card-img-wrap img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .tilt-card:hover .card-img-wrap img {
+      transform: scale(1.12);
+    }
+    .time-badge {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--gold-accent);
+      color: #fbbf24;
+      padding: 5px 12px;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+    }
+    .card-body {
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      justify-content: space-between;
+      transform: translateZ(20px);
+    }
+    .card-title {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 8px;
+    }
+    .card-desc {
+      font-size: 0.9rem;
+      color: #9ca3af;
+      margin-bottom: 18px;
+      line-height: 1.55;
+    }
+    .tips-box {
+      background: rgba(255, 255, 255, 0.04);
+      border-left: 3px solid #10b981;
+      padding: 10px 14px;
+      border-radius: 0 10px 10px 0;
+      font-size: 0.84rem;
+      color: #d1d5db;
+    }
+    .tips-box strong {
+      color: #34d399;
+    }
+
+    /* Modal 360 Fullscreen Experience */
+    .view-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.88);
+      backdrop-filter: blur(25px);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+    .view-modal.open {
+      display: flex;
+    }
+    .modal-content-box {
+      background: #081813;
+      border: 1px solid rgba(52, 211, 153, 0.4);
+      border-radius: 28px;
+      width: 100%;
+      max-width: 900px;
+      overflow: hidden;
+      box-shadow: 0 25px 60px rgba(0,0,0,0.8);
+      position: relative;
+      animation: modal-pop 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    @keyframes modal-pop {
+      0% { transform: scale(0.9) translateY(20px); opacity: 0; }
+      100% { transform: scale(1) translateY(0); opacity: 1; }
+    }
+    .modal-img-holder {
+      position: relative;
+      height: 420px;
+    }
+    .modal-img-holder img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .modal-close-btn {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      background: rgba(0,0,0,0.7);
+      color: #fff;
+      border: 1px solid rgba(255,255,255,0.2);
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 1.2rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+    .modal-close-btn:hover {
+      background: #e11d48;
+      border-color: #e11d48;
+    }
+    .modal-info {
+      padding: 28px;
+    }
+
+    /* Final CTA Section */
+    .cta-wrap {
+      text-align: center;
+      margin-top: 70px;
+    }
+    .cta-btn-main {
+      background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+      color: white;
+      text-decoration: none;
+      padding: 18px 42px;
+      border-radius: 999px;
+      font-weight: 700;
+      font-size: 1.05rem;
+      box-shadow: 0 10px 30px rgba(16, 185, 129, 0.45);
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      transition: all 0.3s;
+    }
+    .cta-btn-main:hover {
+      transform: translateY(-4px) scale(1.02);
+      box-shadow: 0 15px 40px rgba(16, 185, 129, 0.65);
+    }
+  </style>
+</head>
+<body class="mood-dawn">
+
+  <!-- 3D Three.js WebGL Layer -->
+  <div id="webgl-canvas-container">
+    <canvas id="webgl-canvas"></canvas>
+  </div>
+
+  <!-- Background Image Overlay with Transitions -->
+  <div class="ambient-bg active" id="bg-dawn" style="background-image: url('./landing/images/sapa_real/la_do_homestay_real.jpg');"></div>
+  <div class="ambient-overlay"></div>
+
+  <div class="app-wrap">
+    <!-- Header -->
+    <header>
+      <a href="/home" class="brand">
+        <span class="brand-icon">🍁</span>
+        <div>
+          <span>Lá Đỏ 3D Tour</span>
+          <div style="font-size: 0.72rem; color: #a7f3d0; font-weight: 400; letter-spacing: 1px;">MIST SANCTUARY SAPA</div>
+        </div>
+      </a>
+
+      <div class="nav-tags">
+        <span class="tag-badge">📍 31A Hoàng Liên, Sa Pa</span>
+        <span class="tag-badge">☁️ Độ Cao 1,650m</span>
+        <a href="/rooms" class="tag-badge tag-link-rooms">
+          Xem Danh Sách Phòng →
+        </a>
+      </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero-section">
+      <div class="hero-tagline">
+        <span>✦</span> VIRTUAL SANCTUARY & 3D CLOUD RETREAT <span>✦</span>
+      </div>
+      <h1 class="hero-title">Chạm Vào Biển Mây Ngàn Sa Pa</h1>
+      <p class="hero-desc">
+        Không gian tương tác thực tế ảo 3D — Di chuyển chuột để cảm nhận dòng sương mây bồng bềnh, chọn bầu không khí và lắng nghe thanh âm chữa lành từ núi rừng Hoàng Liên Sơn.
+      </p>
+
+      <!-- Mood & Sound Controls -->
+      <div class="controls-dock">
+        <div class="mood-box">
+          <button class="mood-btn active" id="btn-dawn" onclick="switchMood('dawn')">
+            ☀️ Bình Minh 06:00
+          </button>
+          <button class="mood-btn" id="btn-sunset" onclick="switchMood('sunset')">
+            🌅 Hoàng Hôn 17:30
+          </button>
+          <button class="mood-btn" id="btn-night" onclick="switchMood('night')">
+            🌙 Đêm Sao 20:00
+          </button>
+        </div>
+
+        <button class="sound-toggle-btn" id="sound-btn" onclick="toggleNatureAudio()">
+          <span id="sound-icon">🎵</span>
+          <span id="sound-label">Suối Rừng Fansipan</span>
+          <div class="sound-waves" id="sound-waves">
+            <div class="wave-bar"></div>
+            <div class="wave-bar"></div>
+            <div class="wave-bar"></div>
+            <div class="wave-bar"></div>
+          </div>
+        </button>
+      </div>
+    </section>
+
+    <!-- 3D Check-in Showroom Section -->
+    <section class="showroom-section">
+      <div class="section-head">
+        <span class="badge">VIRTUAL SHOWROOM 3D</span>
+        <h2>5 Góc Sống Ảo "Triệu View" Tại Lá Đỏ</h2>
+        <p>Di chuột vào từng khung hình để trải nghiệm góc nhìn 3D & xem hướng dẫn chụp ảnh đẹp nhất</p>
+      </div>
+
+      <div class="cards-grid">
+        
+        <!-- Card 1 -->
+        <div class="tilt-card" onclick="openPhotoModal('Bờ Kè Đá Săn Mây', './landing/images/sapa_real/la_do_homestay_real.jpg', '05:45 - 07:00 Sáng', 'Góc check-in huyền thoại ôm trọn thung lũng Mường Hoa. Biển mây cuộn tràn sát bậc thềm đá tự nhiên.')">
+          <div class="card-img-wrap">
+            <img src="./landing/images/sapa_real/la_do_homestay_real.jpg" alt="Bờ Kè Đá Săn Mây" />
+            <span class="time-badge">✨ Giờ Vàng: 05:45 - 07:00</span>
+          </div>
+          <div class="card-body">
+            <div>
+              <h3 class="card-title">Bờ Kè Đá Săn Mây</h3>
+              <p class="card-desc">Góc check-in huyền thoại ôm trọn thung lũng Mường Hoa. Biển mây cuộn tràn sát bậc thềm đá tự nhiên.</p>
+            </div>
+            <div class="tips-box">
+              <strong>📸 Tips Chụp:</strong> Đứng nghiêng 45° đón tia nắng đầu tiên xuyên qua rặng thông.
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 2 -->
+        <div class="tilt-card" onclick="openPhotoModal('Quán Cà Phê Lá Đỏ Sunset', './landing/images/sapa_real/la_do_cafe_balcony.jpg', '16:45 - 17:45 Chiều', 'Thưởng thức ly cà phê mộc đậm đà trong lúc ngắm ráng chiều hoàng hôn tím phủ kín đỉnh Fansipan.')">
+          <div class="card-img-wrap">
+            <img src="./landing/images/sapa_real/la_do_cafe_balcony.jpg" alt="Quán Cà Phê Lá Đỏ Sunset" />
+            <span class="time-badge">✨ Giờ Vàng: 16:45 - 17:45</span>
+          </div>
+          <div class="card-body">
+            <div>
+              <h3 class="card-title">Quán Cà Phê Lá Đỏ Sunset</h3>
+              <p class="card-desc">Thưởng thức ly cà phê mộc đậm đà trong lúc ngắm ráng chiều hoàng hôn tím phủ kín đỉnh Fansipan.</p>
+            </div>
+            <div class="tips-box">
+              <strong>📸 Tips Chụp:</strong> Chụp ngược sáng lấy bóng silhouette ly trà bốc khói mờ ảo.
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 3 -->
+        <div class="tilt-card" onclick="openPhotoModal('Bồn Tắm Lá Thuốc Dao Đỏ', './landing/images/sapa_real/tam_la_thuoc_dao_do.jpg', '18:00 - 21:00 Tối', 'Bồn gỗ Pơ-mu ngoài trời dẫn nước khoáng thảo dược từ 30 vị lá rừng, ngắm mây bay thư thái tâm hồn.')">
+          <div class="card-img-wrap">
+            <img src="./landing/images/sapa_real/tam_la_thuoc_dao_do.jpg" alt="Bồn Ngâm Dao Đỏ Ngoài Trời" />
+            <span class="time-badge">🌿 Thư Giãn: 18:00 - 21:00</span>
+          </div>
+          <div class="card-body">
+            <div>
+              <h3 class="card-title">Bồn Tắm Lá Thuốc Dao Đỏ</h3>
+              <p class="card-desc">Bồn gỗ Pơ-mu ngoài trời dẫn nước khoáng thảo dược từ 30 vị lá rừng, ngắm mây bay thư thái tâm hồn.</p>
+            </div>
+            <div class="tips-box">
+              <strong>📸 Tips Chụp:</strong> Góc chụp cận bọt khoáng và làn khói thảo mộc bay trên mặt nước.
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 4 -->
+        <div class="tilt-card" onclick="openPhotoModal('BBQ & Đốt Lửa Trại Đêm', './landing/images/sapa_real/sapa_bbq_hotpot.jpg', '19:30 - 22:00 Đêm', 'Quây quần bên ánh lửa ấm áp, thưởng thức đồ nướng Tây Bắc giữa cái se lạnh 15°C của núi rừng Sa Pa.')">
+          <div class="card-img-wrap">
+            <img src="./landing/images/sapa_real/sapa_bbq_hotpot.jpg" alt="Tiệc BBQ & Đốt Lửa Trại Đêm" />
+            <span class="time-badge">🔥 Ấm Cúng: 19:30 - 22:00</span>
+          </div>
+          <div class="card-body">
+            <div>
+              <h3 class="card-title">BBQ & Đốt Lửa Trại Đêm</h3>
+              <p class="card-desc">Quây quần bên ánh lửa ấm áp, thưởng thức đồ nướng Tây Bắc giữa cái se lạnh 15°C của núi rừng Sa Pa.</p>
+            </div>
+            <div class="tips-box">
+              <strong>📸 Tips Chụp:</strong> Bật chế độ chụp đêm Night Mode để bắt trọn tàn than lửa bay lung linh.
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Clear Call to Action -->
+      <div class="cta-wrap">
+        <a href="/rooms" class="cta-btn-main">
+          <span>Đặt Phòng Trực Tuyến & Trải Nghiệm Thực Tế</span>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+        </a>
+      </div>
+    </section>
+  </div>
+
+  <!-- Photo Detail Modal -->
+  <div class="view-modal" id="photo-modal" onclick="if(event.target===this) closePhotoModal()">
+    <div class="modal-content-box">
+      <button class="modal-close-btn" onclick="closePhotoModal()">✕</button>
+      <div class="modal-img-holder">
+        <img id="modal-img" src="" alt="" />
+      </div>
+      <div class="modal-info">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
+          <h3 id="modal-title" style="font-size: 1.5rem; color: #fff;"></h3>
+          <span id="modal-time" style="color: #fbbf24; font-size: 0.9rem; font-weight: 700;"></span>
+        </div>
+        <p id="modal-desc" style="color: #d1d5db; font-size: 1rem; line-height: 1.6;"></p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* =========================================================================
+       1. THREE.JS 3D WEBGL ENGINE: CLOUD MIST, PARTICLES & FIREFLIES
+       ========================================================================= */
+    let scene, camera, renderer, cloudParticles = [], fireflies;
+    let mouseX = 0, mouseY = 0, targetMouseX = 0, targetMouseY = 0;
+
+    function initThreeJS() {
+      const container = document.getElementById('webgl-canvas-container');
+      const canvas = document.getElementById('webgl-canvas');
+      
+      scene = new THREE.Scene();
+      camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 1000);
+      camera.position.z = 100;
+
+      renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: true, antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+      // Ambient & Directional Lights
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+      scene.add(ambientLight);
+
+      const dirLight = new THREE.DirectionalLight(0xa7f3d0, 1.2);
+      dirLight.position.set(20, 50, 50);
+      scene.add(dirLight);
+
+      // Create 3D Mist / Cloud Particles
+      const particleGeo = new THREE.BufferGeometry();
+      const particleCount = 450;
+      const posArray = new Float32Array(particleCount * 3);
+      const scaleArray = new Float32Array(particleCount);
+
+      for (let i = 0; i < particleCount * 3; i += 3) {
+        posArray[i] = (Math.random() - 0.5) * 400;
+        posArray[i + 1] = (Math.random() - 0.5) * 200;
+        posArray[i + 2] = (Math.random() - 0.5) * 200;
+        scaleArray[i / 3] = Math.random() * 4 + 1;
+      }
+
+      particleGeo.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+
+      // Particle Canvas Texture
+      const canvasTexture = document.createElement('canvas');
+      canvasTexture.width = 64;
+      canvasTexture.height = 64;
+      const ctx = canvasTexture.getContext('2d');
+      const grad = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+      grad.addColorStop(0, 'rgba(255, 255, 255, 0.8)');
+      grad.addColorStop(0.4, 'rgba(167, 243, 208, 0.4)');
+      grad.addColorStop(1, 'rgba(167, 243, 208, 0)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, 64, 64);
+
+      const texture = new THREE.CanvasTexture(canvasTexture);
+
+      const particleMat = new THREE.PointsMaterial({
+        size: 16,
+        map: texture,
+        transparent: true,
+        opacity: 0.55,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false
+      });
+
+      cloudParticles = new THREE.Points(particleGeo, particleMat);
+      scene.add(cloudParticles);
+
+      // Create Fireflies (Đom Đóm)
+      const fireflyGeo = new THREE.BufferGeometry();
+      const fireflyCount = 60;
+      const fireflyPos = new Float32Array(fireflyCount * 3);
+      for (let i = 0; i < fireflyCount * 3; i += 3) {
+        fireflyPos[i] = (Math.random() - 0.5) * 300;
+        fireflyPos[i + 1] = (Math.random() - 0.5) * 150;
+        fireflyPos[i + 2] = (Math.random() - 0.5) * 150;
+      }
+      fireflyGeo.setAttribute('position', new THREE.BufferAttribute(fireflyPos, 3));
+      const fireflyMat = new THREE.PointsMaterial({
+        size: 6,
+        color: 0xfbbf24,
+        transparent: true,
+        opacity: 0.85,
+        blending: THREE.AdditiveBlending
+      });
+      fireflies = new THREE.Points(fireflyGeo, fireflyMat);
+      scene.add(fireflies);
+
+      // Listeners
+      window.addEventListener('resize', onWindowResize);
+      window.addEventListener('mousemove', (e) => {
+        targetMouseX = (e.clientX / window.innerWidth - 0.5) * 40;
+        targetMouseY = -(e.clientY / window.innerHeight - 0.5) * 40;
+      });
+
+      animate();
+    }
+
+    function onWindowResize() {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      // Smooth Mouse Parallax
+      mouseX += (targetMouseX - mouseX) * 0.05;
+      mouseY += (targetMouseY - mouseY) * 0.05;
+
+      camera.position.x = mouseX;
+      camera.position.y = mouseY;
+      camera.lookAt(0, 0, 0);
+
+      // Rotate Clouds
+      if (cloudParticles) {
+        cloudParticles.rotation.y += 0.0008;
+        cloudParticles.rotation.x += 0.0003;
+      }
+      if (fireflies) {
+        fireflies.rotation.y -= 0.0012;
+      }
+
+      renderer.render(scene, camera);
+    }
+
+    window.addEventListener('DOMContentLoaded', initThreeJS);
+
+    /* =========================================================================
+       2. MOOD SWITCHER: REAL-TIME ATMOSPHERE (DAWN / SUNSET / NIGHT)
+       ========================================================================= */
+    function switchMood(mood) {
+      document.body.className = `mood-${mood}`;
+      document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById(`btn-${mood}`).classList.add('active');
+
+      const bg = document.getElementById('bg-dawn');
+      if (mood === 'dawn') {
+        bg.style.backgroundImage = "url('./landing/images/sapa_real/la_do_homestay_real.jpg')";
+        bg.style.filter = "brightness(0.85) contrast(1.1)";
+      } else if (mood === 'sunset') {
+        bg.style.backgroundImage = "url('./landing/images/sapa_real/la_do_cafe_balcony.jpg')";
+        bg.style.filter = "brightness(0.75) contrast(1.2) sepia(0.3)";
+      } else if (mood === 'night') {
+        bg.style.backgroundImage = "url('./landing/images/sapa_real/sapa_bbq_hotpot.jpg')";
+        bg.style.filter = "brightness(0.5) contrast(1.3) hue-rotate(200deg)";
+      }
+    }
+
+    /* =========================================================================
+       3. 3D TILT EFFECT ON SHOWROOM CARDS
+       ========================================================================= */
+    document.querySelectorAll('.tilt-card').forEach(card => {
+      card.addEventListener('mousemove', (e) => {
+        const rect = card.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        const centerX = rect.width / 2;
+        const centerY = rect.height / 2;
+        const rotateX = ((y - centerY) / centerY) * -12;
+        const rotateY = ((x - centerX) / centerX) * 12;
+
+        card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.04, 1.04, 1.04)`;
+      });
+
+      card.addEventListener('mouseleave', () => {
+        card.style.transform = `perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)`;
+      });
+    });
+
+    /* =========================================================================
+       4. PROCEDURAL NATURE STREAM SOUND (WEB AUDIO API)
+       ========================================================================= */
+    let audioCtx, isAudioPlaying = false, streamNode, gainNode;
+
+    function toggleNatureAudio() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+
+      if (isAudioPlaying) {
+        gainNode.gain.setTargetAtTime(0, audioCtx.currentTime, 0.3);
+        setTimeout(() => {
+          if (streamNode) streamNode.disconnect();
+          isAudioPlaying = false;
+          updateAudioUI(false);
+        }, 300);
+      } else {
+        if (audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+        playProceduralStream();
+        isAudioPlaying = true;
+        updateAudioUI(true);
+      }
+    }
+
+    function playProceduralStream() {
+      // White noise generator filtered to sound like a gentle mountain stream
+      const bufferSize = audioCtx.sampleRate * 2;
+      const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        data[i] = Math.random() * 2 - 1;
+      }
+
+      streamNode = audioCtx.createBufferSource();
+      streamNode.buffer = buffer;
+      streamNode.loop = true;
+
+      // Filter to simulate water splashing and stream frequencies
+      const filter = audioCtx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.value = 650;
+      filter.Q.value = 1.2;
+
+      gainNode = audioCtx.createGain();
+      gainNode.gain.setValueAtTime(0.01, audioCtx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.18, audioCtx.currentTime + 1.5);
+
+      streamNode.connect(filter);
+      filter.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+
+      streamNode.start();
+    }
+
+    function updateAudioUI(playing) {
+      const btn = document.getElementById('sound-btn');
+      const waves = document.getElementById('sound-waves');
+      const label = document.getElementById('sound-label');
+      if (playing) {
+        btn.classList.add('sound-playing');
+        btn.style.borderColor = '#10b981';
+        btn.style.color = '#6ee7b7';
+        label.textContent = 'Đang phát: Suối Rừng';
+      } else {
+        btn.classList.remove('sound-playing');
+        btn.style.borderColor = 'rgba(255,255,255,0.14)';
+        btn.style.color = '#a7f3d0';
+        label.textContent = 'Suối Rừng Fansipan';
+      }
+    }
+
+    /* =========================================================================
+       5. MODAL POPUP
+       ========================================================================= */
+    function openPhotoModal(title, imgUrl, time, desc) {
+      document.getElementById('modal-title').textContent = title;
+      document.getElementById('modal-img').src = imgUrl;
+      document.getElementById('modal-time').textContent = `✨ ${time}`;
+      document.getElementById('modal-desc').textContent = desc;
+      document.getElementById('photo-modal').classList.add('open');
+    }
+
+    function closePhotoModal() {
+      document.getElementById('photo-modal').classList.remove('open');
+    }
+  </script>
+</body>
+</html>

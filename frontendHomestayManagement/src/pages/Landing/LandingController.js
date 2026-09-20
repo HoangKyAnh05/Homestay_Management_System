@@ -342,9 +342,19 @@ export class LandingApp {
       return;
     }
 
+    // Safety fallback timer: Force dismiss preloader after 1.5s in all circumstances
+    const fallbackTimer = setTimeout(() => {
+      if (preloader && !preloader.classList.contains('loaded')) {
+        preloader.classList.add('loaded');
+        this.animateHeroEntrance();
+        if (window.ScrollTrigger) window.ScrollTrigger.refresh();
+      }
+    }, 1500);
+    this.intervals.push(fallbackTimer);
+
     gsap.to(progress, {
       value: 100,
-      duration: 1.1,
+      duration: 0.9,
       ease: 'power2.out',
       onUpdate: () => {
         const val = Math.floor(progress.value);
@@ -360,6 +370,7 @@ export class LandingApp {
         }
       },
       onComplete: () => {
+        clearTimeout(fallbackTimer);
         preloader.classList.add('loaded');
         this.animateHeroEntrance();
         if (window.ScrollTrigger) window.ScrollTrigger.refresh();

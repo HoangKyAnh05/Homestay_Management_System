@@ -7,8 +7,9 @@ import ArticleReviewModal from './ArticleReviewModal';
 import RoomScheduleCalendarModal from '../../components/RoomScheduleCalendar/RoomScheduleCalendarModal';
 import PolicyModal from '../../components/PolicyModal/PolicyModal';
 import MiniMap from '../../components/MiniMap/MiniMap';
-import ItinerarySection from '../../components/Explore/ItinerarySection';
 import { SCENERY_ARTICLES } from './sceneryArticles';
+import CinemaZenMode from './CinemaZenMode';
+import AmbientEffectsLayer from './AmbientEffectsLayer';
 
 const API_BASE_URL = (import.meta.env.VITE_API_URL || '') + '/api';
 
@@ -97,7 +98,53 @@ function getRoomPrice(room) {
   return 3850000;
 }
 
+const SHOWROOM_ITEMS = [
+  {
+    id: 'stone-ledge',
+    title: 'Bờ Kè Đá Săn Mây',
+    category: 'MÂY NGÀN MƯỜNG HOA',
+    time: '05:45 - 07:00 Sáng',
+    timeSlot: 'dawn',
+    image: '/landing/images/sapa_real/la_do_homestay_real.jpg',
+    badge: '✨ Giờ Vàng: 05:45 - 07:00 Sáng',
+    desc: 'Độc check-in huyền thoại ôm trọn thung lũng Mường Hoa. Biển mây cuộn tràn sát bậc thềm đá tự nhiên ngay trước cửa homestay.',
+    tips: 'Đứng nghiêng 45° đón tia nắng đầu tiên xuyên qua rặng thông Hoàng Liên Sơn.'
+  },
+  {
+    id: 'cafe-sunset',
+    title: 'Quán Cà Phê Lá Đỏ Sunset',
+    category: 'HOÀNG HÔN TRIỆU VIEW',
+    time: '16:45 - 17:45 Chiều',
+    timeSlot: 'sunset',
+    image: '/landing/images/sapa_real/la_do_cafe_balcony.jpg',
+    badge: '✨ Giờ Vàng: 16:45 - 17:45 Chiều',
+    desc: 'Thưởng thức ly cà phê mộc đậm đà trong lúc ngắm ráng chiều hoàng hôn tím phủ kín đỉnh Fansipan hùng vĩ.',
+    tips: 'Chụp ngược sáng lấy bóng silhouette ly trà bốc khói mờ ảo bên khung cửa gỗ.'
+  },
+  {
+    id: 'herbal-bath',
+    title: 'Bồn Tắm Lá Thuốc Dao Đỏ',
+    category: 'TRỊ LIỆU THẢO MỘC NÚI RỪNG',
+    time: '18:00 - 21:00 Tối',
+    timeSlot: 'night',
+    image: '/landing/images/sapa_real/tam_la_thuoc_dao_do.jpg',
+    badge: '🌿 Thư Giãn: 18:00 - 21:00 Tối',
+    desc: 'Bồn gỗ Pơ-mu ngoài trời dẫn nước khoáng thảo dược từ 30 vị lá rừng Hoàng Liên Sơn, vừa ngâm mình thư thái vừa ngắm mây bay.',
+    tips: 'Góc chụp cận làn khói thảo mộc bay trên mặt nước và bọt khoáng tự nhiên.'
+  }
+];
+
+const MOODS_LIST = [
+  { id: 'dawn', icon: '🌅', label: 'Bình Minh Biển Mây', shortLabel: 'Dawn' },
+  { id: 'sunset', icon: '🌄', label: 'Hoàng Hôn Tím Fansipan', shortLabel: 'Sunset' },
+  { id: 'night', icon: '🌌', label: 'Đêm Trăng & Sao Sa Pa', shortLabel: 'Night' },
+  { id: 'mist', icon: '☁️', label: 'Rạng Đông Sương Mù', shortLabel: 'Mist' },
+];
+
 function LandingPage() {
+  const [isZenCinemaOpen, setIsZenCinemaOpen] = useState(false);
+  const [selectedPhoto, setSelectedPhoto] = useState(null);
+  const [activeShowroomTab, setActiveShowroomTab] = useState('all');
   const [dbRooms, setDbRooms] = useState([]);
   const dbRoomsRef = useRef([]);
   const [loadingRooms, setLoadingRooms] = useState(true);
@@ -105,6 +152,48 @@ function LandingPage() {
   const [scheduleModalVilla, setScheduleModalVilla] = useState(null);
   const [policyModal, setPolicyModal] = useState({ isOpen: false, tab: 'checkin' });
   const [liveArticles, setLiveArticles] = useState([]);
+  const [activeSeason, setActiveSeason] = useState('autumn');
+  const [activeMood, setActiveMood] = useState('night');
+  const moodTimerRef = useRef(null);
+
+  // 5s Auto Cycle Atmosphere Mood Switcher with smooth animation
+  const resetMoodAutoCycle = () => {
+    if (moodTimerRef.current) clearInterval(moodTimerRef.current);
+    moodTimerRef.current = setInterval(() => {
+      setActiveMood((prev) => {
+        const nextIdx = (MOODS_LIST.findIndex((m) => m.id === prev) + 1) % MOODS_LIST.length;
+        const nextMood = MOODS_LIST[nextIdx].id;
+        document.documentElement.setAttribute('data-theme', nextMood);
+        return nextMood;
+      });
+    }, 5000);
+  };
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', activeMood);
+    resetMoodAutoCycle();
+    return () => {
+      if (moodTimerRef.current) clearInterval(moodTimerRef.current);
+    };
+  }, []);
+
+  const handleSelectMood = (moodId) => {
+    setActiveMood(moodId);
+    document.documentElement.setAttribute('data-theme', moodId);
+    resetMoodAutoCycle();
+  };
+
+  // Auto open Zen Cinema Mode on #zen or ?zen=true
+  useEffect(() => {
+    const handleCheckZenHash = () => {
+      if (window.location.hash === '#zen' || window.location.search.includes('zen=true')) {
+        setIsZenCinemaOpen(true);
+      }
+    };
+    handleCheckZenHash();
+    window.addEventListener('hashchange', handleCheckZenHash);
+    return () => window.removeEventListener('hashchange', handleCheckZenHash);
+  }, []);
 
   // Luxury Custom Date Picker State for Booking Dock
   const dockRef = useRef(null);
@@ -471,20 +560,28 @@ function LandingPage() {
       })
     : defaultVillas.map((v) => ({ ...v, image: v.images[0], badge: v.tagline, category: 'couple luxury' }));
 
+  const handleCardMouseMove = (e) => {
+    const card = e.currentTarget;
+    const rect = card.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
+    const rotateX = ((y - centerY) / centerY) * -6;
+    const rotateY = ((x - centerX) / centerX) * 6;
+
+    card.style.setProperty('--mouse-x', `${(x / rect.width) * 100}%`);
+    card.style.setProperty('--mouse-y', `${(y / rect.height) * 100}%`);
+    card.style.transform = `perspective(1000px) rotateX(${rotateX.toFixed(2)}deg) rotateY(${rotateY.toFixed(2)}deg) translateY(-8px) scale3d(1.02, 1.02, 1.02)`;
+  };
+
+  const handleCardMouseLeave = (e) => {
+    const card = e.currentTarget;
+    card.style.transform = '';
+  };
+
   return (
     <div className="landing-page-root">
-      {/* Countdown Preloader */}
-      <div className="site-preloader" id="preloader">
-        <div className="preloader-curtain curtain-left"></div>
-        <div className="preloader-curtain curtain-right"></div>
-        <div className="preloader-content">
-          <span className="preloader-leaf">🍁</span>
-          <div className="preloader-counter" id="preloader-counter">00%</div>
-          <span className="preloader-status" id="preloader-status">KHỞI ĐỘNG KHÔNG GIAN 3D & SƯƠNG MÙ...</span>
-          <div className="preloader-bar"><div className="preloader-bar-fill" id="preloader-bar-fill"></div></div>
-        </div>
-      </div>
-
       {/* Custom Magnetic Cursor */}
       <div className="custom-cursor" id="custom-cursor">
         <span className="cursor-text" id="cursor-text"></span>
@@ -499,12 +596,19 @@ function LandingPage() {
       {/* Image Trail Hover Layer */}
       <div className="image-trail-container" id="image-trail-container"></div>
 
-      {/* Three.js 3D WebGL Canvas Layer */}
+      {/* 4K Cinematic Backdrop + WebGL Layer with 5s Smooth Crossfade */}
       <div className="webgl-canvas-container" id="canvas-container">
+        <div className={`scenic-backdrop-layer backdrop-dawn ${activeMood === 'dawn' ? 'active' : ''}`}></div>
+        <div className={`scenic-backdrop-layer backdrop-sunset ${activeMood === 'sunset' ? 'active' : ''}`}></div>
+        <div className={`scenic-backdrop-layer backdrop-night ${activeMood === 'night' ? 'active' : ''}`}></div>
+        <div className={`scenic-backdrop-layer backdrop-mist ${activeMood === 'mist' ? 'active' : ''}`}></div>
         <canvas id="webgl-canvas"></canvas>
         <div className="mist-overlay"></div>
         <div className="vignette-overlay"></div>
       </div>
+
+      {/* Rich Ambient Layer: Floating Golden Fireflies, Maple Leaves & Mist */}
+      <AmbientEffectsLayer />
 
       {/* Noise Texture Filter for Film Grain */}
       <div className="grain-overlay" aria-hidden="true"></div>
@@ -526,43 +630,47 @@ function LandingPage() {
           </div>
 
           <nav className="nav-links" id="nav-links">
-            <a href="#about" className="nav-link">Triết Lý</a>
-            <a href="#villas" className="nav-link">Các Căn Villa</a>
-            <a href="#experiences" className="nav-link">Trải Nghiệm</a>
-            <a href="#itinerary-section" className="nav-link">Lịch Trình</a>
-            <a href="/explore" className="nav-link" style={{ color: '#fda4af', fontWeight: '700' }}>🗺️ Khám Phá</a>
-            <a href="#reviews" className="nav-link">Đánh Giá</a>
+            <a href="#showroom" className="nav-link">Trải Nghiệm</a>
+            <a href="/rooms" className="nav-link">Phòng & Giá</a>
+            <a href="#showroom" className="nav-link">Góc Sống Ảo 3D</a>
+            <a href="#seasons-radar" className="nav-link">4 Mùa Sa Pa</a>
             <a href="#location" className="nav-link">Vị Trí</a>
+            <a href="#contact-footer" className="nav-link">Liên Hệ</a>
           </nav>
 
           <div className="nav-actions">
-            {/* Mood Switcher */}
-            <div className="mood-selector" title="Thay đổi bầu không khí">
-              <button className="mood-btn active" data-mood="night" id="mood-night" aria-label="Đêm trăng sao">
-                <i data-lucide="moon"></i>
-              </button>
-              <button className="mood-btn" data-mood="sunset" id="mood-sunset" aria-label="Hoàng hôn mây vàng">
-                <i data-lucide="sunset"></i>
-              </button>
-              <button className="mood-btn" data-mood="dawn" id="mood-dawn" aria-label="Bình minh sương sớm">
-                <i data-lucide="sun"></i>
-              </button>
+            {/* Mood Switcher with 5s Auto Cycle & Smooth Animation */}
+            <div className="mood-selector" title="Tự động chuyển cảnh sau mỗi 5s">
+              {MOODS_LIST.map((m) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  className={`mood-btn ${activeMood === m.id ? 'active' : ''}`}
+                  onClick={() => handleSelectMood(m.id)}
+                  aria-label={m.label}
+                  title={m.label}
+                >
+                  <span className="mood-btn-icon">{m.icon}</span>
+                  <span className="mood-btn-text">{m.shortLabel}</span>
+                </button>
+              ))}
             </div>
 
-            {/* Ambient Sound Toggle */}
-            <button className="sound-toggle-btn" id="sound-toggle" title="Bật/Tắt âm thanh rừng thông & suối reo">
-              <span className="sound-icon-wrap">
-                <i data-lucide="volume-2" className="sound-icon-on"></i>
-                <i data-lucide="volume-x" className="sound-icon-off"></i>
-              </span>
-              <span className="sound-label">Suối Rừng</span>
-              <div className="sound-wave-visualizer" id="sound-bars">
-                
-              </div>
+            {/* 4K Cinema Zen Sanctuary Trigger Button */}
+            <button
+              type="button"
+              className="header-zen-button"
+              id="header-zen-btn"
+              onClick={() => setIsZenCinemaOpen(true)}
+              title="Mở Chế Độ Thả Hồn 4K (Cinema Zen Sanctuary)"
+            >
+              <span className="zen-live-pulse-dot"></span>
+              <span className="zen-btn-text">✨ Thả Hồn</span>
+              <span className="zen-glow-ring"></span>
             </button>
 
             <button className="liquid-btn nav-cta-btn" id="header-book-btn" onClick={() => window.goToBookingPage()}>
-              <span className="btn-text">Đặt Phòng</span>
+              <span className="btn-text">Đặt Phòng Ngay</span>
               <span className="liquid-glow"></span>
             </button>
           </div>
@@ -577,7 +685,7 @@ function LandingPage() {
           <div className="hero-content">
             <div className="hero-badge">
               <span className="badge-dot"></span>
-              <span className="badge-text">22°20'N 103°50'E • ĐỘ CAO 1,650M TRÊN MỰC NƯỚC BIỂN</span>
+              <span className="badge-text">22°20'N 103°50'E • 1,650M ALTITUDE</span>
               <span className="live-weather" id="live-weather">
                 <i data-lucide="cloud-rain" className="weather-icon"></i>
                 <span>17°C • Sương Phủ Rừng Thông</span>
@@ -585,25 +693,27 @@ function LandingPage() {
             </div>
 
             <h1 className="hero-title">
-              <span className="title-sub">Nơi Chạm Vào Mây Ngàn</span>
-              <span className="title-main">TỊNH TẠI GIỮA RỪNG THÔNG</span>
+              <span className="title-main" style={{ display: 'block' }}>CHẠM VÀO BIỂN MÂY NGÀN</span>
+              <span className="title-sub-gold">SA PA – VIRTUAL SANCTUARY</span>
+              <span className="title-sub-white">& 3D CLOUD RETREAT</span>
             </h1>
 
-            <p className="hero-description">
-              Lấy cảm hứng từ không gian nghỉ dưỡng sương mờ Hoàng Liên Sơn — nơi những vệt nắng ban mai len lỏi qua ngọn thông hùng vĩ. Khu nghỉ dưỡng homestay sinh thái với vật liệu gỗ tuyết tùng, đá bazan tự nhiên và suối khoáng nóng ôm trọn thung lũng Sa Pa.
-            </p>
-
             <div className="hero-actions">
-              <button className="liquid-btn primary-hero-btn" id="hero-explore-btn">
-                <span className="btn-text">Khám Phá Các Căn Villa</span>
-                <i data-lucide="arrow-down" className="btn-icon"></i>
+              <a href="#showroom" className="liquid-btn primary-hero-btn" id="hero-showroom-btn">
+                <span className="btn-text">Khám Phá Góc Sống Ảo 3D</span>
+                <span className="liquid-glow"></span>
+              </a>
+
+              <button
+                type="button"
+                className="liquid-btn hero-zen-action-btn"
+                id="hero-zen-trigger-btn"
+                onClick={() => setIsZenCinemaOpen(true)}
+                title="Trải nghiệm ngắm biển mây Sa Pa 4K trực tiếp"
+              >
+                <span className="btn-text">✨ Thả Hồn 4K</span>
                 <span className="liquid-glow"></span>
               </button>
-
-              <a href="/explore" className="ghost-btn" style={{ border: '1.5px solid rgba(225, 29, 72, 0.6)', background: 'rgba(225, 29, 72, 0.15)', color: '#ffffff' }} title="Khám phá xung quanh Lá Đỏ">
-                <i data-lucide="map-pin"></i>
-                <span>🗺️ Khám Phá Xung Quanh</span>
-              </a>
 
               <a href="/rooms" className="ghost-btn" style={{ border: '1.5px solid rgba(226, 177, 115, 0.5)' }}>
                 <i data-lucide="list"></i>
@@ -613,413 +723,93 @@ function LandingPage() {
 
             <div className="hero-stats">
               <div className="stat-item">
-                <span className="stat-num">{dbRooms.length > 0 ? `0${dbRooms.length}`.slice(-2) : '04'}</span>
-                <span className="stat-lbl">Biệt Thự Biệt Lập</span>
+                <span className="stat-num">05</span>
+                <span className="stat-lbl">GÓC SỐNG ẢO</span>
               </div>
               <div className="stat-divider"></div>
               <div className="stat-item">
                 <span className="stat-num">100%</span>
-                <span className="stat-lbl">View Mây & Rừng Thông</span>
+                <span className="stat-lbl">VIEW MÂY</span>
               </div>
               <div className="stat-divider"></div>
               <div className="stat-item">
                 <span className="stat-num">4.98 ★</span>
-                <span className="stat-lbl">Đánh Giá Từ 480+ Du Khách</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Floating Quick Booking Bar */}
-          <div className="booking-dock" id="booking-dock" ref={dockRef}>
-            {/* Custom 2-Month Calendar Dropdown */}
-            {isCalendarOpen && (
-              <div className="dock-calendar-wrapper">
-                <div className="dock-calendar-months">
-                  {visibleMonths.map((m) => {
-                    const todayZero = new Date();
-                    todayZero.setHours(0, 0, 0, 0);
-
-                    const cells = [
-                      ...Array.from({ length: m.leading }, (_, index) => ({ key: `empty-${index}` })),
-                      ...Array.from({ length: m.days }, (_, index) => ({ key: index + 1, day: index + 1 })),
-                    ];
-
-                    return (
-                      <div key={`${m.year}-${m.monthIndex}`} className="dock-cal-month">
-                        <div className="dock-cal-month-title">{m.title}</div>
-                        <div className="dock-cal-weekdays">
-                          {weekdays.map((wd) => (
-                            <span key={wd}>{wd}</span>
-                          ))}
-                        </div>
-                        <div className="dock-cal-days-grid">
-                          {cells.map((cell) => {
-                            if (!cell.day) return <span key={cell.key} className="dock-cal-empty" />;
-                            const d = new Date(m.year, m.monthIndex, cell.day);
-                            const isStart = isSameDate(d, checkInDate);
-                            const isEnd = isSameDate(d, checkOutDate);
-                            const isInRange = isBetweenDates(d, checkInDate, checkOutDate);
-                            const isPast = d < todayZero;
-                            const isBeforeIn = activeDateField === 'checkout' && checkInDate && d <= checkInDate;
-                            const isDisabled = isPast || isBeforeIn;
-
-                            return (
-                              <button
-                                key={cell.key}
-                                type="button"
-                                className={[
-                                  'dock-cal-day-btn',
-                                  isStart ? 'is-selected is-start' : '',
-                                  isEnd ? 'is-selected is-end' : '',
-                                  isInRange ? 'is-in-range' : '',
-                                ].filter(Boolean).join(' ')}
-                                disabled={isDisabled}
-                                onClick={() => handleSelectDockDate(d)}
-                              >
-                                {cell.day}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            <div className="booking-dock-inner">
-              <div className="dock-col">
-                <label><i data-lucide="calendar"></i> Ngày Đến</label>
-                <button
-                  type="button"
-                  className="dock-date-trigger-btn"
-                  onClick={() => {
-                    setActiveDateField('checkin');
-                    setIsCalendarOpen((c) => !c);
-                  }}
-                >
-                  <span className="dock-date-main">{formatMainDate(checkInDate)}</span>
-                  <span className="dock-date-sub">{formatWeekday(checkInDate)}</span>
-                </button>
-                <input type="hidden" id="dock-checkin" value={today} />
-              </div>
-              <div className="dock-divider"></div>
-              <div className="dock-col">
-                <label><i data-lucide="calendar-check"></i> Ngày Đi</label>
-                <button
-                  type="button"
-                  className="dock-date-trigger-btn"
-                  onClick={() => {
-                    setActiveDateField('checkout');
-                    setIsCalendarOpen(true);
-                  }}
-                >
-                  <span className="dock-date-main">{formatMainDate(checkOutDate)}</span>
-                  <span className="dock-date-sub">{formatWeekday(checkOutDate)}</span>
-                </button>
-                <input type="hidden" id="dock-checkout" value={tomorrow} />
-              </div>
-              <div className="dock-divider"></div>
-              <div className="dock-col">
-                <label htmlFor="dock-villa"><i data-lucide="home"></i> Hạng Phòng</label>
-                <select id="dock-villa">
-                  {dbRooms.length > 0 ? (
-                    dbRooms.map((room) => (
-                      <option key={room.id || room.roomTypeId} value={room.id || room.roomTypeId}>
-                        {room.name || `Căn ${room.id}`} ({formatVND(getRoomPrice(room))}/ 2 ngày 1 đêm)
-                      </option>
-                    ))
-                  ) : (
-                    <>
-                      <option value="glass-pine">The Glass Pine Pavilion</option>
-                      <option value="cloud-crest">Cloud Crest Loft</option>
-                      <option value="mizu-stream">Mizu Stream Retreat</option>
-                      <option value="aether-dome">Aether Star Observatory</option>
-                    </>
-                  )}
-                </select>
-              </div>
-              <div className="dock-divider"></div>
-              <div className="dock-col">
-                <label htmlFor="dock-guests"><i data-lucide="users"></i> Số Khách</label>
-                <select id="dock-guests">
-                  <option value="2">2 Người Lớn (Cặp đôi)</option>
-                  <option value="4">4 Người (Gia đình)</option>
-                  <option value="1">1 Người (Solo Retreat)</option>
-                  <option value="6">6 Người (Nhóm bạn)</option>
-                </select>
-              </div>
-              <div className="dock-action">
-                <button className="liquid-btn dock-btn" id="dock-submit-btn" onClick={() => window.goToBookingPage()}>
-                  <span className="btn-text">Kiểm Tra Trống & Đặt</span>
-                  <i data-lucide="sparkles"></i>
-                  <span className="liquid-glow"></span>
-                </button>
+                <span className="stat-lbl">ĐÁNH GIÁ</span>
               </div>
             </div>
           </div>
         </section>
 
-        {/* Infinite Kinetic Marquee Banner */}
-        <div className="marquee-strip" aria-hidden="true">
-          <div className="marquee-track" id="marquee-track">
-            <span className="marquee-item">LÁ ĐỎ SANCTUARY</span><span className="marquee-star">✦</span>
-            <span className="marquee-item">MÂY NGÀN HOÀNG LIÊN SƠN</span><span className="marquee-star">✦</span>
-            <span className="marquee-item">ONSEN KHOÁNG NÓNG BẢN ĐỊA</span><span className="marquee-star">✦</span>
-            <span className="marquee-item">TRIẾT LÝ WABI-SABI NGUYÊN BẢN</span><span className="marquee-star">✦</span>
-            <span className="marquee-item">ẨM THỰC FARM-TO-TABLE HỮU CƠ</span><span className="marquee-star">✦</span>
-            <span className="marquee-item">LÁ ĐỎ SANCTUARY</span><span className="marquee-star">✦</span>
-            <span className="marquee-item">MÂY NGÀN HOÀNG LIÊN SƠN</span><span className="marquee-star">✦</span>
-            <span className="marquee-item">ONSEN KHOÁNG NÓNG BẢN ĐỊA</span><span className="marquee-star">✦</span>
-            <span className="marquee-item">TRIẾT LÝ WABI-SABI NGUYÊN BẢN</span><span className="marquee-star">✦</span>
-            <span className="marquee-item">ẨM THỰC FARM-TO-TABLE HỮU CƠ</span><span className="marquee-star">✦</span>
-          </div>
-        </div>
-
-        {/* Philosophy & Architecture Section */}
-        <section className="section philosophy-section" id="about">
+        {/* 3D Check-in Showroom Section */}
+        <section className="section showroom-section" id="showroom">
           <div className="container">
-            <div className="section-badge">
-              <i data-lucide="leaf"></i>
-              <span>TRIẾT LÝ KIẾN TRÚC & NGHỈ DƯỠNG</span>
-            </div>
-            <h2 className="section-title">
-              Khi Thiên Nhiên Là Bức Tranh Tường Đẹp Nhất
-            </h2>
-            <p className="section-subtitle">
-              Chúng tôi không xây khách sạn trên sườn núi; chúng tôi đan cài các gian nhà gỗ thông vào lòng địa hình, tôn trọng từng gốc thông cổ thụ và dòng suối ngầm.
-            </p>
-
-            <div className="philosophy-grid">
-              <div className="philo-card" data-tilt>
-                <div className="card-icon-wrap">
-                  <i data-lucide="droplet"></i>
-                </div>
-                <h3>Onsen Khoáng Nóng Tự Nhiên</h3>
-                <p>Mỗi căn villa đều sở hữu bồn ngâm gỗ Pơ-mu ngoài trời dẫn trực tiếp mạch nước khoáng thảo dược từ lòng núi Fansipan.</p>
-                <div className="card-glow"></div>
+            <div className="showroom-head-card">
+              <div className="section-badge" style={{ margin: '0 auto 12px', display: 'inline-flex' }}>
+                <i data-lucide="camera"></i>
+                <span>✨ VIRTUAL SHOWROOM 3D</span>
               </div>
-
-              <div className="philo-card" data-tilt>
-                <div className="card-icon-wrap">
-                  <i data-lucide="eye"></i>
-                </div>
-                <h3>Kiến Trúc Kính Panorama 360°</h3>
-                <p>Hệ thống vách kính Low-E cản nhiệt mở rộng tầm nhìn vô cực xuống thung lũng mây, để bạn thức giấc cùng biển mây tràn qua ô cửa.</p>
-                <div className="card-glow"></div>
-              </div>
-
-              <div className="philo-card" data-tilt>
-                <div className="card-icon-wrap">
-                  <i data-lucide="coffee"></i>
-                </div>
-                <h3>Ẩm Thực Farm-to-Table & Trà Đạo</h3>
-                <p>Thực đơn hữu cơ thu hoạch trong ngày từ vườn rau bậc thang bản địa, kết hợp văn hóa thưởng trà Shan Tuyết cổ thụ 300 năm.</p>
-                <div className="card-glow"></div>
-              </div>
-
-              <div className="philo-card" data-tilt>
-                <div className="card-icon-wrap">
-                  <i data-lucide="wind"></i>
-                </div>
-                <h3>Thanh Âm Yên Ả Tuyệt Đối</h3>
-                <p>Không khói bụi, không tiếng còi xe. Chỉ có tiếng gió reo qua tán kim thông, tiếng róc rách của thác nước và tiếng chim rừng ríu rít.</p>
-                <div className="card-glow"></div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Villas & Cabins Showcase Section */}
-        <section className="section villas-section" id="villas">
-          <div className="container">
-            <div className="section-header-row">
-              <div>
-                <div className="section-badge">
-                  <i data-lucide="sparkles"></i>
-                  <span>KHÔNG GIAN NGHỈ DƯỠNG BIỆT LẬP</span>
-                </div>
-                <h2 className="section-title">Các Dinh Thự Ẩn Mình Trong Mây</h2>
-              </div>
-              <div className="villa-filter-tabs" id="villa-tabs">
-                <button className="tab-btn active" data-filter="all">Tất Cả ({displayVillas.length})</button>
-                <button className="tab-btn" data-filter="couple">Cặp Đôi</button>
-                <button className="tab-btn" data-filter="family">Gia Đình</button>
-                <button className="tab-btn" data-filter="luxury">Cao Cấp Nhất</button>
-              </div>
-            </div>
-
-            <div className="villas-stack-container" id="villas-stack-container">
-              {displayVillas.map((villa, idx) => (
-                <article
-                  className="villa-card stack-card"
-                  data-category={villa.category}
-                  data-index={idx + 1}
-                  style={{ '--card-index': idx + 1 }}
-                  data-cursor="XEM VILLA"
-                  key={villa.id || idx}
-                >
-                  <div className="stack-card-header-bar">
-                    <div className="stack-card-identity">
-                      <span className="stack-number">{`0${idx + 1}`.slice(-2)}</span>
-                      <span className="stack-villa-name">{villa.name.toUpperCase()}</span>
-                    </div>
-                    <span className="stack-pill-tag">{villa.badge || 'Biệt Thự Sang Trọng'}</span>
-                  </div>
-                  <div className="stack-card-inner">
-                    <div className="villa-image-wrapper">
-                      <img src={villa.image} alt={villa.name} className="villa-img" loading="lazy" />
-                      <div className="villa-price-tag">
-                        <span className="price">{formatVND(villa.price)}</span>
-                        <span className="unit">
-                          {villa.weekdayPrice && villa.weekendPrice
-                            ? ` (T2–T6: ${formatVND(villa.weekdayPrice)} · T7–CN: ${formatVND(villa.weekendPrice)})`
-                            : '/ 2 ngày 1 đêm'}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="villa-body">
-                      <div className="villa-meta">
-                        <span><i data-lucide="maximize"></i> {villa.area}</span>
-                        <span><i data-lucide="users"></i> {villa.guests}</span>
-                        <span><i data-lucide="sun"></i> {villa.view}</span>
-                      </div>
-                      <h3 className="villa-title">{villa.name}</h3>
-                      <p className="villa-excerpt">{villa.description}</p>
-                      <div className="villa-amenities">
-                        {villa.features.slice(0, 3).map((feat, fIdx) => (
-                          <span className="amenity-chip" key={fIdx}>
-                            <i data-lucide="sparkles"></i> {feat}
-                          </span>
-                        ))}
-                      </div>
-                      <div className="villa-footer">
-                        <button className="detail-btn" onClick={() => window.openVillaModal(villa)}>
-                          Chi Tiết Căn <i data-lucide="arrow-right"></i>
-                        </button>
-                        <button
-                          type="button"
-                          className="detail-btn"
-                          style={{ borderColor: 'rgba(56, 189, 248, 0.4)', color: '#38bdf8', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
-                          onClick={() => setScheduleModalVilla(villa)}
-                          title="Xem lịch đặt phòng"
-                        >
-                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                          Lịch Đặt
-                        </button>
-                        <button
-                          className="liquid-btn book-villa-btn"
-                          onClick={() => window.goToBookingPage({ roomTypeId: villa.dbId || villa.id })}
-                        >
-                          <span className="btn-text">Đặt Căn Này</span>
-                          <span className="liquid-glow"></span>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </article>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* Sensory Soundscape Section */}
-        <section className="section sensory-section" id="sensory">
-          <div className="container">
-            <div className="sensory-box">
-              <div className="sensory-content">
-                <div className="section-badge">
-                  <i data-lucide="headphones"></i>
-                  <span>TRỊ LIỆU ÂM THANH THIÊN NHIÊN</span>
-                </div>
-                <h2 className="sensory-title">Thính Âm Hoàng Liên Sơn</h2>
-                <p className="sensory-desc">
-                  Thư giãn tâm trí với âm thanh được thu âm trực tiếp đa hướng từ rừng thông nguyên sinh Sa Pa: tiếng suối róc rách, tiếng lá thông xào xạc trong gió chiều và ngọn lửa sưởi ấm đêm đông.
-                </p>
-
-                <div className="sound-tracks-controls">
-                  <button className="track-btn active" data-sound="breeze">
-                    <i data-lucide="wind"></i> Gió Rừng Thông
-                  </button>
-                  <button className="track-btn" data-sound="fire">
-                    <i data-lucide="flame"></i> Lò Sưởi Đêm
-                  </button>
-                  <button className="track-btn" data-sound="rain">
-                    <i data-lucide="cloud-rain"></i> Mưa Thung Lũng
-                  </button>
-                </div>
-
-                <div className="volume-slider-wrap">
-                  <i data-lucide="volume-1"></i>
-                  <input type="range" id="sensory-volume" min="0" max="100" defaultValue="45" aria-label="Âm lượng" />
-                  <i data-lucide="volume-2"></i>
-                </div>
-              </div>
-
-              <div className="sensory-visual">
-                <div className="zen-circle" id="zen-circle" title="Bấm để Bật/Tắt âm thanh thư giãn">
-                  <div className="zen-ripple ripple-1"></div>
-                  <div className="zen-ripple ripple-2"></div>
-                  <div className="zen-center-orb">
-                    <i data-lucide="play" id="zen-play-icon"></i>
-                  </div>
-                </div>
-                <span className="zen-caption">Chạm vào vòng tròn để lắng nghe tiếng suối rừng</span>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Experiences Section */}
-        <section className="section experiences-section" id="experiences">
-          <div className="container">
-            <div className="section-header-row">
-              <div>
-                <div className="section-badge">
-                  <i data-lucide="compass"></i>
-                  <span>TRẢI NGHIỆM ĐẬM CHẤT SA PA</span>
-                </div>
-                <h2 className="section-title">Những Trải Nghiệm Độc Bản</h2>
-              </div>
-              <p className="section-subtitle">
-                Mỗi khoảnh khắc tại Lá Đỏ Homestay được thiết kế để kết nối bạn sâu sắc hơn với thiên nhiên đại ngàn và văn hóa bản địa Sa Pa.
+              <h2 className="showroom-main-title">5 Góc Sống Ảo "Triệu View" Tại Lá Đỏ</h2>
+              <p className="showroom-main-desc">
+                Không chỉ là nơi nghỉ dưỡng — Mỗi góc ban công và bờ đá tại Lá Đỏ Homestay đều là một khung hình điện ảnh. Di chuyển chuột vào từng khung hình để trải nghiệm góc nhìn 3D & xem bí quyết chụp ảnh đẹp nhất.
               </p>
+
+              <div className="showroom-time-label">
+                <span>⏰ KHUNG GIỜ TRẢI NGHIỆM ĐẸP NHẤT:</span>
+              </div>
+
+              {/* Time Filter Pills */}
+              <div className="showroom-filter-dock">
+                <button
+                  type="button"
+                  className={`filter-pill ${activeShowroomTab === 'dawn' ? 'active' : ''}`}
+                  onClick={() => setActiveShowroomTab(activeShowroomTab === 'dawn' ? 'all' : 'dawn')}
+                >
+                  🌄 05:45 Sáng
+                </button>
+                <button
+                  type="button"
+                  className={`filter-pill ${activeShowroomTab === 'sunset' ? 'active' : ''}`}
+                  onClick={() => setActiveShowroomTab(activeShowroomTab === 'sunset' ? 'all' : 'sunset')}
+                >
+                  🌅 17:15 Chiều
+                </button>
+                <button
+                  type="button"
+                  className={`filter-pill ${activeShowroomTab === 'night' ? 'active' : ''}`}
+                  onClick={() => setActiveShowroomTab(activeShowroomTab === 'night' ? 'all' : 'night')}
+                >
+                  🌙 20:30 Đêm
+                </button>
+              </div>
             </div>
 
-            <div className="exp-grid">
-              <div className="exp-card" data-tilt>
-                <div className="exp-img-wrap">
-                  <img src="/landing/images/sapa_real/tam_la_thuoc_dao_do.jpg" alt="Tắm Thảo Dược Người Dao Đỏ" loading="lazy" />
-                  <span className="exp-tag">Chữa Lành Cơ Thể</span>
+            {/* Showroom Cards Grid */}
+            <div className="showroom-grid">
+              {SHOWROOM_ITEMS.filter((item) => activeShowroomTab === 'all' || item.timeSlot === activeShowroomTab).map((item) => (
+                <div
+                  key={item.id}
+                  className="showroom-tilt-card"
+                  onClick={() => setSelectedPhoto(item)}
+                  onMouseMove={handleCardMouseMove}
+                  onMouseLeave={handleCardMouseLeave}
+                >
+                  <div className="showroom-img-wrap">
+                    <img src={item.image} alt={item.title} loading="lazy" />
+                    <span className="showroom-time-badge">{item.badge}</span>
+                  </div>
+                  <div className="showroom-card-body">
+                    <div>
+                      <span className="showroom-cat-tag">{item.category}</span>
+                      <h3 className="showroom-card-title">{item.title}</h3>
+                      <p className="showroom-card-desc">{item.desc}</p>
+                    </div>
+                    <div className="showroom-tips-box">
+                      <strong>📸 Tips Chụp: </strong>
+                      <span>{item.tips}</span>
+                    </div>
+                  </div>
                 </div>
-                <div className="exp-content">
-                  <h3>Tắm Khoáng Thảo Dược Người Dao Đỏ</h3>
-                  <p>Bài thuốc ngâm thảo dược gia truyền với hơn 30 vị lá rừng Hoàng Liên Sơn thu hái tự nhiên, giúp đả thông kinh mạch và phục hồi năng lượng.</p>
-                </div>
-              </div>
-
-              <div className="exp-card" data-tilt>
-                <div className="exp-img-wrap">
-                  <img src="/landing/images/sapa_real/la_do_cafe_balcony.jpg" alt="Cafe Săn Mây Lá Đỏ" loading="lazy" />
-                  <span className="exp-tag">Săn Mây & Thư Giãn</span>
-                </div>
-                <div className="exp-content">
-                  <h3>Cafe Săn Mây & Tàu Hỏa Mường Hoa</h3>
-                  <p>Thưởng thức tách trà Shan Tuyết cổ thụ hoặc ly cà phê trứng béo ngậy bên ban công gỗ ngắm trọn đoàn tàu đỏ lướt qua thung lũng.</p>
-                </div>
-              </div>
-
-              <div className="exp-card" data-tilt>
-                <div className="exp-img-wrap">
-                  <img src="/landing/images/sapa_real/am_thuc_tay_bac.jpg" alt="Ẩm Thực Tây Bắc" loading="lazy" />
-                  <span className="exp-tag">Ẩm Thực Bản Địa</span>
-                </div>
-                <div className="exp-content">
-                  <h3>Lẩu Cá Tầm & Tiệc Nướng BBQ Thung Lũng</h3>
-                  <p>Quây quần bên nồi lẩu cá tầm, cá hồi tươi Sa Pa và tiệc nướng BBQ thơm lừng thịt bản địa ướp hạt dổi mắc khén giữa tiết trời se lạnh.</p>
-                </div>
-              </div>
+              ))}
             </div>
           </div>
         </section>
@@ -1027,15 +817,15 @@ function LandingPage() {
         {/* Premium Asymmetric Scenery Gallery Grid Section */}
         <section className="section scenery-section-new" id="panorama-section">
           <div className="container">
-            <div className="section-header-row">
-              <div>
-                <div className="section-badge">
-                  <i data-lucide="compass"></i>
-                  <span>ĐỊA ĐIỂM ĂN CHƠI & PHONG CẢNH SA PA</span>
-                </div>
-                <h2 className="section-title">Hành Trình Khám Phá & Ăn Chơi Sa Pa</h2>
+            <div className="scenery-header-center" style={{ textAlign: 'center', maxWidth: '800px', margin: '0 auto 3rem' }}>
+              <div className="section-badge" style={{ margin: '0 auto 12px', display: 'inline-flex' }}>
+                <i data-lucide="compass"></i>
+                <span>📍 ĐỊA ĐIỂM ĂN CHƠI & PHONG CẢNH SA PA</span>
               </div>
-              <p className="section-subtitle">
+              <h2 className="section-title" style={{ fontSize: 'clamp(2rem, 3.5vw, 2.8rem)', marginBottom: '1rem', color: '#fff' }}>
+                Hành Trình Khám Phá & Ăn Chơi Sa Pa
+              </h2>
+              <p className="section-subtitle" style={{ color: '#cbd5e1', fontSize: '0.96rem', lineHeight: '1.6' }}>
                 Bấm vào từng địa điểm bên dưới để xem bài viết review chi tiết, cẩm nang ẩm thực & kinh nghiệm check-in từ Lá Đỏ Homestay.
               </p>
             </div>
@@ -1047,6 +837,8 @@ function LandingPage() {
                   className={`scenery-card ${idx === 0 || idx === 3 ? 'large' : 'small'}`}
                   data-cursor="ĐỌC REVIEW"
                   onClick={() => setSelectedArticle(article)}
+                  onMouseMove={handleCardMouseMove}
+                  onMouseLeave={handleCardMouseLeave}
                   title={`Xem bài review: ${article.title}`}
                 >
                   <div className="scenery-img-wrap">
@@ -1071,74 +863,164 @@ function LandingPage() {
           </div>
         </section>
 
-        {/* Interactive 1-Minute Itinerary Planner & Explore Section on Home */}
-        <ItinerarySection
-          isLandingPageMode={true}
-          onSelectItinerary={() => window.location.assign('/explore')}
-        />
-
-        {/* Guest Reviews Section */}
-        <section className="section reviews-section" id="reviews">
+        {/* Sa Pa 4 Seasons & Cloud Hunter Radar Guide */}
+        <section className="section seasons-radar-section" id="seasons-radar">
           <div className="container">
-            <div className="section-badge">
-              <i data-lucide="heart"></i>
-              <span>ĐÁNH GIÁ TỪ GOOGLE MAPS & KHÁCH LƯU TRÚ</span>
-            </div>
-            <h2 className="section-title">Cảm Nhận Chân Thực Tại Lá Đỏ Homestay</h2>
+            <div className="scenery-header-center" style={{ textAlign: 'center', maxWidth: '820px', margin: '0 auto 2.8rem' }}>
+              <div className="section-badge" style={{ margin: '0 auto 12px', display: 'inline-flex' }}>
+                <i data-lucide="sun"></i>
+                <span>☁️ SỔ TAY SĂN MÂY & 4 MÙA SA PA</span>
+              </div>
+              <h2 className="section-title" style={{ fontSize: 'clamp(2rem, 3.5vw, 2.8rem)', marginBottom: '1rem', color: '#fff' }}>
+                Sa Pa 4 Mùa & Cẩm Nang Săn Mây Toàn Diện
+              </h2>
+              <p className="section-subtitle" style={{ color: '#cbd5e1', fontSize: '0.96rem', lineHeight: '1.65' }}>
+                Khám phá nhịp điệu đất trời Tây Bắc theo từng mùa, radar tỷ lệ biển mây, gợi ý phối đồ (OOTD) và bí kíp sống ảo độc quyền từ Lá Đỏ Homestay.
+              </p>
 
-            <div className="reviews-slider">
-              {(publicReviews.length > 0 ? publicReviews : [
-                {
-                  reviewId: 1,
-                  customerName: 'Nguyễn Khánh Linh',
-                  customerAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
-                  roomTypeName: 'Phòng Panorama View Thung Lũng',
-                  ratingStars: 5,
-                  comment: 'Lá Đỏ Homestay view đỉnh nóc kịch trần luôn mọi người ơi! Ngồi ban công vừa nhâm nhi tách cà phê nóng vừa ngắm trọn đoàn tàu Mường Hoa màu đỏ chạy qua thung lũng giữa biển mây Hoàng Liên Sơn siêu đẹp. Phòng ốc bằng gỗ pơ-mu thơm dịu, chăn đệm sưởi ấm cúng, nước nóng cực mạnh.',
+              {/* Season Switcher Pills */}
+              <div className="season-tabs-dock" style={{ display: 'flex', justifyContent: 'center', gap: '10px', flexWrap: 'wrap', marginTop: '1.8rem' }}>
+                {[
+                  { id: 'spring', icon: '🌸', name: 'Mùa Xuân (T2 - T4)', label: 'Hoa Mận Trắng Rừng' },
+                  { id: 'summer', icon: '🌿', name: 'Mùa Hè (T5 - T8)', label: 'Trốn Nóng & Nước Đổ' },
+                  { id: 'autumn', icon: '🌾', name: 'Mùa Thu (T9 - T10)', label: 'Lúa Chín & Biển Mây' },
+                  { id: 'winter', icon: '❄️', name: 'Mùa Đông (T11 - T1)', label: 'Băng Tuyết Hoàng Liên' },
+                ].map((s) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    className={`season-tab-btn ${activeSeason === s.id ? 'active' : ''}`}
+                    onClick={() => setActiveSeason(s.id)}
+                  >
+                    <span className="season-icon">{s.icon}</span>
+                    <span className="season-name">{s.name}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Active Season Interactive Showcase Card */}
+            {(() => {
+              const SEASONS_INFO = {
+                spring: {
+                  title: 'Mùa Xuân Sa Pa: Ngàn Hoa Khoe Sắc & Mây Xuân Mờ Ảo',
+                  badge: '🌸 Tháng 2 - Tháng 4',
+                  image: '/landing/images/homestay/ava-mau-nha-homestay-dep-800x800.jpg',
+                  temp: '12°C – 18°C • Nắng sớm dịu nhẹ, se lạnh về đêm',
+                  cloudChance: '85% Tỷ Lệ Săn Mây Thung Lũng',
+                  cloudTime: '06:00 - 08:30 Sáng sương mờ',
+                  ootd: 'Áo len dệt kim mỏng, váy hoa Boho/Thổ cẩm, tone be - nâu - trắng kem vintage',
+                  food: 'Thắng cố ngựa truyền thống, lợn cắp nách quay mật ong, rau mầm đá luộc chấm muối vừng',
+                  spot: 'Đồi hoa mận Ô Long, bản Tả Phìn ngập sắc hoa đào rừng',
+                  photoTip: 'Chụp góc ngược sáng lúc bình minh để cánh hoa mận nổi bật trên nền thung lũng mây trắng.',
                 },
-                {
-                  reviewId: 2,
-                  customerName: 'Trần Đức Minh',
-                  customerAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80',
-                  roomTypeName: 'Phòng Đôi Ban Công Mây',
-                  ratingStars: 5,
-                  comment: 'Homestay nằm ở số 31 Hoàng Liên, không gian yên tĩnh và mộc mạc. Buổi sáng thức dậy kéo rèm ra là mây tràn vào sát cửa kính. Đồ ăn sáng và cà phê ở quán Lá Đỏ ngon, giá cả rất hợp lý so với mặt bằng Sa Pa. Chắc chắn sẽ quay lại!',
+                summer: {
+                  title: 'Mùa Hè Sa Pa: Trốn Nóng 20°C & Mùa Nước Đổ Lấp Lánh',
+                  badge: '🌿 Tháng 5 - Tháng 8',
+                  image: '/landing/images/rooftop/cinema_zen_balcony.jpg',
+                  temp: '18°C – 24°C • Khí hậu ôn đới mát lạnh như Châu Âu',
+                  cloudChance: '90% Mây Mưa Thác Bạc & Cầu Vồng',
+                  cloudTime: 'Sau cơn mưa rào mùa hạ (15:00 - 17:00)',
+                  ootd: 'Váy maxi dài màu nổi (đỏ, vàng mù tạt, xanh rêu), nón cói, kính râm thời thượng',
+                  food: 'Cá hồi Sa Pa sashimi & gỏi chua, cá tầm nướng muối ớt, rau su su xào tỏi thơm giòn',
+                  spot: 'Thung lũng Mường Hoa mùa nước đổ như gương trời, đèo Ô Quy Hồ ngắm hoàng hôn',
+                  photoTip: 'Chụp góc toàn cảnh lấy trọn mặt nước ruộng bậc thang phản chiếu bầu trời mùa hạ.',
                 },
-                {
-                  reviewId: 3,
-                  customerName: 'Lê Anh Khoa',
-                  customerAvatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=400&q=80',
-                  roomTypeName: 'Phòng Gia Đình Hoàng Liên',
-                  ratingStars: 5,
-                  comment: 'Vị trí đắc địa cách Nhà thờ Đá và Sun Plaza chỉ 5-7 phút đi bộ. Bờ kè đá trước homestay chụp ảnh sống ảo góc nào cũng ra ảnh thơ mộng. Tối đến homestay hỗ trợ set up tiệc nướng BBQ ngoài trời ngắm thung lũng về đêm lung linh ánh đèn.',
-                }
-              ]).slice(0, 6).map((rev) => (
-                <div className="review-card" key={rev.reviewId || rev.id} data-tilt>
-                  <div className="review-stars">
-                    {'★'.repeat(Math.max(1, Math.min(5, Math.round(rev.ratingStars || 5))))}
-                  </div>
-                  <blockquote className="review-quote">
-                    "{rev.comment}"
-                  </blockquote>
-                  <div className="reviewer-info">
-                    <img
-                      src={resolveImageUrl(rev.customerAvatar) || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=400&q=80'}
-                      alt={rev.customerName}
-                      className="reviewer-avatar"
-                      onError={(e) => {
-                        e.currentTarget.src = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=400&q=80';
-                      }}
-                    />
-                    <div>
-                      <span className="reviewer-name">{rev.customerName || 'Khách lưu trú'}</span>
-                      <span className="reviewer-role">
-                        {rev.roomTypeName ? `${rev.roomTypeName} • ` : ''}Đánh giá đã xác thực ✓
-                      </span>
+                autumn: {
+                  title: 'Mùa Thu Sa Pa: Mùa Lúa Chín Vàng Rực & Biển Mây Ngút Ngàn',
+                  badge: '🌾 Tháng 9 - Tháng 10 (Mùa Đẹp Nhất)',
+                  image: '/landing/images/rooftop/la_do_sunset.jpg',
+                  temp: '14°C – 20°C • Trời trong xanh biếc, nắng vàng mật ong',
+                  cloudChance: '98% Tỷ Lệ Săn Mây Vàng (Đỉnh Điểm)',
+                  cloudTime: '05:30 - 08:00 Sáng & 17:00 Hoàng hôn',
+                  ootd: 'Cardigan len tone cam đất/nâu caramel, khăn choàng thổ cẩm dệt tay, mũ nồi beret',
+                  food: 'Cốm non Tây Bắc, gà đen nướng mắc khén ăn kèm xôi nếp nương ngũ sắc thơm dẻo',
+                  spot: 'Bờ kè đá Lá Đỏ ngắm thung lũng vàng ruộm, bản Ý Linh Hồ & Tả Van mộng mơ',
+                  photoTip: 'Căn góc máy 45° lúc 06:15 sáng khi tia nắng đầu tiên xuyên qua biển mây chiếu rọi ruộng bậc thang.',
+                },
+                winter: {
+                  title: 'Mùa Đông Sa Pa: Săn Băng Tuyết Hoàng Liên & Biển Mây Bồng Bềnh',
+                  badge: '❄️ Tháng 11 - Tháng 1 (Mùa Săn Mây & Tuyết)',
+                  image: '/landing/images/homestay/homestay-quan-1-2.png',
+                  temp: '3°C – 10°C • Lạnh buốt đặc trưng, có thể có băng tuyết',
+                  cloudChance: '95% Biển Mây Cuộn Nghìn Lớp Dày Đặc',
+                  cloudTime: 'Suốt cả ngày khi trời hửng nắng',
+                  ootd: 'Áo măng-tô dạ dáng dài, áo phao lông vũ, găng tay & khăn len to bản, boot da ấm áp',
+                  food: 'Lẩu cá hồi nghi ngút khói, hạt dẻ nướng bùi béo, ngô nướng than hoa, trà gừng nóng',
+                  spot: 'Chóp đỉnh Fansipan 3.143m săn băng tuyết, ban công ấm áp bên lò sưởi Lá Đỏ',
+                  photoTip: 'Chụp cận cảnh cốc cà phê/trà nóng bốc khói mờ ảo bên khung cửa sổ phủ sương lạnh ngắm biển mây.',
+                },
+              };
+
+              const current = SEASONS_INFO[activeSeason] || SEASONS_INFO.autumn;
+
+              return (
+                <div
+                  className="season-radar-card"
+                  onMouseMove={handleCardMouseMove}
+                  onMouseLeave={handleCardMouseLeave}
+                >
+                  <div className="season-card-grid">
+                    <div className="season-visual-pane">
+                      <img src={current.image} alt={current.title} className="season-main-img" />
+                      <div className="season-img-overlay"></div>
+                      <span className="season-floating-badge">{current.badge}</span>
+                      <div className="season-img-caption">
+                        <h4>{current.title}</h4>
+                      </div>
+                    </div>
+
+                    <div className="season-details-pane">
+                      <div className="season-metrics-grid">
+                        <div className="metric-tile">
+                          <span className="metric-label">🌡️ KHÍ HẬU & NHIỆT ĐỘ</span>
+                          <p className="metric-value">{current.temp}</p>
+                        </div>
+
+                        <div className="metric-tile highlight-gold">
+                          <span className="metric-label">☁️ TỶ LỆ SĂN MÂY</span>
+                          <p className="metric-value">{current.cloudChance}</p>
+                          <small style={{ color: '#fbbf24', fontSize: '0.8rem', display: 'block', marginTop: '2px' }}>
+                            ⏰ Giờ vàng: {current.cloudTime}
+                          </small>
+                        </div>
+
+                        <div className="metric-tile">
+                          <span className="metric-label">👗 GỢI Ý PHỐI ĐỒ (OOTD)</span>
+                          <p className="metric-value">{current.ootd}</p>
+                        </div>
+
+                        <div className="metric-tile">
+                          <span className="metric-label">🍲 MÓN NGON THEO MÙA</span>
+                          <p className="metric-value">{current.food}</p>
+                        </div>
+                      </div>
+
+                      <div className="season-tip-bar">
+                        <div className="season-tip-content">
+                          <strong>📸 Bí quyết chụp ảnh đẹp: </strong>
+                          <span>{current.photoTip}</span>
+                        </div>
+                      </div>
+
+                      <div className="season-action-row">
+                        <button
+                          type="button"
+                          className="liquid-btn season-book-btn"
+                          onClick={() => window.goToBookingPage()}
+                        >
+                          <span className="btn-text">Đặt Phòng Trải Nghiệm Mùa Này</span>
+                          <span className="liquid-glow"></span>
+                        </button>
+                        <a href="#panorama-section" className="ghost-btn" style={{ padding: '0.65rem 1.4rem' }}>
+                          <span>Xem Cẩm Nang Du Lịch</span>
+                        </a>
+                      </div>
                     </div>
                   </div>
                 </div>
-              ))}
-            </div>
+              );
+            })()}
           </div>
         </section>
 
@@ -1493,6 +1375,45 @@ function LandingPage() {
         initialTab={policyModal.tab}
         onClose={() => setPolicyModal({ isOpen: false, tab: 'checkin' })}
       />
+
+      {/* Showroom Photo Detail Modal */}
+      {selectedPhoto && (
+        <div className="photo-lightbox-modal" onClick={() => setSelectedPhoto(null)}>
+          <div className="photo-lightbox-box" onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              className="photo-lightbox-close"
+              onClick={() => setSelectedPhoto(null)}
+              aria-label="Đóng"
+            >
+              ✕
+            </button>
+            <div className="photo-lightbox-img-wrap">
+              <img src={selectedPhoto.image} alt={selectedPhoto.title} />
+            </div>
+            <div className="photo-lightbox-info">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
+                <h3 style={{ fontSize: '1.45rem', color: '#fff', margin: 0, fontWeight: 700 }}>{selectedPhoto.title}</h3>
+                <span style={{ color: '#fbbf24', fontSize: '0.9rem', fontWeight: 700, background: 'rgba(245, 158, 11, 0.15)', padding: '4px 12px', borderRadius: '999px', border: '1px solid rgba(245, 158, 11, 0.4)' }}>
+                  {selectedPhoto.badge}
+                </span>
+              </div>
+              <p style={{ color: '#d1d5db', fontSize: '1rem', lineHeight: 1.6, marginBottom: '14px' }}>
+                {selectedPhoto.desc}
+              </p>
+              <div className="showroom-tips-box">
+                <strong>📸 Bí Quyết Check-in: </strong>
+                <span>{selectedPhoto.tips}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cinema Zen Sanctuary Mode (Chế Độ Thả Hồn 4K) */}
+      {isZenCinemaOpen && (
+        <CinemaZenMode isOpen={isZenCinemaOpen} onClose={() => setIsZenCinemaOpen(false)} />
+      )}
 
       {/* Floating 3 Contact Buttons */}
       <FloatingContactWidget />

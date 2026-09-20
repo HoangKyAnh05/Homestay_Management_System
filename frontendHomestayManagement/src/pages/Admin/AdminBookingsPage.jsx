@@ -1001,6 +1001,21 @@ function BookingDetailModal({ detail, loading, error, actionLoading, actionError
                         <input required type="number" min={0} value={bookForm.numberOfChildren}
                           onChange={e => setBookForm(f => ({ ...f, numberOfChildren: e.target.value }))} />
                       </label>
+                      <label className="abk-edit-field abk-edit-field--wide">
+                        <span>Đổi gói thuê <small>(để trống = giữ nguyên giá cũ)</small></span>
+                        <select value={bookForm.pricePolicyId}
+                          onChange={e => setBookForm(f => ({ ...f, pricePolicyId: e.target.value }))}>
+                          <option value="">— Giữ nguyên gói hiện tại ({detail.rentType}) —</option>
+                          {pricePolicies.map(p => (
+                            <option key={p.id} value={p.id}>
+                              {p.policyName}{p.limitHours ? ` · ${p.limitHours}h` : ''}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
+                    <div className="abk-edit-hint">
+                      ℹ️ Giá sẽ được tính lại theo gói thuê và ngày check-in mới nếu bạn đổi gói.
                     </div>
                     {bookError && <p className="abk-edit-error">{bookError}</p>}
                     <div className="abk-edit-actions">
@@ -1940,13 +1955,13 @@ function DirectBookingModal({ onClose, onCreated }) {
                       </div>
                       <label>
                         <span>Người lớn</span>
-                        <input type="number" min="1"
+                        <input type="number" min="1" max={room.maxAdults || undefined}
                           value={room.numberOfAdults}
                           onChange={e => updateSelectedRoom(room.roomId, 'numberOfAdults', e.target.value)} />
                       </label>
                       <label>
                         <span>Trẻ em</span>
-                        <input type="number" min="0"
+                        <input type="number" min="0" max={room.maxChildren || undefined}
                           value={room.numberOfChildren}
                           onChange={e => updateSelectedRoom(room.roomId, 'numberOfChildren', e.target.value)} />
                       </label>

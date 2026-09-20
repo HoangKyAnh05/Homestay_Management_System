@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bản Thiết Kế Toàn Cảnh Giao Diện Lá Đỏ 3D Tour (AI Mockup Showcase)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;1,400&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #070d0a;
+      --bg-card: rgba(18, 30, 24, 0.85);
+      --accent-gold: #f59e0b;
+      --accent-emerald: #10b981;
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+      --border-glass: rgba(255, 255, 255, 0.12);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      line-height: 1.6;
+      padding-bottom: 80px;
+    }
+
+    /* Top Sticky Bar */
+    .top-bar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(7, 13, 10, 0.85);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border-glass);
+      padding: 16px 5%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .brand-wrap {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .brand-subtitle {
+      font-size: 0.75rem;
+      color: var(--accent-gold);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .action-links {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .btn-live-test {
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: #fff;
+      padding: 8px 18px;
+      border-radius: 999px;
+      text-decoration: none;
+      font-size: 0.88rem;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+
+    .btn-live-test:hover {
+      box-shadow: 0 0 15px rgba(16, 185, 129, 0.5);
+      transform: translateY(-1px);
+    }
+
+    /* Intro Hero Banner */
+    .intro-section {
+      max-width: 1200px;
+      margin: 40px auto 30px;
+      padding: 0 20px;
+      text-align: center;
+    }
+
+    .intro-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(245, 158, 11, 0.15);
+      border: 1px solid rgba(245, 158, 11, 0.4);
+      color: #fbbf24;
+      padding: 6px 16px;
+      border-radius: 999px;
+      font-size: 0.84rem;
+      font-weight: 600;
+      margin-bottom: 16px;
+    }
+
+    .intro-heading {
+      font-family: 'Playfair Display', serif;
+      font-size: 2.4rem;
+      font-weight: 700;
+      margin-bottom: 12px;
+      background: linear-gradient(135deg, #ffffff 40%, #f5cf9e 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .intro-desc {
+      color: var(--text-muted);
+      font-size: 1.05rem;
+      max-width: 780px;
+      margin: 0 auto;
+    }
+
+    /* Flow Sections */
+    .flow-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 60px;
+    }
+
+    .mockup-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-glass);
+      border-radius: 24px;
+      overflow: hidden;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+      transition: border-color 0.3s ease;
+    }
+
+    .mockup-card:hover {
+      border-color: rgba(245, 158, 11, 0.45);
+    }
+
+    .mockup-header {
+      padding: 24px 30px;
+      border-bottom: 1px solid var(--border-glass);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .mockup-step-pill {
+      background: rgba(16, 185, 129, 0.2);
+      border: 1px solid rgba(16, 185, 129, 0.4);
+      color: #6ee7b7;
+      font-size: 0.8rem;
+      font-weight: 700;
+      padding: 4px 12px;
+      border-radius: 999px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .mockup-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.45rem;
+      color: #fff;
+      margin-top: 4px;
+    }
+
+    .mockup-subtitle {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+
+    .mockup-img-wrap {
+      position: relative;
+      width: 100%;
+      background: #000;
+    }
+
+    .mockup-img-wrap img {
+      width: 100%;
+      height: auto;
+      display: block;
+      transition: transform 0.4s ease;
+    }
+
+    .mockup-features {
+      padding: 20px 30px;
+      background: rgba(0, 0, 0, 0.3);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      border-top: 1px solid var(--border-glass);
+    }
+
+    .feature-chip {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #e5e7eb;
+      font-size: 0.82rem;
+      padding: 5px 14px;
+      border-radius: 999px;
+    }
+
+    .feature-chip.highlight {
+      border-color: rgba(245, 158, 11, 0.4);
+      color: #fcd34d;
+      background: rgba(245, 158, 11, 0.1);
+    }
+
+    /* Footer Banner */
+    .cta-footer {
+      max-width: 1200px;
+      margin: 60px auto 0;
+      padding: 40px 30px;
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(245, 158, 11, 0.15));
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      border-radius: 28px;
+      text-align: center;
+    }
+
+    .cta-footer h2 {
+      font-family: 'Playfair Display', serif;
+      font-size: 2rem;
+      margin-bottom: 12px;
+      color: #fff;
+    }
+
+    .cta-footer p {
+      color: var(--text-muted);
+      max-width: 600px;
+      margin: 0 auto 24px;
+    }
+
+    .cta-btn-group {
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .btn-main {
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+      color: #000;
+      font-weight: 700;
+      padding: 14px 32px;
+      border-radius: 999px;
+      text-decoration: none;
+      font-size: 1rem;
+      transition: all 0.2s;
+    }
+
+    .btn-main:hover {
+      box-shadow: 0 0 20px rgba(245, 158, 11, 0.6);
+      transform: translateY(-2px);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Sticky Header -->
+  <header class="top-bar">
+    <div class="brand-wrap">
+      <span style="font-size: 1.6rem;">🍁</span>
+      <div>
+        <div class="brand-title">LÁ ĐỎ HOMESTAY SA PA</div>
+        <div class="brand-subtitle">Visual AI Concept • 3D Virtual Tour & Sanctuary</div>
+      </div>
+    </div>
+    <div class="action-links">
+      <a href="/landing" class="btn-live-test" target="_blank">🌐 Xem Trang Web Thực Tế (/landing) →</a>
+    </div>
+  </header>
+
+  <!-- Intro Title -->
+  <section class="intro-section">
+    <div class="intro-badge">✨ BẢN PHÁC THẢO THIẾT KẾ HOÀN THIỆN 100% (TOP TO BOTTOM)</div>
+    <h1 class="intro-heading">Hành Trình Trải Nghiệm Giao Diện Lá Đỏ 3D</h1>
+    <p class="intro-desc">
+      Bộ thiết kế 4 phân đoạn trực quan thể hiện đầy đủ cấu trúc UI/UX của trang Lá Đỏ 3D: từ Ban công ngắm mây Fansipan, Showroom 5 góc check-in sống ảo triệu view, Trị liệu âm thanh thính âm đến Cẩm nang du lịch và Đặt phòng nghỉ dưỡng.
+    </p>
+  </section>
+
+  <!-- Flow Mockups Container -->
+  <main class="flow-container">
+
+    <!-- Section 1: Hero & 3D Rooftop View -->
+    <article class="mockup-card">
+      <div class="mockup-header">
+        <div>
+          <span class="mockup-step-pill">Phân Đoạn 1 • Top Hero Header</span>
+          <h2 class="mockup-title">Chạm Vào Biển Mây Ngàn Sa Pa (3D Cloud Retreat)</h2>
+          <p class="mockup-subtitle">Giao diện Header kính mờ, Bộ chuyển đổi Mood (Bình Minh / Hoàng Hôn / Đêm Sao) & Ban công gỗ 3D nhìn ra thung lũng Mường Hoa.</p>
+        </div>
+      </div>
+      <div class="mockup-img-wrap">
+        <img src="/landing_hero_mockup.jpg" alt="Hero Section Mockup" onerror="this.src='/landing/images/rooftop/la_do_sunset.jpg'" />
+      </div>
+      <div class="mockup-features">
+        <span class="feature-chip highlight">✦ Điều chỉnh Mood 3 thời khắc: Dawn / Sunset / Night</span>
+        <span class="feature-chip">✦ WebGL Sương Mù & Hạt Mây Bay</span>
+        <span class="feature-chip">✦ Âm thanh suối rừng Fansipan</span>
+        <span class="feature-chip">✦ Thống kê uy tín: 100% View Mây • 4.98★</span>
+      </div>
+    </article>
+
+    <!-- Section 2: Virtual Showroom 3D Check-in Spots -->
+    <article class="mockup-card">
+      <div class="mockup-header">
+        <div>
+          <span class="mockup-step-pill">Phân Đoạn 2 • Virtual Showroom 3D</span>
+          <h2 class="mockup-title">5 Góc Sống Ảo Triệu View Tại Lá Đỏ</h2>
+          <p class="mockup-subtitle">Thẻ card 3D Tilt tương tác: Bờ Kè Đá Săn Mây, Quán Cafe Lá Đỏ, Bồn Tắm Thuốc Dao Đỏ, BBQ & Tàu Hỏa Mường Hoa kèm Giờ Vàng và Tips chụp ảnh.</p>
+        </div>
+      </div>
+      <div class="mockup-img-wrap">
+        <img src="/landing_showroom_mockup.jpg" alt="Showroom Section Mockup" onerror="this.src='/landing/images/sapa_real/la_do_homestay_real.jpg'" />
+      </div>
+      <div class="mockup-features">
+        <span class="feature-chip highlight">✦ Hiệu ứng 3D Tilt xoay theo chuột</span>
+        <span class="feature-chip">✦ Nhãn khung giờ vàng Golden Hour</span>
+        <span class="feature-chip">✦ Tips chụp ảnh điện ảnh cho từng góc</span>
+        <span class="feature-chip">✦ Popup Modal phóng to độ phân giải cao</span>
+      </div>
+    </article>
+
+    <!-- Section 3: Sensory Soundscape & Mountain Healing -->
+    <article class="mockup-card">
+      <div class="mockup-header">
+        <div>
+          <span class="mockup-step-pill">Phân Đoạn 3 • Sensory & Experiences</span>
+          <h2 class="mockup-title">Thính Âm Hoàng Liên Sơn & Trải Nghiệm Độc Bản</h2>
+          <p class="mockup-subtitle">Bộ phát âm thanh tự nhiên tương tác (Gió Rừng Thông, Lò Sưởi Đêm, Mưa Thung Lũng) kết hợp các trải nghiệm ẩm thực & tắm khoáng chữa lành.</p>
+        </div>
+      </div>
+      <div class="mockup-img-wrap">
+        <img src="/landing_sensory_mockup.jpg" alt="Sensory Section Mockup" onerror="this.src='/landing/images/sapa_real/tam_la_thuoc_dao_do.jpg'" />
+      </div>
+      <div class="mockup-features">
+        <span class="feature-chip highlight">✦ Vòng sóng Zen tương tác trực tiếp</span>
+        <span class="feature-chip">✦ 3 track âm thanh thiên nhiên thư giãn</span>
+        <span class="feature-chip">✦ Tắm lá thuốc người Dao Đỏ</span>
+        <span class="feature-chip">✦ Lẩu cá tầm & tiệc nướng BBQ thung lũng</span>
+      </div>
+    </article>
+
+    <!-- Section 4: Travel Guides, MiniMap & Booking CTA -->
+    <article class="mockup-card">
+      <div class="mockup-header">
+        <div>
+          <span class="mockup-step-pill">Phân Đoạn 4 • Cẩm Nang, MiniMap & Footer</span>
+          <h2 class="mockup-title">Hành Trình Khám Phá Sa Pa & Đặt Phòng</h2>
+          <p class="mockup-subtitle">Lưới bài viết review phong cảnh (Cát Cát, Fansipan, Ô Quy Hồ), Bản đồ tương tác Leaflet 31A Hoàng Liên & Banner đặt phòng ưu đãi 15%.</p>
+        </div>
+      </div>
+      <div class="mockup-img-wrap">
+        <img src="/landing_guide_mockup.jpg" alt="Guide and Map Mockup" onerror="this.src='/landing/images/sapa_real/am_thuc_tay_bac.jpg'" />
+      </div>
+      <div class="mockup-features">
+        <span class="feature-chip highlight">✦ Bài viết review Sa Pa kèm Modal chi tiết</span>
+        <span class="feature-chip">✦ Bản đồ Leaflet vị trí trung tâm 31A Hoàng Liên</span>
+        <span class="feature-chip">✦ Ưu đãi giảm 15% khi đặt phòng trực tuyến</span>
+        <span class="feature-chip">✦ Hotline và kết nối trực tiếp quản gia</span>
+      </div>
+    </article>
+
+  </main>
+
+  <!-- Bottom CTA Footer -->
+  <div class="cta-footer">
+    <h2>Bạn Đã Sẵn Sàng Trải Nghiệm Thực Tế?</h2>
+    <p>Toàn bộ thiết kế trên đã được lập trình hoàn chỉnh vào mã nguồn thực tế của dự án. Bạn có thể mở ngay trang web để trải nghiệm các hiệu ứng chuyển động, âm thanh và 3D WebGL.</p>
+    <div class="cta-btn-group">
+      <a href="/landing" class="btn-main" target="_blank">🚀 Mở Ngay Trang Lá Đỏ 3D Thực Tế</a>
+      <a href="/rooms" class="btn-live-test" style="padding: 14px 28px; font-size: 1rem;" target="_blank">🏠 Xem Trang Đặt Phòng</a>
+    </div>
+  </div>
+
+</body>
+</html>

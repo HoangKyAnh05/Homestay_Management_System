@@ -1050,12 +1050,14 @@ public class AdminBookingServiceImpl implements AdminBookingService {
     }
 
     private void validateCapacity(RoomType roomType, Integer adults, Integer children) {
-        // Lễ tân có quyền linh hoạt đặt hoặc sửa phòng vượt quá số lượng người chuẩn khi cần thiết
-        if (adults != null && adults < 1) {
-            throw new IllegalArgumentException("Số người lớn phải từ 1 trở lên");
+        if (roomType == null) {
+            return;
         }
-        if (children != null && children < 0) {
-            throw new IllegalArgumentException("Số trẻ em không được là số âm");
+        if (adults != null && roomType.getMaxAdults() != null && adults > roomType.getMaxAdults()) {
+            throw new IllegalArgumentException("Số người lớn vượt quá sức chứa loại phòng");
+        }
+        if (children != null && roomType.getMaxChildren() != null && children > roomType.getMaxChildren()) {
+            throw new IllegalArgumentException("Số trẻ em vượt quá sức chứa loại phòng");
         }
     }
 

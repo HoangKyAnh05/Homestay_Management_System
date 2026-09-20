@@ -1,0 +1,699 @@
+/* ==========================================================================
+   CINEMA ZEN MODE • LUXURY AMBIENT IMMERSION (4K BALCONY & FLOATING SOUNDWAVE)
+   ========================================================================== */
+
+.cinema-zen-overlay {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 999999;
+  background: #050a07;
+  color: #ffffff;
+  overflow: hidden;
+  font-family: 'Be Vietnam Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  animation: zenFadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  user-select: none;
+}
+
+@keyframes zenFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(1.02);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* 4K Panoramic Balcony with Subtle Cinematic Pan & Zoom + Parallax */
+.zen-backdrop-cinematic {
+  position: absolute;
+  inset: -4%;
+  width: 108%;
+  height: 108%;
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+  z-index: 1;
+  transition: background-image 0.8s ease-in-out, transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  will-change: transform, background-image;
+  filter: brightness(0.96) contrast(1.04);
+}
+
+.zen-vignette-layer {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 60% 45%, transparent 35%, rgba(5, 10, 7, 0.45) 75%, rgba(5, 10, 7, 0.85) 100%),
+              linear-gradient(180deg, rgba(5, 10, 7, 0.55) 0%, transparent 20%, transparent 75%, rgba(5, 10, 7, 0.75) 100%);
+  pointer-events: none;
+}
+
+/* Floating Particles (Steam, Valley Mist, Embers, Leaves, Rain) */
+.zen-ambient-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2;
+  pointer-events: none;
+  transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* Smooth auto-fade for interactive UI on idle */
+.zen-top-left-scenes,
+.zen-sky-content,
+.zen-top-right-controls,
+.zen-bottom-right-player {
+  position: absolute;
+  z-index: 10;
+  transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1), transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.cinema-zen-overlay.ui-idle .zen-top-left-scenes,
+.cinema-zen-overlay.ui-idle .zen-top-right-controls {
+  opacity: 0;
+  transform: translateY(-16px);
+  pointer-events: none;
+}
+
+.cinema-zen-overlay.ui-idle .zen-bottom-right-player {
+  opacity: 0.28;
+  transform: translateY(12px);
+}
+
+.cinema-zen-overlay.ui-idle .zen-bottom-right-player:hover {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.cinema-zen-overlay.ui-idle .zen-sky-content {
+  opacity: 0.85;
+}
+
+/* ==========================================================================
+   TOP-LEFT: SCENE SELECTOR BAR (4 KHOẢNH KHẮC SA PA)
+   ========================================================================== */
+.zen-top-left-scenes {
+  top: 2rem;
+  left: 2.5rem;
+}
+
+.zen-scene-pill-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(10, 20, 15, 0.75);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(251, 191, 36, 0.25);
+  border-radius: 999px;
+  padding: 5px 6px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+}
+
+.zen-scene-pill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: none;
+  color: #cbd5e1;
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.zen-scene-pill-btn:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.zen-scene-pill-btn.active {
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.3) 0%, rgba(217, 119, 6, 0.25) 100%);
+  border: 1px solid rgba(251, 191, 36, 0.6);
+  color: #fbbf24;
+  box-shadow: 0 0 16px rgba(251, 191, 36, 0.3);
+}
+
+.zen-scene-icon {
+  font-size: 1rem;
+}
+
+/* ==========================================================================
+   CENTER-LEFT: BRAND & POETIC TYPOGRAPHY (UNIFIED LUXURY SERIF)
+   ========================================================================== */
+.zen-sky-content {
+  top: 17%;
+  left: 5%;
+  max-width: 620px;
+  pointer-events: none;
+  transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.zen-poetic-quote-box {
+  animation: quoteFadeSlide 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+@keyframes quoteFadeSlide {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.zen-quote-line-1,
+.zen-quote-line-2 {
+  font-family: 'Playfair Display', 'Lora', Georgia, serif;
+  font-size: 2.35rem;
+  font-style: italic;
+  font-weight: 500;
+  line-height: 1.4;
+  color: #ffffff;
+  margin: 0;
+  letter-spacing: 0.01em;
+  text-shadow: 0 4px 20px rgba(0, 0, 0, 0.9), 0 0 30px rgba(226, 177, 115, 0.25);
+}
+
+.zen-quote-line-2 {
+  color: #fce7c8;
+}
+
+.zen-quote-author {
+  font-family: 'Be Vietnam Pro', -apple-system, sans-serif;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #fbbf24;
+  margin-top: 0.6rem;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.9);
+}
+
+/* ==========================================================================
+   TOP-RIGHT: CONTROLS (BREATHWORK, FULLSCREEN, ESC)
+   ========================================================================== */
+.zen-top-right-controls {
+  top: 2rem;
+  right: 2.5rem;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.zen-glass-pill-btn,
+.zen-exit-pill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(10, 20, 15, 0.82);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1.5px solid rgba(251, 191, 36, 0.35);
+  color: #ffffff;
+  font-size: 0.86rem;
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: 999px;
+  cursor: pointer;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.zen-glass-pill-btn.active {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.35) 0%, rgba(5, 150, 105, 0.3) 100%);
+  border-color: #10b981;
+  color: #34d399;
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);
+}
+
+.zen-glass-pill-btn:hover,
+.zen-exit-pill-btn:hover {
+  background: rgba(226, 177, 115, 0.25);
+  border-color: #fbbf24;
+  transform: translateY(-2px);
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.85), 0 0 25px rgba(251, 191, 36, 0.4);
+}
+
+.zen-glass-icon-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(10, 20, 15, 0.82);
+  backdrop-filter: blur(20px);
+  border: 1.5px solid rgba(251, 191, 36, 0.35);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.zen-glass-icon-btn:hover {
+  background: rgba(226, 177, 115, 0.25);
+  border-color: #fbbf24;
+  transform: translateY(-2px);
+  color: #fbbf24;
+}
+
+.zen-esc-badge {
+  background: rgba(251, 191, 36, 0.2);
+  border: 1px solid rgba(251, 191, 36, 0.6);
+  color: #fbbf24;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  padding: 2px 7px;
+  border-radius: 6px;
+}
+
+/* ==========================================================================
+   4-7-8 BREATHWORK MEDITATION OVERLAY
+   ========================================================================== */
+.zen-breathing-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2rem;
+  animation: breathModalFade 0.6s ease forwards;
+}
+
+@keyframes breathModalFade {
+  from { opacity: 0; transform: translate(-50%, -46%); }
+  to { opacity: 1; transform: translate(-50%, -50%); }
+}
+
+.zen-breathing-ring-wrapper {
+  position: relative;
+  width: 280px;
+  height: 280px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.zen-breathing-ring-glow {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(251, 191, 36, 0.35) 0%, rgba(16, 185, 129, 0.2) 60%, transparent 80%);
+  filter: blur(25px);
+  transition: all 1s ease;
+}
+
+.zen-breathing-ring-core {
+  position: relative;
+  width: 240px;
+  height: 240px;
+  border-radius: 50%;
+  background: rgba(10, 20, 15, 0.88);
+  backdrop-filter: blur(30px);
+  border: 2px solid rgba(251, 191, 36, 0.5);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.9), inset 0 0 30px rgba(251, 191, 36, 0.2);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 1.5rem;
+  transition: all 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.zen-breathing-ring-wrapper.inhale .zen-breathing-ring-core {
+  transform: scale(1.15);
+  border-color: #34d399;
+  box-shadow: 0 0 50px rgba(52, 211, 153, 0.4), inset 0 0 40px rgba(52, 211, 153, 0.25);
+}
+
+.zen-breathing-ring-wrapper.hold .zen-breathing-ring-core {
+  transform: scale(1.15);
+  border-color: #fbbf24;
+  box-shadow: 0 0 55px rgba(251, 191, 36, 0.5), inset 0 0 40px rgba(251, 191, 36, 0.3);
+}
+
+.zen-breathing-ring-wrapper.exhale .zen-breathing-ring-core {
+  transform: scale(0.92);
+  border-color: #60a5fa;
+  box-shadow: 0 0 35px rgba(96, 165, 250, 0.35), inset 0 0 25px rgba(96, 165, 250, 0.2);
+}
+
+.zen-breathing-action {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 1.15rem;
+  font-style: italic;
+  color: #ffffff;
+  min-height: 2.2rem;
+  display: flex;
+  align-items: center;
+  text-align: center;
+}
+
+.zen-breathing-seconds {
+  font-size: 3.2rem;
+  font-weight: 800;
+  color: #fbbf24;
+  line-height: 1;
+  margin: 0.3rem 0;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 20px rgba(251, 191, 36, 0.5);
+}
+
+.zen-breathing-sub {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #94a3b8;
+  letter-spacing: 0.05em;
+}
+
+.zen-breathing-close-btn {
+  background: rgba(10, 20, 15, 0.85);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #e2e8f0;
+  font-size: 0.84rem;
+  font-weight: 600;
+  padding: 8px 20px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.zen-breathing-close-btn:hover {
+  background: rgba(239, 68, 68, 0.25);
+  border-color: #ef4444;
+  color: #fca5a5;
+}
+
+/* ==========================================================================
+   BOTTOM-RIGHT: LUXURY FROSTED GLASS SOUND PLAYER & MIXER
+   ========================================================================== */
+.zen-bottom-right-player {
+  bottom: 2.2rem;
+  right: 2.5rem;
+  width: 450px;
+  max-width: calc(100vw - 3rem);
+}
+
+.zen-sound-card {
+  background: rgba(10, 20, 15, 0.86);
+  backdrop-filter: blur(28px) saturate(190%);
+  -webkit-backdrop-filter: blur(28px) saturate(190%);
+  border: 1.5px solid rgba(251, 191, 36, 0.35);
+  border-radius: 24px;
+  padding: 1.3rem 1.5rem;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.85), inset 0 1px 1px rgba(255, 255, 255, 0.15);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.zen-card-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.zen-play-circle-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #fbbf24 0%, #d97706 100%);
+  border: none;
+  color: #080f0b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 0 20px rgba(251, 191, 36, 0.5);
+  transition: all 0.25s ease;
+  flex-shrink: 0;
+}
+
+.zen-play-circle-btn:hover {
+  transform: scale(1.08);
+  box-shadow: 0 0 26px rgba(251, 191, 36, 0.7);
+}
+
+.zen-now-playing-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  overflow: hidden;
+}
+
+.zen-sound-title {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.zen-mixer-toggle-btn {
+  background: rgba(251, 191, 36, 0.15);
+  border: 1px solid rgba(251, 191, 36, 0.4);
+  color: #fbbf24;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 5px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.zen-mixer-toggle-btn:hover,
+.zen-mixer-toggle-btn.active {
+  background: #fbbf24;
+  color: #050a07;
+  box-shadow: 0 0 14px rgba(251, 191, 36, 0.4);
+}
+
+/* Glowing Soundwave */
+.zen-soundwave-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  height: 26px;
+  gap: 3px;
+  padding: 0 2px;
+}
+
+.sound-bar {
+  flex: 1;
+  background: linear-gradient(180deg, #fbbf24 0%, #10b981 100%);
+  border-radius: 3px;
+  opacity: 0.35;
+  transition: height 0.2s ease, opacity 0.3s ease;
+}
+
+.zen-soundwave-row.animating .sound-bar {
+  opacity: 0.9;
+  animation: waveBar 1.2s ease-in-out infinite alternate;
+}
+
+@keyframes waveBar {
+  0% {
+    height: 15%;
+  }
+  100% {
+    height: 100%;
+  }
+}
+
+/* Sound Chips */
+.zen-track-switcher-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.zen-track-chip {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #cbd5e1;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 8px 11px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  text-align: left;
+}
+
+.zen-track-chip:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.zen-track-chip.active {
+  background: rgba(16, 185, 129, 0.2);
+  border-color: #10b981;
+  color: #34d399;
+  box-shadow: 0 0 14px rgba(16, 185, 129, 0.25);
+}
+
+.chip-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Expanded Mixer Panel */
+.zen-mixer-expanded-panel {
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(251, 191, 36, 0.25);
+  border-radius: 16px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  animation: mixerSlideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes mixerSlideDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.zen-mixer-head {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #fbbf24;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.zen-mixer-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.zen-mixer-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.zen-mixer-item-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  color: #e2e8f0;
+}
+
+.zen-mixer-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.zen-mixer-checkbox input {
+  accent-color: #10b981;
+  cursor: pointer;
+}
+
+.zen-mixer-val {
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: #94a3b8;
+  font-variant-numeric: tabular-nums;
+}
+
+.zen-mixer-slider {
+  width: 100%;
+  height: 4px;
+  accent-color: #fbbf24;
+  cursor: pointer;
+}
+
+/* Master Volume Slider Row */
+.zen-vol-slider-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-top: 4px;
+}
+
+.zen-range-input {
+  flex: 1;
+  height: 5px;
+  border-radius: 999px;
+  accent-color: #fbbf24;
+  cursor: pointer;
+}
+
+.zen-vol-text {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: #94a3b8;
+  min-width: 32px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .zen-top-left-scenes {
+    top: 1.2rem;
+    left: 1rem;
+    right: 1rem;
+  }
+  .zen-scene-pill-group {
+    overflow-x: auto;
+    width: 100%;
+    justify-content: flex-start;
+  }
+  .zen-sky-content {
+    top: 22%;
+    left: 6%;
+    right: 6%;
+  }
+  .zen-quote-line-1,
+  .zen-quote-line-2 {
+    font-size: 1.6rem;
+  }
+  .zen-top-right-controls {
+    top: 5rem;
+    right: 1rem;
+  }
+  .zen-bottom-right-player {
+    right: 1rem;
+    left: 1rem;
+    width: auto;
+    bottom: 1.2rem;
+  }
+  .zen-track-switcher-row {
+    grid-template-columns: 1fr;
+  }
+}

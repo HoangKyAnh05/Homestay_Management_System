@@ -42,12 +42,14 @@ export class KomorebiScene {
     this.intersectionObserver = null;
 
     this.init();
-    this.createAtmosphere();
-    this.createTerrain();
-    this.createFireflies();
-    this.bindEvents();
-    this.initObserver();
-    this.animate();
+    if (this.scene) {
+      this.createAtmosphere();
+      this.createTerrain();
+      this.createFireflies();
+      this.bindEvents();
+      this.initObserver();
+      this.animate();
+    }
   }
 
   initObserver() {
@@ -63,25 +65,9 @@ export class KomorebiScene {
 
   init() {
     const THREE = window.THREE;
-    const isLowSpec = (typeof navigator !== 'undefined' && navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4) ||
-      (typeof navigator !== 'undefined' && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent));
+    if (!THREE) return;
 
-    this.isLowSpec = isLowSpec;
-
-    // High-performance WebGL Renderer with strict capped pixelRatio (no lag on low-end)
-    this.renderer = new THREE.WebGLRenderer({
-      canvas: this.canvas,
-      antialias: false,
-      alpha: true,
-      powerPreference: 'low-power',
-      precision: isLowSpec ? 'lowp' : 'mediump',
-      depth: true,
-      stencil: false,
-    });
-    this.renderer.setSize(this.width, this.height);
-    this.renderer.setPixelRatio(isLowSpec ? 0.85 : Math.min(window.devicePixelRatio || 1, 1.0));
-
-    // Scene & Fog
+    // Create Scene & Fog first
     this.scene = new THREE.Scene();
     this.scene.fog = new THREE.FogExp2(0x070b09, 0.025);
 
@@ -101,6 +87,22 @@ export class KomorebiScene {
     this.lanternLight = new THREE.PointLight(0xf5cf9e, 2.8, 14, 1.5);
     this.lanternLight.position.set(0, 1.6, 3.2);
     this.scene.add(this.lanternLight);
+
+    // High-performance WebGL Renderer with fallback
+    try {
+      this.renderer = new THREE.WebGLRenderer({
+        canvas: this.canvas,
+        antialias: false,
+        alpha: true,
+        depth: true,
+        stencil: false,
+      });
+      this.renderer.setSize(this.width, this.height);
+      this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.0));
+    } catch (e) {
+      console.warn('WebGL Renderer not available in this environment, fallback to CSS scene');
+      this.renderer = null;
+    }
   }
 
   createTerrain() {
