@@ -445,6 +445,7 @@ function AdminLayoutInner({ activePage, children }) {
         setMarketingUnreadCount(count)
         updated.marketing = count > 0
       }
+      fetchMarketingNotifications()
     } catch (_) {}
 
     // 7. Kiểm tra Báo cáo cuối ngày mới cho Admin
@@ -742,46 +743,106 @@ function AdminLayoutInner({ activePage, children }) {
                 type="button"
                 aria-label="Thông báo"
                 onClick={() => {
-                  setShowNotificationDropdown((prev) => !prev)
+                  setShowNotificationDropdown((prev) => {
+                    const next = !prev
+                    if (next) fetchMarketingNotifications()
+                    return next
+                  })
                 }}
                 title={
-                  (checkoutAlerts.length + (hasPendingDailyReport ? 1 : 0)) > 0
-                    ? `${checkoutAlerts.length + (hasPendingDailyReport ? 1 : 0)} thông báo phòng mới`
+                  (checkoutAlerts.length + (hasPendingDailyReport ? 1 : 0) + marketingNotifications.filter(n => !n.isRead).length) > 0
+                    ? `${checkoutAlerts.length + (hasPendingDailyReport ? 1 : 0) + marketingNotifications.filter(n => !n.isRead).length} thông báo mới`
                     : 'Thông báo phòng'
                 }
               >
                 <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-                {(checkoutAlerts.length + (hasPendingDailyReport ? 1 : 0)) > 0 && (
+                {(checkoutAlerts.length + (hasPendingDailyReport ? 1 : 0) + marketingNotifications.filter(n => !n.isRead).length) > 0 && (
                   <span className="admin-bell-badge">
-                    {(checkoutAlerts.length + (hasPendingDailyReport ? 1 : 0)) > 99
+                    {(checkoutAlerts.length + (hasPendingDailyReport ? 1 : 0) + marketingNotifications.filter(n => !n.isRead).length) > 99
                       ? '99+'
-                      : (checkoutAlerts.length + (hasPendingDailyReport ? 1 : 0))}
+                      : (checkoutAlerts.length + (hasPendingDailyReport ? 1 : 0) + marketingNotifications.filter(n => !n.isRead).length)}
                   </span>
                 )}
               </button>
 
               {showNotificationDropdown && (
                 <div className="admin-notification-dropdown" onClick={(e) => e.stopPropagation()}>
-                  <div className="admin-notif-header">
+                  <div className="admin-notif-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div className="admin-notif-title">
                       <span>Trung tâm thông báo phòng & lưu trú</span>
-                      {(checkoutAlerts.length + (hasPendingDailyReport ? 1 : 0)) > 0 && (
+                      {(checkoutAlerts.length + (hasPendingDailyReport ? 1 : 0) + marketingNotifications.filter(n => !n.isRead).length) > 0 && (
                         <span className="admin-notif-pill">
-                          {checkoutAlerts.length + (hasPendingDailyReport ? 1 : 0)} mới
+                          {checkoutAlerts.length + (hasPendingDailyReport ? 1 : 0) + marketingNotifications.filter(n => !n.isRead).length} mới
                         </span>
                       )}
                     </div>
+                    {marketingNotifications.some(n => !n.isRead) && (
+                      <button
+                        type="button"
+                        onClick={markAllNotificationsAsRead}
+                        style={{ background: 'none', border: 'none', color: '#2563eb', fontSize: 11, cursor: 'pointer', padding: '2px 6px', fontWeight: 600 }}
+                      >
+                        Đọc hết
+                      </button>
+                    )}
                   </div>
 
                   <div className="admin-notif-body">
                     {loadingNotifications ? (
                       <div className="admin-notif-empty">Đang tải thông báo...</div>
-                    ) : checkoutAlerts.length === 0 && !hasPendingDailyReport ? (
+                    ) : checkoutAlerts.length === 0 && !hasPendingDailyReport && marketingNotifications.length === 0 ? (
                       <div className="admin-notif-empty">
                         Chưa có thông báo phòng hoặc lưu trú mới nào.
                       </div>
                     ) : (
                       <>
+                        {/* Thông báo Yêu cầu đổi phòng & sự cố từ Khách hàng */}
+                        {marketingNotifications.map((notif) => {
+                          const isRoomChange = notif.type === 'ROOM_CHANGE_REQUEST'
+                          return (
+                            <div
+                              key={`notif-${notif.id}`}
+                              className={`admin-notif-item ${!notif.isRead ? 'admin-notif-item--unread' : ''}`}
+                              style={{
+                                background: !notif.isRead ? (isRoomChange ? '#fff1f2' : '#f0fdf4') : '#f8fafc',
+                                borderColor: !notif.isRead ? (isRoomChange ? '#fecdd3' : '#bbf7d0') : '#e2e8f0',
+                                cursor: 'pointer',
+                              }}
+                              onClick={() => {
+                                if (!notif.isRead) markNotificationAsRead(notif.id)
+                                setShowNotificationDropdown(false)
+                                if (isRoomChange) {
+                                  navigate('/admin/check-in-logs')
+                                } else {
+                                  navigate('/admin/marketing')
+                                }
+                              }}
+                            >
+                              <span className="admin-notif-icon">{isRoomChange ? '🛎️' : '📢'}</span>
+                              <div className="admin-notif-content">
+                                <div className="admin-notif-item-title" style={{ color: isRoomChange ? '#be123c' : '#15803d', fontWeight: 700 }}>
+                                  {notif.title}
+                                </div>
+                                <div className="admin-notif-item-message" style={{ color: '#334155' }}>
+                                  {notif.message}
+                                </div>
+                                <div className="admin-notif-item-meta">
+                                  <span style={{ color: isRoomChange ? '#e11d48' : '#16a34a', fontWeight: 600 }}>
+                                    {isRoomChange ? 'YÊU CẦU ĐỔI PHÒNG' : 'THÔNG BÁO HỆ THỐNG'}
+                                  </span>
+                                  <span>•</span>
+                                  <span style={{ color: '#2563eb', fontWeight: 600 }}>
+                                    {isRoomChange ? 'Nhấn để mở Nhật ký check-in' : 'Xem chi tiết'}
+                                  </span>
+                                </div>
+                              </div>
+                              {!notif.isRead && (
+                                <span className="admin-notif-dot" style={{ background: isRoomChange ? '#e11d48' : '#22c55e' }} />
+                              )}
+                            </div>
+                          )
+                        })}
+
                         {/* Thông báo Check-out & Quá hạn trả phòng cho Lễ tân & Admin */}
                         {checkoutAlerts.map((alert) => (
                           <div

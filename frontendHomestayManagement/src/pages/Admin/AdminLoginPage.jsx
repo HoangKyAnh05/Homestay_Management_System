@@ -19,18 +19,7 @@ function AdminLoginPage() {
       const data = await adminLogin(email, password)
       window.location.assign(roleDefaultPath(data?.user?.role))
     } catch (error) {
-      // If customer account entered here by accident, handle gracefully
-      if (error?.message && error.message.includes('khách hàng')) {
-        try {
-          await login(email, password)
-          window.location.assign('/home')
-          return
-        } catch (custErr) {
-          setErrorMessage(custErr.message)
-          return
-        }
-      }
-      setErrorMessage(error.message || 'Đăng nhập thất bại')
+      setErrorMessage(error?.message || 'Đăng nhập thất bại')
     } finally {
       setIsSubmitting(false)
     }

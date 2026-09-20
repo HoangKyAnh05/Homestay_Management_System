@@ -55,6 +55,7 @@ class AdminCheckInRegistrationServiceImplTest {
     @Mock private CustomerRepository customerRepository;
     @Mock private StayAccessService stayAccessService;
     @Mock private ApplicationEventPublisher eventPublisher;
+    @Mock private com.homestayManagement.homestayManagement.repository.RoomIncidentRepository roomIncidentRepository;
 
     private AdminCheckInRegistrationServiceImpl service;
 
@@ -63,7 +64,7 @@ class AdminCheckInRegistrationServiceImplTest {
         service = new AdminCheckInRegistrationServiceImpl(
                 bookingDetailRepository, bookingRepository, bookingGuestRepository,
                 checkInRecordRepository, roomRepository, employeeRepository, customerRepository,
-                stayAccessService, eventPublisher
+                stayAccessService, eventPublisher, roomIncidentRepository
         );
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken("staff@example.com", "password")

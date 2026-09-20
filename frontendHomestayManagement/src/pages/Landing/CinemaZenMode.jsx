@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import './CinemaZenMode.css';
+import { ZenAudioEngine } from './LandingAudioEngine';
 
 const ZEN_SCENES = [
   {
@@ -47,14 +48,14 @@ const POETIC_QUOTES = [
     author: "Lá Đỏ Sanctuary • 1.650m"
   },
   {
-    line1: "Nơi thời gian ngừng lại,",
-    line2: "sau rặng thông Hoàng Liên Sơn.",
-    author: "Bình Minh Thung Lũng Mường Hoa"
+    line1: "Tách trà ấm bên khung cửa sương lạnh,",
+    line2: "bình yên nằm lại giữa thung lũng mây.",
+    author: "Bình Minh Sa Pa"
   },
   {
-    line1: "Một tách trà Shan Tuyết,",
-    line2: "an yên trọn vẹn từng hơi thở.",
-    author: "Komorebi Zen Retreat"
+    line1: "Gió đại ngàn ru từng giấc ngủ say,",
+    line2: "ngắm sao trời soi bóng ruộng bậc thang...",
+    author: "Đêm Trăng Mù Sương"
   },
   {
     line1: "Lắng nghe thanh âm của núi rừng,",
@@ -64,10 +65,10 @@ const POETIC_QUOTES = [
 ];
 
 const SOUND_LAYERS = [
-  { id: 'cinematic', name: 'Nhạc Thiền Điện Ảnh', icon: '🎶', desc: 'Bản giao hưởng thiền êm dịu', type: 'audio', src: '/audio/bgm-cinematic.wav' },
-  { id: 'breeze', name: 'Suối Rừng & Chuông Trúc', icon: '🌲', desc: 'Gió ngàn & chuông gió thanh tịnh', type: 'procedural' },
-  { id: 'fire', name: 'Lửa Trại Đêm 15°C', icon: '🔥', desc: 'Gỗ thông tí tách ấm áp', type: 'procedural' },
-  { id: 'rain', name: 'Mưa Sương Sa Pa', icon: '🌧️', desc: 'Mưa phùn mát lành trên mái hiên', type: 'procedural' }
+  { id: 'cinematic', name: 'Nhạc Thiền Điện Ảnh', icon: '🎶', desc: '432Hz Hòa âm thiền định & chuông pha lê', type: 'procedural' },
+  { id: 'breeze', name: 'Suối Rừng & Chuông Trúc', icon: '🌲', desc: 'Suối ngàn rì rào & chuông gió thanh tịnh', type: 'procedural' },
+  { id: 'fire', name: 'Lửa Trại Đêm 15°C', icon: '🔥', desc: 'Gỗ thông tí tách ấm áp vùng cao', type: 'procedural' },
+  { id: 'rain', name: 'Mưa Sương Sa Pa', icon: '🌧️', desc: 'Mưa phùn sương mờ trên mái hiên gỗ', type: 'procedural' }
 ];
 
 export default function CinemaZenMode({ isOpen, onClose }) {
@@ -84,10 +85,10 @@ export default function CinemaZenMode({ isOpen, onClose }) {
 
   // Sound layer state for multi-track mixer
   const [layerStates, setLayerStates] = useState({
-    cinematic: { active: true, volume: 65 },
-    breeze: { active: true, volume: 55 },
-    fire: { active: false, volume: 40 },
-    rain: { active: false, volume: 40 }
+    cinematic: { active: true, volume: 75 },
+    breeze: { active: true, volume: 60 },
+    fire: { active: false, volume: 45 },
+    rain: { active: false, volume: 45 }
   });
 
   // Mouse Parallax coordinates (smooth spring lerping)
@@ -95,7 +96,7 @@ export default function CinemaZenMode({ isOpen, onClose }) {
   const targetParallax = useRef({ x: 0, y: 0 });
 
   const canvasRef = useRef(null);
-  const audioElRef = useRef(null);
+  const zenAudioRef = useRef(null);
   const idleTimerRef = useRef(null);
   const currentScene = useMemo(() => ZEN_SCENES.find(s => s.id === currentSceneId) || ZEN_SCENES[0], [currentSceneId]);
 
@@ -214,49 +215,49 @@ export default function CinemaZenMode({ isOpen, onClose }) {
     return () => clearInterval(timer);
   }, [isOpen, isBreathingOpen]);
 
-  // Handle Multi-Track Audio Engine & Mixer Playback
+  // Handle Multi-Track High-Fidelity Generative Audio Playback
   useEffect(() => {
     if (!isOpen) {
-      if (window.__zenAudio) window.__zenAudio.stop();
-      if (audioElRef.current) audioElRef.current.pause();
+      if (zenAudioRef.current) {
+        zenAudioRef.current.stop();
+      }
       return;
     }
 
-    const effectiveMaster = (masterVolume / 100);
-
-    // 1. Cinematic BGM Audio Track
-    if (audioElRef.current) {
-      const cinematicLayer = layerStates.cinematic;
-      if (cinematicLayer?.active && isPlaying) {
-        audioElRef.current.src = '/audio/bgm-cinematic.wav';
-        audioElRef.current.volume = Math.max(0, Math.min(1, effectiveMaster * (cinematicLayer.volume / 100)));
-        audioElRef.current.loop = true;
-        audioElRef.current.play().catch(() => {});
-      } else {
-        audioElRef.current.pause();
-      }
+    if (!zenAudioRef.current) {
+      zenAudioRef.current = new ZenAudioEngine();
+      window.__zenAudio = zenAudioRef.current;
     }
 
-    // 2. Procedural Audio Layers (Breeze, Fire, Rain)
-    if (window.__zenAudio) {
-      window.__zenAudio.setVolume(effectiveMaster);
-      if (isPlaying) {
-        window.__zenAudio.setLayerActive('breeze', Boolean(layerStates.breeze?.active));
-        window.__zenAudio.setLayerVolume('breeze', (layerStates.breeze?.volume || 50) / 100);
+    const audio = zenAudioRef.current;
+    const effectiveMaster = (masterVolume / 100);
+    audio.setVolume(effectiveMaster);
 
-        window.__zenAudio.setLayerActive('fire', Boolean(layerStates.fire?.active));
-        window.__zenAudio.setLayerVolume('fire', (layerStates.fire?.volume || 50) / 100);
+    if (isPlaying) {
+      audio.init();
+      audio.setLayerActive('cinematic', Boolean(layerStates.cinematic?.active));
+      audio.setLayerVolume('cinematic', (layerStates.cinematic?.volume || 75) / 100);
 
-        window.__zenAudio.setLayerActive('rain', Boolean(layerStates.rain?.active));
-        window.__zenAudio.setLayerVolume('rain', (layerStates.rain?.volume || 50) / 100);
-      } else {
-        window.__zenAudio.stop();
+      audio.setLayerActive('breeze', Boolean(layerStates.breeze?.active));
+      audio.setLayerVolume('breeze', (layerStates.breeze?.volume || 60) / 100);
+
+      audio.setLayerActive('fire', Boolean(layerStates.fire?.active));
+      audio.setLayerVolume('fire', (layerStates.fire?.volume || 45) / 100);
+
+      audio.setLayerActive('rain', Boolean(layerStates.rain?.active));
+      audio.setLayerVolume('rain', (layerStates.rain?.volume || 45) / 100);
+
+      if (!audio.isPlaying) {
+        audio.playAllActive();
       }
+    } else {
+      audio.stop();
     }
 
     return () => {
-      if (audioElRef.current) audioElRef.current.pause();
-      if (window.__zenAudio) window.__zenAudio.stop();
+      if (zenAudioRef.current) {
+        zenAudioRef.current.stop();
+      }
     };
   }, [isOpen, isPlaying, masterVolume, layerStates]);
 
@@ -492,8 +493,6 @@ export default function CinemaZenMode({ isOpen, onClose }) {
 
   return (
     <div className={`cinema-zen-overlay ${isUiVisible ? 'ui-active' : 'ui-idle'}`} role="dialog" aria-modal="true">
-      <audio ref={audioElRef} style={{ display: 'none' }} />
-
       {/* 4K Panoramic Balcony with Smooth 3D Mouse Parallax */}
       <div
         className="zen-backdrop-cinematic"

@@ -318,6 +318,16 @@ public class AdminRoomServiceImpl implements AdminRoomService {
         if (roomRepository.existsByRoomNumberAndIdNot(request.roomNumber(), id)) {
             throw new IllegalArgumentException("Số phòng đã tồn tại");
         }
+
+        if ("MAINTENANCE".equalsIgnoreCase(request.status())) {
+            boolean isOccupiedStatus = "OCCUPIED".equalsIgnoreCase(room.getStatus());
+            java.time.LocalDateTime now = java.time.LocalDateTime.now();
+            boolean hasActiveGuest = isOccupiedStatus || bookingDetailRepository.hasActiveGuestInRoom(id, now);
+            if (hasActiveGuest) {
+                throw new IllegalArgumentException("Phòng " + room.getRoomNumber() + " hiện đang có khách lưu trú (Đang ở / Check-in), không thể chuyển sang trạng thái bảo trì. Vui lòng hoàn tất check-out hoặc đổi phòng cho khách trước.");
+            }
+        }
+
         RoomType nextRoomType = getRoomTypeById(request.roomTypeId());
         if (!room.getRoomType().getId().equals(nextRoomType.getId())) {
             housekeepingChecklistTemplateRepository.findByRoomId(id)

@@ -490,7 +490,11 @@ public class AuthServiceImpl implements AuthService {
     }
 
     private boolean isCustomer(Account account) {
-        return CUSTOMER_ROLE.equals(account.getRole().getName());
+        if (account == null || account.getRole() == null || account.getRole().getName() == null) {
+            return true;
+        }
+        String roleName = account.getRole().getName().trim().toUpperCase();
+        return CUSTOMER_ROLE.equalsIgnoreCase(roleName) || "CUSTOMER".equalsIgnoreCase(roleName);
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)

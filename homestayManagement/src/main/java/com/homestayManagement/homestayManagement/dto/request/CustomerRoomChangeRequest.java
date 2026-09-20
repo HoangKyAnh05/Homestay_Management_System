@@ -6,7 +6,6 @@ public record CustomerRoomChangeRequest(
         @NotBlank(message = "Mã đơn đặt phòng không được để trống")
         String bookingCode,
 
-        @NotBlank(message = "Số điện thoại không được để trống")
         String phone,
 
         @NotBlank(message = "Vui lòng chọn lý do đổi phòng")

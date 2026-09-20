@@ -43,7 +43,7 @@ export default function AdminChangeRoomModal({
     
     // 1. Same type
     const validSame = (data.sameTypeRooms || []).filter(
-      (r) => r.roomId !== data.currentRoomId && r.roomNumber !== data.currentRoomNumber && r.status !== 'OCCUPIED'
+      (r) => r.roomId !== data.currentRoomId && r.roomNumber !== data.currentRoomNumber && r.status !== 'OCCUPIED' && r.status !== 'MAINTENANCE'
     )
     if (data.hasSameTypeAvailable || validSame.length > 0 || (!data.otherTypes || data.otherTypes.length === 0)) {
       list.push({
@@ -57,7 +57,7 @@ export default function AdminChangeRoomModal({
     // 2. Other types
     (data.otherTypes || []).forEach((ot) => {
       const validOther = (ot.availableRooms || []).filter(
-        (r) => r.roomId !== data.currentRoomId && r.roomNumber !== data.currentRoomNumber && r.status !== 'OCCUPIED'
+        (r) => r.roomId !== data.currentRoomId && r.roomNumber !== data.currentRoomNumber && r.status !== 'OCCUPIED' && r.status !== 'MAINTENANCE'
       )
       list.push({
         key: String(ot.roomTypeId),
@@ -91,18 +91,18 @@ export default function AdminChangeRoomModal({
       .then((resData) => {
         setData(resData)
         const validSame = (resData.sameTypeRooms || []).filter(
-          (r) => r.roomId !== resData.currentRoomId && r.roomNumber !== resData.currentRoomNumber && r.status !== 'OCCUPIED'
+          (r) => r.roomId !== resData.currentRoomId && r.roomNumber !== resData.currentRoomNumber && r.status !== 'OCCUPIED' && r.status !== 'MAINTENANCE'
         )
         if (resData.hasSameTypeAvailable && validSame.length > 0) {
           setSelectedRoomId(validSame[0].roomId)
           setSelectedRoomTypeTab('SAME')
         } else if (resData.otherTypes?.length > 0) {
           const firstType = resData.otherTypes.find(
-            (ot) => (ot.availableRooms || []).some((r) => r.roomId !== resData.currentRoomId && r.roomNumber !== resData.currentRoomNumber && r.status !== 'OCCUPIED')
+            (ot) => (ot.availableRooms || []).some((r) => r.roomId !== resData.currentRoomId && r.roomNumber !== resData.currentRoomNumber && r.status !== 'OCCUPIED' && r.status !== 'MAINTENANCE')
           ) || resData.otherTypes[0]
           setSelectedRoomTypeTab(String(firstType.roomTypeId))
           const validFirstTypeRooms = (firstType.availableRooms || []).filter(
-            (r) => r.roomId !== resData.currentRoomId && r.roomNumber !== resData.currentRoomNumber && r.status !== 'OCCUPIED'
+            (r) => r.roomId !== resData.currentRoomId && r.roomNumber !== resData.currentRoomNumber && r.status !== 'OCCUPIED' && r.status !== 'MAINTENANCE'
           )
           if (validFirstTypeRooms.length > 0) {
             setSelectedRoomId(validFirstTypeRooms[0].roomId)

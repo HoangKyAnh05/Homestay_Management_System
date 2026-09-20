@@ -42,7 +42,7 @@ public class BookingGuest {
     @Column(name = "identity_document_type", nullable = false, length = 20)
     private String identityDocumentType = "CCCD";
 
-    @Column(name = "identity_document_number", nullable = false, length = 30)
+    @Column(name = "identity_document_number", length = 30)
     private String identityDocumentNumber;
 
     @Column(name = "date_of_birth")

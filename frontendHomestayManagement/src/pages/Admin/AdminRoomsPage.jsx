@@ -348,6 +348,66 @@ function RoomTypeModal({ roomType, depositPolicies, priceConfigs = [], pricePoli
           <button type="button" className="arm-modal-close" onClick={onClose}></button>
         </div>
         <form className="arm-modal-body" onSubmit={handleSubmit} onPaste={handlePaste}>
+          {isEdit && (
+            <div style={{
+              background: '#f8fafc',
+              border: '1px solid #e2e8f0',
+              borderRadius: '10px',
+              padding: '12px 16px',
+              marginBottom: '14px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '6px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontWeight: 600, color: '#334155', fontSize: '13.5px' }}>
+                  🏨 Số lượng phòng thuộc loại phòng này:
+                </span>
+                <span style={{
+                  background: typeRooms.length > 0 ? '#dcfce7' : '#fee2e2',
+                  color: typeRooms.length > 0 ? '#166534' : '#991b1b',
+                  fontWeight: 700,
+                  fontSize: '13px',
+                  padding: '3px 10px',
+                  borderRadius: '20px',
+                  border: `1px solid ${typeRooms.length > 0 ? '#bbf7d0' : '#fecaca'}`
+                }}>
+                  {typeRooms.length} phòng
+                </span>
+              </div>
+              {typeRooms.length > 0 ? (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '4px' }}>
+                  {typeRooms.map(r => {
+                    const isMaint = String(r.status || '').toUpperCase() === 'MAINTENANCE'
+                    const isOcc = String(r.status || '').toUpperCase() === 'OCCUPIED'
+                    const isDirty = String(r.status || '').toUpperCase() === 'DIRTY'
+                    const bg = isMaint ? '#fee2e2' : isOcc ? '#fef3c7' : isDirty ? '#f1f5f9' : '#e0f2fe'
+                    const color = isMaint ? '#991b1b' : isOcc ? '#92400e' : isDirty ? '#475569' : '#0369a1'
+                    const border = isMaint ? '#fecaca' : isOcc ? '#fde68a' : isDirty ? '#cbd5e1' : '#bae6fd'
+                    const label = isMaint ? 'Bảo trì' : isOcc ? 'Đang ở' : isDirty ? 'Chờ dọn' : 'Trống'
+                    return (
+                      <span key={r.id} style={{
+                        background: bg,
+                        color: color,
+                        border: `1px solid ${border}`,
+                        padding: '3px 8px',
+                        borderRadius: '6px',
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}>
+                        Phòng {r.roomNumber} ({label})
+                      </span>
+                    )
+                  })}
+                </div>
+              ) : (
+                <small style={{ color: '#64748b' }}>Chưa có phòng vật lý nào được gán vào loại phòng này.</small>
+              )}
+            </div>
+          )}
           <label className="arm-field"><span>Tên loại phòng</span>
             <input value={form.name} onChange={e => set('name', e.target.value)} required placeholder="Phòng Studio, Deluxe..." />
           </label>
@@ -772,6 +832,10 @@ function RoomModal({ room, roomTypes, onClose, onSave }) {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
+    if (form.status === 'MAINTENANCE' && isEdit && room?.status === 'OCCUPIED') {
+      setError(`Phòng ${room.roomNumber} hiện đang có khách lưu trú (Đang ở). Vui lòng hoàn tất check-out hoặc đổi phòng trước khi chuyển sang trạng thái Bảo trì!`)
+      return
+    }
     setSaving(true)
     try {
       const res = await fetch(isEdit ? `${API}/${room.id}` : API, {
@@ -821,7 +885,18 @@ function RoomModal({ room, roomTypes, onClose, onSave }) {
             </select>
           </label>
           <label className="arm-field"><span>Trạng thái</span>
-            <select value={form.status} onChange={e => set('status', e.target.value)}>
+            <select
+              value={form.status}
+              onChange={e => {
+                const nextStatus = e.target.value
+                set('status', nextStatus)
+                if (nextStatus === 'MAINTENANCE' && isEdit && room?.status === 'OCCUPIED') {
+                  setError(`Phòng ${room.roomNumber} hiện đang có khách lưu trú (Đang ở). Vui lòng hoàn tất check-out hoặc đổi phòng trước khi chuyển sang trạng thái Bảo trì!`)
+                } else {
+                  setError('')
+                }
+              }}
+            >
               {STATUS_OPTIONS.map(s => <option key={s} value={s}>{STATUS_LABEL[s]}</option>)}
             </select>
           </label>

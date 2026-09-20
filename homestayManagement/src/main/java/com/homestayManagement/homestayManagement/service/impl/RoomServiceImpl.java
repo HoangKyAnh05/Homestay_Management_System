@@ -99,15 +99,29 @@ public class RoomServiceImpl implements RoomService {
             throw new IllegalArgumentException("Ngày kết thúc phải sau hoặc bằng ngày bắt đầu");
         }
 
+        java.util.Set<Long> inProgressRoomIds = new java.util.HashSet<>(roomIncidentRepository.findRoomIdsWithInProgressIncidents());
         Room room = roomRepository.findById(roomId).orElse(null);
         RoomType roomType;
+        List<Room> allTypeRooms;
         if (room != null) {
             roomType = room.getRoomType();
+            allTypeRooms = roomRepository.findByRoomTypeId(roomType.getId());
         } else {
             roomType = roomTypeRepository.findById(roomId)
                     .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy phòng"));
-            List<Room> rooms = roomRepository.findByRoomTypeId(roomType.getId());
-            room = rooms.isEmpty() ? null : rooms.get(0);
+            allTypeRooms = roomRepository.findByRoomTypeId(roomType.getId());
+            room = allTypeRooms.stream()
+                    .filter(r -> isRoomAvailable(r, inProgressRoomIds))
+                    .findFirst()
+                    .orElse(allTypeRooms.isEmpty() ? null : allTypeRooms.get(0));
+        }
+
+        List<Room> activeTypeRooms = allTypeRooms.stream()
+                .filter(r -> isRoomAvailable(r, inProgressRoomIds))
+                .toList();
+
+        if (!activeTypeRooms.isEmpty() && (room == null || !isRoomAvailable(room, inProgressRoomIds))) {
+            room = activeTypeRooms.get(0);
         }
 
         Long effectiveRoomId = room != null ? room.getId() : null;
@@ -120,7 +134,7 @@ public class RoomServiceImpl implements RoomService {
                 .map(this::toRoomPriceResponse)
                 .toList();
         List<RoomBusySlotResponse> busySlots = bookingDetailRepository.findPublicBusySlots(
-                        effectiveRoomId,
+                        null,
                         roomType.getId(),
                         startDate.atStartOfDay(),
                         endDate.plusDays(1).atStartOfDay()
@@ -134,8 +148,7 @@ public class RoomServiceImpl implements RoomService {
                 ))
                 .toList();
 
-        java.util.Set<Long> inProgressRoomIds = new java.util.HashSet<>(roomIncidentRepository.findRoomIdsWithInProgressIncidents());
-        if (!isRoomAvailable(room, inProgressRoomIds)) {
+        if (allTypeRooms.isEmpty() || activeTypeRooms.isEmpty()) {
             List<RoomBusySlotResponse> blockedSlots = new java.util.ArrayList<>(busySlots);
             blockedSlots.add(new RoomBusySlotResponse(
                     -1L,
@@ -147,8 +160,8 @@ public class RoomServiceImpl implements RoomService {
         }
 
         return new RoomDetailPublicResponse(
-                room.getId(),
-                room.getRoomNumber(),
+                room != null ? room.getId() : (effectiveRoomId != null ? effectiveRoomId : 0L),
+                room != null ? room.getRoomNumber() : "",
                 roomType.getId(),
                 roomType.getName(),
                 roomType.getMaxAdults(),
@@ -364,9 +377,14 @@ public class RoomServiceImpl implements RoomService {
                 .map(this::toRoomPriceResponse)
                 .toList();
 
+        Room firstAvailable = rooms.stream()
+                .filter(r -> isRoomAvailable(r, inProgressRoomIds))
+                .findFirst()
+                .orElse(rooms.isEmpty() ? null : rooms.get(0));
+
         return new RoomTypeResponse(
                 roomType.getId(),
-                rooms.isEmpty() ? null : rooms.get(0).getId(),
+                firstAvailable != null ? firstAvailable.getId() : null,
                 roomType.getName(),
                 roomType.getMaxAdults(),
                 roomType.getMaxChildren(),

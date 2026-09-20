@@ -72,7 +72,7 @@ public class HousekeepingServiceImpl implements HousekeepingService {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public List<HousekeepingTaskResponse> getTasks(String status) {
         String normalized = normalize(status == null ? "ALL" : status);
         if (!FILTER_STATUSES.contains(normalized)) {
@@ -85,13 +85,13 @@ public class HousekeepingServiceImpl implements HousekeepingService {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public HousekeepingTaskResponse getTask(Long taskId) {
         return toResponse(getTaskEntity(taskId));
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public HousekeepingTaskResponse getTaskByBookingDetail(Long bookingDetailId) {
         return housekeepingTaskRepository.findByBookingDetailIdForDetail(bookingDetailId)
                 .map(this::toResponse)
@@ -151,8 +151,10 @@ public class HousekeepingServiceImpl implements HousekeepingService {
         if (task.getStartedAt() == null) task.setStartedAt(LocalDateTime.now());
         if ("PENDING".equalsIgnoreCase(task.getInspectionStatus())) task.setInspectionStatus("IN_PROGRESS");
         if ("PENDING".equalsIgnoreCase(task.getCleaningStatus())) task.setCleaningStatus("IN_PROGRESS");
-        task.getRoom().setStatus("CLEANING");
-        roomRepository.save(task.getRoom());
+        if (!"MAINTENANCE".equalsIgnoreCase(task.getRoom().getStatus())) {
+            task.getRoom().setStatus("CLEANING");
+            roomRepository.save(task.getRoom());
+        }
         task.getCheckInRecord().setHousekeeping(task.getAssignedHousekeeping());
         checkInRecordRepository.save(task.getCheckInRecord());
         ensureChecklistSnapshot(task);
@@ -200,23 +202,26 @@ public class HousekeepingServiceImpl implements HousekeepingService {
                 mergedQuantities.put(existing.getItem().getId(), existing.getQuantityUsed() == null ? 0 : existing.getQuantityUsed());
             }
         }
-        for (HousekeepingInspectionItemRequest reqItem : requestedItems.values()) {
-            int currentRecorded = mergedQuantities.getOrDefault(reqItem.itemId(), 0);
-            // Housekeeping ghi nhận thêm; không bao giờ giảm bớt hoặc xóa số lượng khách thực tế đã mua
-            mergedQuantities.put(reqItem.itemId(), Math.max(currentRecorded, reqItem.quantityUsed()));
+        // Ghi đè/cập nhật số lượng tiêu thụ từ kiểm tra phòng của housekeeping
+        for (HousekeepingInspectionItemRequest item : requestedItems.values()) {
+            mergedQuantities.put(item.itemId(), item.quantityUsed());
         }
 
+        List<RoomAmenitiesUsage> updatedUsages = new ArrayList<>();
+        for (Map.Entry<Long, Integer> entry : mergedQuantities.entrySet()) {
+            if (entry.getValue() > 0) {
+                RoomMiniBarItem item = catalog.get(entry.getKey());
+                if (item != null) {
+                    updatedUsages.add(RoomAmenitiesUsage.builder()
+                            .checkInRecord(task.getCheckInRecord())
+                            .item(item)
+                            .quantityUsed(entry.getValue())
+                            .build());
+                }
+            }
+        }
         roomAmenitiesUsageRepository.deleteByCheckInRecordId(checkInRecordId);
-        roomAmenitiesUsageRepository.flush();
-        List<RoomAmenitiesUsage> usages = mergedQuantities.entrySet().stream()
-                .filter(entry -> entry.getValue() > 0 && catalog.containsKey(entry.getKey()))
-                .map(entry -> RoomAmenitiesUsage.builder()
-                        .checkInRecord(task.getCheckInRecord())
-                        .item(catalog.get(entry.getKey()))
-                        .quantityUsed(entry.getValue())
-                        .build())
-                .toList();
-        roomAmenitiesUsageRepository.saveAll(usages);
+        roomAmenitiesUsageRepository.saveAll(updatedUsages);
 
         Set<Long> penaltyRuleIds = new LinkedHashSet<>(request.penaltyRuleIds());
         if (penaltyRuleIds.size() != request.penaltyRuleIds().size()) {
@@ -262,21 +267,20 @@ public class HousekeepingServiceImpl implements HousekeepingService {
         if (!"COMPLETED".equalsIgnoreCase(task.getInspectionStatus())) {
             throw new IllegalArgumentException("Vui lòng gửi kết quả kiểm tra trước khi hoàn tất dọn phòng");
         }
-        if ("MAINTENANCE".equalsIgnoreCase(task.getRoom().getStatus())) {
-            throw new IllegalArgumentException("Phòng đang bảo trì, không thể chuyển sang sẵn sàng");
-        }
         if ("COMPLETED".equalsIgnoreCase(task.getCleaningStatus())) return toResponse(task);
 
         ensureChecklistSnapshot(task);
         List<HousekeepingTaskChecklistItem> checklist = taskChecklistItemRepository
                 .findByHousekeepingTaskIdOrderByDisplayOrderAsc(taskId);
-        applyChecklistCompletion(checklist, request.items(), employee);
+        applyChecklistCompletion(checklist, request != null ? request.items() : List.of(), employee);
         taskChecklistItemRepository.saveAll(checklist);
 
         task.setCleaningStatus("COMPLETED");
         task.setCleaningCompletedAt(LocalDateTime.now());
-        task.getRoom().setStatus("AVAILABLE");
-        roomRepository.save(task.getRoom());
+        if (!"MAINTENANCE".equalsIgnoreCase(task.getRoom().getStatus())) {
+            task.getRoom().setStatus("AVAILABLE");
+            roomRepository.save(task.getRoom());
+        }
         return toResponse(housekeepingTaskRepository.save(task));
     }
 
@@ -309,32 +313,51 @@ public class HousekeepingServiceImpl implements HousekeepingService {
             List<HousekeepingCleaningItemRequest> requestedItems,
             Employee employee
     ) {
-        Map<Long, HousekeepingCleaningItemRequest> requestedById = new LinkedHashMap<>();
-        for (HousekeepingCleaningItemRequest requested : requestedItems) {
-            if (requestedById.putIfAbsent(requested.taskChecklistItemId(), requested) != null) {
-                throw new IllegalArgumentException("Checklist có hạng mục bị trùng");
-            }
-        }
-        Set<Long> validIds = checklist.stream().map(HousekeepingTaskChecklistItem::getId).collect(Collectors.toSet());
-        if (!validIds.equals(requestedById.keySet())) {
-            throw new IllegalArgumentException("Checklist không đầy đủ hoặc chứa hạng mục không thuộc công việc này");
-        }
-        List<String> missingRequired = checklist.stream()
-                .filter(HousekeepingTaskChecklistItem::isRequired)
-                .filter(item -> !requestedById.get(item.getId()).completed())
-                .map(HousekeepingTaskChecklistItem::getTitleSnapshot)
-                .toList();
-        if (!missingRequired.isEmpty()) {
-            throw new IllegalArgumentException("Chưa hoàn thành hạng mục bắt buộc: " + String.join(", ", missingRequired));
+        if (checklist == null || checklist.isEmpty()) {
+            return;
         }
 
-        LocalDateTime now = LocalDateTime.now();
-        checklist.forEach(item -> {
-            boolean completed = requestedById.get(item.getId()).completed();
-            item.setCompleted(completed);
-            item.setCompletedBy(completed ? employee : null);
-            item.setCompletedAt(completed ? now : null);
-        });
+        Map<Long, HousekeepingCleaningItemRequest> requestedById = new LinkedHashMap<>();
+        if (requestedItems != null) {
+            for (HousekeepingCleaningItemRequest requested : requestedItems) {
+                if (requested != null && requested.taskChecklistItemId() != null) {
+                    if (requestedById.putIfAbsent(requested.taskChecklistItemId(), requested) != null) {
+                        throw new IllegalArgumentException("Checklist có hạng mục bị trùng");
+                    }
+                }
+            }
+        }
+
+        if (!requestedById.isEmpty()) {
+            List<String> missingRequired = checklist.stream()
+                    .filter(HousekeepingTaskChecklistItem::isRequired)
+                    .filter(item -> {
+                        HousekeepingCleaningItemRequest req = requestedById.get(item.getId());
+                        return req == null || !req.completed();
+                    })
+                    .map(HousekeepingTaskChecklistItem::getTitleSnapshot)
+                    .toList();
+            if (!missingRequired.isEmpty()) {
+                throw new IllegalArgumentException("Chưa hoàn thành hạng mục bắt buộc: " + String.join(", ", missingRequired));
+            }
+
+            LocalDateTime now = LocalDateTime.now();
+            checklist.forEach(item -> {
+                HousekeepingCleaningItemRequest req = requestedById.get(item.getId());
+                boolean completed = req != null && req.completed();
+                item.setCompleted(completed);
+                item.setCompletedBy(completed ? employee : null);
+                item.setCompletedAt(completed ? now : null);
+            });
+        } else {
+            // Trường hợp gửi checklist rỗng (tác vụ cũ hoặc hoàn tất trực tiếp): hoàn tất tất cả hạng mục
+            LocalDateTime now = LocalDateTime.now();
+            checklist.forEach(item -> {
+                item.setCompleted(true);
+                item.setCompletedBy(employee);
+                item.setCompletedAt(now);
+            });
+        }
     }
 
     private HousekeepingTask getTaskEntity(Long taskId) {
@@ -379,6 +402,7 @@ public class HousekeepingServiceImpl implements HousekeepingService {
     }
 
     private HousekeepingTaskResponse toResponse(HousekeepingTask task) {
+        ensureChecklistSnapshot(task);
         CheckInRecord record = task.getCheckInRecord();
         BookingDetail detail = record.getBookingDetail();
         Booking booking = detail.getBooking();

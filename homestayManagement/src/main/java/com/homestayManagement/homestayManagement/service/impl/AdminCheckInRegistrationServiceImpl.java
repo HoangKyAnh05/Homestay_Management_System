@@ -50,6 +50,7 @@ public class AdminCheckInRegistrationServiceImpl implements AdminCheckInRegistra
     private final CustomerRepository customerRepository;
     private final StayAccessService stayAccessService;
     private final ApplicationEventPublisher eventPublisher;
+    private final com.homestayManagement.homestayManagement.repository.RoomIncidentRepository roomIncidentRepository;
 
     public AdminCheckInRegistrationServiceImpl(
             BookingDetailRepository bookingDetailRepository,
@@ -60,7 +61,8 @@ public class AdminCheckInRegistrationServiceImpl implements AdminCheckInRegistra
             EmployeeRepository employeeRepository,
             CustomerRepository customerRepository,
             StayAccessService stayAccessService,
-            ApplicationEventPublisher eventPublisher
+            ApplicationEventPublisher eventPublisher,
+            com.homestayManagement.homestayManagement.repository.RoomIncidentRepository roomIncidentRepository
     ) {
         this.bookingDetailRepository = bookingDetailRepository;
         this.bookingRepository = bookingRepository;
@@ -71,6 +73,7 @@ public class AdminCheckInRegistrationServiceImpl implements AdminCheckInRegistra
         this.customerRepository = customerRepository;
         this.stayAccessService = stayAccessService;
         this.eventPublisher = eventPublisher;
+        this.roomIncidentRepository = roomIncidentRepository;
     }
 
     @Override
@@ -294,8 +297,11 @@ public class AdminCheckInRegistrationServiceImpl implements AdminCheckInRegistra
     }
 
     private List<AdminBookingRoomResponse> findAvailableRooms(BookingDetail detail) {
+        Set<Long> inProgressRoomIds = roomIncidentRepository != null
+                ? new HashSet<>(roomIncidentRepository.findRoomIdsWithInProgressIncidents())
+                : java.util.Collections.emptySet();
         return roomRepository.findByRoomTypeId(detail.getRoomType().getId()).stream()
-                .filter(room -> !"MAINTENANCE".equalsIgnoreCase(room.getStatus()))
+                .filter(room -> !"MAINTENANCE".equalsIgnoreCase(room.getStatus()) && !inProgressRoomIds.contains(room.getId()))
                 .filter(room -> isRoomAvailable(room.getId(), detail))
                 .map(room -> new AdminBookingRoomResponse(
                         room.getId(), room.getRoomNumber(), room.getRoomType().getName()
@@ -305,9 +311,12 @@ public class AdminCheckInRegistrationServiceImpl implements AdminCheckInRegistra
 
     private List<AdminBookingRoomResponse> findOtherAvailableRooms(BookingDetail detail) {
         Long currentTypeId = detail.getRoomType() != null ? detail.getRoomType().getId() : null;
+        Set<Long> inProgressRoomIds = roomIncidentRepository != null
+                ? new HashSet<>(roomIncidentRepository.findRoomIdsWithInProgressIncidents())
+                : java.util.Collections.emptySet();
         return roomRepository.findAll().stream()
                 .filter(room -> currentTypeId == null || room.getRoomType() == null || !currentTypeId.equals(room.getRoomType().getId()))
-                .filter(room -> !"MAINTENANCE".equalsIgnoreCase(room.getStatus()))
+                .filter(room -> !"MAINTENANCE".equalsIgnoreCase(room.getStatus()) && !inProgressRoomIds.contains(room.getId()))
                 .filter(room -> isRoomAvailable(room.getId(), detail))
                 .map(room -> new AdminBookingRoomResponse(
                         room.getId(), room.getRoomNumber(), room.getRoomType() != null ? room.getRoomType().getName() : "Khác"

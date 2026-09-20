@@ -899,6 +899,16 @@ function CustomerChangeRoomModal({ booking, room, onClose, currentUser }) {
           </div>
 
           <div className="history-cancel-field" style={{ marginTop: 12 }}>
+            <label>Số điện thoại liên hệ (để lễ tân gọi hỗ trợ)</label>
+            <input
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value.replace(/[^\d+]/g, '').slice(0, 11))}
+              placeholder="VD: 0912345678"
+            />
+          </div>
+
+          <div className="history-cancel-field" style={{ marginTop: 12 }}>
             <label>Loại phòng mong muốn đổi sang (nếu có)</label>
             <input
               type="text"

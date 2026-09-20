@@ -69,6 +69,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/bookings/price-policies").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/bookings/services").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/bookings").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/bookings/request-room-change-public").permitAll()
                         .requestMatchers("/api/stays/**").hasAuthority("ROLE_CUSTOMER")
 
                         // Lễ tân/admin tạo và theo dõi; housekeeping/admin thực hiện công việc.
@@ -122,6 +123,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/admin/rules-penalties/**").hasAuthority("ROLE_ADMIN")
                         // Dashboard tổng quan
                         .requestMatchers("/api/admin/dashboard/**").hasAuthority("ROLE_ADMIN")
+                        // Thông báo hệ thống & Yêu cầu đổi phòng cho Admin và Lễ tân
+                        .requestMatchers("/api/admin/marketing/notifications/**").hasAnyAuthority("ROLE_ADMIN", "ROLE_RECEPTIONIST", "ROLE_MARKETING")
                         .requestMatchers("/api/admin/marketing/**").hasAnyAuthority("ROLE_ADMIN", "ROLE_MARKETING")
 
                         // Các API admin còn lại không tự động mở cho role chuyên biệt.

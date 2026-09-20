@@ -36,8 +36,8 @@ export default function ReceptionistSheetsPage() {
 
   const iframeRef = useRef(null)
 
-  const fetchFiles = async () => {
-    setLoading(true)
+  const fetchFiles = async (showLoading = true) => {
+    if (showLoading) setLoading(true)
     setError('')
     try {
       const res = await fetch(`${API_BASE}/files`, {
@@ -49,14 +49,18 @@ export default function ReceptionistSheetsPage() {
       const data = await res.json()
       setFiles(Array.isArray(data) ? data : [])
     } catch (err) {
-      setError(err.message || 'Lỗi tải dữ liệu file')
+      if (showLoading) setError(err.message || 'Lỗi tải dữ liệu file')
     } finally {
-      setLoading(false)
+      if (showLoading) setLoading(false)
     }
   }
 
   useEffect(() => {
-    fetchFiles()
+    fetchFiles(true)
+    const intervalId = setInterval(() => {
+      fetchFiles(false)
+    }, 6000)
+    return () => clearInterval(intervalId)
   }, [])
 
   // Export temporary residence for today
@@ -172,21 +176,28 @@ export default function ReceptionistSheetsPage() {
 
   // Filtered list
   const filteredFiles = useMemo(() => {
-    return files.filter((f) => {
-      if (activeTab !== 'ALL' && f.folder !== activeTab) return false
-      if (searchTerm) {
-        const query = searchTerm.toLowerCase().trim()
-        const matchName = f.fileName.toLowerCase().includes(query)
-        const matchLabel = f.folderLabel?.toLowerCase().includes(query)
-        if (!matchName && !matchLabel) return false
-      }
-      if (selectedDate) {
-        const fileDate = f.lastModified ? f.lastModified.substring(0, 10) : ''
-        const nameHasDate = f.fileName.includes(selectedDate)
-        if (fileDate !== selectedDate && !nameHasDate) return false
-      }
-      return true
-    })
+    return files
+      .filter((f) => {
+        if (activeTab !== 'ALL' && f.folder !== activeTab) return false
+        if (searchTerm) {
+          const query = searchTerm.toLowerCase().trim()
+          const matchName = f.fileName.toLowerCase().includes(query)
+          const matchLabel = f.folderLabel?.toLowerCase().includes(query)
+          if (!matchName && !matchLabel) return false
+        }
+        if (selectedDate) {
+          const fileDate = f.lastModified ? f.lastModified.substring(0, 10) : ''
+          const nameHasDate = f.fileName.includes(selectedDate)
+          if (fileDate !== selectedDate && !nameHasDate) return false
+        }
+        return true
+      })
+      .sort((a, b) => {
+        const timeA = a.lastModified ? new Date(a.lastModified).getTime() : 0
+        const timeB = b.lastModified ? new Date(b.lastModified).getTime() : 0
+        if (timeB !== timeA) return timeB - timeA
+        return b.fileName.localeCompare(a.fileName, undefined, { numeric: true, sensitivity: 'base' })
+      })
   }, [files, activeTab, searchTerm, selectedDate])
 
   const printIframe = () => {

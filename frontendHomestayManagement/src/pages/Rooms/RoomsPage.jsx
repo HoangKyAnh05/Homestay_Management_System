@@ -1935,6 +1935,173 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
             />
           </section>
 
+          <section className="multi-room-units-section">
+            <div className="multi-room-units-head">
+              <h3>Số khách & Dịch vụ từng phòng</h3>
+              <p>Chọn số khách và dịch vụ riêng cho từng phòng trong booking.</p>
+            </div>
+            <div className="multi-room-units">
+              {roomUnits.map((unit) => {
+                const unitServiceTotal = unit.services.reduce(
+                  (sum, service) => sum + Number(service.price || 0) * Number(service.quantity || 0),
+                  0,
+                )
+                return (
+                  <article className="multi-room-unit" key={unit.key}>
+                    <div className="multi-room-unit-head">
+                      <div>
+                        <span>Phòng {unit.unitIndex}</span>
+                        <strong>{unit.room.roomTypeName || unit.room.name || 'Loại phòng'}</strong>
+                      </div>
+                      <b>{formatPrice(roomPriceItems.find((item) => roomKey(item.room) === unit.typeKey)?.price || roomPrice(unit.room))}</b>
+                    </div>
+
+                    <div className="multi-room-unit-guests">
+                      <label className="multi-room-guest-field">
+                        <span className="multi-room-guest-label">
+                          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                            <circle cx="9" cy="7" r="4"/>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                          </svg>
+                          Người lớn {unit.room.maxAdults ? <small>(Tối đa {unit.room.maxAdults})</small> : ''}
+                        </span>
+                        <input
+                          type="number"
+                          className="multi-room-num-input"
+                          min="1"
+                          max={unit.room.maxAdults || undefined}
+                          value={unit.numberOfAdults}
+                          onChange={(event) => updateRoomGuest(unit.key, 'numberOfAdults', event.target.value)}
+                        />
+                      </label>
+                      <label className="multi-room-guest-field">
+                        <span className="multi-room-guest-label">
+                          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                            <circle cx="12" cy="12" r="9"/>
+                            <circle cx="9" cy="10" r="1" fill="currentColor"/>
+                            <circle cx="15" cy="10" r="1" fill="currentColor"/>
+                            <path d="M9.5 15a3.5 3.5 0 0 0 5 0"/>
+                          </svg>
+                          Trẻ em {unit.room.maxChildren ? <small>(Tối đa {unit.room.maxChildren})</small> : ''}
+                        </span>
+                        <input
+                          type="number"
+                          className="multi-room-num-input"
+                          min="0"
+                          max={unit.room.maxChildren || undefined}
+                          value={unit.numberOfChildren}
+                          onChange={(event) => updateRoomGuest(unit.key, 'numberOfChildren', event.target.value)}
+                        />
+                      </label>
+                    </div>
+
+                    <div className="multi-room-unit-occupants">
+                      <div className="multi-room-unit-occupants-title">
+                        <span className="occupants-title-badge">
+                          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                            <circle cx="12" cy="7" r="4" />
+                          </svg>
+                          Khách đại diện phòng {unit.unitIndex}
+                        </span>
+                        <span className="occupants-title-hint">Mặc định dùng thông tin người đặt</span>
+                      </div>
+
+                      <div className="multi-room-unit-guest-grid">
+                        <div className="occupant-field-group">
+                          <label htmlFor={`guest-name-${unit.key}`}>Họ tên người ở phòng {unit.unitIndex}</label>
+                          <div className="occupant-input-wrapper">
+                            <span className="occupant-input-icon" aria-hidden="true">
+                              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                <circle cx="12" cy="7" r="4"/>
+                              </svg>
+                            </span>
+                            <input
+                              id={`guest-name-${unit.key}`}
+                              type="text"
+                              className="occupant-input"
+                              placeholder={form.fullName ? `Mặc định: ${form.fullName}` : "Ví dụ: Nguyễn Văn A"}
+                              value={unit.guestName || ''}
+                              onChange={(e) => updateRoomGuest(unit.key, 'guestName', e.target.value)}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="occupant-field-group">
+                          <label htmlFor={`guest-email-${unit.key}`}>Email nhận thông tin phòng {unit.unitIndex}</label>
+                          <div className="occupant-input-wrapper">
+                            <span className="occupant-input-icon" aria-hidden="true">
+                              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                                <polyline points="22,6 12,13 2,6"/>
+                              </svg>
+                            </span>
+                            <input
+                              id={`guest-email-${unit.key}`}
+                              type="email"
+                              className="occupant-input"
+                              placeholder={form.email ? `Mặc định: ${form.email}` : "email@example.com"}
+                              value={unit.guestEmail || ''}
+                              onChange={(e) => updateRoomGuest(unit.key, 'guestEmail', e.target.value)}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="multi-room-unit-services">
+                      <div className="multi-room-unit-service-head">
+                        <div>
+                          <strong>Dịch vụ của phòng này</strong>
+                          <span>{unit.services.length ? `${unit.services.length} dịch vụ đã chọn` : 'Chưa chọn dịch vụ'}</span>
+                        </div>
+                        <button
+                          type="button"
+                          className="multi-add-service-btn"
+                          onClick={() => {
+                            setServiceForm({ optionKey: '', quantity: 1 })
+                            setServiceDialogRoomKey(unit.key)
+                          }}
+                        >
+                          + Thêm dịch vụ
+                        </button>
+                      </div>
+
+                      {unit.services.length > 0 && (
+                        <div className="multi-room-service-list">
+                          {unit.services.map((service) => (
+                            <div key={`${service.type}-${service.serviceId}`}>
+                              <span>
+                                <b>{service.name}</b>
+                                <small>{formatPrice(service.price)} × {service.quantity}</small>
+                              </span>
+                              <strong>{formatPrice(Number(service.price) * service.quantity)}</strong>
+                              <button
+                                type="button"
+                                aria-label={`Xóa ${service.name} khỏi phòng ${unit.unitIndex}`}
+                                onClick={() => removeRoomService(unit.key, service)}
+                              >
+                                ×
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      <div className="multi-room-unit-subtotal">
+                        <span>Dịch vụ phòng</span>
+                        <strong>{formatPrice(unitServiceTotal)}</strong>
+                      </div>
+                    </div>
+                  </article>
+                )
+              })}
+            </div>
+          </section>
+
           {serviceDialogRoom && (
             <div
               className="public-service-dialog-overlay"

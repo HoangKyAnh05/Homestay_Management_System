@@ -68,8 +68,12 @@ public class PublicBookingController {
         String noteContent = request.note() != null && !request.note().isBlank() ? " (" + request.note().trim() + ")" : "";
         String prefType = request.preferredRoomTypeName() != null && !request.preferredRoomTypeName().isBlank() ? " [Muốn sang: " + request.preferredRoomTypeName().trim() + "]" : "";
 
+        String contactPhone = (request.phone() != null && !request.phone().isBlank())
+                ? request.phone().trim()
+                : (booking.getCustomer() != null && booking.getCustomer().getPhone() != null ? booking.getCustomer().getPhone() : "Chưa có");
+
         String notificationTitle = "🛎️ Khách yêu cầu Đổi phòng (" + customerName + " - P." + roomNumbers + ")";
-        String notificationContent = "Khách " + customerName + " (SĐT: " + request.phone() + ") gửi yêu cầu đổi phòng " + roomNumbers + ". Lý do: " + reasonText + noteContent + prefType;
+        String notificationContent = "Khách " + customerName + " (SĐT: " + contactPhone + ") gửi yêu cầu đổi phòng " + roomNumbers + ". Lý do: " + reasonText + noteContent + prefType;
 
         MarketingNotification notif = MarketingNotification.builder()
                 .platform("SYSTEM")
