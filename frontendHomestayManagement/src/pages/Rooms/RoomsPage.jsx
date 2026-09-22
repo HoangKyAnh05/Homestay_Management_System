@@ -9,6 +9,7 @@ import { clearBookingCart, isRoomSelectable, readBookingCart, writeBookingCart }
 import { formatDateTime as formatAppDateTime } from '../../utils/dateTimeFormat'
 import { houseTypeName } from '../../utils/houseType'
 import { resolveImageUrl } from '../../utils/imageUrl'
+import { STAFF_ROLES, roleDefaultPath } from '../../utils/roleUtils'
 import '../Home/HomePage.css'
 import './RoomsPage.css'
 import './RoomDetailPage.css'
@@ -106,7 +107,8 @@ function calculateVoucherDiscount(voucher, roomTotal) {
   const minOrderValue = Number(voucher.minOrderValue || 0)
   if (roomTotal < minOrderValue) return 0
   const discountValue = Number(voucher.discountValue || 0)
-  let discount = String(voucher.discountType || '').toUpperCase() === 'PERCENT'
+  const type = String(voucher.discountType || '').toUpperCase()
+  let discount = (type === 'PERCENT' || type === 'PERCENTAGE')
     ? Math.round((roomTotal * discountValue) / 100)
     : Math.round(discountValue)
   const maxDiscount = Number(voucher.maxDiscountAmount || 0)
@@ -116,7 +118,8 @@ function calculateVoucherDiscount(voucher, roomTotal) {
 
 function voucherDiscountText(voucher) {
   if (!voucher) return ''
-  if (String(voucher.discountType || '').toUpperCase() === 'PERCENT') {
+  const type = String(voucher.discountType || '').toUpperCase()
+  if (type === 'PERCENT' || type === 'PERCENTAGE') {
     return `Giảm ${Number(voucher.discountValue || 0).toLocaleString('vi-VN')}%`
   }
   return `Giảm ${formatPrice(voucher.discountValue)}`
@@ -613,6 +616,11 @@ function PublicHeader() {
           </button>
           {isOpen && (
             <div className="home-user-dropdown">
+              {STAFF_ROLES.has(currentUser?.role) && (
+                <a href={roleDefaultPath(currentUser.role)}>
+                  {currentUser.role === 'ROLE_ADMIN' ? 'Quản lý Lá Đỏ Homestay' : 'Bàn làm việc vận hành'}
+                </a>
+              )}
               <a href="/stay" onClick={(e) => { e.preventDefault(); setIsOpen(false); window.location.assign('/stay'); }}>Dịch vụ lưu trú</a>
               <a href="/wishlist" onClick={(e) => { e.preventDefault(); setIsOpen(false); window.location.assign('/wishlist'); }}>Danh sách yêu thích</a>
               <a href="/vouchers" onClick={(e) => { e.preventDefault(); setIsOpen(false); window.location.assign('/vouchers'); }}>Kho mã giảm giá</a>
@@ -662,7 +670,8 @@ function RoomCard({ room, selected, onToggle, criteria }) {
     event.preventDefault()
     event.stopPropagation()
     if (!token) {
-      window.location.assign('/login')
+      const returnUrl = encodeURIComponent(window.location.pathname + window.location.search)
+      window.location.assign(`/login?redirect=${returnUrl}`)
       return
     }
     const nextState = !isLiked

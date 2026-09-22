@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { getStoredUser, logout } from '../../services/authService';
 import { resolveImageUrl } from '../../utils/imageUrl';
+import { STAFF_ROLES, roleDefaultPath } from '../../utils/roleUtils';
 import './ExploreHeader.css';
 
 function UserAvatar({ user }) {
@@ -72,8 +73,10 @@ export default function ExploreHeader() {
 
           {isUserMenuOpen && (
             <div className="home-user-dropdown">
-              {currentUser.role === 'ROLE_ADMIN' && (
-                <a href="/admin">Quản lý Lá Đỏ Homestay</a>
+              {STAFF_ROLES.has(currentUser?.role) && (
+                <a href={roleDefaultPath(currentUser.role)}>
+                  {currentUser.role === 'ROLE_ADMIN' ? 'Quản lý Lá Đỏ Homestay' : 'Bàn làm việc vận hành'}
+                </a>
               )}
               <a href="/stay" onClick={(e) => { e.preventDefault(); setIsUserMenuOpen(false); window.location.assign('/stay'); }}>
                 Dịch vụ lưu trú
@@ -97,9 +100,10 @@ export default function ExploreHeader() {
           )}
         </div>
       ) : (
-        <a className="home-login" href="/login">
-          Đăng nhập
-        </a>
+        <div className="home-actions">
+          <a href="/login">Đăng nhập</a>
+          <a href="/register">Đăng ký</a>
+        </div>
       )}
     </header>
   );

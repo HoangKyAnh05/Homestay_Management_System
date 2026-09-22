@@ -6,7 +6,7 @@ const OTP_SECONDS = 180
 function PasswordToggleIcon({ isVisible }) {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" />
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
       <circle cx="12" cy="12" r="3" />
       {!isVisible && <path d="M4 4l16 16" />}
     </svg>

@@ -64,7 +64,7 @@ const amenities = [
     categoryLabel: 'Không gian chung',
     price: 0,
     schedule: 'Phục vụ 24/7',
-    location: 'Cổng chính Home Stays',
+    location: 'Cổng chính Lá Đỏ Homestay',
     description: 'Khu vực đỗ xe trong khuôn viên, thuận tiện di chuyển và được giám sát thường xuyên.',
     image: '/home_4/image_1.jpg',
     icon: 'parking',
@@ -146,7 +146,7 @@ function serviceDescription(name) {
   const normalized = String(name || '').toLowerCase()
   if (normalized.includes('giặt')) return 'Chăm sóc trang phục thuận tiện trong suốt kỳ nghỉ của bạn.'
   if (normalized.includes('bbq') || normalized.includes('nướng')) return 'Chuẩn bị cho một buổi tối ấm cúng bên gia đình và bạn bè.'
-  if (normalized.includes('sáng') || normalized.includes('ăn')) return 'Thưởng thức hương vị địa phương ngay tại Home Stays.'
+  if (normalized.includes('sáng') || normalized.includes('ăn')) return 'Thưởng thức hương vị địa phương ngay tại Lá Đỏ Homestay.'
   if (normalized.includes('xe') || normalized.includes('đón')) return 'Di chuyển nhẹ nhàng hơn với sự hỗ trợ từ đội ngũ của chúng tôi.'
   return 'Dịch vụ bổ sung giúp kỳ lưu trú của bạn thoải mái và trọn vẹn hơn.'
 }
@@ -389,7 +389,7 @@ function AmenitiesPage() {
       <AmenitiesHeader />
       <main>
         <section className="amenities-hero">
-          <img src="/banner.png" alt="Không gian tiện nghi tại Home Stays" />
+          <img src="/banner.png" alt="Không gian tiện nghi tại Lá Đỏ Homestay" />
           <div className="amenities-hero-overlay" />
           <div className="amenities-hero-content">
             <span>TRỌN VẸN TỪ NHỮNG ĐIỀU NHỎ NHẤT</span>
@@ -404,7 +404,7 @@ function AmenitiesPage() {
 
         <section className="bookable-services" id="services">
           <div className="bookable-services-head">
-            <div><span>MỚI TẠI HOME STAYS</span><h2>Dịch vụ cho chuyến đi</h2><p>Thêm trực tiếp vào booking hiện tại hoặc chọn trước khi bắt đầu đặt phòng.</p></div>
+            <div><span>MỚI TẠI LÁ ĐỎ HOMESTAY</span><h2>Dịch vụ cho chuyến đi</h2><p>Thêm trực tiếp vào booking hiện tại hoặc chọn trước khi bắt đầu đặt phòng.</p></div>
             <a href="/booking-history">Xem chuyến đi của bạn</a>
           </div>
           <div className="bookable-service-tabs" aria-label="Lọc dịch vụ cho chuyến đi">
@@ -454,10 +454,10 @@ function AmenitiesPage() {
         </section>
 
         <section className="amenities-intro" id="explore">
-          <div className="amenities-kicker">TRẢI NGHIỆM TẠI HOME STAYS</div>
+          <div className="amenities-kicker">TRẢI NGHIỆM TẠI LÁ ĐỎ HOMESTAY</div>
           <div className="amenities-intro-grid">
             <h2>Không chỉ là một<br />nơi để nghỉ.</h2>
-            <p>Mỗi tiện nghi tại Home Stays được chọn lọc để bạn có thể sống chậm lại, kết nối với thiên nhiên và tận hưởng thời gian bên những người thân yêu.</p>
+            <p>Mỗi tiện nghi tại Lá Đỏ Homestay được chọn lọc để bạn có thể sống chậm lại, kết nối với thiên nhiên và tận hưởng thời gian bên những người thân yêu.</p>
           </div>
           <div className="amenities-highlights">
             {amenities.filter(item => item.featured).map((item, index) => (
@@ -512,9 +512,9 @@ function AmenitiesPage() {
         </section>
 
         <section className="amenities-cta">
-          <img src="/home_1/image.png" alt="Kỳ nghỉ tại Home Stays" />
+          <img src="/home_1/image.png" alt="Kỳ nghỉ tại Lá Đỏ Homestay" />
           <div className="amenities-cta-shade" />
-          <div><span>ĐÃ SẴN SÀNG CHO CHUYẾN ĐI?</span><h2>Chọn căn phòng<br />dành riêng cho bạn.</h2><p>Những ngày bình yên đang chờ ở Home Stays.</p><a href="/rooms">Khám phá phòng <b>→</b></a></div>
+          <div><span>ĐÃ SẴN SÀNG CHO CHUYẾN ĐI?</span><h2>Chọn căn phòng<br />dành riêng cho bạn.</h2><p>Những ngày bình yên đang chờ ở Lá Đỏ Homestay.</p><a href="/rooms">Khám phá phòng <b>→</b></a></div>
         </section>
       </main>
 
@@ -555,9 +555,9 @@ function AmenitiesPage() {
       )}
 
       <footer className="amenities-footer">
-        <div><a className="home-logo" href="/home">Home Stays</a><p>Ngôi nhà thứ hai của bạn giữa thiên nhiên.</p></div>
-        <nav><a href="/rooms">Phòng</a><a href="/amenities">Tiện nghi</a><a href="/giveaway">Liên hệ</a><a href="/home#about">Giới thiệu</a></nav>
-        <p>© 2026 Home Stays. All rights reserved.</p>
+        <div><a className="home-logo" href="/home">Lá Đỏ Homestay</a><p>Khu nghỉ dưỡng sinh thái biệt lập giữa thung lũng Mường Hoa, Sa Pa.</p></div>
+        <nav><a href="/home">Trang chủ</a><a href="/rooms">Phòng</a><a href="/amenities">Tiện nghi</a><a href="/explore">Khám phá</a><a href="/home#about">Giới thiệu</a></nav>
+        <p>© 2026 Lá Đỏ Homestay. All rights reserved.</p>
       </footer>
     </div>
   )

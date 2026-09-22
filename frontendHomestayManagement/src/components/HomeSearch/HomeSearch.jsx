@@ -157,9 +157,28 @@ function MonthCalendar({ month, checkInDate, checkOutDate, onSelectDate, activeD
   )
 }
 
-function CalendarDropdown({ months, checkInDate, checkOutDate, onSelectDate, activeDateField }) {
+function CalendarDropdown({ months, checkInDate, checkOutDate, onSelectDate, activeDateField, onPrevMonth, onNextMonth, canGoPrev }) {
   return (
     <div className="calendar-dropdown">
+      <div className="calendar-nav-header">
+        <button
+          type="button"
+          className="calendar-nav-btn"
+          onClick={onPrevMonth}
+          disabled={!canGoPrev}
+          aria-label="Tháng trước"
+        >
+          ‹
+        </button>
+        <button
+          type="button"
+          className="calendar-nav-btn"
+          onClick={onNextMonth}
+          aria-label="Tháng sau"
+        >
+          ›
+        </button>
+      </div>
       <div className="calendar-body">
         {months.map((month) => (
           <MonthCalendar
@@ -180,6 +199,7 @@ function HomeSearch({ onSearch, isSearching = false }) {
   const searchRef = useRef(null)
   const [isCalendarOpen, setIsCalendarOpen] = useState(false)
   const [activeDateField, setActiveDateField] = useState('checkin')
+  const [monthOffset, setMonthOffset] = useState(0)
   const [checkInDate, setCheckInDate] = useState(() => {
     const d = new Date()
     d.setHours(0, 0, 0, 0)
@@ -234,9 +254,20 @@ function HomeSearch({ onSearch, isSearching = false }) {
   }
 
   const visibleMonths = useMemo(() => {
-    const baseDate = checkInDate || new Date()
-    return [buildMonth(baseDate, 0), buildMonth(baseDate, 1)]
-  }, [checkInDate])
+    const baseDate = new Date()
+    baseDate.setHours(0, 0, 0, 0)
+    return [buildMonth(baseDate, monthOffset), buildMonth(baseDate, monthOffset + 1)]
+  }, [monthOffset])
+
+  const canGoPrevMonth = monthOffset > 0
+
+  const handlePrevMonth = () => {
+    setMonthOffset((prev) => Math.max(0, prev - 1))
+  }
+
+  const handleNextMonth = () => {
+    setMonthOffset((prev) => prev + 1)
+  }
 
   useEffect(() => {
     const handlePointerDown = (event) => {
@@ -256,6 +287,11 @@ function HomeSearch({ onSearch, isSearching = false }) {
     setActiveDateField(field)
     setIsCalendarOpen(true)
     setIsGuestOpen(false)
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const targetDate = field === 'checkout' && checkOutDate ? checkOutDate : (checkInDate || today)
+    const diffMonths = (targetDate.getFullYear() - today.getFullYear()) * 12 + (targetDate.getMonth() - today.getMonth())
+    setMonthOffset(Math.max(0, diffMonths))
   }
 
   const handleSelectDate = (date) => {
@@ -346,6 +382,9 @@ function HomeSearch({ onSearch, isSearching = false }) {
               checkOutDate={checkOutDate}
               onSelectDate={handleSelectDate}
               activeDateField={activeDateField}
+              onPrevMonth={handlePrevMonth}
+              onNextMonth={handleNextMonth}
+              canGoPrev={canGoPrevMonth}
             />
           )}
         </div>

@@ -84,12 +84,14 @@
 .brand-title {
   margin: 0;
   display: inline-flex;
+  flex-wrap: nowrap;
   align-items: baseline;
-  gap: 8px;
+  justify-content: center;
+  gap: 10px;
   color: #183a24;
-  font-size: clamp(48px, 6vw, 76px);
+  font-size: clamp(34px, 4vw, 54px);
   font-weight: 900;
-  line-height: 0.95;
+  line-height: 1.1;
   letter-spacing: 0;
   text-shadow:
     0 2px 0 rgba(255, 255, 255, 0.88),
@@ -101,12 +103,14 @@
   font-family: var(--font-heading);
   font-style: italic;
   font-weight: 800;
+  white-space: nowrap;
 }
 
 .brand-title strong {
   position: relative;
   color: #15573a;
   font-weight: 900;
+  white-space: nowrap;
 }
 
 .brand-title strong::after {

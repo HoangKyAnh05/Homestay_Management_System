@@ -103,6 +103,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.DayOfWeek;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.TemporalAdjusters;
@@ -369,6 +370,11 @@ public class AdminBookingServiceImpl implements AdminBookingService {
                 ? detail.getRoomType()
                 : room != null ? room.getRoomType() : null;
         List<CheckInRecord> checkInRecords = checkInRecordRepository.findByBookingDetailIdForAdmin(detail.getId());
+        for (CheckInRecord record : checkInRecords) {
+            if (record.getActualCheckOut() == null) {
+                syncTimePenalties(record, detail, LocalDateTime.now());
+            }
+        }
         List<AdminInvoiceServiceItemResponse> serviceItems = buildServiceItems(detail.getId());
         List<AdminInvoicePenaltyItemResponse> penaltyItems = appliedPenaltyRepository.findByBookingDetailIdForAdmin(detail.getId())
                 .stream()
@@ -798,14 +804,15 @@ public class AdminBookingServiceImpl implements AdminBookingService {
         CheckInRecord record = checkInRecordRepository.findByBookingDetailId(bookingDetailId)
                 .orElseThrow(() -> new IllegalArgumentException("Phòng này chưa check-in"));
         requireInspectionComplete(record);
-        BigDecimal outstandingBalance = calculateDetailOutstandingBalance(detail);
-        if (outstandingBalance.compareTo(BigDecimal.ZERO) > 0) {
-            throw new IllegalArgumentException("Vui lòng thanh toán số tiền còn lại trước khi checkout");
-        }
         boolean firstCheckout = record.getActualCheckOut() == null;
         if (firstCheckout) {
             record.setActualCheckOut(LocalDateTime.now());
-            checkInRecordRepository.save(record);
+            syncTimePenalties(record, detail, record.getActualCheckOut());
+        }
+        generateInvoice(bookingDetailId);
+        BigDecimal outstandingBalance = calculateDetailOutstandingBalance(detail);
+        if (outstandingBalance.compareTo(BigDecimal.ZERO) > 0) {
+            throw new IllegalArgumentException("Vui lòng thanh toán số tiền còn lại trước khi checkout");
         }
         detail.setStatus("COMPLETED");
         if (detail.getRoom() != null) {
@@ -836,6 +843,7 @@ public class AdminBookingServiceImpl implements AdminBookingService {
         }
 
         requireInspectionComplete(record);
+        syncTimePenalties(record, detail, LocalDateTime.now());
         generateInvoice(bookingDetailId);
         Invoice invoice = invoiceRepository.findByBookingIdForAdmin(detail.getBooking().getId())
                 .orElseThrow(() -> new IllegalArgumentException("Không thể tạo hóa đơn checkout"));
@@ -1596,7 +1604,13 @@ public class AdminBookingServiceImpl implements AdminBookingService {
     }
 
     private BigDecimal calculatePenaltyCharge(Long bookingId) {
-        BigDecimal timePenalty = checkInRecordRepository.findByBookingIdForInvoice(bookingId).stream()
+        List<CheckInRecord> records = checkInRecordRepository.findByBookingIdForInvoice(bookingId);
+        for (CheckInRecord record : records) {
+            if (record.getBookingDetail() != null && record.getActualCheckOut() == null) {
+                syncTimePenalties(record, record.getBookingDetail(), LocalDateTime.now());
+            }
+        }
+        BigDecimal timePenalty = records.stream()
                 .map(record -> safeAmount(record.getEarlyCheckInFee()).add(safeAmount(record.getLateCheckOutFee())))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal rulePenalty = appliedPenaltyRepository.findByBookingIdForInvoice(bookingId).stream()
@@ -1609,7 +1623,8 @@ public class AdminBookingServiceImpl implements AdminBookingService {
         Invoice invoice = invoiceRepository.findByBookingIdForAdmin(detail.getBooking().getId()).orElse(null);
         return calculateDetailTotalCharge(detail)
                 .subtract(calculateDetailPaidAmount(detail, invoice))
-                .max(BigDecimal.ZERO);
+                .max(BigDecimal.ZERO)
+                .setScale(0, RoundingMode.HALF_UP);
     }
 
     private BigDecimal calculateDetailPaidAmount(BookingDetail detail, Invoice invoice) {
@@ -1641,9 +1656,9 @@ public class AdminBookingServiceImpl implements AdminBookingService {
         BigDecimal allocatedBookingPaid = bookingBaseTotal.compareTo(BigDecimal.ZERO) == 0
                 ? BigDecimal.ZERO
                 : bookingPaid.multiply(detailBase)
-                        .divide(bookingBaseTotal, 2, RoundingMode.HALF_UP)
+                        .divide(bookingBaseTotal, 0, RoundingMode.HALF_UP)
                         .min(detailBase);
-        return allocatedBookingPaid.add(checkoutPaid);
+        return allocatedBookingPaid.add(checkoutPaid).setScale(0, RoundingMode.HALF_UP);
     }
 
     private BigDecimal calculateDetailBookingBaseCharge(BookingDetail detail) {
@@ -1666,6 +1681,11 @@ public class AdminBookingServiceImpl implements AdminBookingService {
     }
 
     private BigDecimal calculateDetailTotalCharge(BookingDetail detail) {
+        checkInRecordRepository.findByBookingDetailId(detail.getId()).ifPresent(record -> {
+            if (record.getActualCheckOut() == null) {
+                syncTimePenalties(record, detail, LocalDateTime.now());
+            }
+        });
         BigDecimal serviceCharge = buildServiceItems(detail.getId()).stream()
                 .map(AdminInvoiceServiceItemResponse::totalPrice)
                 .map(this::safeAmount)
@@ -1810,6 +1830,59 @@ public class AdminBookingServiceImpl implements AdminBookingService {
             return hourlyRate.multiply(BigDecimal.valueOf(detail.getExtensionHours()));
         }
         return BigDecimal.ZERO;
+    }
+
+    private void syncTimePenalties(CheckInRecord record, BookingDetail detail, LocalDateTime referenceTime) {
+        if (record == null || detail == null || detail.getCheckOutTarget() == null) {
+            return;
+        }
+        LocalDateTime actualOrRefTime = referenceTime != null
+                ? referenceTime
+                : (record.getActualCheckOut() != null ? record.getActualCheckOut() : LocalDateTime.now());
+        if (actualOrRefTime.isAfter(detail.getCheckOutTarget())) {
+            long overdueMinutes = Duration.between(detail.getCheckOutTarget(), actualOrRefTime).toMinutes();
+            if (overdueMinutes > 60) {
+                int overdueDays = (int) Math.max(1, Math.ceil((double) overdueMinutes / (24.0 * 60.0)));
+                BigDecimal dailyRate = getDailyRoomRate(detail);
+                BigDecimal lateFee = dailyRate.multiply(BigDecimal.valueOf(overdueDays));
+                record.setLateCheckOutFee(lateFee);
+            } else {
+                record.setLateCheckOutFee(BigDecimal.ZERO);
+            }
+        } else {
+            record.setLateCheckOutFee(BigDecimal.ZERO);
+        }
+        checkInRecordRepository.save(record);
+    }
+
+    private BigDecimal getDailyRoomRate(BookingDetail detail) {
+        if (detail == null) {
+            return BigDecimal.valueOf(500_000);
+        }
+        RoomType roomType = detail.getRoomType() != null
+                ? detail.getRoomType()
+                : (detail.getRoom() != null ? detail.getRoom().getRoomType() : null);
+
+        if (roomType != null) {
+            List<RoomPriceConfig> configs = roomPriceConfigRepository.findByRoomTypeIdWithPolicy(roomType.getId());
+            for (RoomPriceConfig cfg : configs) {
+                if (cfg.getPricePolicy() != null && !isHourlyPolicy(cfg.getPricePolicy())
+                        && cfg.getPrice() != null && cfg.getPrice().compareTo(BigDecimal.ZERO) > 0) {
+                    return cfg.getPrice();
+                }
+            }
+        }
+
+        if (detail.getPriceAtBooking() != null && detail.getPriceAtBooking().compareTo(BigDecimal.ZERO) > 0) {
+            if (detail.getCheckInTarget() != null && detail.getCheckOutTarget() != null) {
+                long hours = Duration.between(detail.getCheckInTarget(), detail.getCheckOutTarget()).toHours();
+                long days = Math.max(1, (hours + 23) / 24);
+                return detail.getPriceAtBooking().divide(BigDecimal.valueOf(days), 0, RoundingMode.HALF_UP);
+            }
+            return detail.getPriceAtBooking();
+        }
+
+        return BigDecimal.valueOf(500_000);
     }
 
     @Override

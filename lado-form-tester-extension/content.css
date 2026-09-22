@@ -1,0 +1,241 @@
+/* Floating Test Widget for Lá Đỏ Homestay */
+#lado-floating-tester-widget {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 999999;
+  font-family: 'Be Vietnam Pro', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  box-sizing: border-box;
+}
+
+.lado-widget-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(15, 23, 42, 0.94);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  padding: 8px 12px;
+  border-radius: 9999px;
+  box-shadow: 0 10px 35px -5px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.15);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.lado-widget-bar:hover {
+  box-shadow: 0 14px 40px -4px rgba(0, 0, 0, 0.5), 0 0 0 1.5px rgba(34, 197, 94, 0.4);
+}
+
+.lado-widget-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 6px 0 2px;
+}
+
+.lado-widget-icon {
+  font-size: 16px;
+}
+
+.lado-widget-title {
+  color: #f8fafc;
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+.lado-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+  outline: none;
+}
+
+.lado-btn-primary {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.35);
+}
+
+.lado-btn-primary:hover {
+  background: linear-gradient(135deg, #34d399 0%, #059669 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.5);
+}
+
+.lado-btn-secondary {
+  background: rgba(255, 255, 255, 0.12);
+  color: #e2e8f0;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.lado-btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+}
+
+.lado-btn-danger {
+  background: rgba(239, 68, 68, 0.18);
+  color: #fca5a5;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.lado-btn-danger:hover {
+  background: #ef4444;
+  color: #ffffff;
+}
+
+.lado-widget-minimize {
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.lado-widget-minimize:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+}
+
+.lado-widget-minimized {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #0f172a;
+  color: #34d399;
+  padding: 8px 14px;
+  border-radius: 9999px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.12);
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.lado-widget-minimized:hover {
+  transform: scale(1.05);
+  background: #1e293b;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+}
+
+/* Dropdown Menu */
+.lado-dropdown-container {
+  position: relative;
+}
+
+.lado-dropdown-menu {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 12px);
+  right: 0;
+  width: 250px;
+  background: #0f172a;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  padding: 8px;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.5);
+  flex-direction: column;
+  gap: 3px;
+  z-index: 1000000;
+}
+
+.lado-dropdown-menu.lado-show {
+  display: flex;
+  animation: ladoFadeIn 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes ladoFadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.lado-menu-header {
+  font-size: 10.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: #64748b;
+  padding: 4px 8px;
+  letter-spacing: 0.05em;
+}
+
+.lado-menu-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+  margin: 4px 0;
+}
+
+.lado-dropdown-menu button {
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  color: #cbd5e1;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lado-dropdown-menu button:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+/* Toast Message */
+#lado-tester-toast {
+  position: fixed;
+  top: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #0f172a;
+  color: #ffffff;
+  border: 1px solid rgba(34, 197, 94, 0.4);
+  padding: 10px 20px;
+  border-radius: 999px;
+  font-size: 13.5px;
+  font-weight: 600;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+  z-index: 1000001;
+  pointer-events: none;
+  opacity: 0;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+#lado-tester-toast.lado-tester-toast-show {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+#lado-tester-toast.lado-tester-toast-hide {
+  opacity: 0;
+  transform: translate(-50%, -12px);
+}
+
+/* Filled Input Flash Animation */
+.lado-input-filled-flash {
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.4) !important;
+  border-color: #10b981 !important;
+  transition: all 0.3s ease !important;
+}

@@ -7,7 +7,8 @@ const hasGoogleClientId = GOOGLE_CLIENT_ID && !GOOGLE_CLIENT_ID.includes('YOUR_G
 
 function LoginForm() {
   const nextPath = (() => {
-    const requested = new URLSearchParams(window.location.search).get('next')
+    const params = new URLSearchParams(window.location.search)
+    const requested = params.get('next') || params.get('redirect')
     return requested?.startsWith('/') && !requested.startsWith('//') ? requested : '/home'
   })()
   const googleTokenClientRef = useRef(null)
@@ -255,12 +256,12 @@ function LoginForm() {
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 {showPassword ? (
                   <>
-                    <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" />
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
                     <circle cx="12" cy="12" r="3" />
                   </>
                 ) : (
                   <>
-                    <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" />
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
                     <circle cx="12" cy="12" r="3" />
                     <path d="M4 4l16 16" />
                   </>

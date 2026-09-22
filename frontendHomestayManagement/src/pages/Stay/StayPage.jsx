@@ -290,7 +290,7 @@ function StayPage() {
     <main className="stay-page">
       <header className="stay-header">
         <div className="stay-header-copy">
-          <span>HOME STAYS</span>
+          <span>LÁ ĐỎ HOMESTAY</span>
           <strong>Xin chào, {user?.fullName?.split(' ').at(-1) || 'bạn'}!</strong>
         </div>
         <div className="stay-header-actions">

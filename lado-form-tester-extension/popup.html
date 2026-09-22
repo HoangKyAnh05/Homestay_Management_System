@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lá Đỏ Form Auto Tester</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <div class="popup-container">
+    <!-- Header -->
+    <header class="popup-header">
+      <div class="header-brand">
+        <span class="header-logo">🍁</span>
+        <div>
+          <h1>Lá Đỏ Form Tester</h1>
+          <p>Tự động điền & Kiểm thử Validation</p>
+        </div>
+      </div>
+      <span class="status-pill" id="page-status">🟢 Sẵn sàng</span>
+    </header>
+
+    <!-- Main 1-Click Action (Mặc định chuẩn 100% đúng validate) -->
+    <section class="quick-fill-section">
+      <button type="button" class="btn-primary-action" id="btn-quick-fill-default">
+        <span class="btn-icon">⚡</span>
+        <div class="btn-text">
+          <strong>Điền Đầy Đủ & Hợp Lệ</strong>
+          <small>Mặc định 100% đúng chuẩn validate cho mọi ô input</small>
+        </div>
+      </button>
+    </section>
+
+    <!-- Category Tabs -->
+    <nav class="popup-tabs">
+      <button type="button" class="tab-btn active" data-tab="booking">🏨 Đặt Phòng</button>
+      <button type="button" class="tab-btn" data-tab="validation">🧪 Test Validation</button>
+      <button type="button" class="tab-btn" data-tab="custom">⚙️ Tùy Chỉnh</button>
+    </nav>
+
+    <!-- Tab 1: Booking & Multi-room -->
+    <div class="tab-content active" id="tab-booking">
+      <div class="case-card" data-preset="VALID_DEFAULT">
+        <div class="case-header">
+          <span class="case-title">🟢 1. Khách Chuẩn (Nguyễn Văn An)</span>
+          <span class="case-tag pass">Hợp lệ</span>
+        </div>
+        <p class="case-desc">Điền đầy đủ Họ tên, SĐT 10 số (0912...), Email, CCCD 12 số, Địa chỉ, Khách từng phòng.</p>
+      </div>
+
+      <div class="case-card" data-preset="VALID_VIP">
+        <div class="case-header">
+          <span class="case-title">👑 2. Khách VIP (Hoàng Kỳ Anh)</span>
+          <span class="case-tag vip">VIP</span>
+        </div>
+        <p class="case-desc">SĐT VIP 0988889999, CCCD 038202008888, địa chỉ Sa Pa, đại diện các phòng nghỉ dưỡng.</p>
+      </div>
+
+      <div class="case-card" data-preset="BOUNDARY_LONG_NAME">
+        <div class="case-header">
+          <span class="case-title">🟡 3. Test Giá Trị Biên (Tên & Email Cực Dài)</span>
+          <span class="case-tag boundary">Biên</span>
+        </div>
+        <p class="case-desc">Kiểm tra hiển thị tràn text với Họ tên 80+ ký tự và Email dài.</p>
+      </div>
+    </div>
+
+    <!-- Tab 2: Validation Error Test Cases -->
+    <div class="tab-content" id="tab-validation">
+      <div class="section-subtitle">Kiểm thử Lỗi Số Điện Thoại:</div>
+      <div class="grid-cases">
+        <button type="button" class="btn-case-chip fail" data-preset="INVALID_PHONE_SHORT">
+          ❌ SĐT ngắn (8 số)
+        </button>
+        <button type="button" class="btn-case-chip fail" data-preset="INVALID_PHONE_NO_ZERO">
+          ❌ Không có số 0 đầu
+        </button>
+        <button type="button" class="btn-case-chip fail" data-preset="INVALID_PHONE_CHARS">
+          ❌ SĐT chứa chữ cái
+        </button>
+      </div>
+
+      <div class="section-subtitle">Kiểm thử Lỗi Email:</div>
+      <div class="grid-cases">
+        <button type="button" class="btn-case-chip fail" data-preset="INVALID_EMAIL_NO_AT">
+          ❌ Email thiếu @
+        </button>
+        <button type="button" class="btn-case-chip fail" data-preset="INVALID_EMAIL_NO_DOMAIN">
+          ❌ Email thiếu domain
+        </button>
+      </div>
+
+      <div class="section-subtitle">Kiểm thử Lỗi CCCD:</div>
+      <div class="grid-cases">
+        <button type="button" class="btn-case-chip fail" data-preset="INVALID_CCCD_SHORT">
+          ❌ CCCD thiếu (9 số)
+        </button>
+        <button type="button" class="btn-case-chip fail" data-preset="INVALID_CCCD_CHARS">
+          ❌ CCCD có chữ cái
+        </button>
+      </div>
+
+      <div class="section-subtitle">Kiểm thử Họ Tên:</div>
+      <div class="grid-cases">
+        <button type="button" class="btn-case-chip fail" data-preset="INVALID_NAME_SPECIAL_CHARS">
+          ❌ Tên có ký tự lạ (@#$)
+        </button>
+      </div>
+    </div>
+
+    <!-- Tab 3: Custom Override -->
+    <div class="tab-content" id="tab-custom">
+      <div class="custom-form-group">
+        <label for="custom-name">Họ và tên</label>
+        <input type="text" id="custom-name" value="Nguyễn Văn An" />
+      </div>
+      <div class="custom-form-group">
+        <label for="custom-phone">Số điện thoại (10 số)</label>
+        <input type="text" id="custom-phone" value="0912345678" />
+      </div>
+      <div class="custom-form-group">
+        <label for="custom-email">Email</label>
+        <input type="email" id="custom-email" value="an.nguyen@example.com" />
+      </div>
+      <div class="custom-form-group">
+        <label for="custom-cccd">Căn cước công dân (12 số)</label>
+        <input type="text" id="custom-cccd" value="001200012345" />
+      </div>
+      <button type="button" class="btn-apply-custom" id="btn-apply-custom">
+        ✨ Điền Dữ Liệu Tùy Chỉnh Này
+      </button>
+    </div>
+
+    <!-- Footer Actions -->
+    <footer class="popup-footer">
+      <button type="button" class="btn-footer-clear" id="btn-clear-all">
+        🧹 Xóa sạch form
+      </button>
+      <span class="footer-tip">💡 Phím tắt: Bấm vào widget nổi trên trang web</span>
+    </footer>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

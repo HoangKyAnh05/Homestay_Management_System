@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { getStoredToken, getStoredUser, logout } from '../../services/authService'
 import { houseTypeName } from '../../utils/houseType'
 import { resolveImageUrl } from '../../utils/imageUrl'
+import { STAFF_ROLES, roleDefaultPath } from '../../utils/roleUtils'
 import '../Home/HomePage.css'
 import './WishlistPage.css'
 
@@ -91,6 +92,11 @@ function PublicHeader() {
           </button>
           {isOpen && (
             <div className="home-user-dropdown">
+              {STAFF_ROLES.has(currentUser?.role) && (
+                <a href={roleDefaultPath(currentUser.role)}>
+                  {currentUser.role === 'ROLE_ADMIN' ? 'Quản lý Lá Đỏ Homestay' : 'Bàn làm việc vận hành'}
+                </a>
+              )}
               <a href="/stay" onClick={(e) => { e.preventDefault(); setIsOpen(false); window.location.assign('/stay'); }}>Dịch vụ lưu trú</a>
               <a href="/wishlist" onClick={(e) => { e.preventDefault(); setIsOpen(false); window.location.assign('/wishlist'); }}>Danh sách yêu thích</a>
               <a href="/vouchers" onClick={(e) => { e.preventDefault(); setIsOpen(false); window.location.assign('/vouchers'); }}>Kho mã giảm giá</a>
@@ -118,7 +124,7 @@ export default function WishlistPage() {
 
   useEffect(() => {
     if (!token) {
-      window.location.assign('/login')
+      window.location.assign('/login?next=/wishlist')
       return
     }
 

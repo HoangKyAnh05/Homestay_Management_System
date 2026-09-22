@@ -7,7 +7,102 @@ import {
   updateCurrentAvatar,
   updateCurrentProfile,
 } from '../../services/authService'
+import { resolveImageUrl } from '../../utils/imageUrl'
+import { STAFF_ROLES, roleDefaultPath } from '../../utils/roleUtils'
+import '../Home/HomePage.css'
 import './ProfilePage.css'
+
+function formatDateDisplay(dateStr) {
+  if (!dateStr) return 'Chưa cập nhật'
+  const match = String(dateStr).match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (match) {
+    return `${match[3]}/${match[2]}/${match[1]}`
+  }
+  return dateStr
+}
+
+function UserAvatar({ user }) {
+  const avatarUrl = resolveImageUrl(user?.avatarUrl)
+  return (
+    <span className="home-user-avatar" aria-hidden="true">
+      {avatarUrl ? (
+        <img src={avatarUrl} alt="" />
+      ) : (
+        <svg viewBox="0 0 24 24"><path d="M20 21a8 8 0 0 0-16 0"/><circle cx="12" cy="8" r="5"/></svg>
+      )}
+    </span>
+  )
+}
+
+function PublicHeader() {
+  const currentUser = getStoredUser()
+  const [isOpen, setIsOpen] = useState(false)
+
+  const handleLogout = () => {
+    logout()
+    window.location.assign('/home')
+  }
+
+  return (
+    <header className="home-header">
+      <a className="home-logo" href="/home">Lá Đỏ Homestay</a>
+      <nav className="home-nav" aria-label="Điều hướng chính">
+        <a href="/home">Trang chủ</a>
+        <a href="/landing" className="home-nav-landing-link" title="Khám phá không gian 3D Lá Đỏ Tour & Săn Mây">🍁 Lá Đỏ 3D Tour</a>
+        <a href="/explore" title="Khám phá xung quanh Lá Đỏ Homestay & Sa Pa">Khám phá xung quanh</a>
+        <a href="/rooms">Phòng</a>
+        <a href="/stay" title="Dịch vụ dành cho khách đang lưu trú">Dịch vụ lưu trú</a>
+        <a href="/wishlist">Yêu thích</a>
+        <a href="/amenities">Tiện nghi</a>
+        <a
+          href="/giveaway"
+          className="home-nav-lucky-wheel"
+          title="Vòng quay may mắn - Nhận ưu đãi nghỉ dưỡng!"
+          aria-label="Vòng quay may mắn"
+        >
+          <svg className="lucky-wheel-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="10" r="7.5" />
+            <path d="M12 2.5v15M4.5 10h15M6.7 4.7l10.6 10.6M6.7 15.3l10.6-10.6" />
+            <circle cx="12" cy="10" r="2" fill="#fbbf24" stroke="#ffffff" strokeWidth="1.2" />
+            <path d="M8 21.5l2.5-4h3l2.5 4" />
+            <line x1="6" y1="21.5" x2="18" y2="21.5" />
+          </svg>
+        </a>
+        <a href="/home#about">Giới thiệu</a>
+      </nav>
+
+      {currentUser ? (
+        <div className="home-user-menu">
+          <button type="button" className="home-user" aria-expanded={isOpen} onClick={() => setIsOpen((value) => !value)}>
+            <UserAvatar user={currentUser} />
+            <span>{currentUser.fullName || currentUser.email}</span>
+            <svg className="home-user-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+          </button>
+          {isOpen && (
+            <div className="home-user-dropdown">
+              {STAFF_ROLES.has(currentUser?.role) && (
+                <a href={roleDefaultPath(currentUser.role)}>
+                  {currentUser.role === 'ROLE_ADMIN' ? 'Quản lý Lá Đỏ Homestay' : 'Bàn làm việc vận hành'}
+                </a>
+              )}
+              <a href="/stay" onClick={(e) => { e.preventDefault(); setIsOpen(false); window.location.assign('/stay'); }}>Dịch vụ lưu trú</a>
+              <a href="/wishlist" onClick={(e) => { e.preventDefault(); setIsOpen(false); window.location.assign('/wishlist'); }}>Danh sách yêu thích</a>
+              <a href="/vouchers" onClick={(e) => { e.preventDefault(); setIsOpen(false); window.location.assign('/vouchers'); }}>Kho mã giảm giá</a>
+              <a href="/booking-history" onClick={(e) => { e.preventDefault(); setIsOpen(false); window.location.assign('/booking-history'); }}>Lịch sử đặt phòng</a>
+              <a href="/profile" onClick={(e) => { e.preventDefault(); setIsOpen(false); window.location.assign('/profile'); }}>Thông tin cá nhân</a>
+              <button type="button" onClick={handleLogout}>Đăng xuất</button>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="home-actions">
+          <a href="/login">Đăng nhập</a>
+          <a href="/register">Đăng ký</a>
+        </div>
+      )}
+    </header>
+  )
+}
 
 const MAX_AVATAR_SIZE = 10 * 1024 * 1024
 
@@ -37,7 +132,7 @@ function ProfilePage() {
 
   useEffect(() => {
     if (!storedUser) {
-      window.location.assign('/login')
+      window.location.assign('/login?next=/profile')
       return
     }
 
@@ -156,20 +251,8 @@ function ProfilePage() {
   }
 
   return (
-    <main className="profile-page">
-      <header className="profile-header">
-        <a className="profile-logo" href="/home">
-          Home Stays
-        </a>
-        <nav className="profile-nav" aria-label="Điều hướng tài khoản">
-          <a href="/home">Trang chủ</a>
-          <a href="/stay">Dịch vụ lưu trú</a>
-          <a href="/booking-history">Lịch sử đặt phòng</a>
-          <button type="button" onClick={handleLogout}>
-            Đăng xuất
-          </button>
-        </nav>
-      </header>
+    <div className="profile-page">
+      <PublicHeader />
 
       <section className="profile-shell" aria-labelledby="profile-title">
         <div className="profile-title-row">
@@ -195,7 +278,7 @@ function ProfilePage() {
               <label className="profile-avatar" title="Cập nhật ảnh đại diện">
                 <span className="profile-avatar-frame">
                   {profile.avatarUrl ? (
-                    <img src={getAssetUrl(profile.avatarUrl)} alt={profile.fullName || profile.email} />
+                    <img src={resolveImageUrl(profile.avatarUrl)} alt={profile.fullName || profile.email} />
                   ) : (
                     <span>{getInitials(profile.fullName || profile.email)}</span>
                   )}
@@ -285,7 +368,7 @@ function ProfilePage() {
                 <ProfileField label="Họ và tên" value={profile.fullName} />
                 <ProfileField label="Email" value={profile.email} />
                 <ProfileField label="Số điện thoại" value={profile.phone} />
-                <ProfileField label="Ngày sinh" value={profile.dateOfBirth} />
+                <ProfileField label="Ngày sinh" value={formatDateDisplay(profile.dateOfBirth)} />
                 <ProfileField label="Địa chỉ" value={profile.address} />
                 <ProfileField label="Căn cước công dân" value={profile.identityDocumentNumber} />
                 <ProfileField label="Vai trò" value={profile.role} />
@@ -297,7 +380,7 @@ function ProfilePage() {
           </>
         )}
       </section>
-    </main>
+    </div>
   )
 }
 
@@ -331,14 +414,6 @@ function normalizeProfile(profile) {
     memberPoints: profile?.memberPoints || 0,
     memberDiscountPercent: profile?.memberDiscountPercent || 0,
   }
-}
-
-function getAssetUrl(url) {
-  if (!url || url.startsWith('http')) {
-    return url
-  }
-
-  return `${import.meta.env.VITE_API_URL || ''}${url}`
 }
 
 function getInitials(value) {

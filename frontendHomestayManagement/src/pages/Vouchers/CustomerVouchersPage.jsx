@@ -163,7 +163,7 @@ export default function CustomerVouchersPage() {
   const handleRedeem = async (pkg) => {
     if (!getStoredToken()) {
       alert('Vui lòng đăng nhập để thực hiện đổi voucher bằng điểm tích lũy.')
-      window.location.assign('/login?redirect=/vouchers')
+      window.location.assign('/login?next=/vouchers')
       return
     }
 
@@ -289,7 +289,7 @@ function getUsedVouchers() {
                 Voucher của tôi ({myRedeemedVouchers.length})
               </button>
             ) : (
-              <a href="/login?redirect=/vouchers" className="cvp-loyalty-sub-btn">
+              <a href="/login?next=/vouchers" className="cvp-loyalty-sub-btn">
                 Đăng nhập để tích điểm
               </a>
             )}
@@ -361,9 +361,11 @@ function getUsedVouchers() {
             {!loading && !error && filteredVouchers.length > 0 && (
               <div className="cvp-grid">
                 {filteredVouchers.map((v) => {
-                  const isPercentage = String(v.discountType).toUpperCase() === 'PERCENTAGE'
-                  const discountDisplay = isPercentage ? `${v.discountValue}%` : formatPrice(v.discountValue)
+                  const type = String(v.discountType || '').toUpperCase()
+                  const isPercentage = type === 'PERCENT' || type === 'PERCENTAGE' || type.includes('PERCENT') || (v.discountValue != null && Number(v.discountValue) <= 100 && type !== 'AMOUNT' && type !== 'FIXED_AMOUNT')
+                  const discountDisplay = isPercentage ? `${Number(v.discountValue)}%` : formatPrice(v.discountValue)
                   const isLucky = v.code?.startsWith('LUCKY-') || v.code?.startsWith('SPIN-')
+                  const minOrder = v.minOrderValue != null ? v.minOrderValue : v.minOrderAmount
 
                   return (
                     <div key={v.id || v.code} className={`cvp-card ${isLucky ? 'is-lucky' : ''}`}>
@@ -388,7 +390,7 @@ function getUsedVouchers() {
                         <div className="cvp-card-meta">
                           <div className="cvp-meta-item">
                             <span>Đơn tối thiểu:</span>
-                            <strong>{Number(v.minOrderAmount || 0) > 0 ? formatPrice(v.minOrderAmount) : '0đ'}</strong>
+                            <strong>{Number(minOrder || 0) > 0 ? formatPrice(minOrder) : '0đ'}</strong>
                           </div>
                           <div className="cvp-meta-item">
                             <span>Hạn dùng:</span>
@@ -551,7 +553,8 @@ function getUsedVouchers() {
             ) : (
               <div className="cvp-grid">
                 {myRedeemedVouchers.map((v) => {
-                  const isPercentage = String(v.discountType).toUpperCase() === 'PERCENTAGE'
+                  const type = String(v.discountType || '').toUpperCase()
+                  const isPercentage = type === 'PERCENT' || type === 'PERCENTAGE'
                   const discountDisplay = isPercentage ? `${v.discountValue}%` : formatPrice(v.discountValue)
                   const isUsed = v.status === 'USED'
                   const isExpired = v.status === 'EXPIRED'
@@ -638,7 +641,7 @@ function getUsedVouchers() {
               <span className="cvp-modal-code-label">Mã Giảm Giá Của Bạn</span>
               <div className="cvp-modal-code-value">{redeemedSuccessModal.code}</div>
               <p className="cvp-modal-code-meta">
-                Mức giảm: <strong>{redeemedSuccessModal.discountType === 'PERCENTAGE' ? `${redeemedSuccessModal.discountValue}%` : formatPrice(redeemedSuccessModal.discountValue)}</strong>
+                Mức giảm: <strong>{String(redeemedSuccessModal.discountType).toUpperCase().includes('PERCENT') ? `${redeemedSuccessModal.discountValue}%` : formatPrice(redeemedSuccessModal.discountValue)}</strong>
                 {' · '}Hạn dùng đến: <strong>{formatDate(redeemedSuccessModal.endDate)}</strong>
               </p>
               <button

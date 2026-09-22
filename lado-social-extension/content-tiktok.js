@@ -134,11 +134,13 @@
         clearInterval(pollTimer);
         const highlightTarget = targetComment.closest('tr, [role="row"], li, div[data-e2e="comment-level-1"], div[data-e2e="comment-item"]') || targetComment;
         highlightTarget.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        highlightTarget.style.transition = 'all 0.4s ease';
-        highlightTarget.style.outline = '4px solid #ef4444 !important';
-        highlightTarget.style.boxShadow = '0 0 35px rgba(239, 68, 68, 0.95), inset 0 0 15px rgba(239, 68, 68, 0.25) !important';
-        highlightTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.15) !important';
-        highlightTarget.style.borderRadius = '12px !important';
+        // Bug fix: !important is silently ignored in element.style.xxx assignments.
+        // Use setProperty with 'important' priority to override TikTok's inline styles.
+        highlightTarget.style.setProperty('transition', 'all 0.4s ease', 'important');
+        highlightTarget.style.setProperty('outline', '4px solid #ef4444', 'important');
+        highlightTarget.style.setProperty('box-shadow', '0 0 35px rgba(239, 68, 68, 0.95), inset 0 0 15px rgba(239, 68, 68, 0.25)', 'important');
+        highlightTarget.style.setProperty('background-color', 'rgba(239, 68, 68, 0.15)', 'important');
+        highlightTarget.style.setProperty('border-radius', '12px', 'important');
         
         showTargetBadgeOnElement(highlightTarget, `🎯 BÌNH LUẬN TIKTOK CẦN TRẢ LỜI: "${(clean || authorName || '').slice(0, 35)}..."`);
 
@@ -158,9 +160,12 @@
         }, 400);
 
         setTimeout(() => {
-          highlightTarget.style.outline = '';
-          highlightTarget.style.boxShadow = '';
-          highlightTarget.style.backgroundColor = '';
+          // Bug fix: Use removeProperty to undo setProperty('important') assignments.
+          highlightTarget.style.removeProperty('outline');
+          highlightTarget.style.removeProperty('box-shadow');
+          highlightTarget.style.removeProperty('background-color');
+          highlightTarget.style.removeProperty('border-radius');
+          highlightTarget.style.removeProperty('transition');
         }, 15000);
         showInPageToast(`👀 Đã khoanh đỏ bình luận của ${authorName || 'khách'}: "${(clean || authorName || '').slice(0, 30)}..."`);
       } else {
@@ -226,6 +231,66 @@
     const selfReplySignatures = ['chào mừng bạn đến với lá đỏ', 'hẹn gặp bạn tại lá đỏ', 'cảm ơn bạn đã quan tâm'];
     if (selfReplySignatures.some(sig => cleanMsg.includes(sig))) return true;
     return false;
+  }
+
+  /**
+   * Kiểm tra xem bình luận này đã được Lá Đỏ trả lời chưa.
+   * Chiến lược: đọc các node anh em (nextElementSibling) hoặc node con lồng ngay sau
+   * comment này và kiểm tra nếu có comment nào thuộc thương hiệu.
+   */
+  function isTikTokCommentAlreadyReplied(node) {
+    if (!node) return false;
+    try {
+      const brandKeywords = [
+        'lá đỏ homestay', 'lado homestay', 'la do homestay', 'lado official', 'lá đỏ'
+      ];
+      const selfReplySignatures = [
+        'chào mừng bạn đến với lá đỏ',
+        'hẹn gặp bạn tại lá đỏ',
+        'cảm ơn bạn đã quan tâm'
+      ];
+
+      function isBrandText(text) {
+        const t = (text || '').toLowerCase();
+        return brandKeywords.some(kw => t.includes(kw)) ||
+               selfReplySignatures.some(sig => t.includes(sig));
+      }
+
+      // 1. Kiểm tra creator badge từ TikTok Studio (dấu tích tác giả trên reply con)
+      const creatorReply = node.querySelector('[data-e2e="comment-creator-tag"], [class*="creator-badge"], [class*="AuthorBadge"]');
+      if (creatorReply) return true;
+
+      // 2. Kiểm tra các reply con lồng bên trong node (TikTok web)
+      const nestedReplies = Array.from(node.querySelectorAll(
+        '[data-e2e*="comment-level-2"], [data-e2e*="reply"], [class*="ReplyItem"], [class*="replyItem"], [class*="reply-item"]'
+      ));
+      for (const reply of nestedReplies) {
+        const replyAuthorEl = reply.querySelector(
+          'span[data-e2e="comment-username-1"], [class*="username" i], [class*="nickname" i], strong, a[href*="/@"]'
+        );
+        const replyAuthorText = (replyAuthorEl?.innerText || replyAuthorEl?.textContent || '').toLowerCase();
+        if (isBrandText(replyAuthorText)) return true;
+        if (reply.querySelector('[data-e2e="comment-creator-tag"], [class*="creator-badge"]')) return true;
+      }
+
+      // 3. Kiểm tra node anh em kế tiếp (TikTok Studio dạng table row)
+      let sib = node.nextElementSibling;
+      let sibChecked = 0;
+      while (sib && sibChecked < 5) {
+        sibChecked++;
+        const sibText = (sib.innerText || sib.textContent || '').toLowerCase();
+        if (isBrandText(sibText)) return true;
+        // Nếu sibling không có vẻ là cùng cấp (là bình luận khác, không phải reply), dừng
+        const sibRole = sib.getAttribute('role') || '';
+        const sibClass = (typeof sib.className === 'string' ? sib.className : '').toLowerCase();
+        if (sibRole === 'row' || sibClass.includes('comment-row') || sibClass.includes('commentitem')) break;
+        sib = sib.nextElementSibling;
+      }
+
+      return false;
+    } catch (e) {
+      return false;
+    }
   }
 
   // Helper: Check if an element or text is only an action toolbar
@@ -692,7 +757,10 @@
           if (submitBtn && !submitBtn.disabled) {
             submitBtn.click();
             showInPageToast(`🚀 Đã gửi phản hồi TikTok: "${safeText.slice(0, 35)}..."`);
-            chrome.runtime.sendMessage({ action: 'RECORD_REPLY_SUCCESS' });
+            // Bug fix: Guard chrome.runtime call to prevent errors when extension context is invalidated.
+            if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.id) {
+              chrome.runtime.sendMessage({ action: 'RECORD_REPLY_SUCCESS' });
+            }
           } else {
             const enterEvt = new KeyboardEvent('keydown', {
               bubbles: true,
@@ -756,6 +824,8 @@
       commentNodes.forEach((node, idx) => {
         const info = extractTikTokComment(node);
         if (info && info.message && !isOwnHostComment(node, info.authorName, info.message)) {
+          // Chỉ đưa vào kết quả bình luận CHƯA được trả lời
+          if (isTikTokCommentAlreadyReplied(node)) return;
           info.id = `tt_${idx}_${Date.now()}`;
           collected.push(info);
         }
@@ -880,6 +950,11 @@
             const info = extractTikTokComment(node);
             if (info && info.message && info.message.length > 0) {
               if (!isOwnHostComment(node, info.authorName, info.message)) {
+                // Chỉ thu thập bình luận CHƯA được Lá Đỏ trả lời
+                if (isTikTokCommentAlreadyReplied(node)) {
+                  console.log('[Lá Đỏ TikTok AI] Bỏ qua (Lá Đỏ đã trả lời):', info.authorName, '->', info.message);
+                  return;
+                }
                 const sig = `${(info.authorName || '').trim().toLowerCase()}:::${info.message.trim().toLowerCase()}`;
                 if (!collectedMap.has(sig)) {
                   info.id = `tt_${collectedMap.size}_${Date.now()}`;
@@ -998,8 +1073,16 @@
               }
             } catch (e) {}
             try { window.close(); } catch (e) {}
+            // Bug fix: Use relative path instead of hardcoded port 5173 so it works
+            // regardless of which port Vite happens to be running on.
             setTimeout(() => {
-              window.location.href = 'http://localhost:5173/admin/marketing/engagement-inbox';
+              try {
+                window.location.href = window.location.origin.includes('tiktok.com')
+                  ? 'http://localhost:5173/admin/marketing/engagement-inbox'
+                  : `${window.location.protocol}//${window.location.hostname}:5173/admin/marketing/engagement-inbox`;
+              } catch (e) {
+                window.location.href = 'http://localhost:5173/admin/marketing/engagement-inbox';
+              }
             }, 300);
           }
 
@@ -1009,7 +1092,8 @@
           }
           const btnClose = document.getElementById('lado-btn-close-tab');
           if (btnClose) {
-            btnClose.addEventListener('click', triggerReturnToDashboard);
+            // Bug fix: Close tab button should only close the tab, not redirect to dashboard.
+            btnClose.addEventListener('click', () => { try { window.close(); } catch (e) {} });
           }
 
           let leftSec = 3;
@@ -1044,7 +1128,9 @@
         return true;
       }
       if (req.action === 'TRIGGER_AUTO_SCAN') {
-        window.__LADO_TT_AUTO_SCAN_EXECUTED__ = false;
+        // Bug fix: The guard in executeTikTokAutoScan uses __LADO_TT_SCANNING_STARTED__, not
+        // __LADO_TT_AUTO_SCAN_EXECUTED__. Reset the correct flag so popup re-scan actually runs.
+        window.__LADO_TT_SCANNING_STARTED__ = false;
         checkAndTriggerAutoScanTikTok(true);
         sendResponse({ success: true });
         return true;

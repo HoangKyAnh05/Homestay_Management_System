@@ -268,15 +268,25 @@
   color: #fbbf24;
 }
 
-.zen-esc-badge {
-  background: rgba(251, 191, 36, 0.2);
-  border: 1px solid rgba(251, 191, 36, 0.6);
+.zen-close-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgba(251, 191, 36, 0.22);
+  border: 1px solid rgba(251, 191, 36, 0.65);
   color: #fbbf24;
-  font-size: 0.72rem;
+  font-size: 0.8rem;
   font-weight: 800;
-  letter-spacing: 0.06em;
-  padding: 2px 7px;
-  border-radius: 6px;
+  line-height: 1;
+  transition: all 0.25s ease;
+}
+
+.zen-exit-pill-btn:hover .zen-close-icon {
+  background: #fbbf24;
+  color: #0c120e;
 }
 
 /* ==========================================================================

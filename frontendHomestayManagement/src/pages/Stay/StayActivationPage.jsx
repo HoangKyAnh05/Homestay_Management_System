@@ -57,7 +57,7 @@ function StayActivationPage() {
   return (
     <main className="stay-activation-page">
       <section className="stay-activation-card">
-        <a className="stay-activation-brand" href="/home">Home Stays</a>
+        <a className="stay-activation-brand" href="/home">Lá Đỏ Homestay</a>
         <span className="stay-activation-kicker">CHÀO MỪNG BẠN ĐẾN LƯU TRÚ</span>
         <h1>Kích hoạt tài khoản dịch vụ</h1>
         <p>Đặt mật khẩu để xem thông tin phòng và gọi dịch vụ trong thời gian bạn lưu trú.</p>

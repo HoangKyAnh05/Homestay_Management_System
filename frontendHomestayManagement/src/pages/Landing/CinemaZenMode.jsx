@@ -579,9 +579,10 @@ export default function CinemaZenMode({ isOpen, onClose }) {
           type="button"
           className="zen-exit-pill-btn"
           onClick={onClose}
-          title="Thoát Chế Độ Thả Hồn (Phím ESC)"
+          title="Thoát Trải Nghiệm (Phím ESC)"
+          aria-label="Thoát chế độ toàn màn hình"
         >
-          <span className="zen-esc-badge">ESC</span>
+          <span className="zen-close-icon">✕</span>
           <span>Thoát</span>
         </button>
       </div>

@@ -1,0 +1,331 @@
+/* Popup Styles for Lá Đỏ Form Auto Tester */
+:root {
+  --primary: #15803d;
+  --primary-hover: #166534;
+  --bg-dark: #0f172a;
+  --bg-card: #1e293b;
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --border: rgba(255, 255, 255, 0.1);
+  --success: #22c55e;
+  --danger: #ef4444;
+  --warning: #f59e0b;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  width: 360px;
+  background: var(--bg-dark);
+  color: var(--text-main);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-size: 13px;
+}
+
+.popup-container {
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  gap: 14px;
+}
+
+/* Header */
+.popup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 12px;
+}
+
+.header-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.header-logo {
+  font-size: 24px;
+}
+
+.header-brand h1 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.header-brand p {
+  margin: 2px 0 0;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.status-pill {
+  font-size: 11px;
+  font-weight: 700;
+  color: #4ade80;
+  background: rgba(34, 197, 94, 0.15);
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+/* 1-Click Quick Fill Button */
+.quick-fill-section {
+  display: flex;
+  flex-direction: column;
+}
+
+.btn-primary-action {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  padding: 12px 14px;
+  border-radius: 12px;
+  cursor: pointer;
+  text-align: left;
+  box-shadow: 0 4px 14px rgba(22, 163, 74, 0.35);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.btn-primary-action:hover {
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(34, 197, 94, 0.45);
+}
+
+.btn-icon {
+  font-size: 24px;
+}
+
+.btn-text strong {
+  display: block;
+  font-size: 13.5px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.btn-text small {
+  display: block;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.85);
+  margin-top: 2px;
+}
+
+/* Tabs */
+.popup-tabs {
+  display: flex;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 4px;
+  border-radius: 8px;
+}
+
+.tab-btn {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  padding: 6px 4px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.tab-btn.active {
+  background: var(--bg-card);
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+/* Tab Content */
+.tab-content {
+  display: none;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 240px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.tab-content.active {
+  display: flex;
+}
+
+/* Case Cards */
+.case-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.case-card:hover {
+  border-color: rgba(34, 197, 94, 0.4);
+  background: #253349;
+  transform: translateY(-1px);
+}
+
+.case-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.case-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #f1f5f9;
+}
+
+.case-tag {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+
+.case-tag.pass {
+  background: rgba(34, 197, 94, 0.2);
+  color: #4ade80;
+}
+
+.case-tag.vip {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+}
+
+.case-tag.boundary {
+  background: rgba(148, 163, 184, 0.2);
+  color: #cbd5e1;
+}
+
+.case-desc {
+  margin: 0;
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+/* Validation Chips Grid */
+.section-subtitle {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-top: 4px;
+}
+
+.grid-cases {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.btn-case-chip {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: #cbd5e1;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 11.5px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-case-chip:hover {
+  background: #27354d;
+  color: #ffffff;
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+/* Custom form */
+.custom-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.custom-form-group label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.custom-form-group input {
+  height: 32px;
+  padding: 0 10px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: #ffffff;
+  font-size: 12px;
+  outline: none;
+}
+
+.custom-form-group input:focus {
+  border-color: var(--primary);
+}
+
+.btn-apply-custom {
+  background: #0284c7;
+  color: #ffffff;
+  border: none;
+  padding: 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 6px;
+  transition: background 0.15s ease;
+}
+
+.btn-apply-custom:hover {
+  background: #0369a1;
+}
+
+/* Footer */
+.popup-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+
+.btn-footer-clear {
+  background: rgba(239, 68, 68, 0.15);
+  color: #fca5a5;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  padding: 7px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-footer-clear:hover {
+  background: #ef4444;
+  color: #ffffff;
+}
+
+.footer-tip {
+  font-size: 10.5px;
+  color: var(--text-muted);
+  text-align: center;
+}

@@ -552,9 +552,25 @@ function isFacebookCommentAlreadyReplied(container, authorName, commentText) {
   if (!container) return false;
 
   try {
-    if (isElementIndented(container)) return true;
-    const nextSib = container.nextElementSibling;
-    if (nextSib && isElementIndented(nextSib)) return true;
+    // Bug fix: Do NOT treat all indented comments as already-replied.
+    // Facebook nests both top-level threaded replies AND un-replied nested comments.
+    // Only mark as replied if the brand's own reply signature exists as a sibling/child,
+    // or if a direct child comment element already contains the host's reply text.
+    const selfReplySignatures = [
+      'chào mừng bạn đến với lá đỏ',
+      'hẹn gặp bạn tại lá đỏ',
+      'cảm ơn bạn đã quan tâm lá đỏ',
+      'cảm ơn bạn đã quan tâm, hẹn gặp bạn tại lá đỏ',
+      'để cùng ngắm mây mường hoa'
+    ];
+    // Check sibling comments for host reply
+    let sib = container.nextElementSibling;
+    while (sib) {
+      const sibText = (sib.innerText || sib.textContent || '').toLowerCase();
+      if (selfReplySignatures.some(sig => sibText.includes(sig))) return true;
+      if (!isElementIndented(sib)) break; // stopped being a reply thread
+      sib = sib.nextElementSibling;
+    }
     return false;
   } catch (e) {
     return false;
@@ -589,6 +605,9 @@ function harvestFacebookComments(commentsMap) {
         if (isOwnOrPageFacebookComment(container, authorName, text)) return;
 
         const isReplied = isFacebookCommentAlreadyReplied(container, authorName, text);
+        // Chỉ thu thập bình luận CHƯA được Lá Đỏ trả lời
+        if (isReplied) return;
+
         const timeData = extractCommentTimestamp(container);
         const avatarEl = container.querySelector('image, img[src*="fbcdn"], img[src*="scontent"], img');
         const resolvedUrl = extractPostUrlForComment(container);
@@ -606,7 +625,7 @@ function harvestFacebookComments(commentsMap) {
             timestampMs: timeData.timestampMs,
             platform: 'FACEBOOK',
             postUrl: resolvedUrl,
-            replied: isReplied
+            replied: false
           });
         }
       } catch (e) {}
@@ -637,6 +656,9 @@ function harvestFacebookComments(commentsMap) {
         if (isOwnOrPageFacebookComment(cw, authorName, text)) return;
 
         const isReplied = isFacebookCommentAlreadyReplied(cw, authorName, text);
+        // Chỉ thu thập bình luận CHƯA được Lá Đỏ trả lời
+        if (isReplied) return;
+
         const timeData = extractCommentTimestamp(cw);
         const avatarEl = cw.querySelector('image, img[src*="fbcdn"], img[src*="scontent"], img');
         const resolvedUrl = extractPostUrlForComment(cw);
@@ -654,7 +676,7 @@ function harvestFacebookComments(commentsMap) {
             timestampMs: timeData.timestampMs,
             platform: 'FACEBOOK',
             postUrl: resolvedUrl,
-            replied: isReplied
+            replied: false
           });
         }
       } catch (e) {}
@@ -684,7 +706,9 @@ function scrollAllContainers(y) {
 let activeHighlightRunning = false;
 
 function normalizeCompareString(str) {
-  return (str || '').toLowerCase().replace(/[\s\p{Punctuation}\p{Symbol}]/gu, '').trim();
+  // Bug fix: \p{Punctuation} and \p{Symbol} are invalid ECMAScript Unicode property names.
+  // Correct names are \p{P} (Punctuation) and \p{S} (Symbol).
+  return (str || '').toLowerCase().replace(/[\s\p{P}\p{S}]/gu, '').trim();
 }
 
 function showTargetBadgeOnElement(targetEl, text) {
@@ -814,11 +838,13 @@ function applyHighlightToElement(targetEl, authorName, commentText) {
   activeHighlightRunning = false;
 
   targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  targetEl.style.transition = 'all 0.4s ease';
-  targetEl.style.outline = '4px solid #ef4444 !important';
-  targetEl.style.boxShadow = '0 0 35px rgba(239, 68, 68, 0.95), inset 0 0 15px rgba(239, 68, 68, 0.25) !important';
-  targetEl.style.backgroundColor = 'rgba(239, 68, 68, 0.15) !important';
-  targetEl.style.borderRadius = '12px !important';
+  // Bug fix: !important is silently ignored inside element.style.xxx assignments.
+  // Use setProperty with 'important' priority to override Facebook's inline styles.
+  targetEl.style.setProperty('transition', 'all 0.4s ease', 'important');
+  targetEl.style.setProperty('outline', '4px solid #ef4444', 'important');
+  targetEl.style.setProperty('box-shadow', '0 0 35px rgba(239, 68, 68, 0.95), inset 0 0 15px rgba(239, 68, 68, 0.25)', 'important');
+  targetEl.style.setProperty('background-color', 'rgba(239, 68, 68, 0.15)', 'important');
+  targetEl.style.setProperty('border-radius', '12px', 'important');
 
   // Floating red badge
   showTargetBadgeOnElement(targetEl, `🎯 BÌNH LUẬN FACEBOOK CẦN TRẢ LỜI: "${(commentText || authorName || '').slice(0, 35)}..." (Bấm nút ✨ AI Lá Đỏ)`);
@@ -851,9 +877,12 @@ function applyHighlightToElement(targetEl, authorName, commentText) {
   } catch (e) {}
 
   setTimeout(() => {
-    targetEl.style.outline = '';
-    targetEl.style.boxShadow = '';
-    targetEl.style.backgroundColor = '';
+    // Bug fix: Use removeProperty to undo setProperty('important') assignments.
+    targetEl.style.removeProperty('outline');
+    targetEl.style.removeProperty('box-shadow');
+    targetEl.style.removeProperty('background-color');
+    targetEl.style.removeProperty('border-radius');
+    targetEl.style.removeProperty('transition');
   }, 15000);
 }
 
@@ -865,6 +894,9 @@ function pollAndHighlightComment(targetCommentText, targetAuthorName, targetPost
 
   if (!cleanTarget && !cleanAuthor) return;
 
+  // Bug fix: Always reset the flag before setting it, so that a previous interrupted
+  // highlight session never permanently blocks future calls via checkPendingHighlight.
+  activeHighlightRunning = false;
   activeHighlightRunning = true;
   showTopGuideBanner(targetAuthorName, targetCommentText, targetPostUrl);
 
@@ -1022,6 +1054,8 @@ function pollAndHighlightComment(targetCommentText, targetAuthorName, targetPost
     const found = tryFind();
     if (found) {
       clearInterval(pollTimer);
+      // Bug fix: Reset flag here too so the interval stop path is clean.
+      activeHighlightRunning = false;
       applyHighlightToElement(found, targetAuthorName, targetCommentText);
       return;
     }
@@ -1535,7 +1569,10 @@ if (isExtensionValid() && chrome.runtime && chrome.runtime.onMessage) {
     }
 
     if (req.action === 'TRIGGER_AUTO_SCAN') {
-      window.__LADO_FB_AUTO_SCAN_EXECUTED__ = false;
+      // Bug fix: The guard inside checkAndTriggerAutoScanFacebook uses
+      // __LADO_FB_SCAN_INITIATED__, not __LADO_FB_AUTO_SCAN_EXECUTED__.
+      // Reset the correct flag so popup re-scan actually runs.
+      window.__LADO_FB_SCAN_INITIATED__ = false;
       checkAndTriggerAutoScanFacebook(true);
       sendResponse({ success: true });
       return true;
@@ -1680,16 +1717,21 @@ async function performDeepPostScan(postUrl, collectedMap) {
 }
 
 function finishAndSyncAllScannedComments(commentsToSave, totalPostsScanned) {
-  // Xóa queue trạng thái quét
-  chrome.storage.local.remove(['ladoFbScanActive', 'ladoFbScanQueue', 'ladoFbScanIndex', 'ladoFbCollectedComments']);
+  // Bug fix: Guard all chrome.storage calls with isExtensionValid() to prevent
+  // uncaught errors when the extension context is invalidated (e.g. after reload).
+  if (isExtensionValid() && chrome.storage && chrome.storage.local) {
+    chrome.storage.local.remove(['ladoFbScanActive', 'ladoFbScanQueue', 'ladoFbScanIndex', 'ladoFbCollectedComments']);
+  }
 
   const totalCount = Math.min(commentsToSave.length, 300);
   const cleanList = commentsToSave.slice(0, totalCount);
 
-  chrome.storage.local.set({
-    scannedCommentsList: cleanList,
-    scannedCount: totalCount
-  });
+  if (isExtensionValid() && chrome.storage && chrome.storage.local) {
+    chrome.storage.local.set({
+      scannedCommentsList: cleanList,
+      scannedCount: totalCount
+    });
+  }
 
   // Đồng bộ lên Spring Boot Backend
   if (cleanList.length > 0) {

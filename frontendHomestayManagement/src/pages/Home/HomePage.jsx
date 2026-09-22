@@ -3,6 +3,7 @@ import HomeSearch from '../../components/HomeSearch/HomeSearch'
 import { getStoredUser, getStoredToken, logout } from '../../services/authService'
 import { houseTypeName } from '../../utils/houseType'
 import { resolveImageUrl } from '../../utils/imageUrl'
+import { STAFF_ROLES, roleDefaultPath } from '../../utils/roleUtils'
 import PolicyModal from '../../components/PolicyModal/PolicyModal'
 import MiniMap from '../../components/MiniMap/MiniMap'
 import ItinerarySection from '../../components/Explore/ItinerarySection'
@@ -40,7 +41,8 @@ function formatVoucherMoney(value) {
 
 function voucherDiscountText(voucher) {
   if (!voucher) return ''
-  if (String(voucher.discountType).toUpperCase() === 'PERCENT') {
+  const type = String(voucher.discountType || '').toUpperCase()
+  if (type === 'PERCENT' || type === 'PERCENTAGE') {
     return `giảm ${Number(voucher.discountValue || 0).toLocaleString('vi-VN')}%`
   }
   return `giảm ${formatVoucherMoney(voucher.discountValue)}`
@@ -198,7 +200,8 @@ function RoomCard({ room, criteria }) {
     event.preventDefault()
     event.stopPropagation()
     if (!token) {
-      window.location.assign('/login')
+      const returnUrl = encodeURIComponent(window.location.pathname + window.location.search)
+      window.location.assign(`/login?redirect=${returnUrl}`)
       return
     }
     const nextState = !isLiked
@@ -1251,8 +1254,10 @@ function HomePage() {
             </button>
             {isUserMenuOpen && (
               <div className="home-user-dropdown">
-                {currentUser.role === 'ROLE_ADMIN' && (
-                  <a href="/admin">Quản lý Lá Đỏ Homestay</a>
+                {STAFF_ROLES.has(currentUser?.role) && (
+                  <a href={roleDefaultPath(currentUser.role)}>
+                    {currentUser.role === 'ROLE_ADMIN' ? 'Quản lý Lá Đỏ Homestay' : 'Bàn làm việc vận hành'}
+                  </a>
                 )}
                 <a href="/stay" onClick={(e) => { e.preventDefault(); setIsUserMenuOpen(false); window.location.assign('/stay'); }}>Dịch vụ lưu trú</a>
                 <a href="/wishlist" onClick={(e) => { e.preventDefault(); setIsUserMenuOpen(false); window.location.assign('/wishlist'); }}>Danh sách yêu thích</a>

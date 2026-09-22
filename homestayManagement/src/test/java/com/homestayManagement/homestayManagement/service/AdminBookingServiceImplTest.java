@@ -390,8 +390,8 @@ class AdminBookingServiceImplTest {
         Room room = Room.builder().id(5L).roomNumber("201").roomType(roomType).status("OCCUPIED").build();
         BookingDetail detail = BookingDetail.builder()
                 .id(6L).booking(booking).roomType(roomType).room(room)
-                .checkInTarget(LocalDateTime.of(2026, 6, 26, 19, 0))
-                .checkOutTarget(LocalDateTime.of(2026, 6, 27, 11, 0))
+                .checkInTarget(LocalDateTime.now().minusHours(20))
+                .checkOutTarget(LocalDateTime.now().plusHours(2))
                 .numberOfAdults(2).numberOfChildren(0)
                 .priceAtBooking(BigDecimal.valueOf(700_000))
                 .rentType("OVERNIGHT").status("CHECKED_IN").build();
@@ -401,12 +401,12 @@ class AdminBookingServiceImplTest {
         InventoryService bookedRental = InventoryService.builder()
                 .id(9L).name("Xe dap").price(BigDecimal.valueOf(10_000)).quantityInStock(5).build();
         BookingServiceItem bookedRentalItem = BookingServiceItem.builder()
-                .id(10L).bookingDetail(detail).inventoryService(bookedRental)
+                .id(10L).bookingDetail(detail).facilityService(null).inventoryService(bookedRental)
                 .quantity(1).priceAtBooking(BigDecimal.valueOf(10_000)).build();
         InventoryService stayRental = InventoryService.builder()
                 .id(11L).name("Ao phao").price(BigDecimal.valueOf(10_000)).quantityInStock(3).build();
         ServiceUsage stayRentalUsage = ServiceUsage.builder()
-                .id(12L).checkInRecord(record).inventoryService(stayRental)
+                .id(12L).checkInRecord(record).facilityService(null).inventoryService(stayRental)
                 .quantity(2).priceAtUse(BigDecimal.valueOf(10_000)).build();
         Invoice invoice = Invoice.builder().id(13L).booking(booking).build();
         Payment checkoutPayment = Payment.builder()
@@ -415,38 +415,51 @@ class AdminBookingServiceImplTest {
         Payment bookingPayment = Payment.builder()
                 .id(15L).invoice(invoice).amount(BigDecimal.valueOf(700_000))
                 .paymentPurpose("BOOKING").status("SUCCESS").build();
+        Employee employee = Employee.builder().id(16L).fullName("Receptionist").build();
 
-        when(bookingDetailRepository.findByIdForAdminDetail(6L)).thenReturn(Optional.of(detail));
-        when(checkInRecordRepository.findByBookingDetailId(6L)).thenReturn(Optional.of(record));
-        when(housekeepingTaskRepository.findByCheckInRecordId(7L)).thenReturn(Optional.of(task));
-        when(bookingDetailRepository.findByBookingId(3L)).thenReturn(List.of(detail));
-        when(bookingServiceItemRepository.findByBookingDetailIds(List.of(6L))).thenReturn(List.of(bookedRentalItem));
-        when(invoiceRepository.findByBookingIdForAdmin(3L)).thenReturn(Optional.of(invoice));
-        when(paymentRepository.findByInvoiceIdOrderByPaymentTimeDescIdDesc(13L))
-                .thenReturn(List.of(checkoutPayment, bookingPayment));
-        when(checkInRecordRepository.findByBookingDetailIdForAdmin(6L)).thenReturn(List.of(record));
-        when(serviceUsageRepository.findByBookingDetailIdForAdmin(6L)).thenReturn(List.of(stayRentalUsage));
-        when(roomAmenitiesUsageRepository.findByBookingDetailIdForAdmin(6L)).thenReturn(List.of());
-        when(appliedPenaltyRepository.findByBookingDetailIdForAdmin(6L)).thenReturn(List.of());
-        when(bookingGuestRepository.findByBookingDetailIds(List.of(6L))).thenReturn(List.of());
-        when(facilityServiceRepository.findAll()).thenReturn(List.of());
-        when(inventoryServiceRepository.findAll()).thenReturn(List.of());
-        when(roomMiniBarItemRepository.findAll()).thenReturn(List.of());
-        when(rulesPenaltyRepository.findAll()).thenReturn(List.of());
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken("staff@example.com", "password")
+        );
+        try {
+            when(bookingDetailRepository.findByIdForAdminDetail(6L)).thenReturn(Optional.of(detail));
+            when(checkInRecordRepository.findByBookingDetailId(6L)).thenReturn(Optional.of(record));
+            when(housekeepingTaskRepository.findByCheckInRecordId(7L)).thenReturn(Optional.of(task));
+            when(checkInRecordRepository.findByBookingIdForInvoice(3L)).thenReturn(List.of(record));
+            when(bookingDetailRepository.findByBookingId(3L)).thenReturn(List.of(detail));
+            when(bookingServiceItemRepository.findByBookingDetailIds(List.of(6L))).thenReturn(List.of(bookedRentalItem));
+            when(serviceUsageRepository.findByBookingIdForInvoice(3L)).thenReturn(List.of(stayRentalUsage));
+            when(roomAmenitiesUsageRepository.findByBookingIdForInvoice(3L)).thenReturn(List.of());
+            when(appliedPenaltyRepository.findByBookingIdForInvoice(3L)).thenReturn(List.of());
+            when(invoiceRepository.findByBookingIdForAdmin(3L)).thenReturn(Optional.of(invoice));
+            when(employeeRepository.findByAccountEmail("staff@example.com")).thenReturn(Optional.of(employee));
+            when(paymentRepository.findByInvoiceIdOrderByPaymentTimeDescIdDesc(13L))
+                    .thenReturn(List.of(checkoutPayment, bookingPayment));
+            when(checkInRecordRepository.findByBookingDetailIdForAdmin(6L)).thenReturn(List.of(record));
+            when(serviceUsageRepository.findByBookingDetailIdForAdmin(6L)).thenReturn(List.of(stayRentalUsage));
+            when(roomAmenitiesUsageRepository.findByBookingDetailIdForAdmin(6L)).thenReturn(List.of());
+            when(appliedPenaltyRepository.findByBookingDetailIdForAdmin(6L)).thenReturn(List.of());
+            when(bookingGuestRepository.findByBookingDetailIds(List.of(6L))).thenReturn(List.of());
+            when(facilityServiceRepository.findAll()).thenReturn(List.of());
+            when(inventoryServiceRepository.findAll()).thenReturn(List.of());
+            when(roomMiniBarItemRepository.findAll()).thenReturn(List.of());
+            when(rulesPenaltyRepository.findAll()).thenReturn(List.of());
 
-        service.checkOut(6L);
+            service.checkOut(6L);
 
-        assertEquals("COMPLETED", detail.getStatus());
-        assertEquals("AVAILABLE", room.getStatus());
-        assertEquals(6, bookedRental.getQuantityInStock());
-        assertEquals(5, stayRental.getQuantityInStock());
-        verify(roomRepository).save(room);
-        verify(inventoryServiceRepository).save(bookedRental);
-        verify(inventoryServiceRepository).save(stayRental);
-        verify(bookingDetailRepository).save(detail);
-        verify(bookingRepository).save(booking);
-        verify(stayAccessService).expireAccess(6L);
-        verify(eventPublisher).publishEvent(new CheckoutInvoiceEmailEvent(13L));
+            assertEquals("COMPLETED", detail.getStatus());
+            assertEquals("AVAILABLE", room.getStatus());
+            assertEquals(6, bookedRental.getQuantityInStock());
+            assertEquals(5, stayRental.getQuantityInStock());
+            verify(roomRepository).save(room);
+            verify(inventoryServiceRepository).save(bookedRental);
+            verify(inventoryServiceRepository).save(stayRental);
+            verify(bookingDetailRepository).save(detail);
+            verify(bookingRepository).save(booking);
+            verify(stayAccessService).expireAccess(6L);
+            verify(eventPublisher).publishEvent(new CheckoutInvoiceEmailEvent(13L));
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
     }
 
     @Test
@@ -459,8 +472,8 @@ class AdminBookingServiceImplTest {
         Room room = Room.builder().id(5L).roomNumber("201").roomType(roomType).status("OCCUPIED").build();
         BookingDetail detail = BookingDetail.builder()
                 .id(6L).booking(booking).roomType(roomType).room(room)
-                .checkInTarget(LocalDateTime.of(2026, 6, 30, 14, 0))
-                .checkOutTarget(LocalDateTime.of(2026, 7, 1, 12, 0))
+                .checkInTarget(LocalDateTime.now().minusHours(20))
+                .checkOutTarget(LocalDateTime.now().plusHours(2))
                 .numberOfAdults(2).numberOfChildren(0)
                 .priceAtBooking(BigDecimal.valueOf(8_000))
                 .rentType("DAILY").status("CHECKED_IN").build();
@@ -530,8 +543,8 @@ class AdminBookingServiceImplTest {
         Room room = Room.builder().id(5L).roomNumber("201").roomType(roomType).status("OCCUPIED").build();
         BookingDetail detail = BookingDetail.builder()
                 .id(6L).booking(booking).roomType(roomType).room(room)
-                .checkInTarget(LocalDateTime.of(2026, 7, 2, 14, 0))
-                .checkOutTarget(LocalDateTime.of(2026, 7, 3, 12, 0))
+                .checkInTarget(LocalDateTime.now().minusHours(20))
+                .checkOutTarget(LocalDateTime.now().plusHours(2))
                 .numberOfAdults(2).numberOfChildren(0)
                 .priceAtBooking(BigDecimal.valueOf(8_000))
                 .rentType("DAILY").status("CHECKED_IN").build();
@@ -595,6 +608,73 @@ class AdminBookingServiceImplTest {
             assertEquals("CHECKOUT", payment.getPaymentPurpose());
             assertEquals("SUCCESS", payment.getStatus());
             assertEquals(0, new BigDecimal("6000.00").compareTo(payment.getAmount()));
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
+    }
+
+    @Test
+    void prepareCheckOutAppliesLateCheckOutPenaltyWhenOverdueMoreThanOneHour() {
+        Account account = Account.builder().id(1L).email("customer@example.com").build();
+        Customer customer = Customer.builder().id(2L).account(account).fullName("Customer").build();
+        Booking booking = Booking.builder()
+                .id(3L).customer(customer).bookingDate(LocalDateTime.now().minusDays(2)).status("CHECKED_IN").build();
+        RoomType roomType = RoomType.builder().id(4L).name("Studio").build();
+        Room room = Room.builder().id(5L).roomNumber("201").roomType(roomType).status("OCCUPIED").build();
+        BookingDetail detail = BookingDetail.builder()
+                .id(6L).booking(booking).roomType(roomType).room(room)
+                .checkInTarget(LocalDateTime.now().minusDays(1).minusHours(2))
+                .checkOutTarget(LocalDateTime.now().minusHours(2)) // Overdue by 2 hours (> 1 hour)
+                .numberOfAdults(2).numberOfChildren(0)
+                .priceAtBooking(BigDecimal.valueOf(500_000))
+                .rentType("BY_NIGHT").status("CHECKED_IN").build();
+        CheckInRecord record = CheckInRecord.builder().id(7L).bookingDetail(detail).build();
+        HousekeepingTask task = HousekeepingTask.builder()
+                .id(8L).checkInRecord(record).room(room).inspectionStatus("COMPLETED").build();
+        Invoice invoice = Invoice.builder()
+                .id(11L).booking(booking).totalAmount(BigDecimal.valueOf(500_000)).build();
+        Payment bookingPayment = Payment.builder()
+                .id(12L).invoice(invoice).paymentPurpose("BOOKING")
+                .amount(BigDecimal.valueOf(500_000)).status("SUCCESS").build();
+        Employee employee = Employee.builder().id(13L).fullName("Receptionist").build();
+        SePayPaymentResponse paymentResponse = new SePayPaymentResponse(
+                3L, booking.getBookingCode(), 14L, BigDecimal.valueOf(500_000), "HMS14",
+                "HMS14", "Vietcombank", "0123456789", "HOME STAY", "qr-url", null, 300L
+        );
+
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken("staff@example.com", "password")
+        );
+        try {
+            when(bookingDetailRepository.findByIdForAdminDetail(6L)).thenReturn(Optional.of(detail));
+            when(checkInRecordRepository.findByBookingDetailId(6L)).thenReturn(Optional.of(record));
+            when(housekeepingTaskRepository.findByCheckInRecordId(7L)).thenReturn(Optional.of(task));
+            when(checkInRecordRepository.findByBookingIdForInvoice(3L)).thenReturn(List.of(record));
+            when(bookingDetailRepository.findByBookingId(3L)).thenReturn(List.of(detail));
+            when(bookingServiceItemRepository.findByBookingDetailIds(List.of(6L))).thenReturn(List.of());
+            when(serviceUsageRepository.findByBookingIdForInvoice(3L)).thenReturn(List.of());
+            when(roomAmenitiesUsageRepository.findByBookingIdForInvoice(3L)).thenReturn(List.of());
+            when(appliedPenaltyRepository.findByBookingIdForInvoice(3L)).thenReturn(List.of());
+            when(invoiceRepository.findByBookingIdForAdmin(3L)).thenReturn(Optional.of(invoice));
+            when(employeeRepository.findByAccountEmail("staff@example.com")).thenReturn(Optional.of(employee));
+            when(paymentRepository.findByInvoiceIdOrderByPaymentTimeDescIdDesc(11L)).thenReturn(List.of(bookingPayment));
+            when(sePayPaymentService.createCheckoutPayment(3L, 6L, new BigDecimal("500000.00"))).thenReturn(paymentResponse);
+            when(checkInRecordRepository.findByBookingDetailIdForAdmin(6L)).thenReturn(List.of(record));
+            when(serviceUsageRepository.findByBookingDetailIdForAdmin(6L)).thenReturn(List.of());
+            when(roomAmenitiesUsageRepository.findByBookingDetailIdForAdmin(6L)).thenReturn(List.of());
+            when(appliedPenaltyRepository.findByBookingDetailIdForAdmin(6L)).thenReturn(List.of());
+            when(bookingGuestRepository.findByBookingDetailIds(List.of(6L))).thenReturn(List.of());
+            when(facilityServiceRepository.findAll()).thenReturn(List.of());
+            when(inventoryServiceRepository.findAll()).thenReturn(List.of());
+            when(roomMiniBarItemRepository.findAll()).thenReturn(List.of());
+            when(rulesPenaltyRepository.findAll()).thenReturn(List.of());
+
+            var response = service.prepareCheckOut(6L);
+
+            assertEquals(false, response.completed());
+            assertEquals(BigDecimal.valueOf(500_000), response.payment().amount());
+            assertEquals(BigDecimal.valueOf(500_000), record.getLateCheckOutFee());
+            verify(sePayPaymentService).createCheckoutPayment(3L, 6L, new BigDecimal("500000.00"));
         } finally {
             SecurityContextHolder.clearContext();
         }

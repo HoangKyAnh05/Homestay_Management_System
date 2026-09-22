@@ -1039,8 +1039,9 @@ public class PublicBookingServiceImpl implements PublicBookingService {
 
     private BigDecimal calculateVoucherAmount(Voucher voucher, BigDecimal roomChargeBeforeDiscount) {
         BigDecimal discountValue = zero(voucher.getDiscountValue());
+        String discountType = normalize(voucher.getDiscountType());
         BigDecimal discountAmount;
-        if ("PERCENT".equals(normalize(voucher.getDiscountType()))) {
+        if ("PERCENT".equals(discountType) || "PERCENTAGE".equals(discountType)) {
             discountAmount = roomChargeBeforeDiscount.multiply(discountValue)
                     .divide(BigDecimal.valueOf(100), 0, RoundingMode.HALF_UP);
         } else {

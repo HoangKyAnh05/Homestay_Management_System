@@ -144,7 +144,7 @@ export default function CustomerAiChat() {
           <header className="customer-ai-header">
             <div className="customer-ai-avatar" aria-hidden="true">AI</div>
             <div>
-              <h2 id="customer-ai-title">Trợ lý Home Stays</h2>
+              <h2 id="customer-ai-title">Trợ lý Lá Đỏ Homestay</h2>
               <p><span /> Sẵn sàng hỗ trợ</p>
             </div>
             <button type="button" onClick={() => setOpen(false)} aria-label="Đóng trợ lý AI">×</button>

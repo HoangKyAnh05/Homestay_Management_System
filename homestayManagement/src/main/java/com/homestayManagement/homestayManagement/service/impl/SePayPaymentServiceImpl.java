@@ -543,6 +543,9 @@ public class SePayPaymentServiceImpl implements SePayPaymentService {
         }
         DepositPolicy policy = booking.getDepositPolicy();
         if (policy == null || policy.getPolicyValue() == null) {
+            if (totalAmount != null && totalAmount.compareTo(BigDecimal.ZERO) > 0) {
+                return totalAmount;
+            }
             throw new IllegalArgumentException("Booking không có khoản cần thanh toán");
         }
         if ("PERCENTAGE".equals(normalize(policy.getCalculationType()))) {
