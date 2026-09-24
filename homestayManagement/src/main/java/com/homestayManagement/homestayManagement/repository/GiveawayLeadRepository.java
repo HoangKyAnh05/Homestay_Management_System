@@ -17,6 +17,8 @@ public interface GiveawayLeadRepository extends JpaRepository<GiveawayLead, Long
 
     Optional<GiveawayLead> findBySpinToken(String spinToken);
 
+    boolean existsByPhone(String phone);
+
     boolean existsByPhoneAndCreatedAtAfter(String phone, LocalDateTime after);
 
     @Query("SELECT g FROM GiveawayLead g WHERE " +

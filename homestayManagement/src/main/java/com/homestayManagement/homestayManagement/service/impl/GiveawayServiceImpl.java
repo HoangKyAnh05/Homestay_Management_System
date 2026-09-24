@@ -5,8 +5,13 @@ import com.homestayManagement.homestayManagement.entity.*;
 import com.homestayManagement.homestayManagement.repository.*;
 import com.homestayManagement.homestayManagement.service.GiveawayService;
 import com.homestayManagement.homestayManagement.service.MarketingSocialPublisher;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.annotation.PostConstruct;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -14,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.security.SecureRandom;
@@ -24,6 +30,9 @@ import java.util.*;
 @Service
 public class GiveawayServiceImpl implements GiveawayService {
 
+    private static final Logger log = LoggerFactory.getLogger(GiveawayServiceImpl.class);
+    private static final String PRIZES_FILE_PATH = "giveaway_prizes.json";
+
     private final GiveawayLeadRepository giveawayLeadRepository;
     private final VoucherRepository voucherRepository;
     private final SocialAccountRepository socialAccountRepository;
@@ -32,6 +41,7 @@ public class GiveawayServiceImpl implements GiveawayService {
     private final MarketingPostMediaRepository marketingPostMediaRepository;
     private final MarketingSocialPublisher marketingSocialPublisher;
     private final SecureRandom secureRandom = new SecureRandom();
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Value("${app.public-base-url:https://homestay-sapa.myvnc.com}")
     private String publicBaseUrl;
@@ -149,6 +159,47 @@ public class GiveawayServiceImpl implements GiveawayService {
 
     private final List<GiveawayConfigResponse.PrizeOption> activePrizes = new java.util.concurrent.CopyOnWriteArrayList<>(DEFAULT_PRIZES);
 
+    @PostConstruct
+    public void init() {
+        loadPrizesFromFile();
+    }
+
+    private void loadPrizesFromFile() {
+        try {
+            File file = new File(PRIZES_FILE_PATH);
+            if (file.exists() && file.isFile()) {
+                List<GiveawayConfigResponse.PrizeOption> loaded = objectMapper.readValue(
+                        file,
+                        new TypeReference<List<GiveawayConfigResponse.PrizeOption>>() {}
+                );
+                if (loaded != null && !loaded.isEmpty()) {
+                    activePrizes.clear();
+                    for (int i = 0; i < loaded.size(); i++) {
+                        GiveawayConfigResponse.PrizeOption p = loaded.get(i);
+                        p.setIndex(i);
+                        if (p.getName() == null || p.getName().trim().isEmpty()) {
+                            p.setName(p.getFullName() != null && !p.getFullName().trim().isEmpty() ? p.getFullName().trim() : p.getShortTitle());
+                        }
+                        activePrizes.add(p);
+                    }
+                    log.info("Loaded {} lucky wheel prizes from file: {}", activePrizes.size(), PRIZES_FILE_PATH);
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Could not load custom lucky wheel prizes from file, using defaults: {}", e.getMessage());
+        }
+    }
+
+    private void savePrizesToFile() {
+        try {
+            File file = new File(PRIZES_FILE_PATH);
+            objectMapper.writerWithDefaultPrettyPrinter().writeValue(file, new ArrayList<>(activePrizes));
+            log.info("Saved {} lucky wheel prizes to file: {}", activePrizes.size(), PRIZES_FILE_PATH);
+        } catch (Exception e) {
+            log.error("Failed to save lucky wheel prizes to file: {}", e.getMessage(), e);
+        }
+    }
+
     @Override
     public List<GiveawayConfigResponse.PrizeOption> getPrizes() {
         return new java.util.ArrayList<>(activePrizes);
@@ -161,11 +212,23 @@ public class GiveawayServiceImpl implements GiveawayService {
             for (int i = 0; i < newPrizes.size(); i++) {
                 GiveawayConfigResponse.PrizeOption p = newPrizes.get(i);
                 p.setIndex(i);
-                if (p.getName() == null || p.getName().isEmpty()) {
-                    p.setName(p.getFullName() != null && !p.getFullName().isEmpty() ? p.getFullName() : p.getShortTitle());
+                if (p.getFullName() != null && !p.getFullName().trim().isEmpty()) {
+                    p.setName(p.getFullName().trim());
+                } else if (p.getName() == null || p.getName().trim().isEmpty()) {
+                    p.setName(p.getShortTitle());
+                }
+                if (p.getSliceColor1() == null || p.getSliceColor1().trim().isEmpty()) {
+                    p.setSliceColor1(i % 2 == 0 ? "#b91c1c" : "#d97706");
+                }
+                if (p.getSliceColor2() == null || p.getSliceColor2().trim().isEmpty()) {
+                    p.setSliceColor2(i % 2 == 0 ? "#991b1b" : "#b45309");
+                }
+                if (p.getTextColor() == null || p.getTextColor().trim().isEmpty()) {
+                    p.setTextColor("#ffffff");
                 }
                 activePrizes.add(p);
             }
+            savePrizesToFile();
         }
         return getPrizes();
     }
@@ -174,6 +237,7 @@ public class GiveawayServiceImpl implements GiveawayService {
     public List<GiveawayConfigResponse.PrizeOption> resetPrizes() {
         activePrizes.clear();
         activePrizes.addAll(DEFAULT_PRIZES);
+        savePrizesToFile();
         return getPrizes();
     }
 
@@ -195,10 +259,9 @@ public class GiveawayServiceImpl implements GiveawayService {
     @Transactional
     public String registerSpin(GiveawayRegisterSpinRequest request, String ipAddress) {
         String cleanPhone = normalizePhone(request.getPhone());
-        LocalDateTime oneDayAgo = LocalDateTime.now().minusDays(1);
 
-        if (giveawayLeadRepository.existsByPhoneAndCreatedAtAfter(cleanPhone, oneDayAgo)) {
-            throw new IllegalArgumentException("Số điện thoại này đã nhận lượt quay trong 24h qua. Mỗi khách hàng nhận 1 lượt quay miễn phí mỗi ngày!");
+        if (giveawayLeadRepository.existsByPhone(cleanPhone)) {
+            throw new IllegalArgumentException("Số điện thoại này (" + cleanPhone + ") đã tham gia vòng quay may mắn trước đó! Mỗi số điện thoại chỉ được quay 1 lần duy nhất. Vui lòng nhập số điện thoại mới để nhận lượt quay tiếp theo.");
         }
 
         String spinToken = UUID.randomUUID().toString();

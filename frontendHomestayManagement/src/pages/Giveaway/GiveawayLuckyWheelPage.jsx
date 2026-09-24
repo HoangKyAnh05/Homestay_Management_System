@@ -215,10 +215,16 @@ export default function GiveawayLuckyWheelPage() {
       const startAngle = i * arc
       const endAngle = startAngle + arc
 
+      const c1 = prize.sliceColor1 || prize.color || (i % 2 === 0 ? '#b91c1c' : '#d97706')
+      const c2 = prize.sliceColor2 || prize.color || (i % 2 === 0 ? '#991b1b' : '#b45309')
+      const txtColor = prize.textColor || '#ffffff'
+      const title = prize.shortTitle || prize.name || prize.fullName || `Quà ${i + 1}`
+      const sub = prize.subText || ''
+
       // Radial slice gradient
       const sliceGrad = ctx.createRadialGradient(center, center, 60, center, center, wheelRadius)
-      sliceGrad.addColorStop(0, prize.sliceColor1)
-      sliceGrad.addColorStop(1, prize.sliceColor2)
+      sliceGrad.addColorStop(0, c1)
+      sliceGrad.addColorStop(1, c2)
 
       ctx.beginPath()
       ctx.moveTo(center, center)
@@ -243,17 +249,19 @@ export default function GiveawayLuckyWheelPage() {
       // Primary Title (e.g. GIẢM 50%)
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
-      ctx.font = 'bold 28px "Plus Jakarta Sans", sans-serif'
-      ctx.fillStyle = prize.textColor
+      ctx.font = 'bold 26px "Plus Jakarta Sans", sans-serif'
+      ctx.fillStyle = txtColor
       ctx.shadowColor = 'rgba(0, 0, 0, 0.75)'
       ctx.shadowBlur = 6
-      ctx.fillText(prize.shortTitle, textX, -10)
+      ctx.fillText(title, textX, sub ? -10 : 0)
 
       // Secondary Subtext (e.g. Toàn Chuyến Đi)
-      ctx.font = '600 16px "Plus Jakarta Sans", sans-serif'
-      ctx.fillStyle = '#f5f5f4'
-      ctx.shadowBlur = 4
-      ctx.fillText(prize.subText, textX, 18)
+      if (sub) {
+        ctx.font = '600 15px "Plus Jakarta Sans", sans-serif'
+        ctx.fillStyle = '#f5f5f4'
+        ctx.shadowBlur = 4
+        ctx.fillText(sub, textX, 18)
+      }
 
       ctx.restore()
     })
@@ -284,7 +292,22 @@ export default function GiveawayLuckyWheelPage() {
         drawWheel()
       })
     }
-  }, [])
+  }, [wheelPrizes])
+
+  const handleSpinAnotherPhone = () => {
+    setSpinToken(null)
+    setHasSpun(false)
+    setWonResult(null)
+    setErrorMsg('')
+    setFormData({
+      fullName: '',
+      phone: '',
+      email: '',
+      travelPlan: 'Trong tháng này',
+      notes: '',
+    })
+    window.scrollTo({ top: 350, behavior: 'smooth' })
+  }
 
   // Handle Form Submit -> Register Spin
   const handleSubmitForm = async (e) => {
@@ -623,7 +646,32 @@ export default function GiveawayLuckyWheelPage() {
                 className="gw-btn-contact-now"
                 onClick={() => setShowContactModal(true)}
               >
-                 BẤM LIÊN HỆ ĐẶT PHÒNG & NHẬN GIẢI NGAY
+                📞 BẤM LIÊN HỆ ĐẶT PHÒNG & NHẬN GIẢI NGAY
+              </button>
+
+              {/* Spin with another phone button */}
+              <button
+                type="button"
+                style={{
+                  marginTop: '12px',
+                  width: '100%',
+                  padding: '12px 18px',
+                  borderRadius: '12px',
+                  border: '1px solid rgba(254, 240, 138, 0.4)',
+                  background: 'rgba(255, 255, 255, 0.08)',
+                  color: '#fef08a',
+                  fontWeight: 700,
+                  fontSize: '0.92rem',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  transition: 'all 0.2s ease',
+                }}
+                onClick={handleSpinAnotherPhone}
+              >
+                <span>🔄 Quay Lượt Khác (Nhập Số Điện Thoại Mới)</span>
               </button>
             </div>
           )}
