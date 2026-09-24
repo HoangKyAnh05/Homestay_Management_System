@@ -14,6 +14,9 @@ public record UserResponse(
         String role,
         String identityDocumentNumber,
         Integer memberPoints,
-        BigDecimal memberDiscountPercent
+        BigDecimal memberDiscountPercent,
+        String bankName,
+        String bankAccountNumber,
+        String bankAccountHolder
 ) {
 }

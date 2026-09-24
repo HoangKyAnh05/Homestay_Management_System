@@ -37,7 +37,9 @@ import java.util.stream.Collectors;
 @Service
 public class RoomServiceImpl implements RoomService {
 
-    private static final Set<String> PREFERRED_RENT_TYPES = Set.of("OVERNIGHT", "DAILY", "BY_NIGHT", "NIGHTLY");
+    private static final Set<String> OVERNIGHT_RENT_TYPES = Set.of("OVERNIGHT", "BY_NIGHT", "NIGHTLY");
+    private static final Set<String> PREFERRED_RENT_TYPES = Set.of("OVERNIGHT", "DAILY", "BY_NIGHT", "NIGHTLY", "BY_DAY");
+    private static final Set<String> DAILY_RENT_TYPES = Set.of("DAILY", "BY_DAY");
 
     private final RoomTypeRepository roomTypeRepository;
     private final RoomRepository roomRepository;
@@ -62,29 +64,28 @@ public class RoomServiceImpl implements RoomService {
         this.roomIncidentRepository = roomIncidentRepository;
     }
 
-    private boolean isRoomAvailable(Room room, java.util.Set<Long> inProgressRoomIds) {
+    private boolean isRoomAvailable(Room room) {
         if (room == null) return false;
-        if ("MAINTENANCE".equalsIgnoreCase(room.getStatus())) return false;
-        if (inProgressRoomIds != null && inProgressRoomIds.contains(room.getId())) return false;
-        return true;
+        return !"MAINTENANCE".equalsIgnoreCase(room.getStatus());
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<RoomTypeResponse> getAllRoomTypes() {
-        java.util.Set<Long> inProgressRoomIds = new java.util.HashSet<>(roomIncidentRepository.findRoomIdsWithInProgressIncidents());
         return roomTypeRepository.findAll().stream()
-                .map(rt -> toRoomTypeResponse(rt, inProgressRoomIds))
-                .filter(rt -> rt.availableRooms() != null && rt.availableRooms() > 0)
+                .filter(rt -> {
+                    List<Room> rooms = roomRepository.findByRoomTypeId(rt.getId());
+                    return rooms.stream().anyMatch(this::isRoomAvailable);
+                })
+                .map(this::toRoomTypeResponse)
                 .toList();
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<RoomPublicResponse> getAllPublicRooms() {
-        java.util.Set<Long> inProgressRoomIds = new java.util.HashSet<>(roomIncidentRepository.findRoomIdsWithInProgressIncidents());
         return roomRepository.findAllWithRoomType().stream()
-                .filter(room -> isRoomAvailable(room, inProgressRoomIds))
+                .filter(this::isRoomAvailable)
                 .map(this::toPublicRoomResponse)
                 .sorted(Comparator.comparing(RoomPublicResponse::roomNumber, Comparator.nullsLast(String::compareToIgnoreCase)))
                 .toList();
@@ -99,7 +100,6 @@ public class RoomServiceImpl implements RoomService {
             throw new IllegalArgumentException("Ngày kết thúc phải sau hoặc bằng ngày bắt đầu");
         }
 
-        java.util.Set<Long> inProgressRoomIds = new java.util.HashSet<>(roomIncidentRepository.findRoomIdsWithInProgressIncidents());
         Room room = roomRepository.findById(roomId).orElse(null);
         RoomType roomType;
         List<Room> allTypeRooms;
@@ -111,16 +111,16 @@ public class RoomServiceImpl implements RoomService {
                     .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy phòng"));
             allTypeRooms = roomRepository.findByRoomTypeId(roomType.getId());
             room = allTypeRooms.stream()
-                    .filter(r -> isRoomAvailable(r, inProgressRoomIds))
+                    .filter(this::isRoomAvailable)
                     .findFirst()
                     .orElse(allTypeRooms.isEmpty() ? null : allTypeRooms.get(0));
         }
 
         List<Room> activeTypeRooms = allTypeRooms.stream()
-                .filter(r -> isRoomAvailable(r, inProgressRoomIds))
+                .filter(this::isRoomAvailable)
                 .toList();
 
-        if (!activeTypeRooms.isEmpty() && (room == null || !isRoomAvailable(room, inProgressRoomIds))) {
+        if (!activeTypeRooms.isEmpty() && (room == null || !isRoomAvailable(room))) {
             room = activeTypeRooms.get(0);
         }
 
@@ -133,30 +133,52 @@ public class RoomServiceImpl implements RoomService {
                         .thenComparing(RoomPriceConfig::getPrice))
                 .map(this::toRoomPriceResponse)
                 .toList();
-        List<RoomBusySlotResponse> busySlots = bookingDetailRepository.findPublicBusySlots(
+
+        List<BookingDetail> rawBusyDetails = bookingDetailRepository.findPublicBusySlots(
                         null,
                         roomType.getId(),
                         startDate.atStartOfDay(),
                         endDate.plusDays(1).atStartOfDay()
                 ).stream()
                 .filter(BookingInventoryPolicy::blocksInventory)
-                .map(detail -> new RoomBusySlotResponse(
-                        detail.getId(),
-                        detail.getCheckInTarget(),
-                        detail.getCheckOutTarget(),
-                        detail.getStatus()
-                ))
                 .toList();
 
-        if (allTypeRooms.isEmpty() || activeTypeRooms.isEmpty()) {
-            List<RoomBusySlotResponse> blockedSlots = new java.util.ArrayList<>(busySlots);
-            blockedSlots.add(new RoomBusySlotResponse(
+        List<RoomBusySlotResponse> busySlots;
+        if (!allTypeRooms.isEmpty() && activeTypeRooms.isEmpty()) {
+            busySlots = List.of(new RoomBusySlotResponse(
                     -1L,
                     startDate.atStartOfDay(),
                     endDate.plusDays(30).atStartOfDay(),
                     "MAINTENANCE"
             ));
-            busySlots = blockedSlots;
+        } else if (activeTypeRooms.size() <= 1) {
+            busySlots = rawBusyDetails.stream()
+                    .map(detail -> new RoomBusySlotResponse(
+                            detail.getId(),
+                            detail.getCheckInTarget(),
+                            detail.getCheckOutTarget(),
+                            detail.getStatus()
+                    ))
+                    .toList();
+        } else {
+            int capacity = activeTypeRooms.size();
+            List<RoomBusySlotResponse> fullSlots = new java.util.ArrayList<>();
+            for (LocalDate d = startDate; !d.isAfter(endDate); d = d.plusDays(1)) {
+                LocalDateTime dayStart = d.atTime(14, 0);
+                LocalDateTime dayEnd = d.plusDays(1).atTime(12, 0);
+                long overlapCount = rawBusyDetails.stream()
+                        .filter(detail -> detail.getCheckInTarget().isBefore(dayEnd) && detail.getCheckOutTarget().isAfter(dayStart))
+                        .count();
+                if (overlapCount >= capacity) {
+                    fullSlots.add(new RoomBusySlotResponse(
+                            -d.toEpochDay(),
+                            dayStart,
+                            dayEnd,
+                            "CONFIRMED"
+                    ));
+                }
+            }
+            busySlots = fullSlots;
         }
 
         return new RoomDetailPublicResponse(
@@ -199,9 +221,8 @@ public class RoomServiceImpl implements RoomService {
         int adultsPerRoom = (int) Math.ceil((adults != null ? adults : 1) / (double) requestedRooms);
         int childrenPerRoom = (int) Math.ceil((children != null ? children : 0) / (double) requestedRooms);
         String dayType = isWeekend(checkInDate) ? "WEEKEND" : "WEEKDAY";
-        java.util.Set<Long> inProgressRoomIds = new java.util.HashSet<>(roomIncidentRepository.findRoomIdsWithInProgressIncidents());
         Map<Long, Long> totalRoomsByType = roomRepository.findAllWithRoomType().stream()
-                .filter(room -> room.getRoomType() != null && isRoomAvailable(room, inProgressRoomIds))
+                .filter(room -> room.getRoomType() != null && isRoomAvailable(room))
                 .collect(Collectors.groupingBy(room -> room.getRoomType().getId(), Collectors.counting()));
 
         return roomTypeRepository.findAll().stream()
@@ -266,7 +287,7 @@ public class RoomServiceImpl implements RoomService {
                 .filter(config -> dayType.equalsIgnoreCase(config.getDayType()))
                 .toList();
         Optional<RoomPriceConfig> priceConfig = configs.stream()
-                .filter(config -> isPreferredRentType(config.getPricePolicy()))
+                .filter(config -> PREFERRED_RENT_TYPES.contains(normalize(config.getPricePolicy().getRentType())))
                 .min(Comparator.comparing(RoomPriceConfig::getPrice))
                 .or(() -> configs.stream().min(Comparator.comparing(RoomPriceConfig::getPrice)));
         if (priceConfig.isEmpty()) {
@@ -330,8 +351,9 @@ public class RoomServiceImpl implements RoomService {
 
     private List<RoomPublicPriceResponse> buildPublicPrices(Long roomTypeId) {
         return roomPriceConfigRepository.findByRoomTypeIdWithPolicy(roomTypeId).stream()
-                .sorted(Comparator.comparing((RoomPriceConfig config) -> normalize(config.getPricePolicy().getRentType()))
-                        .thenComparing(config -> normalize(config.getDayType()))
+                // Chỉ giữ lại giá OVERNIGHT/DAILY (2 ngày 1 đêm), bỏ HOURLY/COMBO
+                .filter(config -> PREFERRED_RENT_TYPES.contains(normalize(config.getPricePolicy().getRentType())))
+                .sorted(Comparator.comparing((RoomPriceConfig config) -> normalize(config.getDayType()))
                         .thenComparing(RoomPriceConfig::getPrice))
                 .map(this::toRoomPriceResponse)
                 .toList();
@@ -362,11 +384,18 @@ public class RoomServiceImpl implements RoomService {
         );
     }
 
-    private RoomTypeResponse toRoomTypeResponse(RoomType roomType, java.util.Set<Long> inProgressRoomIds) {
+    private RoomTypeResponse toRoomTypeResponse(RoomType roomType) {
         List<Room> rooms = roomRepository.findByRoomTypeId(roomType.getId());
-        int availableRooms = (int) rooms.stream()
-                .filter(r -> isRoomAvailable(r, inProgressRoomIds))
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime tomorrow = now.plusDays(1);
+        long bookedCount = bookingDetailRepository.findOverlappingSchedule(now, tomorrow).stream()
+                .filter(BookingInventoryPolicy::blocksInventory)
+                .filter(detail -> detail.getRoomType() != null && roomType.getId().equals(detail.getRoomType().getId()))
                 .count();
+        int totalPhysicalAvailable = (int) rooms.stream()
+                .filter(this::isRoomAvailable)
+                .count();
+        int availableRooms = Math.max(0, totalPhysicalAvailable - (int) bookedCount);
         List<String> allUrls = rooms.stream()
                 .flatMap(room -> roomImageRepository.findByRoomId(room.getId()).stream())
                 .sorted(Comparator.comparing(RoomImage::isPrimary).reversed().thenComparing(Comparator.comparing(RoomImage::getId).reversed()))
@@ -378,7 +407,7 @@ public class RoomServiceImpl implements RoomService {
                 .toList();
 
         Room firstAvailable = rooms.stream()
-                .filter(r -> isRoomAvailable(r, inProgressRoomIds))
+                .filter(this::isRoomAvailable)
                 .findFirst()
                 .orElse(rooms.isEmpty() ? null : rooms.get(0));
 
@@ -403,27 +432,49 @@ public class RoomServiceImpl implements RoomService {
     }
 
     private BigDecimal findDisplayPrice(Long roomTypeId, String dayType) {
-        return roomPriceConfigRepository.findByRoomTypeIdWithPolicy(roomTypeId).stream()
-                .filter(config -> dayType.equalsIgnoreCase(config.getDayType()))
-                .filter(config -> isPreferredRentType(config.getPricePolicy()))
+        List<RoomPriceConfig> allConfigs = roomPriceConfigRepository.findByRoomTypeIdWithPolicy(roomTypeId);
+
+        // 1. Ưu tiên cao nhất: OVERNIGHT/BY_NIGHT/NIGHTLY/DAILY đúng dayType
+        Optional<BigDecimal> preferred = allConfigs.stream()
+                .filter(c -> dayType.equalsIgnoreCase(c.getDayType()))
+                .filter(c -> PREFERRED_RENT_TYPES.contains(normalize(c.getPricePolicy().getRentType())))
                 .min(Comparator.comparing(RoomPriceConfig::getPrice))
-                .or(() -> roomPriceConfigRepository.findByRoomTypeIdWithPolicy(roomTypeId).stream()
-                        .filter(config -> dayType.equalsIgnoreCase(config.getDayType()))
-                        .min(Comparator.comparing(RoomPriceConfig::getPrice)))
-                .or(() -> roomPriceConfigRepository.findByRoomTypeIdWithPolicy(roomTypeId).stream()
-                        .min(Comparator.comparing(RoomPriceConfig::getPrice)))
+                .map(RoomPriceConfig::getPrice);
+        if (preferred.isPresent()) return preferred.get();
+
+        // 2. Fall back: PREFERRED không phân biệt dayType
+        Optional<BigDecimal> preferredAny = allConfigs.stream()
+                .filter(c -> PREFERRED_RENT_TYPES.contains(normalize(c.getPricePolicy().getRentType())))
+                .min(Comparator.comparing(RoomPriceConfig::getPrice))
+                .map(RoomPriceConfig::getPrice);
+        if (preferredAny.isPresent()) return preferredAny.get();
+
+        // 3. Fall back: bất kỳ giá nào đúng dayType
+        Optional<BigDecimal> anyDayType = allConfigs.stream()
+                .filter(c -> dayType.equalsIgnoreCase(c.getDayType()))
+                .min(Comparator.comparing(RoomPriceConfig::getPrice))
+                .map(RoomPriceConfig::getPrice);
+        if (anyDayType.isPresent()) return anyDayType.get();
+
+        // 4. Last resort: min toàn bộ
+        return allConfigs.stream()
+                .min(Comparator.comparing(RoomPriceConfig::getPrice))
                 .map(RoomPriceConfig::getPrice)
                 .orElse(BigDecimal.ZERO);
     }
 
     private String findDisplayRentType(Long roomTypeId) {
-        return roomPriceConfigRepository.findByRoomTypeIdWithPolicy(roomTypeId).stream()
-                .filter(config -> isPreferredRentType(config.getPricePolicy()))
-                .min(Comparator.comparing(RoomPriceConfig::getPrice))
-                .map(config -> config.getPricePolicy().getRentType())
-                .or(() -> roomPriceConfigRepository.findByRoomTypeIdWithPolicy(roomTypeId).stream()
-                        .min(Comparator.comparing(RoomPriceConfig::getPrice))
-                        .map(config -> config.getPricePolicy().getRentType()))
+        List<RoomPriceConfig> allConfigs = roomPriceConfigRepository.findByRoomTypeIdWithPolicy(roomTypeId);
+        // Ưu tiên OVERNIGHT/DAILY/BY_NIGHT trước
+        Optional<String> preferred = allConfigs.stream()
+                .filter(c -> PREFERRED_RENT_TYPES.contains(normalize(c.getPricePolicy().getRentType())))
+                .map(c -> c.getPricePolicy().getRentType())
+                .findFirst();
+        if (preferred.isPresent()) return preferred.get();
+        // Last resort
+        return allConfigs.stream()
+                .map(c -> c.getPricePolicy().getRentType())
+                .findFirst()
                 .orElse("OVERNIGHT");
     }
 

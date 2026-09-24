@@ -461,16 +461,70 @@ public class AdminBookingServiceImpl implements AdminBookingService {
     public List<AdminDirectBookingRoomResponse> getDirectBookingRooms(LocalDateTime checkInTarget, LocalDateTime checkOutTarget) {
         validateBookingRange(checkInTarget, checkOutTarget);
 
-        Map<Long, List<BookingDetail>> busySlotsByRoom = bookingDetailRepository
+        List<BookingDetail> overlappingDetails = bookingDetailRepository
                 .findOverlappingSchedule(checkInTarget, checkOutTarget)
                 .stream()
                 .filter(this::isActiveBookingDetail)
+                .toList();
+
+        Map<Long, List<BookingDetail>> busySlotsByRoom = overlappingDetails
+                .stream()
                 .filter(this::hasAssignedRoom)
                 .collect(Collectors.groupingBy(detail -> detail.getRoom().getId()));
 
-        return roomRepository.findAll().stream()
+        Map<Long, Long> unassignedCountByType = overlappingDetails
+                .stream()
+                .filter(d -> !this.hasAssignedRoom(d) && d.getRoomType() != null)
+                .collect(Collectors.groupingBy(d -> d.getRoomType().getId(), Collectors.counting()));
+
+        List<Room> allRooms = roomRepository.findAll();
+        Map<Long, Integer> remainingAvailableSlotsByType = new LinkedHashMap<>();
+        for (Room r : allRooms) {
+            if (r.getRoomType() == null) continue;
+            Long typeId = r.getRoomType().getId();
+            if (!remainingAvailableSlotsByType.containsKey(typeId)) {
+                long totalPhysical = allRooms.stream()
+                        .filter(rm -> rm.getRoomType() != null && rm.getRoomType().getId().equals(typeId))
+                        .filter(rm -> !"MAINTENANCE".equalsIgnoreCase(rm.getStatus()))
+                        .count();
+                long assignedCount = allRooms.stream()
+                        .filter(rm -> rm.getRoomType() != null && rm.getRoomType().getId().equals(typeId))
+                        .filter(rm -> busySlotsByRoom.containsKey(rm.getId()))
+                        .count();
+                long unassignedCount = unassignedCountByType.getOrDefault(typeId, 0L);
+                int available = (int) Math.max(0, totalPhysical - (assignedCount + unassignedCount));
+                remainingAvailableSlotsByType.put(typeId, available);
+            }
+        }
+
+        List<Room> sortedRooms = allRooms.stream()
                 .sorted(Comparator.comparing(Room::getRoomNumber, Comparator.nullsLast(String::compareToIgnoreCase)))
-                .map(room -> toDirectBookingRoomResponse(room, busySlotsByRoom.getOrDefault(room.getId(), List.of())))
+                .toList();
+
+        List<AdminDirectBookingRoomResponse> responseList = new ArrayList<>();
+        for (Room room : sortedRooms) {
+            Long typeId = room.getRoomType() != null ? room.getRoomType().getId() : null;
+            boolean isMaintenanceOrIncident = "MAINTENANCE".equalsIgnoreCase(room.getStatus());
+            List<BookingDetail> directBusy = busySlotsByRoom.getOrDefault(room.getId(), List.of());
+
+            if (isMaintenanceOrIncident) {
+                responseList.add(toDirectBookingRoomResponse(room, directBusy, false, "Phòng đang bảo trì"));
+            } else if (!directBusy.isEmpty()) {
+                responseList.add(toDirectBookingRoomResponse(room, directBusy, false, null));
+            } else {
+                int rem = typeId != null ? remainingAvailableSlotsByType.getOrDefault(typeId, 0) : 1;
+                if (rem > 0) {
+                    responseList.add(toDirectBookingRoomResponse(room, List.of(), true, null));
+                    if (typeId != null) {
+                        remainingAvailableSlotsByType.put(typeId, rem - 1);
+                    }
+                } else {
+                    responseList.add(toDirectBookingRoomResponse(room, List.of(), false, "Đang giữ chỗ (Đơn đặt online/chờ thanh toán)"));
+                }
+            }
+        }
+
+        return responseList.stream()
                 .sorted(Comparator.comparing(AdminDirectBookingRoomResponse::available).reversed()
                         .thenComparing(AdminDirectBookingRoomResponse::roomNumber, Comparator.nullsLast(String::compareToIgnoreCase)))
                 .toList();
@@ -504,9 +558,12 @@ public class AdminBookingServiceImpl implements AdminBookingService {
             validateCapacity(room.getRoomType(), selectedRoom.numberOfAdults(), selectedRoom.numberOfChildren());
         }
 
-        Set<Long> busyRoomIds = bookingDetailRepository.findOverlappingSchedule(request.checkInTarget(), request.checkOutTarget())
+        List<BookingDetail> activeOverlapping = bookingDetailRepository.findOverlappingSchedule(request.checkInTarget(), request.checkOutTarget())
                 .stream()
                 .filter(this::isActiveBookingDetail)
+                .toList();
+
+        Set<Long> busyRoomIds = activeOverlapping.stream()
                 .filter(this::hasAssignedRoom)
                 .map(detail -> detail.getRoom().getId())
                 .filter(selectedRoomIds::contains)
@@ -518,6 +575,36 @@ public class AdminBookingServiceImpl implements AdminBookingService {
                     .sorted()
                     .collect(Collectors.joining(", "));
             throw new IllegalArgumentException("Phòng đã có booking trong khung giờ này: " + busyRooms);
+        }
+
+        Map<Long, Long> unassignedCountByType = activeOverlapping.stream()
+                .filter(d -> !this.hasAssignedRoom(d) && d.getRoomType() != null)
+                .collect(Collectors.groupingBy(d -> d.getRoomType().getId(), Collectors.counting()));
+
+        Map<Long, Long> requestedCountByType = selectedRooms.stream()
+                .map(sr -> roomsById.get(sr.roomId()))
+                .filter(r -> r.getRoomType() != null)
+                .collect(Collectors.groupingBy(r -> r.getRoomType().getId(), Collectors.counting()));
+
+        for (Map.Entry<Long, Long> entry : requestedCountByType.entrySet()) {
+            Long typeId = entry.getKey();
+            long requestedCount = entry.getValue();
+            long totalPhysical = roomRepository.findByRoomTypeId(typeId).stream()
+                    .filter(r -> !"MAINTENANCE".equalsIgnoreCase(r.getStatus()))
+                    .count();
+            long assignedInType = activeOverlapping.stream()
+                    .filter(this::hasAssignedRoom)
+                    .filter(d -> d.getRoom().getRoomType() != null && d.getRoom().getRoomType().getId().equals(typeId))
+                    .count();
+            long unassignedInType = unassignedCountByType.getOrDefault(typeId, 0L);
+            long availableInType = Math.max(0, totalPhysical - (assignedInType + unassignedInType));
+            if (requestedCount > availableInType) {
+                String typeName = roomsById.values().stream()
+                        .filter(r -> r.getRoomType() != null && r.getRoomType().getId().equals(typeId))
+                        .map(r -> r.getRoomType().getName())
+                        .findFirst().orElse("đã chọn");
+                throw new IllegalArgumentException("Loại phòng " + typeName + " chỉ còn " + availableInType + " phòng trống trong khung giờ này (đã có đơn đặt online/giữ chỗ)");
+            }
         }
 
         Customer customer = findOrCreateWalkInCustomer(request);
@@ -816,8 +903,11 @@ public class AdminBookingServiceImpl implements AdminBookingService {
         }
         detail.setStatus("COMPLETED");
         if (detail.getRoom() != null) {
-            detail.getRoom().setStatus("AVAILABLE");
-            roomRepository.save(detail.getRoom());
+            boolean hasOtherActiveGuest = bookingDetailRepository.hasActiveGuestInRoom(detail.getRoom().getId(), LocalDateTime.now());
+            if (!hasOtherActiveGuest && !"MAINTENANCE".equalsIgnoreCase(detail.getRoom().getStatus())) {
+                detail.getRoom().setStatus("AVAILABLE");
+                roomRepository.save(detail.getRoom());
+            }
         }
         if (firstCheckout) {
             restoreInventoryServices(detail.getId());
@@ -1202,8 +1292,35 @@ public class AdminBookingServiceImpl implements AdminBookingService {
     }
 
     private AdminDirectBookingRoomResponse toDirectBookingRoomResponse(Room room, List<BookingDetail> busySlots) {
+        return toDirectBookingRoomResponse(room, busySlots, busySlots.isEmpty(), null);
+    }
+
+    private AdminDirectBookingRoomResponse toDirectBookingRoomResponse(
+            Room room,
+            List<BookingDetail> busySlots,
+            boolean isAvailable,
+            String placeholderReason
+    ) {
         RoomType roomType = room.getRoomType();
         DepositPolicy policy = roomType != null ? roomType.getDepositPolicy() : null;
+        List<AdminDirectBookingBusySlotResponse> slotResponses = new ArrayList<>(
+                busySlots.stream()
+                        .sorted(Comparator.comparing(BookingDetail::getCheckInTarget))
+                        .map(this::toDirectBookingBusySlotResponse)
+                        .toList()
+        );
+        if (!isAvailable && slotResponses.isEmpty() && placeholderReason != null) {
+            slotResponses.add(new AdminDirectBookingBusySlotResponse(
+                    null,
+                    placeholderReason,
+                    null,
+                    "Giữ chỗ hệ thống",
+                    null,
+                    null,
+                    null,
+                    "HOLD"
+            ));
+        }
         return new AdminDirectBookingRoomResponse(
                 room.getId(),
                 room.getRoomNumber(),
@@ -1215,11 +1332,8 @@ public class AdminBookingServiceImpl implements AdminBookingService {
                 policy != null ? policy.getPolicyName() : null,
                 policy != null ? policy.getCalculationType() : null,
                 policy != null ? policy.getPolicyValue() : null,
-                busySlots.isEmpty(),
-                busySlots.stream()
-                        .sorted(Comparator.comparing(BookingDetail::getCheckInTarget))
-                        .map(this::toDirectBookingBusySlotResponse)
-                        .toList()
+                isAvailable,
+                slotResponses
         );
     }
 
@@ -1990,18 +2104,23 @@ public class AdminBookingServiceImpl implements AdminBookingService {
         final LocalDateTime queryStart = startWindow;
         final LocalDateTime queryEnd = endWindow;
 
-        Set<Long> busyRoomIds = bookingDetailRepository.findOverlappingSchedule(queryStart, queryEnd)
+        List<BookingDetail> otherActiveDetails = bookingDetailRepository.findOverlappingSchedule(queryStart, queryEnd)
                 .stream()
                 .filter(d -> !d.getId().equals(detail.getId()))
-                .filter(d -> !"CANCELLED".equalsIgnoreCase(d.getStatus()) && !"COMPLETED".equalsIgnoreCase(d.getStatus()))
+                .filter(this::isActiveBookingDetail)
+                .toList();
+
+        Set<Long> busyRoomIds = otherActiveDetails
+                .stream()
                 .map(BookingDetail::getRoom)
                 .filter(Objects::nonNull)
                 .map(Room::getId)
                 .collect(Collectors.toSet());
 
-        Set<Long> inProgressIncidentRoomIds = roomIncidentRepository != null
-                ? new HashSet<>(roomIncidentRepository.findRoomIdsWithInProgressIncidents())
-                : java.util.Collections.emptySet();
+        Map<Long, Long> unassignedCountByType = otherActiveDetails
+                .stream()
+                .filter(d -> d.getRoom() == null && d.getRoomType() != null)
+                .collect(Collectors.groupingBy(d -> d.getRoomType().getId(), Collectors.counting()));
 
         Room currentRoom = detail.getRoom();
         Long currentRoomId = currentRoom != null ? currentRoom.getId() : null;
@@ -2013,6 +2132,25 @@ public class AdminBookingServiceImpl implements AdminBookingService {
         String currentRoomTypeName = currentRoomType != null ? currentRoomType.getName() : "";
 
         List<Room> allRooms = roomRepository.findAll();
+        Map<Long, Integer> remainingAvailableSlotsByType = new LinkedHashMap<>();
+        for (Room r : allRooms) {
+            if (r.getRoomType() == null) continue;
+            Long rtId = r.getRoomType().getId();
+            if (!remainingAvailableSlotsByType.containsKey(rtId)) {
+                long totalPhysical = allRooms.stream()
+                        .filter(rm -> rm.getRoomType() != null && rm.getRoomType().getId().equals(rtId))
+                        .filter(rm -> !"MAINTENANCE".equalsIgnoreCase(rm.getStatus()))
+                        .count();
+                long assignedBusy = allRooms.stream()
+                        .filter(rm -> rm.getRoomType() != null && rm.getRoomType().getId().equals(rtId))
+                        .filter(rm -> busyRoomIds.contains(rm.getId()))
+                        .count();
+                long unassignedCount = unassignedCountByType.getOrDefault(rtId, 0L);
+                int avail = (int) Math.max(0, totalPhysical - (assignedBusy + unassignedCount));
+                remainingAvailableSlotsByType.put(rtId, avail);
+            }
+        }
+
         List<AdminChangeRoomItemResponse> sameTypeRooms = new ArrayList<>();
         Map<Long, List<AdminChangeRoomItemResponse>> otherTypeRoomsMap = new LinkedHashMap<>();
         Map<Long, RoomType> roomTypesMap = new LinkedHashMap<>();
@@ -2025,8 +2163,7 @@ public class AdminBookingServiceImpl implements AdminBookingService {
                 continue;
             }
             if ("MAINTENANCE".equalsIgnoreCase(room.getStatus())
-                    || "OCCUPIED".equalsIgnoreCase(room.getStatus())
-                    || inProgressIncidentRoomIds.contains(room.getId())) {
+                    || "OCCUPIED".equalsIgnoreCase(room.getStatus())) {
                 continue;
             }
             if (busyRoomIds.contains(room.getId())) {
@@ -2035,23 +2172,30 @@ public class AdminBookingServiceImpl implements AdminBookingService {
 
             RoomType rt = room.getRoomType();
             Long rtId = rt != null ? rt.getId() : null;
-            String rtName = rt != null ? rt.getName() : "Khác";
-            if (rtId != null) {
-                roomTypesMap.putIfAbsent(rtId, rt);
+            if (rtId == null) {
+                continue;
+            }
+            roomTypesMap.putIfAbsent(rtId, rt);
+
+            int remainingForType = remainingAvailableSlotsByType.getOrDefault(rtId, 0);
+            if (remainingForType <= 0) {
+                continue;
             }
 
             AdminChangeRoomItemResponse item = new AdminChangeRoomItemResponse(
                     room.getId(),
                     room.getRoomNumber(),
                     room.getStatus(),
-                    rtName,
+                    rt.getName(),
                     rtId
             );
 
             if (currentRoomTypeId != null && currentRoomTypeId.equals(rtId)) {
                 sameTypeRooms.add(item);
-            } else if (rtId != null) {
+                remainingAvailableSlotsByType.put(rtId, remainingForType - 1);
+            } else {
                 otherTypeRoomsMap.computeIfAbsent(rtId, k -> new ArrayList<>()).add(item);
+                remainingAvailableSlotsByType.put(rtId, remainingForType - 1);
             }
         }
 
@@ -2128,14 +2272,34 @@ public class AdminBookingServiceImpl implements AdminBookingService {
         final LocalDateTime checkStart = startWindow;
         final LocalDateTime checkEnd = endWindow;
 
-        boolean isNewRoomBusy = bookingDetailRepository.findOverlappingSchedule(checkStart, checkEnd)
+        List<BookingDetail> otherActiveDetails = bookingDetailRepository.findOverlappingSchedule(checkStart, checkEnd)
                 .stream()
                 .filter(d -> !d.getId().equals(detail.getId()))
-                .filter(d -> !"CANCELLED".equalsIgnoreCase(d.getStatus()) && !"COMPLETED".equalsIgnoreCase(d.getStatus()))
+                .filter(this::isActiveBookingDetail)
+                .toList();
+
+        boolean isNewRoomBusy = otherActiveDetails.stream()
                 .anyMatch(d -> d.getRoom() != null && d.getRoom().getId().equals(newRoom.getId()));
 
         if (isNewRoomBusy) {
             throw new IllegalArgumentException("Phòng " + newRoom.getRoomNumber() + " đã có khách đặt trong khung giờ này");
+        }
+
+        if (newRoom.getRoomType() != null) {
+            Long rtId = newRoom.getRoomType().getId();
+            long totalPhysical = roomRepository.findByRoomTypeId(rtId).stream()
+                    .filter(r -> !"MAINTENANCE".equalsIgnoreCase(r.getStatus()))
+                    .count();
+            long assignedBusy = otherActiveDetails.stream()
+                    .filter(d -> d.getRoom() != null && d.getRoom().getRoomType() != null && d.getRoom().getRoomType().getId().equals(rtId))
+                    .count();
+            long unassignedBusy = otherActiveDetails.stream()
+                    .filter(d -> d.getRoom() == null && d.getRoomType() != null && d.getRoomType().getId().equals(rtId))
+                    .count();
+            long avail = Math.max(0, totalPhysical - (assignedBusy + unassignedBusy));
+            if (avail <= 0) {
+                throw new IllegalArgumentException("Loại phòng " + newRoom.getRoomType().getName() + " hiện không còn chỗ trống khả dụng trong khung giờ này (đã có đơn đặt online/giữ chỗ)");
+            }
         }
 
         if ("MAINTENANCE".equalsIgnoreCase(newRoom.getStatus())) {
@@ -2143,13 +2307,6 @@ public class AdminBookingServiceImpl implements AdminBookingService {
         }
         if ("OCCUPIED".equalsIgnoreCase(newRoom.getStatus())) {
             throw new IllegalArgumentException("Phòng " + newRoom.getRoomNumber() + " hiện đang có khách ở, không thể chuyển vào");
-        }
-
-        Set<Long> inProgressIncidentRoomIds = roomIncidentRepository != null
-                ? new HashSet<>(roomIncidentRepository.findRoomIdsWithInProgressIncidents())
-                : java.util.Collections.emptySet();
-        if (inProgressIncidentRoomIds.contains(newRoom.getId())) {
-            throw new IllegalArgumentException("Phòng " + newRoom.getRoomNumber() + " đang có sự cố cần xử lý, không thể chuyển vào");
         }
 
         String oldRoomNumber = oldRoom != null ? oldRoom.getRoomNumber() : "N/A";

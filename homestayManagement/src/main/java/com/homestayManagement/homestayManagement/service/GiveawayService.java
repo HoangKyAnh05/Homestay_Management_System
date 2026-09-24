@@ -21,4 +21,10 @@ public interface GiveawayService {
     byte[] exportLeadsToExcel();
 
     void publishGiveawayPost(GiveawayPostPublishRequest request);
+
+    java.util.List<GiveawayConfigResponse.PrizeOption> getPrizes();
+
+    java.util.List<GiveawayConfigResponse.PrizeOption> updatePrizes(java.util.List<GiveawayConfigResponse.PrizeOption> newPrizes);
+
+    java.util.List<GiveawayConfigResponse.PrizeOption> resetPrizes();
 }

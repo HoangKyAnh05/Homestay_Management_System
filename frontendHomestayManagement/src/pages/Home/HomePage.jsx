@@ -152,7 +152,6 @@ function useRoomTypes() {
         const list = Array.isArray(data) ? data : []
         const activeRooms = list.filter((r) => {
           if (String(r.status || '').toUpperCase() === 'MAINTENANCE') return false
-          if (r.availableRooms != null && Number(r.availableRooms) <= 0) return false
           return true
         })
         setRooms(activeRooms)
@@ -367,21 +366,31 @@ function RoomCard({ room, criteria }) {
 
 function SearchResultsSection({ criteria, rooms, loading, error, maxPrice, onMaxPriceChange }) {
   const highestPrice = useMemo(() => {
-    const max = Math.max(...rooms.map(room => roomPrice(room)), 0)
-    return Math.max(max, 100000)
+    const validPrices = rooms.map(room => roomPrice(room)).filter(p => p > 0)
+    const max = validPrices.length > 0 ? Math.max(...validPrices) : 0
+    if (max <= 0) return 5000000
+    const rounded = Math.ceil(max / 1000000) * 1000000
+    return Math.max(rounded, 5000000)
   }, [rooms])
 
   const visibleRooms = useMemo(() => {
     return rooms
       .filter((room) => {
         if (String(room.status || '').toUpperCase() === 'MAINTENANCE') return false
-        if (room.availableRooms != null && Number(room.availableRooms) <= 0) return false
         return roomPrice(room) <= maxPrice
       })
       .sort((a, b) => roomPrice(a) - roomPrice(b))
   }, [rooms, maxPrice])
 
   if (!criteria && !loading && !error) return null
+
+  const pricePresets = [
+    { label: 'Tất cả', value: highestPrice },
+    { label: '≤ 1tr', value: 1000000 },
+    { label: '≤ 2tr', value: 2000000 },
+    { label: '≤ 3tr', value: 3000000 },
+    { label: '≤ 5tr', value: 5000000 },
+  ]
 
   return (
     <section className="home-section search-results-section" id="search-results">
@@ -402,19 +411,49 @@ function SearchResultsSection({ criteria, rooms, loading, error, maxPrice, onMax
           <aside className="search-filter-panel">
             <div className="search-filter-head">
               <strong>Lọc theo giá</strong>
-              <span>{formatPrice(maxPrice)}</span>
+              <span>{maxPrice >= highestPrice ? 'Tất cả mức giá' : `Tối đa: ${formatPrice(maxPrice)}`}</span>
             </div>
+
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '12px' }}>
+              {pricePresets.map((preset) => {
+                const isActive = preset.value === highestPrice ? maxPrice >= highestPrice : maxPrice === preset.value
+                return (
+                  <button
+                    key={preset.label}
+                    type="button"
+                    onClick={() => onMaxPriceChange(preset.value)}
+                    style={{
+                      padding: '5px 9px',
+                      borderRadius: '8px',
+                      border: isActive ? '1.5px solid #1f4328' : '1px solid #cbd5e1',
+                      background: isActive ? '#1f4328' : '#ffffff',
+                      color: isActive ? '#ffffff' : '#334155',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    {preset.label}
+                  </button>
+                )
+              })}
+            </div>
+
             <input
               type="range"
               min="0"
               max={highestPrice}
-              step="50000"
+              step="500000"
               value={Math.min(maxPrice, highestPrice)}
               onChange={event => onMaxPriceChange(Number(event.target.value))}
             />
-            <div className="search-filter-range">
+            <div className="search-filter-range" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#64748b', marginTop: '6px' }}>
               <span>0đ</span>
-              <span>{formatPrice(highestPrice)}</span>
+              <span>1tr</span>
+              <span>2tr</span>
+              <span>3tr</span>
+              <span>{highestPrice >= 5000000 ? `${highestPrice / 1000000}tr` : formatPrice(highestPrice)}</span>
             </div>
           </aside>
 
@@ -464,7 +503,6 @@ function RoomsSection({ rooms, loading }) {
   const safeRooms = useMemo(() => {
     return (Array.isArray(rooms) ? rooms : []).filter((room) => {
       if (String(room.status || '').toUpperCase() === 'MAINTENANCE') return false
-      if (room.availableRooms != null && Number(room.availableRooms) <= 0) return false
       return true
     })
   }, [rooms])
@@ -1033,67 +1071,7 @@ function HomeFooter() {
 }
 
 function FloatingVoucherCard() {
-  const [vouchers, setVouchers] = useState([])
-  const [activeIndex, setActiveIndex] = useState(0)
-  const [hidden, setHidden] = useState(() => sessionStorage.getItem('homeVoucherPromoClosed') === '1')
-  const [copiedCode, setCopiedCode] = useState('')
-
-  useEffect(() => {
-    if (hidden) return undefined
-    let active = true
-    fetch(`${API_BASE_URL}/vouchers/active`)
-      .then((response) => response.ok ? response.json() : [])
-      .then((data) => {
-        if (active) setVouchers(Array.isArray(data) ? data : [])
-      })
-      .catch(() => {
-        if (active) setVouchers([])
-      })
-    return () => { active = false }
-  }, [hidden])
-
-  useEffect(() => {
-    if (vouchers.length <= 1) return undefined
-    const intervalId = window.setInterval(() => {
-      setActiveIndex((current) => (current + 1) % vouchers.length)
-      setCopiedCode('')
-    }, 5000)
-    return () => window.clearInterval(intervalId)
-  }, [vouchers.length])
-
-  if (hidden || vouchers.length === 0) return null
-
-  const voucher = vouchers[activeIndex % vouchers.length]
-
-  const closePromo = () => {
-    sessionStorage.setItem('homeVoucherPromoClosed', '1')
-    setHidden(true)
-  }
-
-  const copyCode = async () => {
-    try {
-      await navigator.clipboard?.writeText(voucher.code)
-      setCopiedCode(voucher.code)
-    } catch {
-      setCopiedCode('')
-    }
-  }
-
-  return (
-    <aside className="home-voucher-float" aria-live="polite" aria-label="Ưu đãi đang diễn ra">
-      <img src="/banner.png" alt="" aria-hidden="true" />
-      <div className="home-voucher-overlay" />
-      <button className="home-voucher-close" type="button" onClick={closePromo} aria-label="Đóng ưu đãi">×</button>
-      <div className="home-voucher-content" key={voucher.id}>
-        <span className="home-voucher-kicker">Ưu đãi hôm nay</span>
-        <strong>Nhập mã {voucher.code}</strong>
-        <p>{voucherDiscountText(voucher)}. {voucherConditionText(voucher)}</p>
-        <button className="home-voucher-copy" type="button" onClick={copyCode}>
-          {copiedCode === voucher.code ? 'Đã sao chép' : 'Sao chép mã'}
-        </button>
-      </div>
-    </aside>
-  )
+  return null
 }
 
 function HomePage() {
@@ -1171,8 +1149,10 @@ function HomePage() {
       if (!response.ok) throw new Error(data.message || 'Không thể tìm phòng trống')
       const results = Array.isArray(data) ? data : []
       setSearchResults(results)
-      const highest = Math.max(...results.map(room => roomPrice(room)), 0)
-      setMaxPrice(Math.max(highest, 100000))
+      const validPrices = results.map(room => roomPrice(room)).filter(p => p > 0)
+      const highest = validPrices.length > 0 ? Math.max(...validPrices) : 0
+      const maxCalculated = highest > 0 ? Math.max(Math.ceil(highest / 1000000) * 1000000, 5000000) : 10000000
+      setMaxPrice(maxCalculated)
       setTimeout(() => {
         document.getElementById('search-results')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
       }, 80)

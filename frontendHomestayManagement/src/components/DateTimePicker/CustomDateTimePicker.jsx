@@ -76,9 +76,9 @@ export function isSlotBusyOnDate(slot, dateKey) {
 
   const [y, m, d] = dateKey.split('-').map(Number)
 
-  // Standard day window for the dateKey (homestay check-in 14:00 to next day checkout 11:00)
+  // Standard day window for the dateKey (homestay check-in 14:00 to next day checkout 12:00)
   const dayStart = new Date(y, m - 1, d, 14, 0, 0, 0)
-  const dayEnd = new Date(y, m - 1, d + 1, 11, 0, 0, 0)
+  const dayEnd = new Date(y, m - 1, d + 1, 12, 0, 0, 0)
 
   // The room is occupied on dateKey if slot overlaps [dayStart, dayEnd]
   return slotStart < dayEnd && slotEnd > dayStart
@@ -284,7 +284,7 @@ export default function CustomDateTimePicker({
 
     let primaryReason = 'AVAILABLE'
     let reasonDetail = ''
-    if (matchedSlots.some(s => s.status === 'MAINTENANCE' || s.bookingDetailId === -1)) {
+    if (matchedSlots.some(s => s.status === 'MAINTENANCE')) {
       primaryReason = 'MAINTENANCE'
       reasonDetail = 'Phòng đang tạm khóa để bảo trì / sửa chữa sự cố kỹ thuật'
     } else if (matchedSlots.some(s => s.status === 'DIRTY')) {
@@ -397,10 +397,10 @@ export default function CustomDateTimePicker({
   const isTodayDisabled = (!isCheckIn && checkInDateKey && todayKey <= checkInDateKey) ||
     (!allowBeforeMin && minDateKey && todayKey < minDateKey)
 
-  // Time / Date builder with fixed homestay policy (14:00 checkin, 11:00 checkout)
+  // Time / Date builder with fixed homestay policy (14:00 checkin, 12:00 checkout)
   const commitNewDateTime = (newDateKey) => {
     const targetDateKey = newDateKey || selectedDateKey || todayKey
-    const hour24 = isCheckIn ? 14 : 11
+    const hour24 = isCheckIn ? 14 : 12
     const formatted = `${targetDateKey}T${formatTwoDigits(hour24)}:00`
 
     if (!allowBeforeMin) {
@@ -447,7 +447,7 @@ export default function CustomDateTimePicker({
           className="custom-datetime-text-input"
           type="text"
           aria-label={ariaLabel}
-          placeholder={isCheckIn ? 'dd/mm/yyyy 02:00 PM' : 'dd/mm/yyyy 11:00 AM'}
+          placeholder={isCheckIn ? 'dd/mm/yyyy 02:00 PM' : 'dd/mm/yyyy 12:00 PM'}
           value={formatDateTimeDisplay(value)}
           disabled={disabled}
           required={required}
@@ -479,7 +479,7 @@ export default function CustomDateTimePicker({
               <polyline points="12 6 12 12 16 14" />
             </svg>
             <span>
-              Chính sách Homestay: <strong>{isCheckIn ? 'Nhận phòng từ 14:00 (02:00 PM)' : 'Trả phòng trước 11:00 (11:00 AM)'}</strong>
+              Chính sách Homestay: <strong>{isCheckIn ? 'Nhận phòng từ 14:00 (02:00 PM)' : 'Trả phòng trước 12:00 (12:00 PM)'}</strong>
             </span>
           </div>
 
@@ -615,14 +615,14 @@ export default function CustomDateTimePicker({
                         badgeClass = 'status-busy'
                         cellTitle = isCheckIn
                           ? '📅 Ngày này đã có khách cọc/xác nhận (kín từ 14:00)'
-                          : '📅 Ngày này đã kín phòng trước 11:00 (Cần 3 tiếng dọn dẹp)'
+                          : '📅 Ngày này đã kín phòng trước 12:00 (Cần 2 tiếng dọn dẹp)'
                       }
                     } else {
                       badgeText = 'Trống'
                       badgeClass = 'status-available'
                       cellTitle = isCheckIn
                         ? '✅ Phòng trống - Có thể nhận phòng từ 14:00 (02:00 PM)'
-                        : '✅ Phòng trống - Trả phòng trước 11:00 (11:00 AM)'
+                        : '✅ Phòng trống - Trả phòng trước 12:00 (12:00 PM)'
                     }
                   } else {
                     if (occupancy.isAllBusy) {

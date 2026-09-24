@@ -459,7 +459,7 @@ function BookingExtensionModal({
 
           {/* Selection options */}
           <div className="extend-hours-section">
-            <label className="extend-section-title">Chọn số ngày muốn book thêm (trả phòng lúc 11:00 trưa):</label>
+            <label className="extend-section-title">Chọn số ngày muốn book thêm (trả phòng lúc 12:00 trưa):</label>
             <div className="extend-hour-presets">
               {[1, 2, 3, 5, 7].map((d) => (
                 <button
@@ -468,7 +468,7 @@ function BookingExtensionModal({
                   className={`extend-hour-btn ${days === d ? 'is-active' : ''}`}
                   onClick={() => setDays(d)}
                 >
-                  +{d} Ngày {d === 1 ? '(đến 11:00 ngày mai)' : ''}
+                  +{d} Ngày {d === 1 ? '(đến 12:00 ngày mai)' : ''}
                 </button>
               ))}
             </div>
@@ -593,10 +593,10 @@ function BookingCancelModal({
   currentUser,
 }) {
   const [reason, setReason] = useState('')
-  const [zaloPhone, setZaloPhone] = useState(currentUser?.phoneNumber || '')
-  const [bankAccountNumber, setBankAccountNumber] = useState('')
-  const [bankName, setBankName] = useState('Vietcombank')
-  const [accountHolderName, setAccountHolderName] = useState(currentUser?.fullName || '')
+  const [zaloPhone, setZaloPhone] = useState(currentUser?.phone || currentUser?.phoneNumber || booking?.customerPhone || '')
+  const [bankAccountNumber, setBankAccountNumber] = useState(currentUser?.bankAccountNumber || '')
+  const [bankName, setBankName] = useState(currentUser?.bankName || 'Vietcombank')
+  const [accountHolderName, setAccountHolderName] = useState(currentUser?.bankAccountHolder || currentUser?.fullName || booking?.customerName || '')
   const [preview, setPreview] = useState(null)
   const [loadingPreview, setLoadingPreview] = useState(true)
   const [previewError, setPreviewError] = useState('')
@@ -833,7 +833,7 @@ function BookingCancelModal({
 
 function CustomerChangeRoomModal({ booking, room, onClose, currentUser }) {
   const [reason, setReason] = useState('ROOM_ISSUE')
-  const [phone, setPhone] = useState(currentUser?.phoneNumber || booking?.customerPhone || '')
+  const [phone, setPhone] = useState(currentUser?.phone || currentUser?.phoneNumber || booking?.customerPhone || '')
   const [preferredRoomType, setPreferredRoomType] = useState('')
   const [note, setNote] = useState('')
   const [submitting, setSubmitting] = useState(false)

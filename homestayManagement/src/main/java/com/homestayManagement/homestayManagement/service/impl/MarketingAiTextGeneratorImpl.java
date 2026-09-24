@@ -76,8 +76,10 @@ public class MarketingAiTextGeneratorImpl implements MarketingAiTextGenerator {
         try {
             String variationSeed = UUID.randomUUID().toString();
             String prompt = """
-                    Bạn là AI marketing cho homestay. Hãy viết nội dung đăng mạng xã hội bằng tiếng Việt.
+                    Bạn là AI marketing chuyên nghiệp cho "Lá Đỏ Homestay Sa Pa" (Địa chỉ: 031 Hoàng Liên, Sa Pa | Hotline/Zalo: 0941.186.699).
+                    Hãy viết nội dung đăng mạng xã hội bằng tiếng Việt tự nhiên, hấp dẫn, đúng phong cách du lịch nghỉ dưỡng Sa Pa.
                     Chỉ trả JSON hợp lệ theo schema: {"content":"...","hashtags":"#tag #tag","title":"..."}.
+                    Tuyệt đối không bịa số điện thoại ảo (chỉ dùng 0941.186.699 nếu cần hotline).
                     Mỗi lần tạo phải viết một phiên bản mới, không lặp lại câu mở đầu/cấu trúc nếu cùng brief.
                     Mã biến thể sáng tạo: %s
                     Độ dài mong muốn: %s
@@ -91,7 +93,7 @@ public class MarketingAiTextGeneratorImpl implements MarketingAiTextGenerator {
             Map<String, Object> payload = new LinkedHashMap<>();
             payload.put("model", model);
             payload.put("messages", List.of(
-                    Map.of("role", "system", "content", "You are a creative Vietnamese social media marketing copywriter. Return valid JSON only. Avoid repeating prior wording."),
+                    Map.of("role", "system", "content", "You are an expert Vietnamese social media copywriter for Lá Đỏ Homestay Sa Pa (Hotline: 0941.186.699). Return valid JSON only. Never use fake phone numbers."),
                     Map.of("role", "user", "content", prompt)
             ));
             if (isGenericCompatible()) {
@@ -131,17 +133,19 @@ public class MarketingAiTextGeneratorImpl implements MarketingAiTextGenerator {
     @Override
     public GenerationResult generateStream(MarketingPostRequest request, Consumer<String> deltaConsumer) {
         if (!enabled) {
-            return failed("MARKETING_AI_DISABLED", "ChÆ°a báº­t Marketing AI.");
+            return failed("MARKETING_AI_DISABLED", "Chưa bật Marketing AI.");
         }
         if (!hasText(apiKey)) {
-            return failed("MARKETING_AI_KEY_MISSING", "Thiáº¿u MARKETING_AI_API_KEY.");
+            return failed("MARKETING_AI_KEY_MISSING", "Thiếu MARKETING_AI_API_KEY.");
         }
 
         try {
             String variationSeed = UUID.randomUUID().toString();
             String prompt = """
-                    Bạn là AI marketing cho homestay. Hãy viết nội dung đăng mạng xã hội bằng tiếng Việt.
+                    Bạn là AI marketing chuyên nghiệp cho "Lá Đỏ Homestay Sa Pa" (Địa chỉ: 031 Hoàng Liên, Sa Pa | Hotline/Zalo: 0941.186.699).
+                    Hãy viết nội dung đăng mạng xã hội bằng tiếng Việt tự nhiên, hấp dẫn, đúng phong cách du lịch nghỉ dưỡng Sa Pa.
                     Chỉ trả nội dung bài đăng thuần văn bản, không trả JSON, không bọc markdown.
+                    Tuyệt đối không bịa số điện thoại ảo (chỉ dùng 0941.186.699 nếu cần hotline).
                     Mỗi lần tạo phải viết một phiên bản mới, không lặp lại câu mở đầu/cấu trúc nếu cùng brief.
                     Mã biến thể sáng tạo: %s
                     Độ dài mong muốn: %s
@@ -155,7 +159,7 @@ public class MarketingAiTextGeneratorImpl implements MarketingAiTextGenerator {
             Map<String, Object> payload = new LinkedHashMap<>();
             payload.put("model", model);
             payload.put("messages", List.of(
-                    Map.of("role", "system", "content", "You are a creative Vietnamese social media marketing copywriter. Stream plain post copy only."),
+                    Map.of("role", "system", "content", "You are an expert Vietnamese social media copywriter for Lá Đỏ Homestay Sa Pa (Hotline: 0941.186.699). Stream plain post copy only. Never use fake phone numbers."),
                     Map.of("role", "user", "content", prompt)
             ));
             payload.put("stream", true);

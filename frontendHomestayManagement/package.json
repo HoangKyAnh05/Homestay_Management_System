@@ -11,6 +11,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@splinetool/runtime": "^2.0.57",
     "leaflet": "^1.9.4",
     "lucide-react": "^1.46.0",
     "react": "^19.2.6",

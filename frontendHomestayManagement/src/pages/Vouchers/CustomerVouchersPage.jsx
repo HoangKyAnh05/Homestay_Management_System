@@ -107,14 +107,37 @@ export default function CustomerVouchersPage() {
       fetchUserProfile()
       fetchMyRedeemedVouchers()
     }
+
+    const handleProfileUpdate = () => {
+      const updatedUser = getStoredUser()
+      setCurrentUser(updatedUser)
+      if (getStoredToken()) {
+        fetchUserProfile()
+        fetchMyRedeemedVouchers()
+      }
+    }
+
+    window.addEventListener('userProfileUpdated', handleProfileUpdate)
+    window.addEventListener('focus', handleProfileUpdate)
+    window.addEventListener('storage', handleProfileUpdate)
+    return () => {
+      window.removeEventListener('userProfileUpdated', handleProfileUpdate)
+      window.removeEventListener('focus', handleProfileUpdate)
+      window.removeEventListener('storage', handleProfileUpdate)
+    }
   }, [])
 
   const fetchUserProfile = async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/users/profile`, { headers: authHeaders() })
+      const res = await fetch(`${API_BASE_URL}/users/me`, { headers: authHeaders() })
       if (res.ok) {
         const data = await res.json()
         setUserProfile(data)
+        const stored = getStoredUser() || {}
+        const merged = { ...stored, ...data }
+        localStorage.setItem('homeStayUser', JSON.stringify(merged))
+        localStorage.setItem('user', JSON.stringify(merged))
+        setCurrentUser(merged)
       }
     } catch {
       // Ignored
@@ -191,8 +214,27 @@ export default function CustomerVouchersPage() {
       if (!res.ok) throw new Error(data.message || 'Đổi điểm thất bại')
       
       setRedeemedSuccessModal(data)
-      // Refresh user points and list
-      fetchUserProfile()
+      
+      // Update points immediately in state & localStorage without waiting
+      if (typeof data.remainingPoints === 'number') {
+        const nextPts = data.remainingPoints
+        const nextDiscount = Math.min(15, Math.floor(nextPts / 10))
+        setUserProfile(prev => ({
+          ...(prev || {}),
+          memberPoints: nextPts,
+          memberDiscountPercent: nextDiscount
+        }))
+        const stored = getStoredUser() || {}
+        stored.memberPoints = nextPts
+        stored.memberDiscountPercent = nextDiscount
+        localStorage.setItem('homeStayUser', JSON.stringify(stored))
+        localStorage.setItem('user', JSON.stringify(stored))
+        setCurrentUser(stored)
+        window.dispatchEvent(new Event('userProfileUpdated'))
+      } else {
+        await fetchUserProfile()
+      }
+
       fetchMyRedeemedVouchers()
     } catch (err) {
       alert(err.message || 'Lỗi trong quá trình đổi điểm')
@@ -264,12 +306,12 @@ function getUsedVouchers() {
               <div className="cvp-stat-item">
                 <span className="cvp-stat-label">Ưu Đãi Hạng Thành Viên</span>
                 <strong className="cvp-stat-number">
-                  {discountPercent > 0 ? `Giảm ${discountPercent}%` : 'Tích 1 điểm / 1 triệu'}
+                  {discountPercent > 0 ? `Giảm ${discountPercent}%` : 'Tích lũy theo đơn'}
                 </strong>
               </div>
             </div>
             <p className="cvp-loyalty-tip">
-               Mỗi 1.000.000đ khi đặt phòng bạn sẽ tích được 1 điểm thưởng. Dùng điểm để đổi mã voucher bên dưới!
+              Tích lũy điểm thưởng tự động theo từng đơn đặt phòng (+5 đến +100 điểm/đơn). Dùng điểm để đổi các gói mã voucher bên dưới!
             </p>
           </div>
           <div className="cvp-loyalty-right">

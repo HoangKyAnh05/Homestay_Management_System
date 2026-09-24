@@ -991,6 +991,37 @@
   border-radius: 6px;
 }
 
+/* Change Room / Incident Report Button */
+.history-change-room-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #c2410c;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.history-change-room-btn:hover {
+  background: #ea580c;
+  color: #ffffff;
+  border-color: #ea580c;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(234, 88, 12, 0.25);
+}
+
+.history-change-room-btn--compact {
+  padding: 5px 10px;
+  font-size: 12px;
+  border-radius: 6px;
+}
+
 .history-room-extend-link {
   background: none;
   border: none;

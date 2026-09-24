@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from 'react'
 import { getStoredToken, getStoredUser } from '../../services/authService'
 import { navigate } from './AdminLayout'
 import AdminLayout from './AdminLayout'
-import DailyClosingModal from '../../components/DailyClosingReport/DailyClosingModal'
 import { formatExtensionTime, formatExtensionTitle } from '../../utils/stayOverdue'
 import './ReceptionistOverviewPage.css'
 
@@ -70,19 +69,27 @@ function ReceptionistOverviewPage() {
   const user = getStoredUser()
   const today = toDateInput(new Date())
   const [logs, setLogs] = useState([])
+  const [incidentSummary, setIncidentSummary] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [showDailyClosingModal, setShowDailyClosingModal] = useState(false)
 
   const loadLogs = useCallback(async () => {
     setLoading(true)
     setError('')
     try {
       const params = new URLSearchParams({ fromDate: today, toDate: today })
-      const res = await fetch(`${API_BASE}/check-in-logs?${params}`, { headers: authHeaders() })
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data.message || 'Không thể tải dữ liệu')
+      const [logsRes, incRes] = await Promise.all([
+        fetch(`${API_BASE}/check-in-logs?${params}`, { headers: authHeaders() }),
+        fetch((import.meta.env.VITE_API_URL || '') + '/api/admin/incidents/summary', { headers: authHeaders() }).catch(() => null),
+      ])
+      const data = await logsRes.json().catch(() => ({}))
+      if (!logsRes.ok) throw new Error(data.message || 'Không thể tải dữ liệu')
       setLogs(Array.isArray(data) ? data : [])
+
+      if (incRes && incRes.ok) {
+        const incData = await incRes.json().catch(() => null)
+        setIncidentSummary(incData)
+      }
     } catch (err) {
       setError(err.message)
     } finally {
@@ -120,40 +127,59 @@ function ReceptionistOverviewPage() {
             </p>
           </div>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-            <button
-              type="button"
-              className="rcp-daily-closing-btn"
-              onClick={() => setShowDailyClosingModal(true)}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 8,
-                padding: '10px 18px',
-                borderRadius: 10,
-                border: 'none',
-                background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
-                color: '#ffffff',
-                fontWeight: 700,
-                fontSize: 14,
-                cursor: 'pointer',
-                boxShadow: '0 4px 12px rgba(5, 150, 105, 0.3)',
-                transition: 'all 0.2s',
-              }}
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 18, height: 18 }}>
-                <line x1="18" y1="20" x2="18" y2="10"/>
-                <line x1="12" y1="20" x2="12" y2="4"/>
-                <line x1="6" y1="20" x2="6" y2="14"/>
-              </svg>
-              <span>Tổng kết cuối ngày</span>
-            </button>
-
             <button type="button" className="rcp-refresh" onClick={loadLogs} disabled={loading}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>
               {loading ? 'Đang tải...' : 'Làm mới'}
             </button>
           </div>
         </div>
+
+        {/* ── Incident alert banner for Receptionist ── */}
+        {incidentSummary && incidentSummary.reported > 0 && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: 12,
+            background: '#fff1f2',
+            border: '1.5px solid #fecdd3',
+            borderRadius: 12,
+            padding: '12px 18px',
+            marginBottom: 20,
+            boxShadow: '0 1px 3px rgba(225, 29, 72, 0.08)',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ fontSize: 20 }}>⚠️</span>
+              <div>
+                <strong style={{ color: '#be123c', fontSize: 14 }}>
+                  Có {incidentSummary.reported} sự cố đồ đạc hỏng / mất đang chờ Quản trị viên xử lý
+                </strong>
+                <div style={{ color: '#881337', fontSize: 12.5, marginTop: 2 }}>
+                  Nhân viên Housekeeping đã báo cáo đồ cần thay thế hoặc bồi thường. Lễ tân có thể xem chi tiết để nắm tình hình phòng.
+                </div>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => navigate('/admin/housekeeping/incidents')}
+              style={{
+                background: '#e11d48',
+                color: '#ffffff',
+                border: 'none',
+                padding: '7px 14px',
+                borderRadius: 8,
+                fontWeight: 700,
+                fontSize: 13,
+                cursor: 'pointer',
+                boxShadow: '0 1px 2px rgba(225, 29, 72, 0.2)',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              Xem danh sách sự cố →
+            </button>
+          </div>
+        )}
 
         {/* ── Summary cards ── */}
         <div className="rcp-summary">
@@ -269,17 +295,15 @@ function ReceptionistOverviewPage() {
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
             <span>Nhật ký Lưu trú</span>
           </button>
+          <button type="button" className="rcp-quick-item" onClick={() => navigate('/admin/housekeeping/incidents')}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 15h6"/><path d="M9 11h3"/></svg>
+            <span>Đồ hỏng & mất</span>
+          </button>
           <button type="button" className="rcp-quick-item" onClick={() => navigate('/admin/invoices')}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 2h12v20l-3-2-3 2-3-2-3 2V2z"/><path d="M9 7h6M9 11h6M9 15h4"/></svg>
             <span>Hóa đơn</span>
           </button>
         </div>
-
-        <DailyClosingModal
-          isOpen={showDailyClosingModal}
-          onClose={() => setShowDailyClosingModal(false)}
-          onSuccess={loadLogs}
-        />
       </div>
     </AdminLayout>
   )

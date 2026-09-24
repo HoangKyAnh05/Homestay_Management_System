@@ -10,8 +10,8 @@ export default function CalendarShowcasePage() {
   const [val5, setVal5] = useState('2026-09-14T14:00')
   const [val6, setVal6] = useState('2026-09-14T14:00')
   const [val7In, setVal7In] = useState('2026-09-16T14:00')
-  const [val7Out, setVal7Out] = useState('2026-09-19T11:00')
-  const [val8Out, setVal8Out] = useState('2026-09-20T11:00')
+  const [val7Out, setVal7Out] = useState('2026-09-19T12:00')
+  const [val8Out, setVal8Out] = useState('2026-09-20T12:00')
 
   const [val9, setVal9] = useState('2026-09-14T14:00')
   const [val10, setVal10] = useState('2026-09-14T14:00')
@@ -22,25 +22,25 @@ export default function CalendarShowcasePage() {
 
   // Sample data sets
   const slotsBooked = [
-    { checkInTarget: '2026-09-16T14:00:00', checkOutTarget: '2026-09-18T11:00:00', status: 'CONFIRMED', roomId: 1 },
-    { checkInTarget: '2026-09-22T14:00:00', checkOutTarget: '2026-09-25T11:00:00', status: 'CONFIRMED', roomId: 1 },
+    { checkInTarget: '2026-09-16T14:00:00', checkOutTarget: '2026-09-18T12:00:00', status: 'CONFIRMED', roomId: 1 },
+    { checkInTarget: '2026-09-22T14:00:00', checkOutTarget: '2026-09-25T12:00:00', status: 'CONFIRMED', roomId: 1 },
   ]
 
   const slotsMaintenance = [
-    { checkInTarget: '2026-09-15T14:00:00', checkOutTarget: '2026-09-17T11:00:00', status: 'MAINTENANCE', bookingDetailId: -1, roomId: 1 },
-    { checkInTarget: '2026-09-25T14:00:00', checkOutTarget: '2026-09-28T11:00:00', status: 'MAINTENANCE', bookingDetailId: -1, roomId: 1 },
+    { checkInTarget: '2026-09-15T14:00:00', checkOutTarget: '2026-09-17T12:00:00', status: 'MAINTENANCE', bookingDetailId: -1, roomId: 1 },
+    { checkInTarget: '2026-09-25T14:00:00', checkOutTarget: '2026-09-28T12:00:00', status: 'MAINTENANCE', bookingDetailId: -1, roomId: 1 },
   ]
 
   const slotsDirty = [
-    { checkInTarget: '2026-09-15T14:00:00', checkOutTarget: '2026-09-16T11:00:00', status: 'DIRTY', roomId: 1 },
+    { checkInTarget: '2026-09-15T14:00:00', checkOutTarget: '2026-09-16T12:00:00', status: 'DIRTY', roomId: 1 },
   ]
 
   const slotsStay = [
-    { checkInTarget: '2026-09-14T14:00:00', checkOutTarget: '2026-09-17T11:00:00', status: 'CHECKED_IN', roomId: 1 },
+    { checkInTarget: '2026-09-14T14:00:00', checkOutTarget: '2026-09-17T12:00:00', status: 'CHECKED_IN', roomId: 1 },
   ]
 
   const slotsPending = [
-    { checkInTarget: '2026-09-18T14:00:00', checkOutTarget: '2026-09-20T11:00:00', status: 'PENDING', roomId: 1 },
+    { checkInTarget: '2026-09-18T14:00:00', checkOutTarget: '2026-09-20T12:00:00', status: 'PENDING', roomId: 1 },
   ]
 
   const threeRooms = [
@@ -51,25 +51,25 @@ export default function CalendarShowcasePage() {
 
   const slotsPartialBusy = [
     // Room 101 booked 16-18
-    { checkInTarget: '2026-09-16T14:00:00', checkOutTarget: '2026-09-18T11:00:00', status: 'CONFIRMED', roomId: 101, roomNumber: '101' },
+    { checkInTarget: '2026-09-16T14:00:00', checkOutTarget: '2026-09-18T12:00:00', status: 'CONFIRMED', roomId: 101, roomNumber: '101' },
     // Room 102 booked 16-18
-    { checkInTarget: '2026-09-16T14:00:00', checkOutTarget: '2026-09-18T11:00:00', status: 'CONFIRMED', roomId: 102, roomNumber: '102' },
+    { checkInTarget: '2026-09-16T14:00:00', checkOutTarget: '2026-09-18T12:00:00', status: 'CONFIRMED', roomId: 102, roomNumber: '102' },
     // Room 103 booked 22-24
-    { checkInTarget: '2026-09-22T14:00:00', checkOutTarget: '2026-09-24T11:00:00', status: 'CONFIRMED', roomId: 103, roomNumber: '103' },
+    { checkInTarget: '2026-09-22T14:00:00', checkOutTarget: '2026-09-24T12:00:00', status: 'CONFIRMED', roomId: 103, roomNumber: '103' },
   ]
 
   const slotsAllBusy = [
-    { checkInTarget: '2026-09-18T14:00:00', checkOutTarget: '2026-09-21T11:00:00', status: 'CONFIRMED', roomId: 101, roomNumber: '101' },
-    { checkInTarget: '2026-09-18T14:00:00', checkOutTarget: '2026-09-21T11:00:00', status: 'CONFIRMED', roomId: 102, roomNumber: '102' },
-    { checkInTarget: '2026-09-18T14:00:00', checkOutTarget: '2026-09-21T11:00:00', status: 'CONFIRMED', roomId: 103, roomNumber: '103' },
+    { checkInTarget: '2026-09-18T14:00:00', checkOutTarget: '2026-09-21T12:00:00', status: 'CONFIRMED', roomId: 101, roomNumber: '101' },
+    { checkInTarget: '2026-09-18T14:00:00', checkOutTarget: '2026-09-21T12:00:00', status: 'CONFIRMED', roomId: 102, roomNumber: '102' },
+    { checkInTarget: '2026-09-18T14:00:00', checkOutTarget: '2026-09-21T12:00:00', status: 'CONFIRMED', roomId: 103, roomNumber: '103' },
   ]
 
   const modalBusySlots = [
-    { bookingDetailId: 101, checkInTarget: '2026-09-14T14:00:00', checkOutTarget: '2026-09-17T11:00:00', status: 'CHECKED_IN' },
-    { bookingDetailId: 102, checkInTarget: '2026-09-18T14:00:00', checkOutTarget: '2026-09-20T11:00:00', status: 'PENDING' },
-    { bookingDetailId: 103, checkInTarget: '2026-09-21T14:00:00', checkOutTarget: '2026-09-23T11:00:00', status: 'DIRTY' },
-    { bookingDetailId: 104, checkInTarget: '2026-09-24T14:00:00', checkOutTarget: '2026-09-26T11:00:00', status: 'MAINTENANCE' },
-    { bookingDetailId: 105, checkInTarget: '2026-09-27T14:00:00', checkOutTarget: '2026-09-29T11:00:00', status: 'CONFIRMED' },
+    { bookingDetailId: 101, checkInTarget: '2026-09-14T14:00:00', checkOutTarget: '2026-09-17T12:00:00', status: 'CHECKED_IN' },
+    { bookingDetailId: 102, checkInTarget: '2026-09-18T14:00:00', checkOutTarget: '2026-09-20T12:00:00', status: 'PENDING' },
+    { bookingDetailId: 103, checkInTarget: '2026-09-21T14:00:00', checkOutTarget: '2026-09-23T12:00:00', status: 'DIRTY' },
+    { bookingDetailId: 104, checkInTarget: '2026-09-24T14:00:00', checkOutTarget: '2026-09-26T12:00:00', status: 'MAINTENANCE' },
+    { bookingDetailId: 105, checkInTarget: '2026-09-27T14:00:00', checkOutTarget: '2026-09-29T12:00:00', status: 'CONFIRMED' },
   ]
 
   return (

@@ -165,10 +165,11 @@ function rentTypeLabel(rentType) {
   const labels = {
     HOURLY: 'Theo giờ',
     BY_HOUR: 'Theo giờ',
-    DAILY: 'Theo ngày',
-    BY_DAY: 'Theo ngày',
-    NIGHTLY: 'Theo đêm',
-    BY_NIGHT: 'Theo đêm',
+    DAILY: '2 ngày 1 đêm',
+    BY_DAY: '2 ngày 1 đêm',
+    NIGHTLY: '2 ngày 1 đêm',
+    BY_NIGHT: '2 ngày 1 đêm',
+    OVERNIGHT: '2 ngày 1 đêm',
   }
   return labels[String(rentType || '').toUpperCase()] || rentType || 'Chưa rõ'
 }
@@ -1710,7 +1711,10 @@ function CheckInModal({ bookingDetailId, onClose, onCompleted }) {
     const list = []
 
     // 1. Same Type group
-    const sameRooms = preparation.availableRooms || []
+    let sameRooms = [...(preparation.availableRooms || [])]
+    if (preparation.assignedRoom && !sameRooms.some(r => r.id === preparation.assignedRoom.id)) {
+      sameRooms.unshift(preparation.assignedRoom)
+    }
     const sameTypeName = houseTypeName(preparation) || 'Cùng loại'
     if (sameRooms.length > 0 || (!preparation.otherAvailableRooms || preparation.otherAvailableRooms.length === 0)) {
       list.push({
@@ -1958,48 +1962,32 @@ function CheckInModal({ bookingDetailId, onClose, onCompleted }) {
               <div><span>Số khách</span><strong>{preparation.numberOfAdults} người lớn · {preparation.numberOfChildren} trẻ em</strong></div>
             </section>
 
-            {preparation.preRegistered && (
-              <div className="acl-preregistered-notice">
-                Thông tin phòng và người lưu trú đã được đăng ký khi tạo đơn trực tiếp. Có thể chỉnh sửa thông tin khách trước khi xác nhận check-in.
-              </div>
-            )}
-
             <section className="acl-checkin-section">
               <div className="acl-checkin-section-head">
                 <div>
                   <span>01</span>
                   <div>
-                    <h3>{preparation.preRegistered ? 'Phòng đã đặt' : 'Gán phòng trống'}</h3>
+                    <h3>Gán phòng trống</h3>
                     <p>
-                      {preparation.preRegistered
-                        ? 'Phòng đã được xác nhận khi tạo đơn trực tiếp.'
-                        : 'Chọn phòng thuộc đúng loại hoặc linh hoạt đổi phòng trống khác khi phòng bị bảo trì / trùng lịch.'}
+                      Chọn phòng thuộc đúng loại hoặc linh hoạt đổi phòng trống khác khi phòng bị bảo trì / trùng lịch.
                     </p>
                   </div>
                 </div>
               </div>
 
-              {preparation.preRegistered && preparation.assignedRoom ? (
-                <div className="acl-room-options">
-                  <label className="is-selected acl-room-option--readonly">
-                    <input type="radio" checked readOnly />
-                    <span>Phòng</span><strong>{preparation.assignedRoom.roomNumber}</strong><small>{houseTypeName(preparation.assignedRoom)}</small>
-                  </label>
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  {/* Notice Banner */}
-                  {preparation.availableRooms?.length > 0 ? (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 16px', borderRadius: 10, background: '#f0fdf4', border: '1.5px solid #bbf7d0', color: '#166534', fontSize: '13.5px', fontWeight: 500 }}>
-                      <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, borderRadius: '50%', background: '#16a34a', color: '#ffffff', fontSize: 13, fontWeight: 900 }}>✓</span>
-                      <span>Còn <strong>{preparation.availableRooms.length}</strong> phòng cùng loại (<strong>{houseTypeName(preparation)}</strong>) đang trống.</span>
-                    </div>
-                  ) : (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 16px', borderRadius: 10, background: '#fffbeb', border: '1.5px solid #fde68a', color: '#b45309', fontSize: '13.5px', fontWeight: 500 }}>
-                      <span style={{ fontSize: 18 }}>⚠️</span>
-                      <span><strong>Đã hết phòng cùng loại trống!</strong> Quý khách / Lễ tân vui lòng chọn chuyển sang loại phòng khác bên dưới:</span>
-                    </div>
-                  )}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {/* Notice Banner */}
+                {preparation.availableRooms?.length > 0 ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 16px', borderRadius: 10, background: '#f0fdf4', border: '1.5px solid #bbf7d0', color: '#166534', fontSize: '13.5px', fontWeight: 500 }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, borderRadius: '50%', background: '#16a34a', color: '#ffffff', fontSize: 13, fontWeight: 900 }}>✓</span>
+                    <span>Còn <strong>{preparation.availableRooms.length}</strong> phòng cùng loại (<strong>{houseTypeName(preparation)}</strong>) đang trống.</span>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 16px', borderRadius: 10, background: '#fffbeb', border: '1.5px solid #fde68a', color: '#b45309', fontSize: '13.5px', fontWeight: 500 }}>
+                    <span style={{ fontSize: 18 }}>⚠️</span>
+                    <span><strong>Đã hết phòng cùng loại trống!</strong> Quý khách / Lễ tân vui lòng chọn chuyển sang loại phòng khác bên dưới:</span>
+                  </div>
+                )}
 
                   {/* Room Type Dropdown Selector */}
                   {roomTypeGroups.length > 0 && (() => {
@@ -2201,7 +2189,6 @@ function CheckInModal({ bookingDetailId, onClose, onCompleted }) {
                     </div>
                   )}
                 </div>
-              )}
             </section>
 
             <section className="acl-checkin-section">
@@ -2211,7 +2198,7 @@ function CheckInModal({ bookingDetailId, onClose, onCompleted }) {
                     <span>02</span>
                     <div>
                       <h3>Thông tin người lưu trú</h3>
-                      <p>{preparation.preRegistered ? `Đã đăng ký ${guests.length} người lưu trú.` : `Đang thiết lập ${guests.length} người lưu trú.`}</p>
+                      <p>Đang thiết lập {guests.length} người lưu trú.</p>
                     </div>
                   </div>
                   <button

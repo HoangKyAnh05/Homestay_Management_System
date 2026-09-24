@@ -10,6 +10,8 @@ import MiniMap from '../../components/MiniMap/MiniMap';
 import { SCENERY_ARTICLES } from './sceneryArticles';
 import CinemaZenMode from './CinemaZenMode';
 import AmbientEffectsLayer from './AmbientEffectsLayer';
+import Spline3DSection from './Spline3DSection';
+import AIVideoShowcase from './AIVideoShowcase';
 
 const API_BASE_URL = (import.meta.env.VITE_API_URL || '') + '/api';
 
@@ -105,7 +107,7 @@ const SHOWROOM_ITEMS = [
     category: 'MÂY NGÀN MƯỜNG HOA',
     time: '05:45 - 07:00 Sáng',
     timeSlot: 'dawn',
-    image: '/landing/images/sapa_real/la_do_homestay_real.jpg',
+    image: '/landing/images/sapa_real/sapa_stone_ledge_real.jpg',
     badge: '✨ Giờ Vàng: 05:45 - 07:00 Sáng',
     desc: 'Độc check-in huyền thoại ôm trọn thung lũng Mường Hoa. Biển mây cuộn tràn sát bậc thềm đá tự nhiên ngay trước cửa homestay.',
     tips: 'Đứng nghiêng 45° đón tia nắng đầu tiên xuyên qua rặng thông Hoàng Liên Sơn.'
@@ -116,7 +118,7 @@ const SHOWROOM_ITEMS = [
     category: 'HOÀNG HÔN TRIỆU VIEW',
     time: '16:45 - 17:45 Chiều',
     timeSlot: 'sunset',
-    image: '/landing/images/sapa_real/la_do_cafe_balcony.jpg',
+    image: '/landing/images/sapa_real/sapa_la_do_cafe_sunset_real.jpg',
     badge: '✨ Giờ Vàng: 16:45 - 17:45 Chiều',
     desc: 'Thưởng thức ly cà phê mộc đậm đà trong lúc ngắm ráng chiều hoàng hôn tím phủ kín đỉnh Fansipan hùng vĩ.',
     tips: 'Chụp ngược sáng lấy bóng silhouette ly trà bốc khói mờ ảo bên khung cửa gỗ.'
@@ -127,7 +129,7 @@ const SHOWROOM_ITEMS = [
     category: 'TRỊ LIỆU THẢO MỘC NÚI RỪNG',
     time: '18:00 - 21:00 Tối',
     timeSlot: 'night',
-    image: '/landing/images/sapa_real/tam_la_thuoc_dao_do.jpg',
+    image: '/landing/images/sapa_real/sapa_dao_herbal_bath_real.jpg',
     badge: '🌿 Thư Giãn: 18:00 - 21:00 Tối',
     desc: 'Bồn gỗ Pơ-mu ngoài trời dẫn nước khoáng thảo dược từ 30 vị lá rừng Hoàng Liên Sơn, vừa ngâm mình thư thái vừa ngắm mây bay.',
     tips: 'Góc chụp cận làn khói thảo mộc bay trên mặt nước và bọt khoáng tự nhiên.'
@@ -154,11 +156,16 @@ function LandingPage() {
   const [liveArticles, setLiveArticles] = useState([]);
   const [activeSeason, setActiveSeason] = useState('autumn');
   const [activeMood, setActiveMood] = useState('night');
+  const [isAutoMood, setIsAutoMood] = useState(() => localStorage.getItem('lado_auto_mood_enabled') !== 'false');
   const moodTimerRef = useRef(null);
 
   // 5s Auto Cycle Atmosphere Mood Switcher with smooth animation
   const resetMoodAutoCycle = () => {
-    if (moodTimerRef.current) clearInterval(moodTimerRef.current);
+    if (moodTimerRef.current) {
+      clearInterval(moodTimerRef.current);
+      moodTimerRef.current = null;
+    }
+    if (!isAutoMood) return;
     moodTimerRef.current = setInterval(() => {
       setActiveMood((prev) => {
         const nextIdx = (MOODS_LIST.findIndex((m) => m.id === prev) + 1) % MOODS_LIST.length;
@@ -171,16 +178,29 @@ function LandingPage() {
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', activeMood);
-    resetMoodAutoCycle();
+    if (isAutoMood) {
+      resetMoodAutoCycle();
+    } else if (moodTimerRef.current) {
+      clearInterval(moodTimerRef.current);
+      moodTimerRef.current = null;
+    }
     return () => {
       if (moodTimerRef.current) clearInterval(moodTimerRef.current);
     };
-  }, []);
+  }, [isAutoMood]);
+
+  const handleToggleAutoMood = () => {
+    setIsAutoMood((prev) => {
+      const next = !prev;
+      localStorage.setItem('lado_auto_mood_enabled', String(next));
+      return next;
+    });
+  };
 
   const handleSelectMood = (moodId) => {
     setActiveMood(moodId);
     document.documentElement.setAttribute('data-theme', moodId);
-    resetMoodAutoCycle();
+    if (isAutoMood) resetMoodAutoCycle();
   };
 
   // Auto open Zen Cinema Mode on #zen or ?zen=true
@@ -325,6 +345,35 @@ function LandingPage() {
         }
       })
       .catch(() => {});
+  }, []);
+
+  // Eagerly preload high-res scenery, showroom, and room images to prevent stutter / white flashes
+  useEffect(() => {
+    const staticImages = [
+      '/landing/images/sapa_real/la_do_homestay_real.jpg',
+      '/landing/images/sapa_real/la_do_cafe_balcony.jpg',
+      '/landing/images/sapa_real/cau_go_suoi_mo.jpg',
+      '/landing/images/sapa_real/ruong_bac_thang_muong_hoa.jpg',
+      '/landing/images/sapa_real/dinh_fansipan.jpg',
+      '/landing/images/sapa_real/nuong_bbq_sapa.jpg',
+      '/landing/images/sapa_real/tam_la_dao_do.jpg',
+      '/landing/images/homestay/ava-mau-nha-homestay-dep-800x800.jpg',
+      '/landing/images/rooftop/cinema_zen_balcony.jpg',
+      '/landing/images/rooftop/la_do_sunset.jpg',
+      '/landing/images/homestay/homestay-quan-1-2.png',
+      '/home_1/image.png',
+      '/home_2/image_1.jpg',
+      '/home_3/image_3.jpg',
+      '/home_4/image_1.jpg',
+      '/home_5/image_1.jpg',
+      ...SHOWROOM_ITEMS.map((item) => item.image),
+      ...SCENERY_ARTICLES.map((article) => article.coverImage),
+    ];
+    const uniqueUrls = Array.from(new Set(staticImages.filter(Boolean)));
+    uniqueUrls.forEach((src) => {
+      const img = new Image();
+      img.src = resolveImageUrl(src);
+    });
   }, []);
 
   useEffect(() => {
@@ -630,17 +679,18 @@ function LandingPage() {
           </div>
 
           <nav className="nav-links" id="nav-links">
-            <a href="#showroom" className="nav-link">Trải Nghiệm</a>
+            <a href="#ai-video-showcase" className="nav-link">🎬 Video AI</a>
+            <a href="#showroom" className="nav-link">Góc Săn Mây</a>
             <a href="/rooms" className="nav-link">Phòng & Giá</a>
-            <a href="#showroom" className="nav-link">Góc Sống Ảo 3D</a>
-            <a href="#seasons-radar" className="nav-link">4 Mùa Sa Pa</a>
+            <a href="#panorama-section" className="nav-link">Cẩm Nang</a>
+            <a href="#seasons-radar" className="nav-link">4 Mùa</a>
             <a href="#location" className="nav-link">Vị Trí</a>
             <a href="#contact-footer" className="nav-link">Liên Hệ</a>
           </nav>
 
           <div className="nav-actions">
             {/* Mood Switcher with 5s Auto Cycle & Smooth Animation */}
-            <div className="mood-selector" title="Tự động chuyển cảnh sau mỗi 5s">
+            <div className="mood-selector" title="Tông màu không gian Sa Pa">
               {MOODS_LIST.map((m) => (
                 <button
                   key={m.id}
@@ -654,6 +704,18 @@ function LandingPage() {
                   <span className="mood-btn-text">{m.shortLabel}</span>
                 </button>
               ))}
+              <button
+                type="button"
+                className={`mood-auto-btn ${isAutoMood ? 'active' : 'paused'}`}
+                onClick={handleToggleAutoMood}
+                title={isAutoMood ? "Đang bật tự động đổi cảnh mỗi 5s (Bấm để Tắt)" : "Đang tắt tự động đổi cảnh (Bấm để Bật)"}
+                aria-label="Tự đổi cảnh 5s"
+              >
+                <span className={`mood-auto-icon ${isAutoMood ? 'spinning' : ''}`}>
+                  {isAutoMood ? '🔄' : '⏸️'}
+                </span>
+                <span className="mood-auto-text">{isAutoMood ? '5s: BẬT' : '5s: TẮT'}</span>
+              </button>
             </div>
 
             {/* 4K Cinema Zen Sanctuary Trigger Button */}
@@ -670,7 +732,7 @@ function LandingPage() {
             </button>
 
             <button className="liquid-btn nav-cta-btn" id="header-book-btn" onClick={() => window.goToBookingPage()}>
-              <span className="btn-text">Đặt Phòng Ngay</span>
+              <span className="btn-text">Đặt Phòng</span>
               <span className="liquid-glow"></span>
             </button>
           </div>
@@ -794,7 +856,7 @@ function LandingPage() {
                   onMouseLeave={handleCardMouseLeave}
                 >
                   <div className="showroom-img-wrap">
-                    <img src={item.image} alt={item.title} loading="lazy" />
+                    <img src={item.image} alt={item.title} loading="lazy" decoding="async" />
                     <span className="showroom-time-badge">{item.badge}</span>
                   </div>
                   <div className="showroom-card-body">
@@ -813,6 +875,9 @@ function LandingPage() {
             </div>
           </div>
         </section>
+
+        {/* AI Video Showcase & System Simulation Section */}
+        <AIVideoShowcase />
 
         {/* Premium Asymmetric Scenery Gallery Grid Section */}
         <section className="section scenery-section-new" id="panorama-section">
@@ -842,7 +907,7 @@ function LandingPage() {
                   title={`Xem bài review: ${article.title}`}
                 >
                   <div className="scenery-img-wrap">
-                    <img src={article.coverImage} alt={article.title} loading="lazy" />
+                    <img src={article.coverImage} alt={article.title} loading="lazy" decoding="async" />
                     <div className="scenery-overlay"></div>
                     <div className="scenery-badge-action">
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -866,15 +931,15 @@ function LandingPage() {
         {/* Sa Pa 4 Seasons & Cloud Hunter Radar Guide */}
         <section className="section seasons-radar-section" id="seasons-radar">
           <div className="container">
-            <div className="scenery-header-center" style={{ textAlign: 'center', maxWidth: '820px', margin: '0 auto 2.8rem' }}>
+            <div className="season-head-card">
               <div className="section-badge" style={{ margin: '0 auto 12px', display: 'inline-flex' }}>
                 <i data-lucide="sun"></i>
                 <span>☁️ SỔ TAY SĂN MÂY & 4 MÙA SA PA</span>
               </div>
-              <h2 className="section-title" style={{ fontSize: 'clamp(2rem, 3.5vw, 2.8rem)', marginBottom: '1rem', color: '#fff' }}>
+              <h2 className="section-title" style={{ fontSize: 'clamp(1.8rem, 3.2vw, 2.6rem)', marginBottom: '0.8rem', color: '#fff' }}>
                 Sa Pa 4 Mùa & Cẩm Nang Săn Mây Toàn Diện
               </h2>
-              <p className="section-subtitle" style={{ color: '#cbd5e1', fontSize: '0.96rem', lineHeight: '1.65' }}>
+              <p className="section-subtitle" style={{ color: '#cbd5e1', fontSize: '0.95rem', lineHeight: '1.65', maxWidth: '720px', margin: '0 auto' }}>
                 Khám phá nhịp điệu đất trời Tây Bắc theo từng mùa, radar tỷ lệ biển mây, gợi ý phối đồ (OOTD) và bí kíp sống ảo độc quyền từ Lá Đỏ Homestay.
               </p>
 
@@ -905,7 +970,7 @@ function LandingPage() {
                 spring: {
                   title: 'Mùa Xuân Sa Pa: Ngàn Hoa Khoe Sắc & Mây Xuân Mờ Ảo',
                   badge: '🌸 Tháng 2 - Tháng 4',
-                  image: '/landing/images/homestay/ava-mau-nha-homestay-dep-800x800.jpg',
+                  image: '/landing/images/sapa_real/sapa_spring_blossoms_real.jpg',
                   temp: '12°C – 18°C • Nắng sớm dịu nhẹ, se lạnh về đêm',
                   cloudChance: '85% Tỷ Lệ Săn Mây Thung Lũng',
                   cloudTime: '06:00 - 08:30 Sáng sương mờ',
@@ -917,7 +982,7 @@ function LandingPage() {
                 summer: {
                   title: 'Mùa Hè Sa Pa: Trốn Nóng 20°C & Mùa Nước Đổ Lấp Lánh',
                   badge: '🌿 Tháng 5 - Tháng 8',
-                  image: '/landing/images/rooftop/cinema_zen_balcony.jpg',
+                  image: '/landing/images/sapa_real/sapa_summer_terraces_real.jpg',
                   temp: '18°C – 24°C • Khí hậu ôn đới mát lạnh như Châu Âu',
                   cloudChance: '90% Mây Mưa Thác Bạc & Cầu Vồng',
                   cloudTime: 'Sau cơn mưa rào mùa hạ (15:00 - 17:00)',
@@ -929,7 +994,7 @@ function LandingPage() {
                 autumn: {
                   title: 'Mùa Thu Sa Pa: Mùa Lúa Chín Vàng Rực & Biển Mây Ngút Ngàn',
                   badge: '🌾 Tháng 9 - Tháng 10 (Mùa Đẹp Nhất)',
-                  image: '/landing/images/rooftop/la_do_sunset.jpg',
+                  image: '/landing/images/sapa_real/sapa_autumn_golden_real.jpg',
                   temp: '14°C – 20°C • Trời trong xanh biếc, nắng vàng mật ong',
                   cloudChance: '98% Tỷ Lệ Săn Mây Vàng (Đỉnh Điểm)',
                   cloudTime: '05:30 - 08:00 Sáng & 17:00 Hoàng hôn',
@@ -941,7 +1006,7 @@ function LandingPage() {
                 winter: {
                   title: 'Mùa Đông Sa Pa: Săn Băng Tuyết Hoàng Liên & Biển Mây Bồng Bềnh',
                   badge: '❄️ Tháng 11 - Tháng 1 (Mùa Săn Mây & Tuyết)',
-                  image: '/landing/images/homestay/homestay-quan-1-2.png',
+                  image: '/landing/images/sapa_real/sapa_winter_snow_real.jpg',
                   temp: '3°C – 10°C • Lạnh buốt đặc trưng, có thể có băng tuyết',
                   cloudChance: '95% Biển Mây Cuộn Nghìn Lớp Dày Đặc',
                   cloudTime: 'Suốt cả ngày khi trời hửng nắng',
@@ -962,7 +1027,7 @@ function LandingPage() {
                 >
                   <div className="season-card-grid">
                     <div className="season-visual-pane">
-                      <img src={current.image} alt={current.title} className="season-main-img" />
+                      <img src={current.image} alt={current.title} className="season-main-img" loading="lazy" decoding="async" />
                       <div className="season-img-overlay"></div>
                       <span className="season-floating-badge">{current.badge}</span>
                       <div className="season-img-caption">

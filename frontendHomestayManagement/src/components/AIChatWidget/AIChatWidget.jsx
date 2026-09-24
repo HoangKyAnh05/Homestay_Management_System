@@ -29,7 +29,7 @@ const INITIAL_MESSAGES = [{
 
 const SYSTEM_PROMPT = `Bạn là Trợ lý AI Quản Trị Hệ Thống Lá Đỏ Homestay Sa Pa (Hoàng Liên, Sa Pa, Lào Cai - Hotline/Zalo: 0941186699).
 Bạn hỗ trợ nhân viên và admin quản lý homestay:
-- Giờ Check-in tiêu chuẩn: 14:00 | Giờ Check-out tiêu chuẩn: 11:00
+- Giờ Check-in tiêu chuẩn: 14:00 | Giờ Check-out tiêu chuẩn: 12:00
 - Phụ thu nhận sớm / trả muộn:
   + Nhận phòng sớm trước 06:00: 100% tiền phòng
   + Nhận phòng từ 06:00 - 09:00: 50% tiền phòng
@@ -52,7 +52,7 @@ function generateSmartAssistantResponse(query, history = []) {
   }
 
   if (q.includes('nhận phòng') || q.includes('trả phòng') || q.includes('check-in') || q.includes('checkin') || q.includes('checkout') || q.includes('check out') || q.includes('giờ giấc')) {
-    return `📋 **QUY ĐỊNH GIỜ GIẤC & NHẬN/TRẢ PHÒNG TẠI LÁ ĐỎ HOMESTAY:**\n\n- **Giờ Check-in tiêu chuẩn:** Từ **14:00** chiều.\n- **Giờ Check-out tiêu chuẩn:** Trước **11:00** trưa.\n\n⏰ **Chính sách nhận sớm (Early Check-in):**\n- Trước 06:00 sáng: Tính **100%** giá phòng 1 đêm.\n- Từ 06:00 - 09:00 sáng: Tính **50%** giá phòng 1 đêm.\n- Từ 09:00 - 12:00 trưa: Tính **30%** giá phòng 1 đêm (nếu còn phòng trống).\n\n⏰ **Chính sách trả muộn (Late Check-out):**\n- Từ 11:00 - 15:00: Phụ thu **30%** giá phòng.\n- Từ 15:00 - 18:00: Phụ thu **50%** giá phòng.\n- Sau 18:00: Tính **100%** giá phòng 1 đêm.\n\n*Lưu ý: Luôn kiểm tra tình trạng phòng thực tế trên Lịch buồng phòng trước khi xác nhận cho khách.*`
+    return `📋 **QUY ĐỊNH GIỜ GIẤC & NHẬN/TRẢ PHÒNG TẠI LÁ ĐỎ HOMESTAY:**\n\n- **Giờ Check-in tiêu chuẩn:** Từ **14:00** chiều.\n- **Giờ Check-out tiêu chuẩn:** Trước **12:00** trưa.\n\n⏰ **Chính sách nhận sớm (Early Check-in):**\n- Trước 06:00 sáng: Tính **100%** giá phòng 1 đêm.\n- Từ 06:00 - 09:00 sáng: Tính **50%** giá phòng 1 đêm.\n- Từ 09:00 - 12:00 trưa: Tính **30%** giá phòng 1 đêm (nếu còn phòng trống).\n\n⏰ **Chính sách trả muộn (Late Check-out):**\n- Từ 12:00 - 15:00: Phụ thu **30%** giá phòng.\n- Từ 15:00 - 18:00: Phụ thu **50%** giá phòng.\n- Sau 18:00: Tính **100%** giá phòng 1 đêm.\n\n*Lưu ý: Luôn kiểm tra tình trạng phòng thực tế trên Lịch buồng phòng trước khi xác nhận cho khách.*`
   }
 
   if (q.includes('phụ thu') || q.includes('phạt') || q.includes('vỡ') || q.includes('hỏng') || q.includes('đền') || q.includes('mất đồ') || q.includes('sự cố')) {
@@ -72,7 +72,7 @@ function generateSmartAssistantResponse(query, history = []) {
   }
 
   if (q.includes('báo cáo') || q.includes('ca') || q.includes('doanh thu') || q.includes('tiền')) {
-    return `📊 **QUẢN LÝ DOANH THU & BÀN GIAO CA:**\n\n- **Xem tổng quan:** Truy cập trang **Tổng quan** để theo dõi doanh thu thực tế, công suất phòng trung bình, tỷ lệ lấp đầy và biểu đồ thu tiền phòng/dịch vụ.\n- **Báo cáo cuối ngày / Giao ca:** Bấm nút **Báo cáo cuối ngày** ở thanh điều hướng trên cùng để tổng kết tiền mặt, chuyển khoản và bàn giao số dư cho ca tiếp theo.\n- **Xuất Excel:** Bấm **Xuất Excel báo cáo** trên góc phải để tải file \`.xlsx\` chi tiết phục vụ kế toán.`
+    return `📊 **QUẢN LÝ DOANH THU & TIỀN MẶT TỰ ĐỘNG:**\n\n- **Xem tổng quan & Thống kê tiền mặt:** Truy cập trang **Tổng quan** để theo dõi doanh thu thực tế, công suất phòng, biểu đồ thu tiền phòng/dịch vụ và thống kê tiền mặt tự động phát sinh theo ngày, tuần, tháng.\n- **Đối soát thanh toán:** Hệ thống tự động phân loại tiền mặt vs chuyển khoản trực tiếp trên Dashboard mà không cần tạo báo cáo thủ công.\n- **Xuất Excel:** Bấm **Xuất Excel báo cáo** trên góc phải để tải file \`.xlsx\` chi tiết phục vụ kế toán.`
   }
 
   // General helpful contextual assistant response

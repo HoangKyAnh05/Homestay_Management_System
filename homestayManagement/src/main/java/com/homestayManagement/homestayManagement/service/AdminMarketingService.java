@@ -59,4 +59,5 @@ public interface AdminMarketingService {
     java.util.Map<String, Object> syncScannedComments(com.homestayManagement.homestayManagement.dto.request.SyncScannedCommentsRequest request);
     java.util.Map<String, Object> getAllSyncedExtensionComments();
     java.util.Map<String, Object> replyToSyncedComment(String commentId, String platform, String message, String responderName);
+    java.util.Map<String, Object> testSocialAccount(Long id);
 }

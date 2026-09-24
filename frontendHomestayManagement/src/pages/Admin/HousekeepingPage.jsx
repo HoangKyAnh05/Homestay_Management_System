@@ -302,7 +302,7 @@ function TaskDetail({ task, busy, onStart, onSubmitInspection, onCompleteCleanin
                     <strong>{item.name}</strong>
                     <span>{money(item.unitPrice)} / sản phẩm</span>
                     <small style={{ color: '#64748b', display: 'block', fontSize: '11.5px', marginTop: '2px' }}>
-                      Có sẵn trong phòng: {item.quantityInStock}
+                      Có sẵn trong kho: {item.quantityInStock}
                     </small>
                   </div>
                   <div className="hk-stepper">

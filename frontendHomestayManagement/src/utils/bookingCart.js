@@ -3,14 +3,11 @@ const BOOKING_CART_KEY = 'homestay_public_booking_rooms'
 export function isRoomSelectable(room) {
   if (!room) return false
   const status = String(room.status || '').trim().toUpperCase()
-  if (['MAINTENANCE', 'INACTIVE', 'DISABLED', 'BOOKED', 'OCCUPIED', 'UNAVAILABLE'].includes(status)) {
+  if (['MAINTENANCE', 'INACTIVE', 'DISABLED', 'UNAVAILABLE'].includes(status)) {
     return false
   }
   if (room.status && !['AVAILABLE', 'ACTIVE'].includes(status)) {
     return false
-  }
-  if (room.availableRooms !== undefined && room.availableRooms !== null) {
-    if (Number(room.availableRooms) <= 0) return false
   }
   return true
 }

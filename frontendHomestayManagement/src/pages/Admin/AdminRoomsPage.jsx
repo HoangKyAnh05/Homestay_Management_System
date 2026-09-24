@@ -23,8 +23,8 @@ const STATUS_LABEL = {
 const STATUS_OPTIONS = Object.keys(STATUS_LABEL)
 
 const RENT_TYPE_LABEL = {
-  OVERNIGHT: 'Qua đêm', HOURLY: 'Theo giờ',
-  COMBO: 'Combo giờ', DAILY: 'Theo ngày',
+  OVERNIGHT: '2 ngày 1 đêm', HOURLY: 'Theo giờ',
+  COMBO: 'Combo giờ', DAILY: '2 ngày 1 đêm',
 }
 const RENT_TYPE_OPTIONS = Object.keys(RENT_TYPE_LABEL)
 

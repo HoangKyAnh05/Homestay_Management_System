@@ -50,6 +50,15 @@ public class Customer {
     @Column(name = "identity_document_number", length = 30)
     private String identityDocumentNumber;
 
+    @Column(name = "bank_name", length = 100)
+    private String bankName;
+
+    @Column(name = "bank_account_number", length = 50)
+    private String bankAccountNumber;
+
+    @Column(name = "bank_account_holder", length = 100)
+    private String bankAccountHolder;
+
     @Builder.Default
     @Column(name = "member_points", nullable = false)
     private Integer memberPoints = 0;

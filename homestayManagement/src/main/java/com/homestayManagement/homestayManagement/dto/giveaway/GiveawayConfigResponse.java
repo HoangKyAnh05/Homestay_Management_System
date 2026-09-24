@@ -29,9 +29,15 @@ public class GiveawayConfigResponse {
     public static class PrizeOption {
         private int index;
         private String name;
+        private String shortTitle;
+        private String subText;
+        private String fullName;
         private String codePrefix;
         private int discountPercent;
         private String color;
+        private String sliceColor1;
+        private String sliceColor2;
+        private String textColor;
         private String icon;
         private String badge;
     }

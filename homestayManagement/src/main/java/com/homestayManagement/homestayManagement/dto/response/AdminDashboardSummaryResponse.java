@@ -12,6 +12,7 @@ public record AdminDashboardSummaryResponse(
         List<AdminDashboardNameValueResponse> bookingStatusBreakdown,
         List<AdminDashboardNameValueResponse> revenueBreakdown,
         List<AdminDashboardNameValueResponse> topRooms,
-        List<AdminDashboardNameValueResponse> roomTypeBreakdown
+        List<AdminDashboardNameValueResponse> roomTypeBreakdown,
+        AdminDashboardCashStatisticsResponse cashStatistics
 ) {
 }

@@ -86,10 +86,7 @@ public class StayAccessServiceImpl implements StayAccessService {
             String representativeEmail
     ) {
         String email = normalizeEmail(representativeEmail);
-        StayAccess existing = stayAccessRepository.findByBookingDetailIdAndAccountEmail(bookingDetail.getId(), email).orElse(null);
-        if (existing != null) {
-            return new GrantResult(existing.getId(), email, existing.getStatus(), false, false);
-        }
+        StayAccess access = stayAccessRepository.findByBookingDetailIdAndAccountEmail(bookingDetail.getId(), email).orElse(null);
 
         String tempPassword = null;
         Account account = accountRepository.findByEmailIgnoreCase(email).orElse(null);
@@ -109,36 +106,49 @@ public class StayAccessServiceImpl implements StayAccessService {
         ensureCustomerProfile(account, representativeName);
 
         LocalDateTime now = LocalDateTime.now();
-        StayAccess access = StayAccess.builder()
-                .account(account)
-                .bookingDetail(bookingDetail)
-                .checkInRecord(checkInRecord)
-                .representativeName(representativeName.trim())
-                .status(StayAccess.ACTIVE)
-                .invitedAt(now)
-                .activatedAt(now)
-                .build();
+        if (access == null) {
+            access = StayAccess.builder()
+                    .account(account)
+                    .bookingDetail(bookingDetail)
+                    .checkInRecord(checkInRecord)
+                    .representativeName(representativeName.trim())
+                    .status(StayAccess.ACTIVE)
+                    .invitedAt(now)
+                    .activatedAt(now)
+                    .build();
+        } else {
+            access.setCheckInRecord(checkInRecord);
+            access.setRepresentativeName(representativeName.trim());
+            access.setStatus(StayAccess.ACTIVE);
+            if (access.getActivatedAt() == null) {
+                access.setActivatedAt(now);
+            }
+        }
         access = stayAccessRepository.save(access);
 
-        String quickLoginToken = jwtService.generateToken(account);
-        Room room = bookingDetail.getRoom();
-        eventPublisher.publishEvent(new StayAccessEmailEvent(
-                email,
-                representativeName.trim(),
-                room != null ? room.getRoomNumber() : "chưa xác định",
-                bookingDetail.getBooking().getBookingCode(),
-                bookingDetail.getCheckOutTarget(),
-                null,
-                tempPassword,
-                quickLoginToken
-        ));
+        boolean emailQueued = false;
+        if (!email.toLowerCase().endsWith("@ladohomestay.vn")) {
+            String quickLoginToken = jwtService.generateToken(account);
+            Room room = bookingDetail.getRoom();
+            eventPublisher.publishEvent(new StayAccessEmailEvent(
+                    email,
+                    representativeName.trim(),
+                    room != null ? room.getRoomNumber() : "chưa xác định",
+                    bookingDetail.getBooking().getBookingCode(),
+                    bookingDetail.getCheckOutTarget(),
+                    null,
+                    tempPassword,
+                    quickLoginToken
+            ));
+            emailQueued = true;
+        }
 
         return new GrantResult(
                 access.getId(),
                 email,
                 access.getStatus(),
                 false,
-                true
+                emailQueued
         );
     }
 
@@ -160,7 +170,12 @@ public class StayAccessServiceImpl implements StayAccessService {
         if (token == null || token.isBlank()) {
             throw new IllegalArgumentException("Token truy cập không hợp lệ");
         }
-        String email = jwtService.extractEmail(token);
+        String email;
+        try {
+            email = jwtService.extractEmail(token);
+        } catch (Exception ex) {
+            throw new IllegalArgumentException("Liên kết truy cập không hợp lệ hoặc đã hết hạn. Quý khách vui lòng đăng nhập bằng tài khoản và mật khẩu.");
+        }
         if (email == null || email.isBlank()) {
             throw new IllegalArgumentException("Token truy cập không hợp lệ hoặc đã hết hạn");
         }
@@ -446,7 +461,10 @@ public class StayAccessServiceImpl implements StayAccessService {
                 account.getRole().getName(),
                 customer != null ? customer.getIdentityDocumentNumber() : null,
                 customer != null ? customer.getMemberPoints() : 0,
-                customer != null ? customer.getMemberDiscountPercent() : null
+                customer != null ? customer.getMemberDiscountPercent() : null,
+                customer != null ? customer.getBankName() : null,
+                customer != null ? customer.getBankAccountNumber() : null,
+                customer != null ? customer.getBankAccountHolder() : null
         );
     }
 

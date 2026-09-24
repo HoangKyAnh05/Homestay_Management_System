@@ -3,7 +3,7 @@ import './GiveawayLuckyWheelPage.css'
 
 const API_PUBLIC = (import.meta.env.VITE_API_URL || '') + '/api/public/giveaway'
 
-const LUXURY_PRIZES = [
+export const DEFAULT_LUXURY_PRIZES = [
   {
     index: 0,
     shortTitle: 'GIẢM 50%',
@@ -70,9 +70,25 @@ const LUXURY_PRIZES = [
     sliceColor2: '#c2410c',
     textColor: '#ffffff',
   },
-]
+];
+
+export function getActiveWheelPrizes() {
+  try {
+    const saved = localStorage.getItem('la_do_lucky_wheel_custom_prizes');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed) && parsed.length >= 4) {
+        return parsed;
+      }
+    }
+  } catch (e) {
+    console.warn('Error loading custom wheel prizes:', e);
+  }
+  return DEFAULT_LUXURY_PRIZES;
+}
 
 export default function GiveawayLuckyWheelPage() {
+  const [wheelPrizes, setWheelPrizes] = useState(getActiveWheelPrizes);
   const [config, setConfig] = useState(null)
   const [formData, setFormData] = useState({
     fullName: '',
@@ -88,6 +104,17 @@ export default function GiveawayLuckyWheelPage() {
   const [errorMsg, setErrorMsg] = useState('')
   const [copied, setCopied] = useState(false)
   const [showContactModal, setShowContactModal] = useState(false)
+
+  // Listen to cross-tab storage changes when Admin updates prizes
+  useEffect(() => {
+    const handleStorageChange = (e) => {
+      if (e.key === 'la_do_lucky_wheel_custom_prizes') {
+        setWheelPrizes(getActiveWheelPrizes());
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
 
   const canvasRef = useRef(null)
   const confettiCanvasRef = useRef(null)
@@ -113,12 +140,20 @@ export default function GiveawayLuckyWheelPage() {
     }
   }
 
-  // Fetch config
+  // Fetch config & dynamic wheel prizes
   useEffect(() => {
     fetch(`${API_PUBLIC}/config`)
       .then((res) => res.json())
       .then((data) => {
-        if (data) setConfig(data)
+        if (data) {
+          setConfig(data)
+          if (Array.isArray(data.prizes) && data.prizes.length >= 4) {
+            setWheelPrizes(data.prizes)
+            try {
+              localStorage.setItem('la_do_lucky_wheel_custom_prizes', JSON.stringify(data.prizes))
+            } catch {}
+          }
+        }
       })
       .catch(() => {})
   }, [])
@@ -133,7 +168,7 @@ export default function GiveawayLuckyWheelPage() {
     const outerRadius = center - 16
     const rimWidth = 24
     const wheelRadius = outerRadius - rimWidth
-    const total = LUXURY_PRIZES.length
+    const total = wheelPrizes.length
     const arc = (2 * Math.PI) / total
 
     ctx.clearRect(0, 0, size, size)
@@ -176,7 +211,7 @@ export default function GiveawayLuckyWheelPage() {
     }
 
     // 2. Draw Wheel Slices
-    LUXURY_PRIZES.forEach((prize, i) => {
+    wheelPrizes.forEach((prize, i) => {
       const startAngle = i * arc
       const endAngle = startAngle + arc
 
@@ -301,7 +336,7 @@ export default function GiveawayLuckyWheelPage() {
       }
 
       // Calculate Rotation
-      const total = LUXURY_PRIZES.length
+      const total = wheelPrizes.length
       const arcDegrees = 360 / total
       const targetIndex = result.targetIndex
       // Pointer is at top (270 degrees in standard canvas angles)

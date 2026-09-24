@@ -39,6 +39,9 @@ public class StayAccessEmailListener {
     @Async("mailTaskExecutor")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void sendStayAccessEmail(StayAccessEmailEvent event) {
+        if (event.email() == null || event.email().isBlank() || event.email().toLowerCase().endsWith("@ladohomestay.vn")) {
+            return;
+        }
         try {
             String actionUrl;
             if (event.quickLoginToken() != null && !event.quickLoginToken().isBlank()) {

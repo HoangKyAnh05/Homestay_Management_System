@@ -545,10 +545,11 @@ function createRoomUnit(room, unitIndex, criteria, totalRoomCount, template = nu
 
 function initialRoomUnits(selectedRooms, criteria) {
   const totalRoomCount = selectedRooms.reduce((sum, room) => sum + selectedQuantity(room), 0)
+  let unitIndexCounter = 1
   return selectedRooms.flatMap((room) =>
     Array.from(
       { length: selectedQuantity(room) },
-      (_, index) => createRoomUnit(room, index + 1, criteria, totalRoomCount),
+      () => createRoomUnit(room, unitIndexCounter++, criteria, totalRoomCount),
     ))
 }
 
@@ -692,8 +693,8 @@ function RoomCard({ room, selected, onToggle, criteria }) {
 
 
   const isMaintenance = String(room.status || '').toUpperCase() === 'MAINTENANCE'
-  const isSoldOut = typeOnly ? (Number(room.availableRooms || 0) <= 0) : (room.status && room.status !== 'AVAILABLE')
-  const isBooked = isSoldOut || String(room.status || '').toUpperCase() === 'BOOKED' || String(room.status || '').toUpperCase() === 'OCCUPIED'
+  const isSoldOut = hasSearchedDates ? (Number(room.availableRooms || 0) <= 0) : false
+  const isBooked = isSoldOut || (!typeOnly && (String(room.status || '').toUpperCase() === 'BOOKED' || String(room.status || '').toUpperCase() === 'OCCUPIED'))
   const isAvailable = !isMaintenance && !isBooked
 
   const [isVideoPlaying, setIsVideoPlaying] = useState(false)
@@ -764,12 +765,12 @@ function RoomCard({ room, selected, onToggle, criteria }) {
           <span className={`public-room-badge${!isAvailable ? ' is-maintenance' : ''}`}>
             {isMaintenance
               ? '⚠️ Tạm bảo trì'
-              : isBooked || (typeOnly && Number(room.availableRooms || 0) <= 0)
-              ? (typeOnly && Number(room.availableRooms || 0) <= 0 ? '❌ Hết phòng trống' : '🔒 Đã kín lịch')
+              : (hasSearchedDates && Number(room.availableRooms || 0) <= 0)
+              ? '❌ Hết phòng ngày này'
+              : isBooked
+              ? '🔒 Đã kín lịch'
               : hasSearchedDates
               ? `Còn ${room.availableRooms || 0} phòng trống`
-              : (typeOnly && room.availableRooms != null)
-              ? `Tổng ${room.availableRooms} phòng`
               : 'Sẵn sàng đặt'}
           </span>
           <button
@@ -1111,7 +1112,7 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
     email: currentUser?.email || '',
     address: currentUser?.address || '',
     dateOfBirth: currentUser?.dateOfBirth || '',
-    identityDocumentNumber: '',
+    identityDocumentNumber: currentUser?.identityDocumentNumber || '',
     checkInTarget: criteria?.checkInDate ? dateKeyToDateTimeLocal(criteria.checkInDate, 14) : defaultCheckInValue(),
     checkOutTarget: (criteria?.checkInDate && criteria?.checkOutDate && criteria.checkOutDate > criteria.checkInDate)
       ? dateKeyToDateTimeLocal(criteria.checkOutDate, 12)
@@ -1507,25 +1508,32 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
         .filter((unit) => unit.typeKey === key)
         .sort((first, second) => first.unitIndex - second.unitIndex)
       const otherUnits = current.filter((unit) => unit.typeKey !== key)
+      let combined = []
       if (quantity <= sameTypeUnits.length) {
-        return orderBySelectedRoom([...otherUnits, ...sameTypeUnits.slice(0, quantity)])
+        combined = orderBySelectedRoom([...otherUnits, ...sameTypeUnits.slice(0, quantity)])
+      } else {
+        const totalRoomCount = Object.entries({ ...roomQuantities, [key]: quantity }).reduce(
+          (sum, [, currentQuantity]) => sum + Number(currentQuantity || 0),
+          0,
+        )
+        const template = sameTypeUnits[0]
+        const additions = Array.from(
+          { length: quantity - sameTypeUnits.length },
+          (_, index) => createRoomUnit(
+            room,
+            sameTypeUnits.length + index + 1,
+            criteria,
+            totalRoomCount,
+            template,
+          ),
+        )
+        combined = orderBySelectedRoom([...otherUnits, ...sameTypeUnits, ...additions])
       }
-      const totalRoomCount = Object.entries({ ...roomQuantities, [key]: quantity }).reduce(
-        (sum, [, currentQuantity]) => sum + Number(currentQuantity || 0),
-        0,
-      )
-      const template = sameTypeUnits[0]
-      const additions = Array.from(
-        { length: quantity - sameTypeUnits.length },
-        (_, index) => createRoomUnit(
-          room,
-          sameTypeUnits.length + index + 1,
-          criteria,
-          totalRoomCount,
-          template,
-        ),
-      )
-      return orderBySelectedRoom([...otherUnits, ...sameTypeUnits, ...additions])
+      return combined.map((u, idx) => ({
+        ...u,
+        unitIndex: idx + 1,
+        key: `${roomKey(u.room)}-unit-${idx + 1}`,
+      }))
     })
   }
 
@@ -1586,9 +1594,9 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
       setError('Vui lòng chọn ít nhất một loại phòng.')
       return
     }
-    const unavailableRoom = selectedRooms.find((r) => (r.availableRooms != null && Number(r.availableRooms) <= 0) || r.status === 'MAINTENANCE')
+    const unavailableRoom = selectedRooms.find((r) => r.status === 'MAINTENANCE')
     if (unavailableRoom) {
-      setError(`Loại phòng ${houseTypeName(unavailableRoom)} hiện đang bảo trì hoặc tạm thời hết phòng, vui lòng chọn phòng khác.`)
+      setError(`Loại phòng ${houseTypeName(unavailableRoom)} hiện đang bảo trì, vui lòng chọn phòng khác.`)
       return
     }
 
@@ -1658,21 +1666,24 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
         pricePolicyId: Number(activePolicy.id),
         numberOfAdults: roomUnits[0]?.numberOfAdults || 1,
         numberOfChildren: roomUnits[0]?.numberOfChildren || 0,
-        rooms: roomUnits.map((unit) => ({
-          roomId: null,
-          roomTypeId: roomTypeIdOf(unit.room),
-          quantity: 1,
-          numberOfAdults: Number(unit.numberOfAdults || 1),
-          numberOfChildren: Number(unit.numberOfChildren || 0),
-          guestName: unit.guestName?.trim() || (unit.unitIndex === 1 ? form.fullName?.trim() : null),
-          guestEmail: unit.guestEmail?.trim() || (unit.unitIndex === 1 ? form.email?.trim() : null),
-          guestPhone: unit.guestPhone?.trim() || (unit.unitIndex === 1 ? form.phone?.trim() : null),
-          services: unit.services.map((item) => ({
-            type: item.type,
-            serviceId: item.serviceId,
-            quantity: item.quantity,
-          })),
-        })),
+        rooms: roomUnits.map((unit, index) => {
+          const uIdx = unit.unitIndex || (index + 1)
+          return {
+            roomId: null,
+            roomTypeId: roomTypeIdOf(unit.room),
+            quantity: 1,
+            numberOfAdults: Number(unit.numberOfAdults || 1),
+            numberOfChildren: Number(unit.numberOfChildren || 0),
+            guestName: unit.guestName?.trim() || (uIdx === 1 ? form.fullName?.trim() : null),
+            guestEmail: unit.guestEmail?.trim() || (uIdx === 1 ? form.email?.trim() : null),
+            guestPhone: unit.guestPhone?.trim() || (uIdx === 1 ? form.phone?.trim() : null),
+            services: unit.services.map((item) => ({
+              type: item.type,
+              serviceId: item.serviceId,
+              quantity: item.quantity,
+            })),
+          }
+        }),
         services: [],
         voucherCode: voucherCode.trim() || null,
       }),
@@ -1950,16 +1961,17 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
               <p>Chọn số khách và dịch vụ riêng cho từng phòng trong booking.</p>
             </div>
             <div className="multi-room-units">
-              {roomUnits.map((unit) => {
+              {roomUnits.map((unit, index) => {
+                const currentUnitIndex = unit.unitIndex || (index + 1)
                 const unitServiceTotal = unit.services.reduce(
                   (sum, service) => sum + Number(service.price || 0) * Number(service.quantity || 0),
                   0,
                 )
                 return (
-                  <article className="multi-room-unit" key={unit.key}>
+                  <article className="multi-room-unit" key={unit.key || `${unit.typeKey}-${index}`}>
                     <div className="multi-room-unit-head">
                       <div>
-                        <span>Phòng {unit.unitIndex}</span>
+                        <span>Phòng {currentUnitIndex}</span>
                         <strong>{unit.room.roomTypeName || unit.room.name || 'Loại phòng'}</strong>
                       </div>
                       <b>{formatPrice(roomPriceItems.find((item) => roomKey(item.room) === unit.typeKey)?.price || roomPrice(unit.room))}</b>
@@ -2013,14 +2025,14 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
                             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
                             <circle cx="12" cy="7" r="4" />
                           </svg>
-                          Khách đại diện phòng {unit.unitIndex}
+                          Khách đại diện phòng {currentUnitIndex}
                         </span>
                         <span className="occupants-title-hint">Mặc định dùng thông tin người đặt</span>
                       </div>
 
                       <div className="multi-room-unit-guest-grid">
                         <div className="occupant-field-group">
-                          <label htmlFor={`guest-name-${unit.key}`}>Họ tên người ở phòng {unit.unitIndex}</label>
+                          <label htmlFor={`guest-name-${unit.key}`}>Họ tên người ở phòng {currentUnitIndex}</label>
                           <div className="occupant-input-wrapper">
                             <span className="occupant-input-icon" aria-hidden="true">
                               <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -2040,7 +2052,7 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
                         </div>
 
                         <div className="occupant-field-group">
-                          <label htmlFor={`guest-email-${unit.key}`}>Email nhận thông tin phòng {unit.unitIndex}</label>
+                          <label htmlFor={`guest-email-${unit.key}`}>Email nhận thông tin phòng {currentUnitIndex}</label>
                           <div className="occupant-input-wrapper">
                             <span className="occupant-input-icon" aria-hidden="true">
                               <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -2090,7 +2102,7 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
                               <strong>{formatPrice(Number(service.price) * service.quantity)}</strong>
                               <button
                                 type="button"
-                                aria-label={`Xóa ${service.name} khỏi phòng ${unit.unitIndex}`}
+                                aria-label={`Xóa ${service.name} khỏi phòng ${currentUnitIndex}`}
                                 onClick={() => removeRoomService(unit.key, service)}
                               >
                                 ×
@@ -2401,11 +2413,6 @@ function RoomsPage() {
     writeBookingCart(selectedRooms)
   }, [selectedRooms])
 
-  const highestPrice = useMemo(() => {
-    const highest = Math.max(...rooms.map((room) => roomPrice(room, searchCriteria?.checkInDate)), 0)
-    return Math.max(highest, 100000)
-  }, [rooms, searchCriteria])
-
   const visibleRooms = useMemo(() => {
     return rooms
       .filter((room) => {
@@ -2416,6 +2423,14 @@ function RoomsPage() {
       })
       .sort((a, b) => roomPrice(a, searchCriteria?.checkInDate) - roomPrice(b, searchCriteria?.checkInDate))
   }, [rooms, maxPrice, searchCriteria])
+
+  const highestPrice = useMemo(() => {
+    const validPrices = rooms.map(room => roomPrice(room, searchCriteria?.checkInDate)).filter(p => p > 0)
+    const max = validPrices.length > 0 ? Math.max(...validPrices) : 0
+    if (max <= 0) return 5000000
+    const rounded = Math.ceil(max / 1000000) * 1000000
+    return Math.max(rounded, 5000000)
+  }, [rooms, searchCriteria])
 
   const requestedRooms = searchCriteria?.rooms || Math.max(1, selectedRooms.length || 1)
   const selectedRoomIds = useMemo(() => new Set(selectedRooms.filter(isRoomSelectable).map(roomKey)), [selectedRooms])
@@ -2472,10 +2487,16 @@ function RoomsPage() {
                     onChange={(val) => {
                       setSidebarDates((prev) => {
                         const next = { ...prev, checkInDate: val }
-                        if (val && (!prev.checkOutDate || prev.checkOutDate <= val)) {
-                          const d = new Date(val)
-                          d.setDate(d.getDate() + 1)
-                          next.checkOutDate = d.toISOString().slice(0, 10)
+                        if (val) {
+                          const parts = val.split('-').map(Number)
+                          const nextDay = new Date(parts[0], parts[1] - 1, parts[2] + 1)
+                          const yyyy = nextDay.getFullYear()
+                          const mm = String(nextDay.getMonth() + 1).padStart(2, '0')
+                          const dd = String(nextDay.getDate()).padStart(2, '0')
+                          const nextDayStr = `${yyyy}-${mm}-${dd}`
+                          if (!prev.checkOutDate || prev.checkOutDate <= val) {
+                            next.checkOutDate = nextDayStr
+                          }
                         }
                         return next
                       })
@@ -2491,7 +2512,14 @@ function RoomsPage() {
                     value={sidebarDates.checkOutDate}
                     onChange={(val) => setSidebarDates((prev) => ({ ...prev, checkOutDate: val }))}
                     placeholder="Chọn ngày trả..."
-                    minDate={sidebarDates.checkInDate || new Date().toISOString().slice(0, 10)}
+                    minDate={sidebarDates.checkInDate ? (() => {
+                      const parts = sidebarDates.checkInDate.split('-').map(Number)
+                      const nextDay = new Date(parts[0], parts[1] - 1, parts[2] + 1)
+                      const yyyy = nextDay.getFullYear()
+                      const mm = String(nextDay.getMonth() + 1).padStart(2, '0')
+                      const dd = String(nextDay.getDate()).padStart(2, '0')
+                      return `${yyyy}-${mm}-${dd}`
+                    })() : new Date().toISOString().slice(0, 10)}
                   />
                 </div>
 
@@ -2563,17 +2591,60 @@ function RoomsPage() {
 
               <hr style={{ border: 0, borderTop: '1px solid #e5e7eb', margin: '4px 0' }} />
 
-              <label className="rooms-price-filter">
-                <span>Giá tối đa: {formatPrice(maxPrice)}</span>
+              <div className="rooms-price-filter" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '13px', fontWeight: 600 }}>
+                    {maxPrice >= highestPrice ? 'Tất cả mức giá' : `Tối đa: ${formatPrice(maxPrice)}`}
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', margin: '2px 0 8px' }}>
+                  {[
+                    { label: 'Tất cả', value: highestPrice },
+                    { label: '≤ 1tr', value: 1000000 },
+                    { label: '≤ 2tr', value: 2000000 },
+                    { label: '≤ 3tr', value: 3000000 },
+                    { label: '≤ 5tr', value: 5000000 },
+                  ].map((preset) => {
+                    const isActive = preset.value === highestPrice ? maxPrice >= highestPrice : maxPrice === preset.value
+                    return (
+                      <button
+                        key={preset.label}
+                        type="button"
+                        onClick={() => setMaxPrice(preset.value)}
+                        style={{
+                          padding: '4px 8px',
+                          borderRadius: '8px',
+                          border: isActive ? '1.5px solid #1e3a2b' : '1px solid #cbd5e1',
+                          background: isActive ? '#1e3a2b' : '#ffffff',
+                          color: isActive ? '#ffffff' : '#334155',
+                          fontSize: '11px',
+                          fontWeight: 600,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        {preset.label}
+                      </button>
+                    )
+                  })}
+                </div>
+
                 <input
                   type="range"
                   min="0"
                   max={highestPrice}
-                  step="50000"
+                  step="500000"
                   value={Math.min(maxPrice, highestPrice)}
                   onChange={(event) => setMaxPrice(Number(event.target.value))}
                 />
-              </label>
+                <div className="search-filter-range" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#64748b', marginTop: '2px' }}>
+                  <span>0đ</span>
+                  <span>1tr</span>
+                  <span>2tr</span>
+                  <span>3tr</span>
+                  <span>{highestPrice >= 5000000 ? `${highestPrice / 1000000}tr` : formatPrice(highestPrice)}</span>
+                </div>
+              </div>
             </div>
           </aside>
 

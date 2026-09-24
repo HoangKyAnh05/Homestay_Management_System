@@ -60,6 +60,9 @@ public class UserServiceImpl implements UserService {
             customer.setDateOfBirth(request.dateOfBirth());
             customer.setAddress(blankToNull(request.address()));
             customer.setIdentityDocumentNumber(blankToNull(request.identityDocumentNumber()));
+            customer.setBankName(blankToNull(request.bankName()));
+            customer.setBankAccountNumber(blankToNull(request.bankAccountNumber()));
+            customer.setBankAccountHolder(blankToNull(request.bankAccountHolder()));
             customerRepository.save(customer);
         } else {
             validatePhoneLength(request.phone(), 15);
@@ -138,7 +141,10 @@ public class UserServiceImpl implements UserService {
                 account.getRole().getName(),
                 customer != null ? customer.getIdentityDocumentNumber() : null,
                 customer != null ? customer.getMemberPoints() : 0,
-                customer != null ? customer.getMemberDiscountPercent() : null
+                customer != null ? customer.getMemberDiscountPercent() : null,
+                customer != null ? customer.getBankName() : null,
+                customer != null ? customer.getBankAccountNumber() : null,
+                customer != null ? customer.getBankAccountHolder() : null
         );
     }
 

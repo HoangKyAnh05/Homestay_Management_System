@@ -5,8 +5,13 @@ import com.homestayManagement.homestayManagement.dto.response.AdminDashboardName
 import com.homestayManagement.homestayManagement.dto.response.AdminDashboardOccupancyPointResponse;
 import com.homestayManagement.homestayManagement.dto.response.AdminDashboardRevenuePointResponse;
 import com.homestayManagement.homestayManagement.dto.response.AdminDashboardSummaryResponse;
+import com.homestayManagement.homestayManagement.dto.response.AdminDashboardCashStatisticsResponse;
+import com.homestayManagement.homestayManagement.dto.response.AdminDashboardCashTransactionResponse;
+import com.homestayManagement.homestayManagement.dto.response.AdminDashboardCashDailyPointResponse;
+import com.homestayManagement.homestayManagement.entity.Booking;
 import com.homestayManagement.homestayManagement.entity.BookingDetail;
 import com.homestayManagement.homestayManagement.entity.Invoice;
+import com.homestayManagement.homestayManagement.entity.Payment;
 import com.homestayManagement.homestayManagement.entity.Room;
 import com.homestayManagement.homestayManagement.repository.BookingDetailRepository;
 import com.homestayManagement.homestayManagement.repository.InvoiceRepository;
@@ -34,18 +39,21 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
     private final BookingDetailRepository bookingDetailRepository;
     private final RoomRepository roomRepository;
     private final com.homestayManagement.homestayManagement.repository.RoomIncidentRepository roomIncidentRepository;
+    private final com.homestayManagement.homestayManagement.repository.PaymentRepository paymentRepository;
 
     @org.springframework.beans.factory.annotation.Autowired
     public AdminDashboardServiceImpl(
             InvoiceRepository invoiceRepository,
             BookingDetailRepository bookingDetailRepository,
             RoomRepository roomRepository,
-            com.homestayManagement.homestayManagement.repository.RoomIncidentRepository roomIncidentRepository
+            com.homestayManagement.homestayManagement.repository.RoomIncidentRepository roomIncidentRepository,
+            com.homestayManagement.homestayManagement.repository.PaymentRepository paymentRepository
     ) {
         this.invoiceRepository = invoiceRepository;
         this.bookingDetailRepository = bookingDetailRepository;
         this.roomRepository = roomRepository;
         this.roomIncidentRepository = roomIncidentRepository;
+        this.paymentRepository = paymentRepository;
     }
 
     @Override
@@ -69,6 +77,7 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
         List<AdminDashboardRevenuePointResponse> revenueTrend = buildRevenueTrend(startDate, endDate, invoices);
         List<AdminDashboardOccupancyPointResponse> occupancyTrend = buildOccupancyTrend(startDate, endDate, details, totalRooms);
         AdminDashboardKpiResponse kpis = buildKpis(invoices, details, incidents, totalRooms, occupancyTrend);
+        AdminDashboardCashStatisticsResponse cashStatistics = buildCashStatistics(startDate, endDate, startInclusive, endExclusive);
 
         return new AdminDashboardSummaryResponse(
                 startDate,
@@ -79,8 +88,17 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
                 buildStatusBreakdown(details),
                 buildRevenueBreakdown(kpis),
                 buildTopRooms(details),
-                buildRoomTypeBreakdown(details)
+                buildRoomTypeBreakdown(details),
+                cashStatistics
         );
+    }
+
+    private boolean isBookingCheckedOut(Booking booking) {
+        if (booking == null || booking.getStatus() == null) {
+            return false;
+        }
+        String status = booking.getStatus().trim().toUpperCase();
+        return "COMPLETED".equals(status) || "CHECKED_OUT".equals(status);
     }
 
     private AdminDashboardKpiResponse buildKpis(
@@ -90,10 +108,14 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
             int totalRooms,
             List<AdminDashboardOccupancyPointResponse> occupancyTrend
     ) {
-        BigDecimal roomRevenue = invoices.stream().map(this::roomCharge).reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal serviceRevenue = invoices.stream().map(this::serviceCharge).reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal penaltyRevenue = invoices.stream().map(this::penaltyCharge).reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal totalRevenue = invoices.stream().map(this::totalAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
+        List<Invoice> checkedOutInvoices = invoices.stream()
+                .filter(inv -> isBookingCheckedOut(inv.getBooking()))
+                .toList();
+
+        BigDecimal roomRevenue = checkedOutInvoices.stream().map(this::roomCharge).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal serviceRevenue = checkedOutInvoices.stream().map(this::serviceCharge).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal penaltyRevenue = checkedOutInvoices.stream().map(this::penaltyCharge).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal totalRevenue = checkedOutInvoices.stream().map(this::totalAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal maintenanceExpense = incidents.stream()
                 .filter(i -> "HOMESTAY".equalsIgnoreCase(i.getLiability()))
                 .filter(i -> !"DISMISSED".equalsIgnoreCase(i.getStatus()))
@@ -129,7 +151,11 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
             LocalDate endDate,
             List<Invoice> invoices
     ) {
-        Map<LocalDate, List<Invoice>> invoicesByDate = invoices.stream()
+        List<Invoice> checkedOutInvoices = invoices.stream()
+                .filter(inv -> isBookingCheckedOut(inv.getBooking()))
+                .toList();
+
+        Map<LocalDate, List<Invoice>> invoicesByDate = checkedOutInvoices.stream()
                 .filter(invoice -> invoice.getCreatedAt() != null)
                 .collect(Collectors.groupingBy(invoice -> invoice.getCreatedAt().toLocalDate()));
 
@@ -232,6 +258,110 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
                 ))
                 .map(entry -> new AdminDashboardNameValueResponse(entry.getKey(), entry.getValue().amount, entry.getValue().count))
                 .toList();
+    }
+
+    private AdminDashboardCashStatisticsResponse buildCashStatistics(
+            LocalDate startDate,
+            LocalDate endDate,
+            LocalDateTime startInclusive,
+            LocalDateTime endExclusive
+    ) {
+        LocalDate today = LocalDate.now();
+        LocalDateTime todayStart = today.atStartOfDay();
+        LocalDateTime todayEnd = today.plusDays(1).atStartOfDay();
+
+        LocalDate monday = today.minusDays(today.getDayOfWeek().getValue() - 1);
+        LocalDateTime weekStart = monday.atStartOfDay();
+
+        LocalDate firstDayOfMonth = today.withDayOfMonth(1);
+        LocalDateTime monthStart = firstDayOfMonth.atStartOfDay();
+
+        BigDecimal cashToday = nullToZero(paymentRepository.sumCashPaymentsBetween(todayStart, todayEnd));
+        BigDecimal cashThisWeek = nullToZero(paymentRepository.sumCashPaymentsBetween(weekStart, todayEnd));
+        BigDecimal cashThisMonth = nullToZero(paymentRepository.sumCashPaymentsBetween(monthStart, todayEnd));
+
+        List<Payment> paymentsInRange = paymentRepository.findSuccessfulPaymentsBetween(startInclusive, endExclusive);
+
+        BigDecimal cashInRange = BigDecimal.ZERO;
+        BigDecimal transferInRange = BigDecimal.ZERO;
+
+        Map<LocalDate, BigDecimal> dailyCashMap = new LinkedHashMap<>();
+        Map<LocalDate, BigDecimal> dailyTransferMap = new LinkedHashMap<>();
+        Map<LocalDate, Integer> dailyCashCountMap = new LinkedHashMap<>();
+
+        for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
+            dailyCashMap.put(date, BigDecimal.ZERO);
+            dailyTransferMap.put(date, BigDecimal.ZERO);
+            dailyCashCountMap.put(date, 0);
+        }
+
+        List<AdminDashboardCashTransactionResponse> cashTransactions = new java.util.ArrayList<>();
+
+        for (Payment p : paymentsInRange) {
+            BigDecimal amt = nullToZero(p.getAmount());
+            boolean isCash = "CASH".equalsIgnoreCase(p.getPaymentMethod());
+            LocalDate pDate = p.getPaymentTime() != null ? p.getPaymentTime().toLocalDate() : null;
+
+            if (isCash) {
+                cashInRange = cashInRange.add(amt);
+                if (pDate != null && dailyCashMap.containsKey(pDate)) {
+                    dailyCashMap.put(pDate, dailyCashMap.get(pDate).add(amt));
+                    dailyCashCountMap.put(pDate, dailyCashCountMap.get(pDate) + 1);
+                }
+
+                String bookingCode = "N/A";
+                String customerName = "Khách hàng";
+                if (p.getInvoice() != null && p.getInvoice().getBooking() != null) {
+                    Booking b = p.getInvoice().getBooking();
+                    bookingCode = b.getBookingCode() != null ? b.getBookingCode() : ("#" + b.getId());
+                    if (b.getCustomer() != null && b.getCustomer().getFullName() != null) {
+                        customerName = b.getCustomer().getFullName();
+                    }
+                }
+
+                cashTransactions.add(new AdminDashboardCashTransactionResponse(
+                        p.getId(),
+                        bookingCode,
+                        customerName,
+                        p.getPaymentPurpose() != null ? p.getPaymentPurpose() : "BOOKING",
+                        p.getPaymentTime(),
+                        amt,
+                        p.getStatus()
+                ));
+            } else {
+                transferInRange = transferInRange.add(amt);
+                if (pDate != null && dailyTransferMap.containsKey(pDate)) {
+                    dailyTransferMap.put(pDate, dailyTransferMap.get(pDate).add(amt));
+                }
+            }
+        }
+
+        List<AdminDashboardCashDailyPointResponse> dailyCashTrend = new java.util.ArrayList<>();
+        for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
+            BigDecimal c = dailyCashMap.getOrDefault(date, BigDecimal.ZERO);
+            BigDecimal t = dailyTransferMap.getOrDefault(date, BigDecimal.ZERO);
+            int count = dailyCashCountMap.getOrDefault(date, 0);
+            dailyCashTrend.add(new AdminDashboardCashDailyPointResponse(
+                    date,
+                    c,
+                    t,
+                    c.add(t),
+                    count
+            ));
+        }
+
+        BigDecimal totalInRange = cashInRange.add(transferInRange);
+
+        return new AdminDashboardCashStatisticsResponse(
+                cashToday,
+                cashThisWeek,
+                cashThisMonth,
+                cashInRange,
+                transferInRange,
+                totalInRange,
+                dailyCashTrend,
+                cashTransactions
+        );
     }
 
     private boolean overlapsDate(BookingDetail detail, LocalDate date) {

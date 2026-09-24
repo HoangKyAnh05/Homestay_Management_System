@@ -11,5 +11,8 @@ public interface HousekeepingTaskChecklistItemRepository extends JpaRepository<H
     @EntityGraph(attributePaths = {"completedBy"})
     List<HousekeepingTaskChecklistItem> findByHousekeepingTaskIdOrderByDisplayOrderAsc(Long taskId);
 
+    @EntityGraph(attributePaths = {"completedBy"})
+    List<HousekeepingTaskChecklistItem> findByHousekeepingTaskIdInOrderByDisplayOrderAsc(java.util.Collection<Long> taskIds);
+
     boolean existsByHousekeepingTaskId(Long taskId);
 }

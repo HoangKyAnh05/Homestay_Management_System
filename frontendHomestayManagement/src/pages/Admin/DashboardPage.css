@@ -1240,3 +1240,341 @@
   color: #ffffff;
 }
 
+/* ========================================================
+   AUTOMATED CASH & DAILY REVENUE STATISTICS SECTION
+   ======================================================== */
+.dash-cash-section {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 24px;
+  box-shadow: 0 4px 20px -4px rgba(0, 0, 0, 0.04);
+}
+
+.dash-cash-section-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.dash-cash-section-head h2 {
+  margin: 0 0 4px;
+  font-size: 18px;
+  font-weight: 800;
+  color: #0f172a;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dash-cash-section-head p {
+  margin: 0;
+  font-size: 13px;
+  color: #64748b;
+}
+
+.dash-cash-badge-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  background: #ecfdf5;
+  color: #059669;
+  border: 1px solid #a7f3d0;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.dash-cash-kpis-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.dash-cash-kpi-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 18px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.dash-cash-kpi-card:hover {
+  transform: translateY(-2px);
+  border-color: #cbd5e1;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06);
+  background: #ffffff;
+}
+
+.dash-cash-kpi-card--range {
+  cursor: default;
+  background: #fffbeb;
+  border-color: #fef3c7;
+}
+
+.dash-cash-kpi-card--range:hover {
+  transform: none;
+  border-color: #fde68a;
+  box-shadow: none;
+}
+
+.dash-cash-kpi-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.dash-cash-kpi-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.dash-cash-kpi-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-bottom: 2px;
+}
+
+.dash-cash-kpi-value {
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.dash-cash-kpi-sub {
+  font-size: 11.5px;
+  color: #94a3b8;
+  margin-top: 2px;
+}
+
+.dash-cash-split-values {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12px;
+  color: #475569;
+  margin: 2px 0;
+}
+
+/* Daily Cash vs Transfer Chart */
+.dash-cash-chart-panel {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 18px 20px;
+  margin-bottom: 24px;
+}
+
+.dash-cash-chart-panel .dash-panel-head h3 {
+  margin: 0 0 4px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.dash-cash-chart-panel .dash-panel-head p {
+  margin: 0;
+  font-size: 12.5px;
+  color: #64748b;
+}
+
+.dash-cash-chart-scroll {
+  overflow-x: auto;
+  padding-bottom: 8px;
+  margin-top: 16px;
+}
+
+.dash-cash-chart {
+  min-width: max(100%, calc(var(--cash-days, 10) * 44px));
+  height: 220px;
+  position: relative;
+}
+
+.dash-cash-bars-wrapper {
+  display: flex;
+  align-items: flex-end;
+  height: 100%;
+  gap: 8px;
+  border-bottom: 2px solid #e2e8f0;
+  padding-bottom: 24px;
+}
+
+.dash-cash-day-col {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  position: relative;
+  min-width: 28px;
+  cursor: pointer;
+}
+
+.dash-cash-day-col:hover .dash-cash-bar {
+  filter: brightness(1.1);
+}
+
+.dash-cash-dual-bars {
+  width: 100%;
+  height: calc(100% - 24px);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 3px;
+}
+
+.dash-cash-bar {
+  width: 45%;
+  max-width: 16px;
+  border-radius: 4px 4px 0 0;
+  position: relative;
+  transition: height 0.3s ease;
+}
+
+.dash-cash-bar--cash {
+  background: linear-gradient(180deg, #10b981 0%, #059669 100%);
+}
+
+.dash-cash-bar--transfer {
+  background: linear-gradient(180deg, #3b82f6 0%, #1d4ed8 100%);
+}
+
+.dash-cash-bar-label {
+  position: absolute;
+  top: -18px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 9.5px;
+  font-weight: 700;
+  color: #475569;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.dash-cash-day-date {
+  position: absolute;
+  bottom: 0;
+  font-size: 11px;
+  color: #64748b;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Cash Table Panel */
+.dash-cash-table-panel {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 18px 20px;
+}
+
+.dash-cash-table-panel .dash-panel-head h3 {
+  margin: 0 0 4px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.dash-cash-table-panel .dash-panel-head p {
+  margin: 0;
+  font-size: 12.5px;
+  color: #64748b;
+}
+
+.dash-cash-table-count {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #475569;
+  background: #f1f5f9;
+  padding: 4px 10px;
+  border-radius: 6px;
+}
+
+.dash-cash-table-wrapper {
+  overflow-x: auto;
+  margin-top: 14px;
+}
+
+.dash-cash-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  text-align: left;
+}
+
+.dash-cash-table th {
+  background: #f8fafc;
+  color: #475569;
+  font-weight: 700;
+  padding: 10px 12px;
+  border-bottom: 2px solid #e2e8f0;
+  white-space: nowrap;
+}
+
+.dash-cash-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #f1f5f9;
+  color: #1e293b;
+}
+
+.dash-cash-table tr:hover td {
+  background: #f8fafc;
+}
+
+.dash-cash-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  font-weight: 700;
+  color: #0284c7;
+  background: #f0f9ff;
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid #bae6fd;
+}
+
+.dash-cash-purpose-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  background: #f1f5f9;
+  color: #334155;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.dash-cash-amount {
+  color: #059669;
+  font-size: 13.5px;
+}
+
+.dash-cash-status-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  background: #ecfdf5;
+  color: #059669;
+  border: 1px solid #a7f3d0;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+

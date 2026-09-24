@@ -289,25 +289,6 @@ function SePayQrPayment({
                 >
                   <span>{sandboxLoading ? '⏳ Đang xử lý...' : '✓ Xác nhận Thanh toán Thành công (1-Click)'}</span>
                 </button>
-                <button
-                  type="button"
-                  className="sepay-sandbox-btn-underpaid"
-                  onClick={() => triggerSandboxPayment('UNDERPAID')}
-                  disabled={sandboxLoading || checking}
-                  style={{
-                    background: '#ffffff',
-                    color: '#b91c1c',
-                    border: '1px solid #fca5a5',
-                    borderRadius: '8px',
-                    padding: '8px 12px',
-                    fontSize: '12px',
-                    fontWeight: 600,
-                    cursor: 'pointer'
-                  }}
-                  title="Test kịch bản chuyển thiếu tiền"
-                >
-                  Test Thiếu Tiền (Unhappy)
-                </button>
               </div>
             </div>
           </>

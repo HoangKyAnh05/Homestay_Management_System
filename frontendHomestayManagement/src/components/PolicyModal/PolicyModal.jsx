@@ -84,13 +84,13 @@ export const POLICY_TABS = [
         </p>
         <ul className="policy-list">
           <li>
-            <strong>• Hủy trước ngày check-in từ 7 ngày trở lên:</strong> Hoàn 100% tiền cọc hoặc hỗ trợ bảo lưu ngày đặt phòng trong vòng 6 tháng (miễn phí đổi ngày 01 lần).
+            <strong>• Hủy trước 48 giờ nhận phòng:</strong> Hoàn 100% số tiền đã thanh toán hoặc hỗ trợ bảo lưu, đổi ngày miễn phí.
           </li>
           <li>
-            <strong>• Hủy từ 3 đến 6 ngày trước ngày check-in:</strong> Hoàn 50% tiền cọc hoặc hỗ trợ đổi lịch sang giai đoạn khác (áp dụng chênh lệch giá nếu có).
+            <strong>• Hủy trong vòng 48 giờ trước nhận phòng:</strong> Hoàn 50% số tiền đã thanh toán hoặc hỗ trợ đổi lịch sang giai đoạn khác (áp dụng chênh lệch giá nếu có).
           </li>
           <li>
-            <strong>• Hủy trong vòng 48 giờ trước ngày check-in hoặc không đến (No-Show):</strong> Không hoàn lại tiền đặt cọc do homestay đã giữ phòng độc quyền và từ chối các khách đặt khác.
+            <strong>• Hủy sau giờ nhận phòng hoặc không đến (No-Show):</strong> Không hoàn lại tiền do homestay đã giữ phòng độc quyền và từ chối các khách đặt khác.
           </li>
           <li>
             <strong>• Trường hợp bất khả kháng (Thiên tai, sạt lở, bão lũ Sa Pa):</strong> Homestay hỗ trợ 100% đổi dời ngày hoặc hoàn cọc theo thỏa thuận trực tiếp qua Hotline <strong>0941 186 699</strong>.
@@ -119,7 +119,7 @@ export const POLICY_TABS = [
           <div className="checkin-time-divider">➜</div>
           <div className="checkin-time-badge out">
             <span className="time-label">GIỜ TRẢ PHÒNG (CHECK-OUT)</span>
-            <span className="time-val">Trước 11:00</span>
+            <span className="time-val">Trước 12:00</span>
           </div>
         </div>
         <ul className="policy-list">
@@ -127,7 +127,7 @@ export const POLICY_TABS = [
             <strong>1. Nhận phòng sớm (Early Check-in):</strong> Nếu quý khách đến sớm trước 14:00 và phòng đã được dọn sạch hoàn tất, homestay sẽ hỗ trợ nhận phòng sớm miễn phí. Nếu phòng đang có khách, quý khách có thể gửi hành lý tại quầy Lễ tân, thưởng thức trà ngắm thung lũng Mường Hoa.
           </li>
           <li>
-            <strong>2. Trả phòng muộn (Late Check-out):</strong> Trả phòng sau 11:00 phụ thuộc vào tình trạng phòng trống ngày hôm đó. Vui lòng liên hệ Lễ tân trước 09:00 để được sắp xếp thuận tiện nhất.
+            <strong>2. Trả phòng muộn (Late Check-out):</strong> Trả phòng sau 12:00 phụ thuộc vào tình trạng phòng trống ngày hôm đó. Vui lòng liên hệ Lễ tân trước 09:00 để được sắp xếp thuận tiện nhất.
           </li>
           <li>
             <strong>3. Giấy tờ cần chuẩn bị:</strong> Bản gốc CCCD / Hộ chiếu hoặc VNeID để nhân viên lễ tân hỗ trợ quét OCR check-in tự động nhanh chóng trong 30 giây.

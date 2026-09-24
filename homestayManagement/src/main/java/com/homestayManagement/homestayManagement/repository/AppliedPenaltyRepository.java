@@ -30,9 +30,28 @@ public interface AppliedPenaltyRepository extends JpaRepository<AppliedPenalty, 
     @Query("""
             select p from AppliedPenalty p
             join fetch p.checkRecord cr
+            join cr.bookingDetail bd
+            join fetch p.rulesPenalty
+            where bd.booking.id in :bookingIds
+            order by p.id
+            """)
+    List<AppliedPenalty> findByBookingIdsForInvoice(@Param("bookingIds") java.util.Collection<Long> bookingIds);
+
+    @Query("""
+            select p from AppliedPenalty p
+            join fetch p.checkRecord cr
             join fetch p.rulesPenalty
             where cr.bookingDetail.id = :bookingDetailId
             order by p.id
             """)
     List<AppliedPenalty> findByBookingDetailIdForAdmin(@Param("bookingDetailId") Long bookingDetailId);
+
+    @Query("""
+            select p from AppliedPenalty p
+            join fetch p.checkRecord cr
+            join fetch p.rulesPenalty
+            where cr.bookingDetail.id in :bookingDetailIds
+            order by p.id
+            """)
+    List<AppliedPenalty> findByBookingDetailIdsForAdmin(@Param("bookingDetailIds") java.util.Collection<Long> bookingDetailIds);
 }

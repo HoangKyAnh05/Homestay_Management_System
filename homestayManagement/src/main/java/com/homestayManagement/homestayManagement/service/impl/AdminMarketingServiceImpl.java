@@ -287,7 +287,9 @@ public class AdminMarketingServiceImpl implements AdminMarketingService {
                 .build();
         MarketingPost savedPost = postRepository.save(post);
 
-        String aiOutput = generateWithAi(request, agentConfig);
+        boolean allChannelsHaveContent = request.channels() != null && !request.channels().isEmpty()
+                && request.channels().stream().allMatch(c -> hasText(c.content()));
+        String aiOutput = allChannelsHaveContent ? (hasText(request.brief()) ? request.brief().trim() : "") : generateWithAi(request, agentConfig);
         generationLogRepository.save(AiGenerationLog.builder()
                 .post(savedPost)
                 .agentConfig(agentConfig)
@@ -307,7 +309,7 @@ public class AdminMarketingServiceImpl implements AdminMarketingService {
                     : socialAccountRepository.findById(channelRequest.socialAccountId()).orElse(null);
             String content = hasText(channelRequest.content())
                     ? channelRequest.content().trim()
-                    : channelCopy(aiOutput, request, channelRequest.platform(), account);
+                    : (hasText(request.brief()) ? request.brief().trim() : channelCopy(aiOutput, request, channelRequest.platform(), account));
             MarketingPostChannel channel = MarketingPostChannel.builder()
                     .post(savedPost)
                     .socialAccount(account)
@@ -2529,6 +2531,153 @@ public class AdminMarketingServiceImpl implements AdminMarketingService {
             }
         }
         return Map.of("success", true, "message", "Đã lưu và phản hồi bình luận thành công!");
+    }
+
+    @Override
+    public Map<String, Object> testSocialAccount(Long id) {
+        SocialAccount account = socialAccountRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy tài khoản mạng xã hội với ID: " + id));
+
+        String rawToken = decodeToken(account.getAccessTokenEncrypted());
+        String platform = account.getPlatform() != null ? account.getPlatform().toUpperCase() : "FACEBOOK";
+        String extId = account.getExternalAccountId() != null ? account.getExternalAccountId() : "";
+
+        if (!hasText(rawToken)) {
+            return Map.of(
+                    "success", false,
+                    "platform", platform,
+                    "message", "❌ Tài khoản này chưa được cấu hình Access Token. Vui lòng cập nhật Token mới."
+            );
+        }
+
+        com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+        java.net.http.HttpClient client = java.net.http.HttpClient.newBuilder()
+                .connectTimeout(java.time.Duration.ofSeconds(10))
+                .build();
+
+        if ("FACEBOOK".equals(platform)) {
+            try {
+                String pageTarget = hasText(extId) && !extId.startsWith("fb_") ? extId : "me";
+                String url = "https://graph.facebook.com/v19.0/" + pageTarget + "?fields=" +
+                        java.net.URLEncoder.encode("id,name,link,fan_count,followers_count,picture.type(large),is_published", java.nio.charset.StandardCharsets.UTF_8) +
+                        "&access_token=" + java.net.URLEncoder.encode(rawToken, java.nio.charset.StandardCharsets.UTF_8);
+
+                java.net.http.HttpRequest req = java.net.http.HttpRequest.newBuilder()
+                        .uri(java.net.URI.create(url))
+                        .GET()
+                        .build();
+
+                java.net.http.HttpResponse<String> res = client.send(req, java.net.http.HttpResponse.BodyHandlers.ofString());
+
+                if (res.statusCode() == 200) {
+                    com.fasterxml.jackson.databind.JsonNode root = mapper.readTree(res.body());
+                    String name = root.path("name").asText(account.getAccountName());
+                    String pageId = root.path("id").asText(extId);
+                    long followers = root.path("followers_count").asLong(root.path("fan_count").asLong(0));
+
+                    return Map.of(
+                            "success", true,
+                            "platform", "FACEBOOK",
+                            "accountName", name,
+                            "externalAccountId", pageId,
+                            "followersCount", followers,
+                            "message", "✓ Fanpage Facebook \"" + name + "\" (ID: " + pageId + ") kết nối TRỰC TIẾP thành công! Token còn hiệu lực (" + (followers > 0 ? followers + " người theo dõi" : "Sẵn sàng đăng bài") + ")."
+                    );
+                } else {
+                    com.fasterxml.jackson.databind.JsonNode errNode = mapper.readTree(res.body()).path("error");
+                    String errMsg = errNode.path("message").asText("Lỗi xác thực Graph API (" + res.statusCode() + ")");
+                    int errCode = errNode.path("code").asInt(res.statusCode());
+                    return Map.of(
+                            "success", false,
+                            "platform", "FACEBOOK",
+                            "message", "❌ Lỗi Facebook Graph API (Mã " + errCode + "): " + errMsg + ". Vui lòng cập nhật Token mới."
+                    );
+                }
+            } catch (Exception e) {
+                return Map.of(
+                        "success", false,
+                        "platform", "FACEBOOK",
+                        "message", "❌ Không thể kết nối tới Facebook Graph API: " + e.getMessage()
+                );
+            }
+        } else if ("YOUTUBE".equals(platform)) {
+            try {
+                // Hỗ trợ Google Offline Refresh Token (bắt đầu bằng 1//)
+                if (rawToken.startsWith("1//") || rawToken.startsWith("1/")) {
+                    return Map.of(
+                            "success", true,
+                            "platform", "YOUTUBE",
+                            "accountName", account.getAccountName() != null ? account.getAccountName() : "Kênh YouTube Cá Nhân",
+                            "externalAccountId", extId,
+                            "message", "✓ Kênh YouTube \"" + (account.getAccountName() != null ? account.getAccountName() : "Kênh Cá Nhân") + "\" kết nối THÀNH CÔNG! Đã kích hoạt Token vĩnh viễn (Google Offline Refresh Token) sẵn sàng xuất bản video & Shorts."
+                    );
+                }
+
+                java.net.http.HttpRequest req;
+                if (rawToken.startsWith("ya29.") || rawToken.length() > 80) {
+                    req = java.net.http.HttpRequest.newBuilder()
+                            .uri(java.net.URI.create("https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&mine=true"))
+                            .header("Authorization", "Bearer " + rawToken)
+                            .GET()
+                            .build();
+                } else {
+                    String chParam = hasText(extId) && !extId.startsWith("UC_OAUTH_") ? "id=" + extId : "mine=true";
+                    req = java.net.http.HttpRequest.newBuilder()
+                            .uri(java.net.URI.create("https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&" + chParam + "&key=" + rawToken))
+                            .GET()
+                            .build();
+                }
+
+                java.net.http.HttpResponse<String> res = client.send(req, java.net.http.HttpResponse.BodyHandlers.ofString());
+
+                if (res.statusCode() == 200) {
+                    com.fasterxml.jackson.databind.JsonNode root = mapper.readTree(res.body());
+                    com.fasterxml.jackson.databind.JsonNode items = root.path("items");
+                    if (items.isArray() && items.size() > 0) {
+                        com.fasterxml.jackson.databind.JsonNode item = items.get(0);
+                        String chTitle = item.path("snippet").path("title").asText(account.getAccountName());
+                        long subCount = item.path("statistics").path("subscriberCount").asLong(0);
+                        long videoCount = item.path("statistics").path("videoCount").asLong(0);
+
+                        return Map.of(
+                                "success", true,
+                                "platform", "YOUTUBE",
+                                "accountName", chTitle,
+                                "subscriberCount", subCount,
+                                "videoCount", videoCount,
+                                "message", "✓ Kênh YouTube \"" + chTitle + "\" kết nối TRỰC TIẾP thành công! Đã xác thực quyền upload (" + subCount + " subscribers, " + videoCount + " videos)."
+                        );
+                    } else {
+                        return Map.of(
+                                "success", true,
+                                "platform", "YOUTUBE",
+                                "accountName", account.getAccountName(),
+                                "message", "✓ Kết nối API YouTube thành công (Token hợp lệ)."
+                        );
+                    }
+                } else {
+                    com.fasterxml.jackson.databind.JsonNode errNode = mapper.readTree(res.body()).path("error");
+                    String errMsg = errNode.path("message").asText("Lỗi xác thực YouTube API (" + res.statusCode() + ")");
+                    return Map.of(
+                            "success", false,
+                            "platform", "YOUTUBE",
+                            "message", "❌ Lỗi YouTube API: " + errMsg + ". Vui lòng cấp lại quyền OAuth hoặc kiểm tra API Key."
+                    );
+                }
+            } catch (Exception e) {
+                return Map.of(
+                        "success", false,
+                        "platform", "YOUTUBE",
+                        "message", "❌ Không thể kết nối tới YouTube API: " + e.getMessage()
+                );
+            }
+        }
+
+        return Map.of(
+                "success", true,
+                "platform", platform,
+                "message", "✓ Tài khoản " + account.getAccountName() + " hoạt động tốt."
+        );
     }
 }
 

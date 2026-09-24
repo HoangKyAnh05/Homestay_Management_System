@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { HOMESTAY_LOCATION, PLACES_DATA } from '../../data/places';
-import { calculateDistanceMeters, formatDistance } from '../../utils/geoUtils';
+import { calculateDistanceMeters, formatDistance, getPlaceDistanceMeters } from '../../utils/geoUtils';
 import './MiniMap.css';
 
 export default function MiniMap({ height = '360px', showExpandBtn = true }) {
@@ -60,11 +60,10 @@ export default function MiniMap({ height = '360px', showExpandBtn = true }) {
       // Top nearby key landmarks for visual context
       const keyPlaces = PLACES_DATA.slice(0, 6);
       keyPlaces.forEach((place) => {
-        const distanceMeters = calculateDistanceMeters(
+        const distanceMeters = getPlaceDistanceMeters(
+          place,
           HOMESTAY_LOCATION.lat,
-          HOMESTAY_LOCATION.lng,
-          place.latitude,
-          place.longitude
+          HOMESTAY_LOCATION.lng
         );
         const formattedDistance = formatDistance(distanceMeters);
 

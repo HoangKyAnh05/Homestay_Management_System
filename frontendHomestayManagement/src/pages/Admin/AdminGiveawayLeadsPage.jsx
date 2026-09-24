@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import AdminLayout, { navigate } from './AdminLayout'
 import { getStoredToken } from '../../services/authService'
+import { DEFAULT_LUXURY_PRIZES, getActiveWheelPrizes } from '../Giveaway/GiveawayLuckyWheelPage'
 import './AdminGiveawayLeadsPage.css'
 
 const API_BASE = (import.meta.env.VITE_API_URL || '') + '/api/admin/marketing/giveaway'
@@ -36,6 +37,86 @@ export default function AdminGiveawayLeadsPage() {
     }
     sessionStorage.setItem('pending_booking_lead', JSON.stringify(payload))
     window.location.href = '/admin/bookings'
+  }
+
+  // Mini Game Lucky Wheel Prize Customization State
+  const [isPrizeConfigModalOpen, setIsPrizeConfigModalOpen] = useState(false)
+  const [wheelPrizes, setWheelPrizes] = useState(() => getActiveWheelPrizes())
+  const [prizeFeedback, setPrizeFeedback] = useState({ type: '', msg: '' })
+
+  const handleOpenPrizeModal = async () => {
+    setPrizeFeedback({ type: '', msg: '' })
+    setIsPrizeConfigModalOpen(true)
+    try {
+      const res = await fetch(`${API_BASE}/prizes`, { headers: authHeader() })
+      if (res.ok) {
+        const data = await res.json()
+        if (Array.isArray(data) && data.length > 0) {
+          setWheelPrizes(data)
+          localStorage.setItem('la_do_lucky_wheel_custom_prizes', JSON.stringify(data))
+          return
+        }
+      }
+    } catch {
+      // Fallback
+    }
+    setWheelPrizes(getActiveWheelPrizes())
+  }
+
+  const handlePrizeChange = (index, field, value) => {
+    setWheelPrizes((prev) => {
+      const copy = [...prev]
+      copy[index] = { ...copy[index], [field]: value }
+      return copy
+    })
+  }
+
+  const handleSavePrizes = async (e) => {
+    e.preventDefault()
+    try {
+      localStorage.setItem('la_do_lucky_wheel_custom_prizes', JSON.stringify(wheelPrizes))
+      window.dispatchEvent(new Event('storage'))
+
+      // Also persist to Backend Database / Server
+      const res = await fetch(`${API_BASE}/prizes`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...authHeader(),
+        },
+        body: JSON.stringify(wheelPrizes),
+      })
+
+      if (res.ok) {
+        const saved = await res.json()
+        if (Array.isArray(saved) && saved.length > 0) setWheelPrizes(saved)
+      }
+
+      setPrizeFeedback({ type: 'success', msg: '✅ Đã lưu cấu hình phần quà vòng quay thành công! Dữ liệu đã được cập nhật trên máy chủ và trang Minigame.' })
+      setTimeout(() => {
+        setPrizeFeedback({ type: '', msg: '' })
+      }, 4000)
+    } catch (err) {
+      setPrizeFeedback({ type: 'error', msg: '❌ Lỗi khi lưu cấu hình: ' + err.message })
+    }
+  }
+
+  const handleResetDefaultPrizes = async () => {
+    if (window.confirm('Bạn có chắc chắn muốn khôi phục lại 6 phần quà vòng quay về mặc định ban đầu của Lá Đỏ Homestay?')) {
+      try {
+        await fetch(`${API_BASE}/prizes/reset`, {
+          method: 'POST',
+          headers: authHeader(),
+        })
+      } catch {}
+      localStorage.removeItem('la_do_lucky_wheel_custom_prizes')
+      setWheelPrizes(DEFAULT_LUXURY_PRIZES)
+      window.dispatchEvent(new Event('storage'))
+      setPrizeFeedback({ type: 'success', msg: '✅ Đã khôi phục danh sách phần quà mặc định!' })
+      setTimeout(() => {
+        setPrizeFeedback({ type: '', msg: '' })
+      }, 3000)
+    }
   }
 
   // Giveaway Post Creation Modal State
@@ -339,11 +420,28 @@ export default function AdminGiveawayLeadsPage() {
           <div className="gw-leads-actions">
             <button
               type="button"
+              className="mkt-btn"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                background: 'linear-gradient(135deg, #fff1f2 0%, #ffe4e6 100%)',
+                borderColor: '#fb7185',
+                color: '#e11d48',
+                fontWeight: 700
+              }}
+              onClick={handleOpenPrizeModal}
+              title="Tùy chỉnh danh sách 6 phần quà trên Vòng Quay May Mắn"
+            >
+              🎁 Đổi Quà Vòng Quay
+            </button>
+            <button
+              type="button"
               className="mkt-btn mkt-btn--secondary"
               style={{ display: 'flex', alignItems: 'center', gap: 6 }}
               onClick={handleExportExcel}
             >
-               Xuất File Excel (.xlsx)
+              📊 Xuất File Excel (.xlsx)
             </button>
             <button
               type="button"
@@ -351,7 +449,7 @@ export default function AdminGiveawayLeadsPage() {
               style={{ display: 'flex', alignItems: 'center', gap: 6 }}
               onClick={handleOpenCreatePostModal}
             >
-               Đăng Bài Giveaway Mới
+              🚀 Đăng Bài Giveaway Mới
             </button>
           </div>
         </div>
@@ -1084,6 +1182,205 @@ export default function AdminGiveawayLeadsPage() {
                   >
                     {publishing ? '⏳ Đang Xuất Bản...' : '🚀 Đăng Ngay Lên Fanpage'}
                   </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Lucky Wheel Prize Configuration Modal */}
+        {isPrizeConfigModalOpen && (
+          <div className="gw-modal-overlay" onClick={() => setIsPrizeConfigModalOpen(false)}>
+            <div className="gw-modal-dialog gw-prize-modal-dialog" onClick={(e) => e.stopPropagation()}>
+              <div className="gw-modal-header">
+                <div className="gw-modal-header-left">
+                  <div className="gw-modal-icon" style={{ background: '#ffe4e6', color: '#e11d48' }}>
+                    🎁
+                  </div>
+                  <div>
+                    <h2 className="gw-modal-title">Cấu Hình Phần Quà Vòng Quay May Mắn</h2>
+                    <p className="gw-modal-subtitle">Tùy chỉnh 6 ô phần quà hiển thị trên vòng quay của khách hàng</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="gw-modal-close-btn"
+                  onClick={() => setIsPrizeConfigModalOpen(false)}
+                >
+                  ✕
+                </button>
+              </div>
+
+              {prizeFeedback.msg && (
+                <div
+                  className={`gw-alert-banner ${prizeFeedback.type === 'success' ? 'gw-alert-success' : 'gw-alert-error'}`}
+                  style={{ margin: '16px 24px 0' }}
+                >
+                  {prizeFeedback.msg}
+                </div>
+              )}
+
+              <form onSubmit={handleSavePrizes} className="gw-modal-body gw-prize-modal-body">
+                <div className="gw-prize-list-grid">
+                  {wheelPrizes.map((pz, idx) => (
+                    <div key={idx} className="gw-prize-card">
+                      <div className="gw-prize-card-header">
+                        <div className="gw-prize-badge" style={{ background: pz.sliceColor1 || '#991b1b', color: pz.textColor || '#fff' }}>
+                          Ô #{idx + 1}
+                        </div>
+                        <span className="gw-prize-preview-label">{pz.shortTitle || `Phần quà ${idx + 1}`}</span>
+                      </div>
+
+                      <div className="gw-prize-card-body">
+                        <div className="gw-form-row">
+                          <div className="gw-form-group" style={{ flex: 1 }}>
+                            <label className="gw-form-label">
+                              <span>Tiêu đề ô bánh xe:</span>
+                              <span className="gw-required">*</span>
+                            </label>
+                            <input
+                              type="text"
+                              className="gw-form-input"
+                              value={pz.shortTitle}
+                              onChange={(e) => handlePrizeChange(idx, 'shortTitle', e.target.value)}
+                              placeholder="VD: GIẢM 50%"
+                              required
+                            />
+                          </div>
+                          <div className="gw-form-group" style={{ flex: 1 }}>
+                            <label className="gw-form-label">
+                              <span>Dòng phụ (Subtext):</span>
+                            </label>
+                            <input
+                              type="text"
+                              className="gw-form-input"
+                              value={pz.subText}
+                              onChange={(e) => handlePrizeChange(idx, 'subText', e.target.value)}
+                              placeholder="VD: Toàn Chuyến Đi"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="gw-form-group">
+                          <label className="gw-form-label">
+                            <span>Tên đầy đủ phần thưởng:</span>
+                            <span className="gw-required">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            className="gw-form-input"
+                            value={pz.fullName}
+                            onChange={(e) => handlePrizeChange(idx, 'fullName', e.target.value)}
+                            placeholder="VD: Voucher Giảm 50% Tiền Phòng"
+                            required
+                          />
+                        </div>
+
+                        <div className="gw-form-row">
+                          <div className="gw-form-group" style={{ flex: 1 }}>
+                            <label className="gw-form-label">
+                              <span>Tiền tố mã Voucher:</span>
+                            </label>
+                            <input
+                              type="text"
+                              className="gw-form-input"
+                              value={pz.codePrefix}
+                              onChange={(e) => handlePrizeChange(idx, 'codePrefix', e.target.value.toUpperCase())}
+                              placeholder="VD: LADO50"
+                            />
+                          </div>
+                          <div className="gw-form-group" style={{ flex: 1 }}>
+                            <label className="gw-form-label">
+                              <span>Mức giảm (%):</span>
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              max="100"
+                              className="gw-form-input"
+                              value={pz.discountPercent}
+                              onChange={(e) => handlePrizeChange(idx, 'discountPercent', Number(e.target.value) || 0)}
+                              placeholder="VD: 50"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="gw-form-row gw-color-picker-row">
+                          <div className="gw-form-group" style={{ flex: 1 }}>
+                            <label className="gw-form-label"><span>Màu lát 1:</span></label>
+                            <div className="gw-color-input-wrap">
+                              <input
+                                type="color"
+                                value={pz.sliceColor1}
+                                onChange={(e) => handlePrizeChange(idx, 'sliceColor1', e.target.value)}
+                              />
+                              <span>{pz.sliceColor1}</span>
+                            </div>
+                          </div>
+                          <div className="gw-form-group" style={{ flex: 1 }}>
+                            <label className="gw-form-label"><span>Màu lát 2:</span></label>
+                            <div className="gw-color-input-wrap">
+                              <input
+                                type="color"
+                                value={pz.sliceColor2}
+                                onChange={(e) => handlePrizeChange(idx, 'sliceColor2', e.target.value)}
+                              />
+                              <span>{pz.sliceColor2}</span>
+                            </div>
+                          </div>
+                          <div className="gw-form-group" style={{ flex: 1 }}>
+                            <label className="gw-form-label"><span>Màu chữ:</span></label>
+                            <div className="gw-color-input-wrap">
+                              <input
+                                type="color"
+                                value={pz.textColor}
+                                onChange={(e) => handlePrizeChange(idx, 'textColor', e.target.value)}
+                              />
+                              <span>{pz.textColor}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="gw-modal-footer" style={{ marginTop: 20 }}>
+                  <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                    <button
+                      type="button"
+                      className="mkt-btn mkt-btn--secondary"
+                      onClick={handleResetDefaultPrizes}
+                      style={{ color: '#dc2626', borderColor: '#fca5a5' }}
+                    >
+                      🔄 Khôi Phục Mặc Định
+                    </button>
+                    <a
+                      href="/giveaway"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mkt-btn mkt-btn--secondary"
+                      style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                    >
+                      🎯 Xem Vòng Quay
+                    </a>
+                  </div>
+                  <div style={{ display: 'flex', gap: 10 }}>
+                    <button
+                      type="button"
+                      className="mkt-btn mkt-btn--secondary"
+                      onClick={() => setIsPrizeConfigModalOpen(false)}
+                    >
+                      Đóng
+                    </button>
+                    <button
+                      type="submit"
+                      className="mkt-btn mkt-btn--primary"
+                      style={{ minWidth: 160, background: 'linear-gradient(135deg, #e11d48 0%, #be123c 100%)', borderColor: '#be123c' }}
+                    >
+                      💾 Lưu Cấu Hình Quà
+                    </button>
+                  </div>
                 </div>
               </form>
             </div>

@@ -360,6 +360,34 @@
   background: #fff1f1;
 }
 
+.profile-bank-heading {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 10px;
+  padding: 14px 18px;
+  background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+  color: #166534;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.profile-bank-heading svg {
+  flex-shrink: 0;
+  stroke: #16a34a;
+}
+
+.profile-bank-heading small {
+  display: block;
+  font-weight: 500;
+  font-size: 12px;
+  color: #15803d;
+  margin-top: 2px;
+}
+
 @media (max-width: 720px) {
 
   .profile-header,

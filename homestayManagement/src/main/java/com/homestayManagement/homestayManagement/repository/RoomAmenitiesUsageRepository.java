@@ -27,9 +27,28 @@ public interface RoomAmenitiesUsageRepository extends JpaRepository<RoomAmenitie
     @Query("""
             select u from RoomAmenitiesUsage u
             join fetch u.checkInRecord cr
+            join cr.bookingDetail bd
+            join fetch u.item
+            where bd.booking.id in :bookingIds
+            order by u.id
+            """)
+    List<RoomAmenitiesUsage> findByBookingIdsForInvoice(@Param("bookingIds") java.util.Collection<Long> bookingIds);
+
+    @Query("""
+            select u from RoomAmenitiesUsage u
+            join fetch u.checkInRecord cr
             join fetch u.item
             where cr.bookingDetail.id = :bookingDetailId
             order by u.id
             """)
     List<RoomAmenitiesUsage> findByBookingDetailIdForAdmin(@Param("bookingDetailId") Long bookingDetailId);
+
+    @Query("""
+            select u from RoomAmenitiesUsage u
+            join fetch u.checkInRecord cr
+            join fetch u.item
+            where cr.bookingDetail.id in :bookingDetailIds
+            order by u.id
+            """)
+    List<RoomAmenitiesUsage> findByBookingDetailIdsForAdmin(@Param("bookingDetailIds") java.util.Collection<Long> bookingDetailIds);
 }

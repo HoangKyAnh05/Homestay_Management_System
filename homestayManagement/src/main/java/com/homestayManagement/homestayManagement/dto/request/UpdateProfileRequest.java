@@ -19,6 +19,15 @@ public record UpdateProfileRequest(
         String address,
 
         @Size(max = 30, message = "Can cuoc cong dan toi da 30 ky tu")
-        String identityDocumentNumber
+        String identityDocumentNumber,
+
+        @Size(max = 100, message = "Ten ngan hang toi da 100 ky tu")
+        String bankName,
+
+        @Size(max = 50, message = "So tai khoan ngan hang toi da 50 ky tu")
+        String bankAccountNumber,
+
+        @Size(max = 100, message = "Ten chu tai khoan toi da 100 ky tu")
+        String bankAccountHolder
 ) {
 }

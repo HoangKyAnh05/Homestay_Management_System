@@ -597,7 +597,7 @@ function RoomDetailPage({ roomId }) {
                       💳 {depositText(room)}
                     </span>
                     <span style={{ padding: '8px 14px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '999px', fontSize: '14px', fontWeight: 600, color: '#334155' }}>
-                      ⏱️ Nhận phòng: 14:00 | Trả phòng: 11:00
+                      ⏱️ Nhận phòng: 14:00 | Trả phòng: 12:00
                     </span>
                   </div>
                 </section>

@@ -28,7 +28,16 @@ export function calculateDistanceMeters(lat1, lon1, lat2, lon2) {
       Math.sin(dLon / 2);
 
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return EARTH_RADIUS_METERS * c;
+  const straightLine = EARTH_RADIUS_METERS * c;
+  // Realistic mountain road distance coefficient in Sa Pa terrain (~1.65x straight line)
+  return Math.round(straightLine * 1.65);
+}
+
+export function getPlaceDistanceMeters(place, originLat, originLng) {
+  if (place && place.roadDistanceMeters != null && place.roadDistanceMeters > 0) {
+    return place.roadDistanceMeters;
+  }
+  return calculateDistanceMeters(originLat, originLng, place?.latitude, place?.longitude);
 }
 
 /**

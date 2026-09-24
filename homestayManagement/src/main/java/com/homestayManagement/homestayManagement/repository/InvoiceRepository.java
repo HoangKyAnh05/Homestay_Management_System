@@ -47,6 +47,7 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
             left join fetch i.employee e
             where i.createdAt >= :startInclusive
               and i.createdAt < :endExclusive
+              and upper(coalesce(b.status, '')) in ('COMPLETED', 'CHECKED_OUT')
             order by i.createdAt asc, i.id asc
             """)
     List<Invoice> findByCreatedAtRangeForDashboard(

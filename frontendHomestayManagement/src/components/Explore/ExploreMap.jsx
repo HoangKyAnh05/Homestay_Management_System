@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { HOMESTAY_LOCATION, getGoogleMapsMultiStopUrl } from '../../data/places';
-import { calculateDistanceMeters, formatDistance } from '../../utils/geoUtils';
+import { calculateDistanceMeters, formatDistance, getPlaceDistanceMeters } from '../../utils/geoUtils';
 import './ExploreMap.css';
 
 // Custom SVG Icons for Leaflet divIcons
@@ -158,11 +158,10 @@ export default function ExploreMap({
       const isSelected = selectedPlace?.id === place.id;
       const isHovered = hoveredPlaceId === place.id;
       const pinColor = place.pinColor || '#7c3aed';
-      const distanceMeters = calculateDistanceMeters(
+      const distanceMeters = getPlaceDistanceMeters(
+        place,
         HOMESTAY_LOCATION.lat,
-        HOMESTAY_LOCATION.lng,
-        place.latitude,
-        place.longitude
+        HOMESTAY_LOCATION.lng
       );
       const formattedDistance = formatDistance(distanceMeters);
 

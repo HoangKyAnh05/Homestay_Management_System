@@ -66,7 +66,8 @@ class DashboardExcelServiceImplTest {
                 List.of(new AdminDashboardNameValueResponse("COMPLETED", BigDecimal.ZERO, 22L)),
                 List.of(new AdminDashboardNameValueResponse("Tiền phòng", BigDecimal.valueOf(4420000), 0L)),
                 List.of(new AdminDashboardNameValueResponse("Phòng 102", BigDecimal.valueOf(1300000), 0L)),
-                List.of(new AdminDashboardNameValueResponse("Phòng 1", BigDecimal.ZERO, 26L))
+                List.of(new AdminDashboardNameValueResponse("Phòng 1", BigDecimal.ZERO, 26L)),
+                null
         );
 
         when(adminDashboardService.getSummary(any(), any())).thenReturn(summary);
@@ -115,7 +116,8 @@ class DashboardExcelServiceImplTest {
                 List.of(),
                 List.of(),
                 List.of(),
-                List.of()
+                List.of(),
+                null
         );
         when(adminDashboardService.getSummary(any(), any())).thenReturn(summary);
 

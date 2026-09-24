@@ -135,9 +135,9 @@ export default function RoomScheduleCalendarModal({
       const isPast = cellDate < today
       const isToday = cellDate.getTime() === today.getTime()
 
-      // Check overlapping with standard homestay night window (14:00 to next day 11:00)
+      // Check overlapping with standard homestay night window (14:00 to next day 12:00)
       const dayStart = new Date(activeYear, activeMonth, day, 14, 0, 0)
-      const dayEnd = new Date(activeYear, activeMonth, day + 1, 11, 0, 0)
+      const dayEnd = new Date(activeYear, activeMonth, day + 1, 12, 0, 0)
 
       const matchedSlots = busySlots.filter((slot) => {
         const slotStart = new Date(slot.checkInTarget)
@@ -145,11 +145,13 @@ export default function RoomScheduleCalendarModal({
         return slotStart < dayEnd && slotEnd > dayStart
       })
 
-      const isBooked = matchedSlots.length > 0
-      const isMaintenance = matchedSlots.some((s) => s.status === 'MAINTENANCE' || s.bookingDetailId === -1)
+      const isMaintenance = matchedSlots.some((s) => s.status === 'MAINTENANCE')
       const isDirty = matchedSlots.some((s) => s.status === 'DIRTY')
       const isCheckedIn = matchedSlots.some((s) => s.status === 'CHECKED_IN')
+      const isConfirmed = matchedSlots.some((s) => s.status === 'CONFIRMED' || s.status === 'COMPLETED')
       const isPending = matchedSlots.some((s) => s.status === 'PENDING')
+      const isBooked = isCheckedIn || isConfirmed
+      const isBusy = isBooked || isPending || isMaintenance || isDirty
 
       const isCheckIn = checkInDayKey === dayKey
       const isCheckOut = checkOutDayKey === dayKey
@@ -169,9 +171,11 @@ export default function RoomScheduleCalendarModal({
         isPast,
         isToday,
         isBooked,
+        isBusy,
         isMaintenance,
         isDirty,
         isCheckedIn,
+        isConfirmed,
         isPending,
         isCheckIn,
         isCheckOut,
@@ -247,6 +251,10 @@ export default function RoomScheduleCalendarModal({
               Đã đặt
             </span>
             <span className="legend-item">
+              <span className="legend-dot is-pending" />
+              Giữ chỗ
+            </span>
+            <span className="legend-item">
               <span className="legend-dot is-maintenance" />
               Bảo trì / Chờ dọn
             </span>
@@ -277,7 +285,7 @@ export default function RoomScheduleCalendarModal({
                   return <div key={cell.key} className="vivid-day-cell is-empty" />
                 }
 
-                const isConflict = cell.isBooked && (cell.isCheckIn || cell.isInSelectedRange)
+                const isConflict = (cell.isConfirmed || cell.isCheckedIn || cell.isPending) && (cell.isCheckIn || cell.isInSelectedRange)
                 const cellClasses = [
                   'vivid-day-cell',
                   cell.isPast
@@ -288,15 +296,15 @@ export default function RoomScheduleCalendarModal({
                     ? 'is-dirty'
                     : cell.isCheckedIn
                     ? 'is-stay'
+                    : cell.isConfirmed
+                    ? 'is-booked'
                     : cell.isPending
                     ? 'is-pending'
-                    : cell.isBooked
-                    ? 'is-booked'
                     : 'is-available',
                   cell.isToday ? 'is-today' : '',
                   isConflict ? 'is-booked-conflict' : cell.isInSelectedRange ? 'is-selected-range' : '',
-                  !cell.isBooked && cell.isCheckIn ? 'is-selected-checkin' : '',
-                  !cell.isBooked && cell.isCheckOut ? 'is-selected-checkout' : '',
+                  !cell.isBusy && cell.isCheckIn ? 'is-selected-checkin' : '',
+                  !cell.isBusy && cell.isCheckOut ? 'is-selected-checkout' : '',
                 ]
                   .filter(Boolean)
                   .join(' ')
@@ -310,10 +318,10 @@ export default function RoomScheduleCalendarModal({
                   statusText = 'Chờ dọn'
                 } else if (cell.isCheckedIn) {
                   statusText = 'Đang ở'
+                } else if (cell.isConfirmed) {
+                  statusText = isConflict ? '⚠️ Đã đặt' : 'Đã đặt'
                 } else if (cell.isPending) {
                   statusText = 'Giữ chỗ'
-                } else if (cell.isBooked) {
-                  statusText = isConflict ? '⚠️ Đã đặt' : 'Đã đặt'
                 } else if (cell.isCheckIn) {
                   statusText = 'Nhận'
                 } else if (cell.isCheckOut) {
@@ -329,8 +337,10 @@ export default function RoomScheduleCalendarModal({
                   cellTitle = '🧹 Phòng đang chờ buồng phòng dọn dẹp'
                 } else if (cell.isCheckedIn) {
                   cellTitle = '👥 Phòng đang có khách lưu trú'
+                } else if (cell.isConfirmed) {
+                  cellTitle = `Đã có khách đặt: ${cell.matchedSlots.map((s) => `${formatDisplayDateTime(s.checkInTarget)} - ${formatDisplayDateTime(s.checkOutTarget)}`).join(', ')}`
                 } else if (cell.isPending) {
-                  cellTitle = '⏳ Đang có khách giữ chỗ tạm thời (5 phút)'
+                  cellTitle = '⏳ Đang có khách giữ chỗ tạm thời (5 phút chờ thanh toán)'
                 } else if (cell.isBooked) {
                   cellTitle = `Đã có khách đặt: ${cell.matchedSlots.map((s) => `${formatDisplayDateTime(s.checkInTarget)} - ${formatDisplayDateTime(s.checkOutTarget)}`).join(', ')}`
                 }

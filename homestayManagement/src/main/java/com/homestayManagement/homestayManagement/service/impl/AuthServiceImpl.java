@@ -475,7 +475,10 @@ public class AuthServiceImpl implements AuthService {
                 account.getRole().getName(),
                 customer != null ? customer.getIdentityDocumentNumber() : null,
                 customer != null ? customer.getMemberPoints() : 0,
-                customer != null ? customer.getMemberDiscountPercent() : null
+                customer != null ? customer.getMemberDiscountPercent() : null,
+                customer != null ? customer.getBankName() : null,
+                customer != null ? customer.getBankAccountNumber() : null,
+                customer != null ? customer.getBankAccountHolder() : null
         );
     }
 

@@ -3,11 +3,13 @@ package com.homestayManagement.homestayManagement.service.support;
 import com.homestayManagement.homestayManagement.entity.Booking;
 import com.homestayManagement.homestayManagement.entity.BookingDetail;
 
+import java.time.LocalDateTime;
 import java.util.Set;
 
 public final class BookingInventoryPolicy {
 
-    private static final Set<String> OCCUPYING_STATUSES = Set.of("CONFIRMED", "CHECKED_IN");
+    private static final Set<String> OCCUPYING_STATUSES = Set.of("CONFIRMED", "CHECKED_IN", "ACTIVE", "BOOKED");
+    private static final Set<String> HOLD_STATUSES = Set.of("PENDING", "PENDING_PAYMENT", "HOLD");
 
     private BookingInventoryPolicy() {
     }
@@ -20,20 +22,22 @@ public final class BookingInventoryPolicy {
         String detailStatus = normalize(detail.getStatus());
         String bookingStatus = normalize(booking.getStatus());
 
-        if ("CANCELLED".equals(bookingStatus) || "CANCELLED".equals(detailStatus)) {
+        if ("CANCELLED".equals(bookingStatus) || "CANCELLED".equals(detailStatus)
+                || "COMPLETED".equals(bookingStatus) || "COMPLETED".equals(detailStatus)) {
             return false;
         }
 
-        if (OCCUPYING_STATUSES.contains(bookingStatus) && OCCUPYING_STATUSES.contains(detailStatus)) {
+        if (OCCUPYING_STATUSES.contains(bookingStatus) || OCCUPYING_STATUSES.contains(detailStatus)) {
             return true;
         }
 
-        if ("PENDING".equals(bookingStatus) && !"CANCELLED".equals(detailStatus)) {
+        if (HOLD_STATUSES.contains(bookingStatus) || HOLD_STATUSES.contains(detailStatus)) {
+            LocalDateTime now = LocalDateTime.now();
             if (booking.getPaymentHoldExpiresAt() != null) {
-                return booking.getPaymentHoldExpiresAt().isAfter(java.time.LocalDateTime.now());
+                return booking.getPaymentHoldExpiresAt().isAfter(now);
             }
             if (booking.getBookingDate() != null) {
-                return booking.getBookingDate().plusMinutes(5).isAfter(java.time.LocalDateTime.now());
+                return booking.getBookingDate().plusMinutes(5).isAfter(now);
             }
             return true;
         }
@@ -45,3 +49,4 @@ public final class BookingInventoryPolicy {
         return status == null ? "" : status.trim().toUpperCase();
     }
 }
+

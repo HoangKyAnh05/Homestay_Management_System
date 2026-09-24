@@ -803,6 +803,7 @@ export function MarketingAIAgentPage() {
     repeatInterval: 'ONCE',
     publishing: false,
     successMsg: '',
+    formErrors: {},
   })
 
   // Giveaway Campaign Post Generator & Publisher
@@ -2081,119 +2082,42 @@ export function MarketingAIAgentPage() {
 
   const handleTestAccount = async (account) => {
     setTestingAccounts((prev) => ({ ...prev, [account.id]: true }))
-    setAccountStatusMessages((prev) => ({ ...prev, [account.id]: null }))
+    setAccountStatusMessages((prev) => ({
+      ...prev,
+      [account.id]: {
+        success: null,
+        text: '⏳ Đang gửi yêu cầu kiểm tra thực tế tới máy chủ Facebook / Google...',
+      },
+    }))
 
     try {
-      if (account.platform === 'YOUTUBE') {
-        const token = account.accessTokenEncrypted || ''
-        const channelQuery = account.externalAccountId || account.accountName || '@ladohomestaysapa'
+      const res = await request(`/social-accounts/${account.id}/test`, {
+        method: 'POST',
+      })
 
-        if (!token || token.trim() === '') {
-          setAccountStatusMessages((prev) => ({
-            ...prev,
-            [account.id]: {
-              success: true,
-              text: `✓ Kênh YouTube "${account.accountName || account.externalAccountId}" kết nối tốt! Đã kích hoạt token vĩnh viễn.`,
-            },
-          }))
-          return
-        }
-
-        try {
-          const ytResults = await request('/social-accounts/detect-youtube-token', {
-            method: 'POST',
-            body: JSON.stringify({ token: token, channelQuery: channelQuery }),
-          })
-          if (ytResults && ytResults.length > 0) {
-            setAccountStatusMessages((prev) => ({
-              ...prev,
-              [account.id]: {
-                success: true,
-                text: `✓ Kênh YouTube "${ytResults[0].name}" kết nối tốt! Đã sẵn sàng tự động xuất bản Video/Shorts.`,
-              },
-            }))
-            return
-          } else {
-            setAccountStatusMessages((prev) => ({
-              ...prev,
-              [account.id]: {
-                success: true,
-                text: `✓ Kênh YouTube "${account.accountName || account.externalAccountId}" kết nối tốt! Sẵn sàng xuất bản.`,
-              },
-            }))
-            return
-          }
-        } catch (ytErr) {
-          setAccountStatusMessages((prev) => ({
-            ...prev,
-            [account.id]: {
-              success: true,
-              text: `✓ Kênh YouTube "${account.accountName || account.externalAccountId}" kết nối tốt! Đã kích hoạt token vĩnh viễn.`,
-            },
-          }))
-          return
-        }
-      } else if (account.platform === 'FACEBOOK') {
-        const token = account.accessTokenEncrypted
-        if (!token || token.trim() === '') {
-          setAccountStatusMessages((prev) => ({
-            ...prev,
-            [account.id]: {
-              success: true,
-              text: `✓ Fanpage Facebook "${account.accountName || 'Lá Đỏ Homestay'}" đã kích hoạt token vĩnh viễn! Sẵn sàng xuất bản bài viết.`,
-            },
-          }))
-          return
-        }
-        try {
-          const fbResults = await request('/social-accounts/detect-facebook-token', {
-            method: 'POST',
-            body: JSON.stringify({ token: token }),
-          })
-          if (fbResults && fbResults.length > 0) {
-            setAccountStatusMessages((prev) => ({
-              ...prev,
-              [account.id]: {
-                success: true,
-                text: `✓ Fanpage Facebook "${fbResults[0].name}" đang hoạt động tốt! Sẵn sàng xuất bản bài viết.`,
-              },
-            }))
-            return
-          } else {
-            setAccountStatusMessages((prev) => ({
-              ...prev,
-              [account.id]: {
-                success: true,
-                text: `✓ Fanpage Facebook "${account.accountName || 'Lá Đỏ Homestay'}" đã kích hoạt token vĩnh viễn! Sẵn sàng xuất bản bài viết.`,
-              },
-            }))
-            return
-          }
-        } catch (fbErr) {
-          setAccountStatusMessages((prev) => ({
-            ...prev,
-            [account.id]: {
-              success: true,
-              text: `✓ Fanpage Facebook "${account.accountName || 'Lá Đỏ Homestay'}" đã kích hoạt token vĩnh viễn! Sẵn sàng xuất bản bài viết.`,
-            },
-          }))
-          return
-        }
+      if (res && res.success) {
+        setAccountStatusMessages((prev) => ({
+          ...prev,
+          [account.id]: {
+            success: true,
+            text: res.message || `✓ Kết nối tài khoản "${account.accountName}" hoạt động rất tốt!`,
+          },
+        }))
+      } else {
+        setAccountStatusMessages((prev) => ({
+          ...prev,
+          [account.id]: {
+            success: false,
+            text: res?.message || `❌ Kiểm tra thất bại: Token của ${account.accountName} không hợp lệ hoặc đã hết hạn.`,
+          },
+        }))
       }
-
-      setAccountStatusMessages((prev) => ({
-        ...prev,
-        [account.id]: {
-          success: true,
-          text: `✓ Kết nối ${account.accountName} hoạt động tốt!`,
-        },
-      }))
     } catch (err) {
       setAccountStatusMessages((prev) => ({
         ...prev,
         [account.id]: {
           success: false,
-          text: `❌ Lỗi kiểm tra: ${err.message}`,
+          text: `❌ Lỗi kiểm tra kết nối: ${err.message}`,
         },
       }))
     } finally {
@@ -2445,7 +2369,69 @@ BẮT BUỘC trả về đúng 1 JSON duy nhất, không giải thích ngoài:
 
   const handleMultiPlatformPublish = async (e, instantPublish = false) => {
     e?.preventDefault()
-    setMultiPostModal((c) => ({ ...c, errorMsg: '', successMsg: '' }))
+    setMultiPostModal((c) => ({ ...c, errorMsg: '', successMsg: '', formErrors: {} }))
+
+    // ── VALIDATE FORM ──
+    const errs = {}
+    const m = multiPostModal
+
+    // 1. File / Media
+    if (!m.mediaUrl || !m.mediaUrl.trim()) {
+      errs.mediaUrl = 'Vui lòng chọn File Video hoặc Ảnh cần đăng.'
+    }
+
+    // 2. Tiêu đề
+    if (!m.title || !m.title.trim()) {
+      errs.title = 'Tiêu đề không được để trống.'
+    } else if (m.title.trim().length < 5) {
+      errs.title = 'Tiêu đề phải có ít nhất 5 ký tự.'
+    } else if (m.title.trim().length > 500) {
+      errs.title = 'Tiêu đề tối đa 500 ký tự.'
+    }
+
+    // 3. Caption
+    if (!m.caption || !m.caption.trim()) {
+      errs.caption = 'Nội dung caption không được để trống.'
+    } else if (m.caption.trim().length < 10) {
+      errs.caption = 'Caption phải có ít nhất 10 ký tự.'
+    } else if (m.caption.trim().length > 5000) {
+      errs.caption = 'Caption tối đa 5.000 ký tự.'
+    }
+
+    // 4. Hashtags — nếu nhập thì phải bắt đầu bằng #
+    if (m.hashtags && m.hashtags.trim()) {
+      const tags = m.hashtags.trim().split(/\s+/)
+      const invalid = tags.filter((t) => t && !t.startsWith('#'))
+      if (invalid.length > 0) {
+        errs.hashtags = `Hashtag phải bắt đầu bằng "#". Sai: ${invalid.slice(0, 3).join(', ')}`
+      } else if (tags.length > 30) {
+        errs.hashtags = 'Tối đa 30 hashtag cho một bài đăng.'
+      }
+    }
+
+    // 5. Nền tảng: ít nhất 1
+    if (!m.platforms.FACEBOOK && !m.platforms.YOUTUBE) {
+      errs.platforms = 'Vui lòng chọn ít nhất 1 nền tảng để đăng tải.'
+    }
+
+    // 6. Thời gian hẹn giờ: khi schedule (không đăng ngay) phải > hiện tại + 3 phút
+    if (!instantPublish && m.scheduledDateTime) {
+      const scheduled = new Date(m.scheduledDateTime)
+      const minAllowed = new Date(Date.now() + 3 * 60 * 1000)
+      if (isNaN(scheduled.getTime())) {
+        errs.scheduledDateTime = 'Thời gian hẹn giờ không hợp lệ.'
+      } else if (scheduled < minAllowed) {
+        errs.scheduledDateTime = 'Thời gian hẹn giờ phải sau thời điểm hiện tại ít nhất 3 phút.'
+      }
+    }
+
+    if (Object.keys(errs).length > 0) {
+      setMultiPostModal((c) => ({ ...c, formErrors: errs, errorMsg: '⚠️ Vui lòng kiểm tra lại các thông tin bên dưới trước khi đăng.' }))
+      // Scroll to top of modal body
+      document.querySelector('.mkt-modal-body')?.scrollTo({ top: 0, behavior: 'smooth' })
+      return
+    }
+    // ── END VALIDATE ──
 
     const selectedList = []
     if (multiPostModal.platforms.FACEBOOK) {
@@ -2555,7 +2541,29 @@ BẮT BUỘC trả về đúng 1 JSON duy nhất, không giải thích ngoài:
         finalMediaUrl = multiPostModal.thumbnailUrl || ''
       }
 
-      const fullContent = `${multiPostModal.caption}\n\n${multiPostModal.hashtags}`
+      // Tự động chèn link Website, Vòng quay may mắn & Hotline chính thức nếu chưa có trong caption
+      let finalCaption = (multiPostModal.caption || '').trim()
+      const hasGiveawayLink = finalCaption.includes('/giveaway')
+      const hasWebsiteLink = finalCaption.includes('homestay-sapa.myvnc.com') || finalCaption.includes('ladohomestay')
+      const hasHotline = finalCaption.includes('0941186699') || finalCaption.includes('0941 186 699') || finalCaption.includes('0941.186.699')
+
+      const linksToAdd = []
+      if (!hasGiveawayLink) {
+        linksToAdd.push('🎁 Tham gia Vòng Quay May Mắn nhận Voucher: https://homestay-sapa.myvnc.com/giveaway')
+      }
+      if (!hasWebsiteLink) {
+        linksToAdd.push('🌐 Khám phá & Đặt phòng trực tiếp: https://homestay-sapa.myvnc.com')
+      }
+      if (!hasHotline) {
+        linksToAdd.push('📞 Hotline / Zalo hỗ trợ 24/7: 0941.186.699')
+      }
+
+      if (linksToAdd.length > 0) {
+        finalCaption = finalCaption ? `${finalCaption}\n\n${linksToAdd.join('\n')}` : linksToAdd.join('\n')
+      }
+
+      const postHashtags = (multiPostModal.hashtags || '#shorts #reels #LaDoHomestay #SaPa #DuLichSaPa').trim()
+      const fullContent = `${finalCaption}\n\n${postHashtags}`
       const pad = (n) => String(n).padStart(2, '0')
       const targetDate = instantPublish || !multiPostModal.scheduledDateTime ? new Date() : new Date(multiPostModal.scheduledDateTime)
       const isPastOrNow = instantPublish || targetDate <= new Date()
@@ -2566,12 +2574,14 @@ BẮT BUỘC trả về đúng 1 JSON duy nhất, không giải thích ngoài:
         goal: 'Tăng nhận diện thương hiệu',
         tone: 'Ấm áp & truyền cảm hứng',
         targetAudience: 'Khách du lịch yêu thích nghỉ dưỡng và trải nghiệm Sa Pa',
-        brief: fullContent,
+        brief: finalCaption,
         channels: selectedList.map((item) => ({
           socialAccountId: item.id || null,
           platform: item.platform,
           pageName: item.name,
           pageUrl: item.pageUrl,
+          content: finalCaption,
+          hashtags: postHashtags,
         })),
         media: finalMediaUrl ? [{
           mediaUrl: finalMediaUrl,
@@ -3875,9 +3885,33 @@ BẮT BUỘC trả về đúng 1 JSON duy nhất, không giải thích ngoài:
                       <strong style={{ color: '#dc2626', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px', fontSize: '12.5px' }}>
                         💡 Kết nối Kênh YouTube (OAuth 2.0 / Refresh Token):
                       </strong>
-                      <p style={{ margin: 0, lineHeight: 1.4 }}>
-                        Nhập <strong>Handle Kênh</strong> (ví dụ <code>@ladohomestaysapa</code>) hoặc dán <strong>OAuth Access / Refresh Token</strong> từ <a href="https://developers.google.com/oauthplayground/" target="_blank" rel="noopener noreferrer" style={{ color: '#dc2626', fontWeight: 700 }}>Google OAuth Playground ↗</a>. Hệ thống sẽ tự động liên kết Kênh để xuất bản Video & Shorts.
+                      <p style={{ margin: 0, lineHeight: 1.4, marginBottom: '6px' }}>
+                        Nhập <strong>Handle Kênh</strong> (ví dụ <code>@ladohomestaysapa</code>) hoặc dán <strong>OAuth Access / Refresh Token</strong> (bắt đầu bằng <code>1//...</code> hoặc <code>ya29...</code>) từ <a href="https://developers.google.com/oauthplayground/" target="_blank" rel="noopener noreferrer" style={{ color: '#dc2626', fontWeight: 700 }}>Google OAuth Playground ↗</a>. Hệ thống sẽ tự động liên kết Kênh để xuất bản Video & Shorts vĩnh viễn.
                       </p>
+                      <button
+                        type="button"
+                        style={{
+                          background: '#fee2e2',
+                          color: '#b91c1c',
+                          border: '1px solid #fca5a5',
+                          borderRadius: '6px',
+                          padding: '4px 10px',
+                          fontSize: '11.5px',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                        }}
+                        onClick={() => setApiConfigModal((c) => ({
+                          ...c,
+                          tokenInput: localStorage.getItem('mkt_youtube_permanent_token') || '',
+                          autoPlatform: 'YOUTUBE',
+                          channelQueryInput: '@Lá Đỏ Homestay Sa Pa',
+                        }))}
+                      >
+                        ⚡ Tự động chọn cấu hình Kênh YouTube Lá Đỏ
+                      </button>
                     </div>
                   )}
 
@@ -4025,12 +4059,12 @@ BẮT BUỘC trả về đúng 1 JSON duy nhất, không giải thích ngoài:
 
                   {/* 1. Chọn File Video */}
                   <div className="mkt-dark-field">
-                    <label style={{ color: '#334155', fontWeight: 700, fontSize: '13px' }}>Chọn File Video / Ảnh:</label>
+                    <label style={{ color: '#334155', fontWeight: 700, fontSize: '13px' }}>Chọn File Video / Ảnh: <span style={{ color: '#dc2626' }}>*</span></label>
                     <div className="mkt-input-with-btn">
                       <input
-                        style={{ background: '#f8fafc', color: '#0f172a', border: '1px solid #cbd5e1', borderRadius: '10px', padding: '12px 16px' }}
+                        style={{ background: '#f8fafc', color: '#0f172a', border: multiPostModal.formErrors?.mediaUrl ? '1.5px solid #dc2626' : '1px solid #cbd5e1', borderRadius: '10px', padding: '12px 16px' }}
                         value={multiPostModal.mediaUrl}
-                        onChange={(e) => setMultiPostModal({ ...multiPostModal, mediaUrl: e.target.value })}
+                        onChange={(e) => setMultiPostModal({ ...multiPostModal, mediaUrl: e.target.value, formErrors: { ...multiPostModal.formErrors, mediaUrl: undefined } })}
                         placeholder="gdrive://... hoặc https://... hoặc /uploads/..."
                       />
                       <label className="mkt-dark-side-btn" style={{ cursor: 'pointer', background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1', borderRadius: '10px', padding: '0 18px', fontWeight: 600 }}>
@@ -4054,6 +4088,7 @@ BẮT BUỘC trả về đúng 1 JSON duy nhất, không giải thích ngoài:
                                   thumbnailUrl: !isVid ? uploaded.mediaUrl : c.thumbnailUrl,
                                   rawFile: file,
                                   title: file.name.replace(/\.[^/.]+$/, ''),
+                                  formErrors: { ...c.formErrors, mediaUrl: undefined },
                                 }))
                               } catch {
                                 setMultiPostModal((c) => ({
@@ -4063,6 +4098,7 @@ BẮT BUỘC trả về đúng 1 JSON duy nhất, không giải thích ngoài:
                                   mediaType: isVid ? 'VIDEO' : 'IMAGE',
                                   rawFile: file,
                                   title: file.name.replace(/\.[^/.]+$/, ''),
+                                  formErrors: { ...c.formErrors, mediaUrl: undefined },
                                 }))
                               }
                             }
@@ -4087,147 +4123,63 @@ BẮT BUỘC trả về đúng 1 JSON duy nhất, không giải thích ngoài:
                         )}
                       </div>
                     )}
+                    {multiPostModal.formErrors?.mediaUrl && (
+                      <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#dc2626', fontWeight: 600 }}>⚠ {multiPostModal.formErrors.mediaUrl}</p>
+                    )}
                   </div>
 
                   {/* 2. Tiêu đề Video */}
                   <div className="mkt-dark-field">
-                    <label style={{ color: '#334155', fontWeight: 700, fontSize: '13px' }}>Tiêu đề Video / Bài viết:</label>
+                    <label style={{ color: '#334155', fontWeight: 700, fontSize: '13px' }}>Tiêu đề Video / Bài viết: <span style={{ color: '#dc2626' }}>*</span></label>
                     <input
-                      style={{ background: '#f8fafc', color: '#0f172a', border: '1px solid #cbd5e1', borderRadius: '10px', padding: '12px 16px' }}
+                      style={{ background: '#f8fafc', color: '#0f172a', border: multiPostModal.formErrors?.title ? '1.5px solid #dc2626' : '1px solid #cbd5e1', borderRadius: '10px', padding: '12px 16px' }}
                       value={multiPostModal.title}
-                      onChange={(e) => setMultiPostModal({ ...multiPostModal, title: e.target.value })}
+                      onChange={(e) => setMultiPostModal({ ...multiPostModal, title: e.target.value, formErrors: { ...multiPostModal.formErrors, title: undefined } })}
                       placeholder="VD: Khám phá vẻ đẹp Sa Pa tại Lá Đỏ Homestay..."
-                      required
+                      maxLength={500}
                     />
-                  </div>
-
-                  {/* AI Marketing Studio Controls */}
-                  <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #e2e8f0', paddingBottom: '8px' }}>
-                      <span style={{ fontSize: '13px', fontWeight: 800, color: '#1e3a2b', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        ✨ AI Marketing Studio (Chọn phong cách & Công thức viết)
-                      </span>
-                      <button
-                        type="button"
-                        onClick={handleAutoGenerateModalCaption}
-                        disabled={multiPostModal.generatingAi}
-                        style={{ background: 'linear-gradient(135deg, #2563eb, #7c3aed)', color: '#ffffff', border: 0, padding: '8px 16px', borderRadius: '8px', fontWeight: 800, fontSize: '13px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px', boxShadow: '0 3px 10px rgba(79, 70, 229, 0.35)', transition: 'all 0.2s' }}
-                      >
-                        {multiPostModal.generatingAi ? (
-                          <span className="mkt-spinner" style={{ width: 14, height: 14, display: 'inline-block' }} />
-                        ) : (
-                          <Icon name="sparkles" size={15} />
-                        )}
-                        <span>{multiPostModal.generatingAi ? 'AI đang sinh...' : '✨ Tạo bài AI'}</span>
-                      </button>
-                    </div>
-
-                    {/* 1. Chủ đề chính */}
-                    <div>
-                      <span style={{ fontSize: '12px', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '6px' }}>
-                        🎯 Chủ đề bài đăng:
-                      </span>
-                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                        {[
-                          { key: 'SAN_MAY', label: '☁️ Săn mây Mường Hoa' },
-                          { key: 'REVIEW_ROOM', label: '🛏️ Review phòng đẹp' },
-                          { key: 'VOUCHER_GIVEAWAY', label: '🎁 Minigame Voucher 50%' },
-                          { key: 'BBQ_SUNSET', label: '🥩 BBQ hoàng hôn' },
-                          { key: 'FLASHSALE', label: '⚡ Flash Sale trong tuần' },
-                        ].map((item) => (
-                          <button
-                            key={item.key}
-                            type="button"
-                            onClick={() => setMultiPostModal((c) => ({ ...c, aiTopicTag: item.key }))}
-                            style={{
-                              padding: '5px 10px',
-                              borderRadius: '6px',
-                              fontSize: '12px',
-                              fontWeight: 600,
-                              cursor: 'pointer',
-                              border: multiPostModal.aiTopicTag === item.key ? '1.5px solid #166534' : '1px solid #cbd5e1',
-                              background: multiPostModal.aiTopicTag === item.key ? '#f0fdf4' : '#ffffff',
-                              color: multiPostModal.aiTopicTag === item.key ? '#166534' : '#475569',
-                            }}
-                          >
-                            {item.label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* 2. Công thức Marketing & Tone giọng */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                      <div>
-                        <span style={{ fontSize: '12px', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '4px' }}>
-                          📐 Công thức Marketing:
-                        </span>
-                        <select
-                          value={multiPostModal.aiFramework}
-                          onChange={(e) => setMultiPostModal({ ...multiPostModal, aiFramework: e.target.value })}
-                          style={{ width: '100%', padding: '6px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '12px', background: '#fff', color: '#0f172a', fontWeight: 600 }}
-                        >
-                          <option value="HOOK_STORY_OFFER">🎬 Hook - Story - Offer (Shorts/Reels)</option>
-                          <option value="AIDA">💎 AIDA (Attention - Interest - Desire - Action)</option>
-                          <option value="PAS">🌿 PAS (Chữa lành & Giải pháp)</option>
-                          <option value="FOMO">⏳ FOMO (Tạo độ khan hiếm)</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <span style={{ fontSize: '12px', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '4px' }}>
-                          🎨 Tone giọng & Phong cách:
-                        </span>
-                        <select
-                          value={multiPostModal.aiTone}
-                          onChange={(e) => setMultiPostModal({ ...multiPostModal, aiTone: e.target.value })}
-                          style={{ width: '100%', padding: '6px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '12px', background: '#fff', color: '#0f172a', fontWeight: 600 }}
-                        >
-                          <option value="POETIC_CHILL">🌿 Thơ mộng & Chill bình yên</option>
-                          <option value="EXCITED_TREND">🔥 Hào hứng, Bắt trend sôi nổi</option>
-                          <option value="COZY_WARM">☕ Gần gũi, Ấm cúng chân tình</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    {/* 3. Ô Ghi chú yêu cầu riêng cho AI */}
-                    <div>
-                      <span style={{ fontSize: '12px', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '4px' }}>
-                        ✍️ Ghi chú yêu cầu riêng cho AI (Ý tưởng bổ sung, ưu đãi hôm nay...):
-                      </span>
-                      <input
-                        style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '12.5px', background: '#ffffff', color: '#0f172a' }}
-                        value={multiPostModal.aiCustomNote}
-                        onChange={(e) => setMultiPostModal({ ...multiPostModal, aiCustomNote: e.target.value })}
-                        placeholder="VD: Nhấn mạnh phòng bồn tắm kính tầng 3, tặng đĩa ngô nướng, chỉ áp dụng trước thứ 6..."
-                      />
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '3px' }}>
+                      {multiPostModal.formErrors?.title ? (
+                        <p style={{ margin: 0, fontSize: '12px', color: '#dc2626', fontWeight: 600 }}>⚠ {multiPostModal.formErrors.title}</p>
+                      ) : <span />}
+                      <span style={{ fontSize: '11px', color: '#94a3b8' }}>{multiPostModal.title?.length || 0}/500</span>
                     </div>
                   </div>
+
 
                   {/* 3. Nội dung Caption */}
                   <div className="mkt-dark-field">
                     <label style={{ color: '#334155', fontWeight: 700, fontSize: '13px' }}>
-                      <span>Nội dung Caption (Đã chèn tự động Link Website & Vòng quay):</span>
+                      <span>Nội dung Caption (Đã chèn tự động Link Website & Vòng quay): <span style={{ color: '#dc2626' }}>*</span></span>
                     </label>
                     <textarea
-                      style={{ background: '#f8fafc', color: '#0f172a', border: '1px solid #cbd5e1', borderRadius: '10px', padding: '12px 16px', lineHeight: 1.5 }}
+                      style={{ background: '#f8fafc', color: '#0f172a', border: multiPostModal.formErrors?.caption ? '1.5px solid #dc2626' : '1px solid #cbd5e1', borderRadius: '10px', padding: '12px 16px', lineHeight: 1.5 }}
                       rows="6"
                       value={multiPostModal.caption}
-                      onChange={(e) => setMultiPostModal({ ...multiPostModal, caption: e.target.value })}
-                      placeholder="Nhấp 'Tự động sinh bằng AI' hoặc tự nhập mô tả / caption..."
-                      required
+                      onChange={(e) => setMultiPostModal({ ...multiPostModal, caption: e.target.value, formErrors: { ...multiPostModal.formErrors, caption: undefined } })}
+                      placeholder="Tự nhập mô tả / caption cho bài đăng..."
+                      maxLength={5000}
                     />
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '3px' }}>
+                      {multiPostModal.formErrors?.caption ? (
+                        <p style={{ margin: 0, fontSize: '12px', color: '#dc2626', fontWeight: 600 }}>⚠ {multiPostModal.formErrors.caption}</p>
+                      ) : <span />}
+                      <span style={{ fontSize: '11px', color: '#94a3b8' }}>{multiPostModal.caption?.length || 0}/5000</span>
+                    </div>
                   </div>
 
                   {/* 4. Hashtags */}
                   <div className="mkt-dark-field">
                     <label style={{ color: '#334155', fontWeight: 700, fontSize: '13px' }}>Hashtags:</label>
                     <input
-                      style={{ background: '#f8fafc', color: '#0f172a', border: '1px solid #cbd5e1', borderRadius: '10px', padding: '12px 16px' }}
+                      style={{ background: '#f8fafc', color: '#0f172a', border: multiPostModal.formErrors?.hashtags ? '1.5px solid #dc2626' : '1px solid #cbd5e1', borderRadius: '10px', padding: '12px 16px' }}
                       value={multiPostModal.hashtags}
-                      onChange={(e) => setMultiPostModal({ ...multiPostModal, hashtags: e.target.value })}
+                      onChange={(e) => setMultiPostModal({ ...multiPostModal, hashtags: e.target.value, formErrors: { ...multiPostModal.formErrors, hashtags: undefined } })}
                       placeholder="#shorts #reels #tiktok #fyp..."
                     />
+                    {multiPostModal.formErrors?.hashtags && (
+                      <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#dc2626', fontWeight: 600 }}>⚠ {multiPostModal.formErrors.hashtags}</p>
+                    )}
                   </div>
 
                   {/* 5. Thumbnail (Ảnh bìa) */}
@@ -4282,17 +4234,17 @@ BẮT BUỘC trả về đúng 1 JSON duy nhất, không giải thích ngoài:
 
                   {/* 6. Chọn nền tảng đăng tải đồng thời */}
                   <div className="mkt-dark-field">
-                    <label style={{ color: '#334155', fontWeight: 700, fontSize: '13px' }}>Chọn nền tảng đăng tải đồng thời:</label>
+                    <label style={{ color: '#334155', fontWeight: 700, fontSize: '13px' }}>Chọn nền tảng đăng tải đồng thời: <span style={{ color: '#dc2626' }}>*</span></label>
                     <div className="mkt-platform-select-grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
                       {/* YouTube */}
                       <div
                         className={`mkt-platform-box ${multiPostModal.platforms.YOUTUBE ? 'mkt-platform-box--active' : ''}`}
                         style={{
                           background: multiPostModal.platforms.YOUTUBE ? '#f0f9ff' : '#f8fafc',
-                          border: multiPostModal.platforms.YOUTUBE ? '2px solid #0284c7' : '1px solid #e2e8f0',
+                          border: multiPostModal.platforms.YOUTUBE ? '2px solid #0284c7' : (multiPostModal.formErrors?.platforms ? '1.5px solid #dc2626' : '1px solid #e2e8f0'),
                           color: multiPostModal.platforms.YOUTUBE ? '#0284c7' : '#475569',
                         }}
-                        onClick={() => setMultiPostModal((c) => ({ ...c, platforms: { ...c.platforms, YOUTUBE: !c.platforms.YOUTUBE } }))}
+                        onClick={() => setMultiPostModal((c) => ({ ...c, platforms: { ...c.platforms, YOUTUBE: !c.platforms.YOUTUBE }, formErrors: { ...c.formErrors, platforms: undefined } }))}
                       >
                         <input type="checkbox" checked={multiPostModal.platforms.YOUTUBE} readOnly />
                         <span> YouTube</span>
@@ -4303,15 +4255,18 @@ BẮT BUỘC trả về đúng 1 JSON duy nhất, không giải thích ngoài:
                         className={`mkt-platform-box ${multiPostModal.platforms.FACEBOOK ? 'mkt-platform-box--active' : ''}`}
                         style={{
                           background: multiPostModal.platforms.FACEBOOK ? '#f0f9ff' : '#f8fafc',
-                          border: multiPostModal.platforms.FACEBOOK ? '2px solid #0284c7' : '1px solid #e2e8f0',
+                          border: multiPostModal.platforms.FACEBOOK ? '2px solid #0284c7' : (multiPostModal.formErrors?.platforms ? '1.5px solid #dc2626' : '1px solid #e2e8f0'),
                           color: multiPostModal.platforms.FACEBOOK ? '#0284c7' : '#475569',
                         }}
-                        onClick={() => setMultiPostModal((c) => ({ ...c, platforms: { ...c.platforms, FACEBOOK: !c.platforms.FACEBOOK } }))}
+                        onClick={() => setMultiPostModal((c) => ({ ...c, platforms: { ...c.platforms, FACEBOOK: !c.platforms.FACEBOOK }, formErrors: { ...c.formErrors, platforms: undefined } }))}
                       >
                         <input type="checkbox" checked={multiPostModal.platforms.FACEBOOK} readOnly />
                         <span> Facebook</span>
                       </div>
                     </div>
+                    {multiPostModal.formErrors?.platforms && (
+                      <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#dc2626', fontWeight: 600 }}>⚠ {multiPostModal.formErrors.platforms}</p>
+                    )}
                   </div>
 
                   {/* 7. Dropdown Chọn Page Facebook nếu đã chọn */}
@@ -4363,13 +4318,16 @@ BẮT BUỘC trả về đúng 1 JSON duy nhất, không giải thích ngoài:
                     <div className="mkt-dark-field">
                       <label style={{ color: '#334155', fontWeight: 700, fontSize: '13px' }}>📅 Thời gian hẹn giờ đăng (Bấm vào chọn)</label>
                       <input
-                        style={{ background: '#f8fafc', color: '#0f172a', border: '1px solid #cbd5e1', borderRadius: '10px', padding: '12px 16px', cursor: 'pointer', fontWeight: 600 }}
+                        style={{ background: '#f8fafc', color: '#0f172a', border: multiPostModal.formErrors?.scheduledDateTime ? '1.5px solid #dc2626' : '1px solid #cbd5e1', borderRadius: '10px', padding: '12px 16px', cursor: 'pointer', fontWeight: 600 }}
                         type="datetime-local"
                         value={multiPostModal.scheduledDateTime}
                         onClick={(e) => { try { e.target.showPicker?.() } catch (err) {} }}
                         onFocus={(e) => { try { e.target.showPicker?.() } catch (err) {} }}
-                        onChange={(e) => setMultiPostModal({ ...multiPostModal, scheduledDateTime: e.target.value })}
+                        onChange={(e) => setMultiPostModal({ ...multiPostModal, scheduledDateTime: e.target.value, formErrors: { ...multiPostModal.formErrors, scheduledDateTime: undefined } })}
                       />
+                      {multiPostModal.formErrors?.scheduledDateTime && (
+                        <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#dc2626', fontWeight: 600 }}>⚠ {multiPostModal.formErrors.scheduledDateTime}</p>
+                      )}
                       {/* Mốc chọn nhanh */}
                       <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '6px' }}>
                         <button
@@ -4379,7 +4337,7 @@ BẮT BUỘC trả về đúng 1 JSON duy nhất, không giải thích ngoài:
                             d.setHours(d.getHours() + 1, 0, 0, 0)
                             const pad = (n) => String(n).padStart(2, '0')
                             const val = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
-                            setMultiPostModal((c) => ({ ...c, scheduledDateTime: val }))
+                            setMultiPostModal((c) => ({ ...c, scheduledDateTime: val, formErrors: { ...c.formErrors, scheduledDateTime: undefined } }))
                           }}
                           style={{ fontSize: '11px', padding: '3px 8px', borderRadius: '6px', background: '#f1f5f9', border: '1px solid #cbd5e1', color: '#334155', cursor: 'pointer', fontWeight: 600 }}
                         >
@@ -4392,7 +4350,7 @@ BẮT BUỘC trả về đúng 1 JSON duy nhất, không giải thích ngoài:
                             d.setHours(20, 0, 0, 0)
                             const pad = (n) => String(n).padStart(2, '0')
                             const val = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T20:00`
-                            setMultiPostModal((c) => ({ ...c, scheduledDateTime: val }))
+                            setMultiPostModal((c) => ({ ...c, scheduledDateTime: val, formErrors: { ...c.formErrors, scheduledDateTime: undefined } }))
                           }}
                           style={{ fontSize: '11px', padding: '3px 8px', borderRadius: '6px', background: '#f1f5f9', border: '1px solid #cbd5e1', color: '#334155', cursor: 'pointer', fontWeight: 600 }}
                         >
@@ -4405,7 +4363,7 @@ BẮT BUỘC trả về đúng 1 JSON duy nhất, không giải thích ngoài:
                             d.setDate(d.getDate() + 1)
                             const pad = (n) => String(n).padStart(2, '0')
                             const val = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T08:30`
-                            setMultiPostModal((c) => ({ ...c, scheduledDateTime: val }))
+                            setMultiPostModal((c) => ({ ...c, scheduledDateTime: val, formErrors: { ...c.formErrors, scheduledDateTime: undefined } }))
                           }}
                           style={{ fontSize: '11px', padding: '3px 8px', borderRadius: '6px', background: '#f1f5f9', border: '1px solid #cbd5e1', color: '#334155', cursor: 'pointer', fontWeight: 600 }}
                         >

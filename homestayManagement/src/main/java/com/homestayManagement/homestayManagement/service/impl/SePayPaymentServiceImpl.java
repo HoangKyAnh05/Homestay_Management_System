@@ -475,8 +475,11 @@ public class SePayPaymentServiceImpl implements SePayPaymentService {
         bookingDetailRepository.save(paidDetail);
         stayAccessService.expireAccess(paidDetail.getId());
         if (paidDetail.getRoom() != null) {
-            paidDetail.getRoom().setStatus("AVAILABLE");
-            roomRepository.save(paidDetail.getRoom());
+            boolean hasOtherActiveGuest = bookingDetailRepository.hasActiveGuestInRoom(paidDetail.getRoom().getId(), LocalDateTime.now());
+            if (!hasOtherActiveGuest && !"MAINTENANCE".equalsIgnoreCase(paidDetail.getRoom().getStatus())) {
+                paidDetail.getRoom().setStatus("AVAILABLE");
+                roomRepository.save(paidDetail.getRoom());
+            }
         }
 
         List<BookingDetail> details = bookingDetailRepository.findByBookingId(booking.getId());
@@ -501,8 +504,11 @@ public class SePayPaymentServiceImpl implements SePayPaymentService {
             detail.setStatus("COMPLETED");
             stayAccessService.expireAccess(detail.getId());
             if (detail.getRoom() != null) {
-                detail.getRoom().setStatus("AVAILABLE");
-                roomRepository.save(detail.getRoom());
+                boolean hasOtherActiveGuest = bookingDetailRepository.hasActiveGuestInRoom(detail.getRoom().getId(), LocalDateTime.now());
+                if (!hasOtherActiveGuest && !"MAINTENANCE".equalsIgnoreCase(detail.getRoom().getStatus())) {
+                    detail.getRoom().setStatus("AVAILABLE");
+                    roomRepository.save(detail.getRoom());
+                }
             }
         });
         bookingDetailRepository.saveAll(details);

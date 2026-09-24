@@ -63,6 +63,21 @@ public class AdminGiveawayController {
         return Map.of("message", "Đã xuất bản bài viết Giveaway thành công lên Fanpage!");
     }
 
+    @GetMapping("/prizes")
+    public java.util.List<GiveawayConfigResponse.PrizeOption> getPrizes() {
+        return giveawayService.getPrizes();
+    }
+
+    @PutMapping("/prizes")
+    public java.util.List<GiveawayConfigResponse.PrizeOption> updatePrizes(@RequestBody java.util.List<GiveawayConfigResponse.PrizeOption> prizes) {
+        return giveawayService.updatePrizes(prizes);
+    }
+
+    @PostMapping("/prizes/reset")
+    public java.util.List<GiveawayConfigResponse.PrizeOption> resetPrizes() {
+        return giveawayService.resetPrizes();
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String, String>> handleBadRequest(IllegalArgumentException ex) {
         return ResponseEntity.badRequest().body(Map.of("message", ex.getMessage()));

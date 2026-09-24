@@ -295,6 +295,44 @@ class AdminCheckInRegistrationServiceImplTest {
         assertEquals("0911223344", otherPrimaryGuest.getPhone());
     }
 
+    @Test
+    void prepareExcludesRoomWithActiveCheckedInGuest() {
+        TestData data = testData();
+        Room occupiedRoom = Room.builder().id(102L).roomNumber("102").roomType(data.roomType()).status("AVAILABLE").build();
+
+        when(bookingDetailRepository.findByIdForAdminDetail(40L)).thenReturn(Optional.of(data.detail()));
+        when(checkInRecordRepository.findByBookingDetailId(40L)).thenReturn(Optional.empty());
+        when(roomRepository.findByRoomTypeId(30L)).thenReturn(List.of(data.room(), occupiedRoom));
+        when(bookingDetailRepository.findOverlappingSchedule(any(), any())).thenReturn(List.of(data.detail()));
+        when(bookingDetailRepository.hasActiveGuestInRoom(any(), any()))
+                .thenAnswer(inv -> Long.valueOf(102L).equals(inv.getArgument(0)));
+
+        var response = service.prepare(40L);
+
+        assertEquals(1, response.availableRooms().size());
+        assertEquals(101L, response.availableRooms().getFirst().id());
+    }
+
+    @Test
+    void completeThrowsWhenSelectedRoomHasActiveCheckedInGuest() {
+        TestData data = testData();
+        Room occupiedRoom = Room.builder().id(102L).roomNumber("102").roomType(data.roomType()).status("AVAILABLE").build();
+        List<AdminCheckInGuestRequest> guests = List.of(
+                new AdminCheckInGuestRequest("Người lớn", "012345678901", null, "booker@example.com", null, null, null, "VIETNAM")
+        );
+
+        when(bookingDetailRepository.findByIdForAdminDetail(40L)).thenReturn(Optional.of(data.detail()));
+        when(checkInRecordRepository.findByBookingDetailId(40L)).thenReturn(Optional.empty());
+        when(roomRepository.findByIdForCheckIn(102L)).thenReturn(Optional.of(occupiedRoom));
+        when(bookingDetailRepository.hasActiveGuestInRoom(any(), any()))
+                .thenAnswer(inv -> Long.valueOf(102L).equals(inv.getArgument(0)));
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () ->
+                service.complete(40L, new AdminCompleteCheckInRequest(102L, "booker@example.com", guests))
+        );
+        assertTrue(ex.getMessage().contains("Phòng vừa được gán cho booking khác") || ex.getMessage().contains("chưa sẵn sàng"));
+    }
+
     private TestData testData() {
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime checkIn = now.minusHours(2);

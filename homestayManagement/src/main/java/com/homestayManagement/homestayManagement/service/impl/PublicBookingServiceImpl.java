@@ -642,13 +642,11 @@ public class PublicBookingServiceImpl implements PublicBookingService {
                         this::resolveRoomTypeId,
                         Collectors.summingInt(this::quantityOf)
                 ));
-
-        java.util.Set<Long> inProgressRoomIds = new java.util.HashSet<>(roomIncidentRepository.findRoomIdsWithInProgressIncidents());
         for (Map.Entry<Long, Integer> entry : requestedCountByType.entrySet()) {
             Long roomTypeId = entry.getKey();
             int requestedQuantity = entry.getValue();
             int totalRooms = (int) roomRepository.findByRoomTypeId(roomTypeId).stream()
-                    .filter(r -> !"MAINTENANCE".equalsIgnoreCase(r.getStatus()) && !inProgressRoomIds.contains(r.getId()))
+                    .filter(r -> !"MAINTENANCE".equalsIgnoreCase(r.getStatus()))
                     .count();
             long bookedRooms = bookedCountByType.getOrDefault(roomTypeId, 0L);
             int availableRooms = Math.max(0, (int) (totalRooms - bookedRooms));
@@ -1216,7 +1214,7 @@ public class PublicBookingServiceImpl implements PublicBookingService {
         LocalDateTime now = LocalDateTime.now();
         boolean isOverdue = now.isAfter(currentCheckOut);
         long overdueMinutes = isOverdue ? java.time.Duration.between(currentCheckOut, now).toMinutes() : 0;
-        boolean mustBookFullDay = overdueMinutes > 60; // Quá giờ checkout hơn 1 tiếng (sau 12:00 nếu checkout là 11:00)
+        boolean mustBookFullDay = overdueMinutes > 60; // Quá giờ checkout hơn 1 tiếng (sau 13:00 nếu checkout là 12:00)
 
         boolean isDayExtension = mustBookFullDay || (request.additionalDays() != null && request.additionalDays() > 0);
         int addDays = request.additionalDays() != null && request.additionalDays() > 0 ? request.additionalDays() : (mustBookFullDay ? 1 : 0);
@@ -1226,7 +1224,7 @@ public class PublicBookingServiceImpl implements PublicBookingService {
         if (request.targetCheckOut() != null) {
             newCheckOut = request.targetCheckOut();
         } else if (isDayExtension) {
-            newCheckOut = currentCheckOut.toLocalDate().plusDays(addDays > 0 ? addDays : 1).atTime(11, 0);
+            newCheckOut = currentCheckOut.toLocalDate().plusDays(addDays > 0 ? addDays : 1).atTime(12, 0);
         } else {
             newCheckOut = currentCheckOut.plusHours(addHours);
         }
@@ -1240,12 +1238,11 @@ public class PublicBookingServiceImpl implements PublicBookingService {
         RoomType roomType = detail.getRoomType() != null ? detail.getRoomType() : (currentRoom != null ? currentRoom.getRoomType() : null);
         Long roomTypeId = roomType != null ? roomType.getId() : (currentRoom != null && currentRoom.getRoomType() != null ? currentRoom.getRoomType().getId() : 1L);
 
-        Set<Long> inProgressRoomIds = new HashSet<>(roomIncidentRepository.findRoomIdsWithInProgressIncidents());
         boolean currentRoomAvailable = false;
         boolean isMaintenance = false;
 
         if (currentRoom != null) {
-            if ("MAINTENANCE".equalsIgnoreCase(currentRoom.getStatus()) || inProgressRoomIds.contains(currentRoom.getId())) {
+            if ("MAINTENANCE".equalsIgnoreCase(currentRoom.getStatus())) {
                 isMaintenance = true;
             } else {
                 boolean hasConflict = bookingDetailRepository.findOverlappingSchedule(currentCheckOut, newCheckOut)
@@ -1266,7 +1263,7 @@ public class PublicBookingServiceImpl implements PublicBookingService {
             
             boolean hasAnyAvailableRoomOfType = roomRepository.findAll().stream()
                     .filter(r -> r.getRoomType() != null && r.getRoomType().getId().equals(roomTypeId))
-                    .filter(r -> !"MAINTENANCE".equalsIgnoreCase(r.getStatus()) && !inProgressRoomIds.contains(r.getId()))
+                    .filter(r -> !"MAINTENANCE".equalsIgnoreCase(r.getStatus()))
                     .anyMatch(r -> !occupiedRoomIds.contains(r.getId()));
             
             currentRoomAvailable = hasAnyAvailableRoomOfType;
@@ -1294,7 +1291,7 @@ public class PublicBookingServiceImpl implements PublicBookingService {
             LocalDateTime finalCurrentCheckOut = currentCheckOut;
 
             alternativeRooms = roomRepository.findAll().stream()
-                    .filter(r -> !"MAINTENANCE".equalsIgnoreCase(r.getStatus()) && !inProgressRoomIds.contains(r.getId()))
+                    .filter(r -> !"MAINTENANCE".equalsIgnoreCase(r.getStatus()))
                     .filter(r -> !occupiedRoomIds.contains(r.getId()))
                     .filter(r -> currentRoom == null || !r.getId().equals(currentRoom.getId()))
                     .map(r -> {
@@ -1327,7 +1324,7 @@ public class PublicBookingServiceImpl implements PublicBookingService {
         String message;
         if (mustBookFullDay) {
             message = currentRoomAvailable
-                    ? roomName + " còn trống trong ngày tiếp theo! Bạn có thể tiếp tục gia hạn lưu trú tại phòng hiện tại đến 11:00 ngày mai."
+                    ? roomName + " còn trống trong ngày tiếp theo! Bạn có thể tiếp tục gia hạn lưu trú tại phòng hiện tại đến 12:00 ngày mai."
                     : (isMaintenance ? roomName + " đang được bảo trì hoặc xử lý sự cố. Bạn có thể chọn đổi sang phòng khác còn trống dưới đây." : roomName + " đã có khách đặt trước cho ngày mai. Bạn có thể chọn đổi sang phòng khác còn trống dưới đây để tiếp tục lưu trú trọn gói ngày mai.");
         } else {
             message = currentRoomAvailable
@@ -1336,7 +1333,7 @@ public class PublicBookingServiceImpl implements PublicBookingService {
         }
 
         String warningNotice = mustBookFullDay
-                ? "⚠️ Bạn đã quá giờ trả phòng hơn 1 tiếng (sau 12:00). Theo quy định homestay, hệ thống tự động áp dụng chính sách Book thêm ngày tiếp theo đến 11:00 ngày mai."
+                ? "⚠️ Bạn đã quá giờ trả phòng hơn 1 tiếng (sau 13:00). Theo quy định homestay, hệ thống tự động áp dụng chính sách Book thêm ngày tiếp theo đến 12:00 ngày mai."
                 : (isOverdue ? "⚠️ Bạn hiện đã quá giờ trả phòng. Vui lòng chọn gia hạn hoặc hoàn tất thủ tục trả phòng sớm nhất có thể." : null);
 
         return new PublicBookingExtensionCheckResponse(
@@ -1390,23 +1387,18 @@ public class PublicBookingServiceImpl implements PublicBookingService {
         if (request.targetCheckOut() != null) {
             newCheckOut = request.targetCheckOut();
         } else if (isDayExtension) {
-            newCheckOut = currentCheckOut.toLocalDate().plusDays(addDays > 0 ? addDays : 1).atTime(11, 0);
+            newCheckOut = currentCheckOut.toLocalDate().plusDays(addDays > 0 ? addDays : 1).atTime(12, 0);
         } else {
             newCheckOut = currentCheckOut.plusHours(addHours);
         }
 
-        if (!newCheckOut.isAfter(currentCheckOut)) {
-            throw new IllegalArgumentException("Thời gian trả phòng mới phải sau thời gian trả phòng hiện tại");
-        }
-
         long actualHours = Math.max(1, java.time.Duration.between(currentCheckOut, newCheckOut).toHours());
-        Set<Long> inProgressRoomIds = new HashSet<>(roomIncidentRepository.findRoomIdsWithInProgressIncidents());
 
         if (request.switchRoomId() != null) {
             Room switchRoom = roomRepository.findById(request.switchRoomId())
                     .orElseThrow(() -> new IllegalArgumentException("Phòng chuyển đổi không tồn tại"));
 
-            if ("MAINTENANCE".equalsIgnoreCase(switchRoom.getStatus()) || inProgressRoomIds.contains(switchRoom.getId())) {
+            if ("MAINTENANCE".equalsIgnoreCase(switchRoom.getStatus())) {
                 throw new IllegalArgumentException("Phòng chuyển đổi hiện đang bảo trì, vui lòng chọn phòng khác");
             }
 
@@ -1453,7 +1445,7 @@ public class PublicBookingServiceImpl implements PublicBookingService {
                 throw new IllegalArgumentException("Đơn đặt phòng chưa được gán số phòng cụ thể");
             }
 
-            if ("MAINTENANCE".equalsIgnoreCase(currentRoom.getStatus()) || inProgressRoomIds.contains(currentRoom.getId())) {
+            if ("MAINTENANCE".equalsIgnoreCase(currentRoom.getStatus())) {
                 throw new IllegalArgumentException("Phòng " + currentRoom.getRoomNumber() + " đang gặp sự cố bảo trì");
             }
 

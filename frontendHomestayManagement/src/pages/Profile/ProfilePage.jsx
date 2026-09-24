@@ -113,6 +113,9 @@ const emptyProfile = {
   dateOfBirth: '',
   address: '',
   identityDocumentNumber: '',
+  bankName: '',
+  bankAccountNumber: '',
+  bankAccountHolder: '',
   avatarUrl: '',
   role: '',
   memberPoints: 0,
@@ -161,6 +164,10 @@ function ProfilePage() {
       sanitized = String(value || '').replace(/\D/g, '').slice(0, 10)
     } else if (name === 'fullName') {
       sanitized = String(value || '').replace(/[^a-zA-ZÀ-ỹ\s]/g, '')
+    } else if (name === 'bankAccountNumber') {
+      sanitized = String(value || '').replace(/[^\dA-Za-z]/g, '').slice(0, 30)
+    } else if (name === 'bankAccountHolder') {
+      sanitized = String(value || '').toUpperCase()
     }
     setFormData((current) => ({
       ...current,
@@ -195,13 +202,16 @@ function ProfilePage() {
         dateOfBirth: formData.dateOfBirth || null,
         address: formData.address,
         identityDocumentNumber: formData.identityDocumentNumber || null,
+        bankName: formData.bankName || null,
+        bankAccountNumber: formData.bankAccountNumber || null,
+        bankAccountHolder: formData.bankAccountHolder || null,
       })
 
       const normalizedProfile = normalizeProfile(updatedProfile)
       setProfile(normalizedProfile)
       setFormData(normalizedProfile)
       setIsEditing(false)
-      setMessage('Thông tin cá nhân đã được cập nhật')
+      setMessage('Thông tin cá nhân đã được cập nhật thành công')
     } catch (error) {
       setErrorMessage(error.message)
     } finally {
@@ -354,6 +364,43 @@ function ProfilePage() {
                   onChange={handleChange}
                   maxLength={30}
                 />
+
+                <div className="profile-bank-heading">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="2" y="5" width="20" height="14" rx="2" />
+                    <line x1="2" y1="10" x2="22" y2="10" />
+                  </svg>
+                  <div>
+                    <span>Tài khoản ngân hàng hoàn tiền</span>
+                    <small>Dùng để hệ thống tự động hoàn tiền & điền thông tin khi bạn hủy phòng hoặc đổi phòng.</small>
+                  </div>
+                </div>
+
+                <ProfileInput
+                  label="Tên ngân hàng"
+                  name="bankName"
+                  placeholder="VD: Vietcombank, MB Bank, Techcombank, BIDV..."
+                  value={formData.bankName}
+                  onChange={handleChange}
+                  maxLength={100}
+                />
+                <ProfileInput
+                  label="Số tài khoản (STK)"
+                  name="bankAccountNumber"
+                  placeholder="VD: 0123456789"
+                  value={formData.bankAccountNumber}
+                  onChange={handleChange}
+                  maxLength={50}
+                />
+                <ProfileInput
+                  label="Tên chủ tài khoản"
+                  name="bankAccountHolder"
+                  placeholder="VD: NGUYEN VAN A"
+                  value={formData.bankAccountHolder}
+                  onChange={handleChange}
+                  maxLength={100}
+                />
+
                 <div className="profile-form-actions">
                   <button className="profile-secondary" type="button" onClick={handleCancel}>
                     Hủy
@@ -374,6 +421,20 @@ function ProfilePage() {
                 <ProfileField label="Vai trò" value={profile.role} />
                 <ProfileField label="Điểm thành viên" value={Number(profile.memberPoints || 0).toLocaleString('vi-VN')} />
                 <ProfileField label="Ưu đãi thành viên" value={`${Number(profile.memberDiscountPercent || 0).toLocaleString('vi-VN')}%`} />
+                
+                <div className="profile-bank-heading">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="2" y="5" width="20" height="14" rx="2" />
+                    <line x1="2" y1="10" x2="22" y2="10" />
+                  </svg>
+                  <div>
+                    <span>Tài khoản ngân hàng hoàn tiền</span>
+                    <small>Tự động điền khi thực hiện các tác vụ đổi/hủy phòng để không phải nhập lại nhiều lần.</small>
+                  </div>
+                </div>
+                <ProfileField label="Tên ngân hàng" value={profile.bankName} />
+                <ProfileField label="Số tài khoản (STK)" value={profile.bankAccountNumber} />
+                <ProfileField label="Tên chủ tài khoản" value={profile.bankAccountHolder} />
               </div>
             )}
           </div>
@@ -410,6 +471,9 @@ function normalizeProfile(profile) {
     phone: profile?.phone || '',
     address: profile?.address || '',
     identityDocumentNumber: profile?.identityDocumentNumber || '',
+    bankName: profile?.bankName || '',
+    bankAccountNumber: profile?.bankAccountNumber || '',
+    bankAccountHolder: profile?.bankAccountHolder || '',
     avatarUrl: profile?.avatarUrl || '',
     memberPoints: profile?.memberPoints || 0,
     memberDiscountPercent: profile?.memberDiscountPercent || 0,

@@ -78,10 +78,13 @@ public class HousekeepingServiceImpl implements HousekeepingService {
         if (!FILTER_STATUSES.contains(normalized)) {
             throw new IllegalArgumentException("Trạng thái lọc housekeeping không hợp lệ");
         }
-        return housekeepingTaskRepository.findAllForHousekeeping().stream()
+        List<HousekeepingTask> filteredTasks = housekeepingTaskRepository.findAllForHousekeeping().stream()
                 .filter(task -> matchesFilter(task, normalized))
-                .map(this::toResponse)
                 .toList();
+        if (filteredTasks.isEmpty()) {
+            return List.of();
+        }
+        return toResponsesBatch(filteredTasks);
     }
 
     @Override
@@ -401,36 +404,7 @@ public class HousekeepingServiceImpl implements HousekeepingService {
         };
     }
 
-    private HousekeepingTaskResponse toResponse(HousekeepingTask task) {
-        ensureChecklistSnapshot(task);
-        CheckInRecord record = task.getCheckInRecord();
-        BookingDetail detail = record.getBookingDetail();
-        Booking booking = detail.getBooking();
-        Customer customer = booking.getCustomer();
-        Map<Long, Integer> quantities = roomAmenitiesUsageRepository
-                .findByBookingDetailIdForAdmin(detail.getId()).stream()
-                .collect(Collectors.groupingBy(
-                        usage -> usage.getItem().getId(),
-                        Collectors.summingInt(RoomAmenitiesUsage::getQuantityUsed)
-                ));
-
-        List<HousekeepingMiniBarItemResponse> miniBarItems = roomMiniBarItemRepository.findAll().stream()
-                .sorted(Comparator.comparing(RoomMiniBarItem::getName, String.CASE_INSENSITIVE_ORDER))
-                .map(item -> {
-                    int quantity = quantities.getOrDefault(item.getId(), 0);
-                    BigDecimal total = item.getPrice().multiply(BigDecimal.valueOf(quantity));
-                    return new HousekeepingMiniBarItemResponse(
-                            item.getId(), item.getName(), item.getPrice(), item.getQuantityInStock(), quantity, total
-                    );
-                })
-                .toList();
-        BigDecimal totalCharge = miniBarItems.stream()
-                .map(HousekeepingMiniBarItemResponse::totalPrice)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        Set<Long> selectedPenaltyIds = appliedPenaltyRepository.findByBookingDetailIdForAdmin(detail.getId()).stream()
-                .map(penalty -> penalty.getRulesPenalty().getId())
-                .collect(Collectors.toSet());
+    private List<RulesPenalty> getOrCreateStandardRules() {
         List<RulesPenalty> allRules = rulesPenaltyRepository.findAll();
         boolean hasOther = allRules.stream()
                 .anyMatch(r -> r.getTitle() != null && (r.getTitle().equalsIgnoreCase("Khoản phạt khác") || r.getTitle().toLowerCase().contains("phạt khác")));
@@ -455,44 +429,118 @@ public class HousekeepingServiceImpl implements HousekeepingService {
                 }
             }
         }
-        List<HousekeepingPenaltyItemResponse> penaltyItems = allRules.stream()
-                .filter(Objects::nonNull)
-                .sorted(Comparator.comparing(r -> r.getTitle() != null ? r.getTitle() : "", String.CASE_INSENSITIVE_ORDER))
-                .map(rule -> new HousekeepingPenaltyItemResponse(
-                        rule.getId(), rule.getTitle(), rule.getPenaltyAmount(), rule.getId() != null && selectedPenaltyIds.contains(rule.getId())
-                ))
-                .toList();
-        BigDecimal totalPenaltyCharge = penaltyItems.stream()
-                .filter(HousekeepingPenaltyItemResponse::selected)
-                .map(HousekeepingPenaltyItemResponse::amount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        return allRules;
+    }
 
-        Employee requestedBy = task.getRequestedBy();
-        Employee assigned = task.getAssignedHousekeeping();
-        List<HousekeepingCleaningChecklistItemResponse> cleaningChecklistItems = taskChecklistItemRepository
-                .findByHousekeepingTaskIdOrderByDisplayOrderAsc(task.getId()).stream()
-                .map(item -> new HousekeepingCleaningChecklistItemResponse(
-                        item.getId(), item.getTitleSnapshot(), item.getDescriptionSnapshot(), item.isRequired(),
-                        item.getDisplayOrder(), item.isCompleted(),
-                        item.getCompletedBy() == null ? null : item.getCompletedBy().getId(),
-                        item.getCompletedBy() == null ? null : item.getCompletedBy().getFullName(),
-                        item.getCompletedAt()
-                ))
+    private List<HousekeepingTaskResponse> toResponsesBatch(List<HousekeepingTask> tasks) {
+        tasks.forEach(this::ensureChecklistSnapshot);
+
+        List<Long> taskIds = tasks.stream().map(HousekeepingTask::getId).toList();
+        List<Long> detailIds = tasks.stream()
+                .map(t -> t.getCheckInRecord().getBookingDetail().getId())
+                .distinct()
                 .toList();
-        return new HousekeepingTaskResponse(
-                task.getId(), task.getVersion(), booking.getId(), booking.getBookingCode(), detail.getId(),
-                task.getRoom().getId(), task.getRoom().getRoomNumber(), task.getRoom().getStatus(),
-                customer.getFullName(), customer.getPhone(), detail.getCheckOutTarget(),
-                task.getInspectionStatus(), task.getCleaningStatus(),
-                requestedBy != null ? requestedBy.getId() : null,
-                requestedBy != null ? requestedBy.getFullName() : null,
-                assigned != null ? assigned.getId() : null,
-                assigned != null ? assigned.getFullName() : null,
-                task.getNote(), task.getRequestedAt(), task.getStartedAt(),
-                task.getInspectionCompletedAt(), task.getCleaningCompletedAt(),
-                totalCharge, miniBarItems, totalPenaltyCharge, totalCharge.add(totalPenaltyCharge), penaltyItems,
-                cleaningChecklistItems
-        );
+
+        // 1. Minibar catalog (1 query)
+        List<RoomMiniBarItem> allMiniBarItems = roomMiniBarItemRepository.findAll().stream()
+                .sorted(Comparator.comparing(RoomMiniBarItem::getName, String.CASE_INSENSITIVE_ORDER))
+                .toList();
+
+        // 2. Rules penalty catalog (1 query)
+        List<RulesPenalty> allRules = getOrCreateStandardRules();
+
+        // 3. Batch amenities usages (1 query)
+        Map<Long, Map<Long, Integer>> usagesByDetailId = roomAmenitiesUsageRepository
+                .findByBookingDetailIdsForAdmin(detailIds).stream()
+                .collect(Collectors.groupingBy(
+                        usage -> usage.getCheckInRecord().getBookingDetail().getId(),
+                        Collectors.groupingBy(
+                                usage -> usage.getItem().getId(),
+                                Collectors.summingInt(RoomAmenitiesUsage::getQuantityUsed)
+                        )
+                ));
+
+        // 4. Batch applied penalties (1 query)
+        Map<Long, Set<Long>> penaltyIdsByDetailId = appliedPenaltyRepository
+                .findByBookingDetailIdsForAdmin(detailIds).stream()
+                .collect(Collectors.groupingBy(
+                        penalty -> penalty.getCheckRecord().getBookingDetail().getId(),
+                        Collectors.mapping(penalty -> penalty.getRulesPenalty().getId(), Collectors.toSet())
+                ));
+
+        // 5. Batch checklist items (1 query)
+        Map<Long, List<HousekeepingTaskChecklistItem>> checklistByTaskId = taskChecklistItemRepository
+                .findByHousekeepingTaskIdInOrderByDisplayOrderAsc(taskIds).stream()
+                .collect(Collectors.groupingBy(
+                        item -> item.getHousekeepingTask().getId(),
+                        Collectors.toList()
+                ));
+
+        return tasks.stream().map(task -> {
+            CheckInRecord record = task.getCheckInRecord();
+            BookingDetail detail = record.getBookingDetail();
+            Booking booking = detail.getBooking();
+            Customer customer = booking.getCustomer();
+
+            Map<Long, Integer> quantities = usagesByDetailId.getOrDefault(detail.getId(), Map.of());
+            List<HousekeepingMiniBarItemResponse> miniBarItems = allMiniBarItems.stream()
+                    .map(item -> {
+                        int quantity = quantities.getOrDefault(item.getId(), 0);
+                        BigDecimal total = item.getPrice().multiply(BigDecimal.valueOf(quantity));
+                        return new HousekeepingMiniBarItemResponse(
+                                item.getId(), item.getName(), item.getPrice(), item.getQuantityInStock(), quantity, total
+                        );
+                    })
+                    .toList();
+            BigDecimal totalCharge = miniBarItems.stream()
+                    .map(HousekeepingMiniBarItemResponse::totalPrice)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+            Set<Long> selectedPenaltyIds = penaltyIdsByDetailId.getOrDefault(detail.getId(), Set.of());
+            List<HousekeepingPenaltyItemResponse> penaltyItems = allRules.stream()
+                    .filter(Objects::nonNull)
+                    .sorted(Comparator.comparing(r -> r.getTitle() != null ? r.getTitle() : "", String.CASE_INSENSITIVE_ORDER))
+                    .map(rule -> new HousekeepingPenaltyItemResponse(
+                            rule.getId(), rule.getTitle(), rule.getPenaltyAmount(), rule.getId() != null && selectedPenaltyIds.contains(rule.getId())
+                    ))
+                    .toList();
+            BigDecimal totalPenaltyCharge = penaltyItems.stream()
+                    .filter(HousekeepingPenaltyItemResponse::selected)
+                    .map(HousekeepingPenaltyItemResponse::amount)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+            Employee requestedBy = task.getRequestedBy();
+            Employee assigned = task.getAssignedHousekeeping();
+            List<HousekeepingCleaningChecklistItemResponse> cleaningChecklistItems = checklistByTaskId
+                    .getOrDefault(task.getId(), List.of()).stream()
+                    .map(item -> new HousekeepingCleaningChecklistItemResponse(
+                            item.getId(), item.getTitleSnapshot(), item.getDescriptionSnapshot(), item.isRequired(),
+                            item.getDisplayOrder(), item.isCompleted(),
+                            item.getCompletedBy() == null ? null : item.getCompletedBy().getId(),
+                            item.getCompletedBy() == null ? null : item.getCompletedBy().getFullName(),
+                            item.getCompletedAt()
+                    ))
+                    .toList();
+
+            return new HousekeepingTaskResponse(
+                    task.getId(), task.getVersion(), booking.getId(), booking.getBookingCode(), detail.getId(),
+                    task.getRoom().getId(), task.getRoom().getRoomNumber(), task.getRoom().getStatus(),
+                    customer.getFullName(), customer.getPhone(), detail.getCheckOutTarget(),
+                    task.getInspectionStatus(), task.getCleaningStatus(),
+                    requestedBy != null ? requestedBy.getId() : null,
+                    requestedBy != null ? requestedBy.getFullName() : null,
+                    assigned != null ? assigned.getId() : null,
+                    assigned != null ? assigned.getFullName() : null,
+                    task.getNote(), task.getRequestedAt(), task.getStartedAt(),
+                    task.getInspectionCompletedAt(), task.getCleaningCompletedAt(),
+                    totalCharge, miniBarItems, totalPenaltyCharge, totalCharge.add(totalPenaltyCharge), penaltyItems,
+                    cleaningChecklistItems
+            );
+        }).toList();
+    }
+
+    private HousekeepingTaskResponse toResponse(HousekeepingTask task) {
+        return toResponsesBatch(List.of(task)).get(0);
     }
 
     private String normalize(String value) {

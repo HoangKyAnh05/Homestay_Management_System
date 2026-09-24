@@ -31,7 +31,7 @@ import java.util.stream.Stream;
 @Service
 public class PublicAmenityServiceImpl implements PublicAmenityService {
 
-    private static final Set<String> ELIGIBLE_STATUSES = Set.of("CONFIRMED", "CHECKED_IN");
+    private static final Set<String> ELIGIBLE_STATUSES = Set.of("CHECKED_IN");
 
     private final FacilityServiceRepository facilityServiceRepository;
     private final InventoryServiceRepository inventoryServiceRepository;
@@ -195,9 +195,12 @@ public class PublicAmenityServiceImpl implements PublicAmenityService {
     private boolean isEligible(List<BookingDetail> details, LocalDateTime now) {
         if (details == null || details.isEmpty()) return false;
         Booking booking = details.get(0).getBooking();
-        if (!ELIGIBLE_STATUSES.contains(normalize(booking.getStatus()))) return false;
+        String bookingStatus = normalize(booking.getStatus());
+        if ("COMPLETED".equals(bookingStatus) || "CANCELLED".equals(bookingStatus) || "CHECKED_OUT".equals(bookingStatus)) {
+            return false;
+        }
         return details.stream().anyMatch(detail ->
-                ELIGIBLE_STATUSES.contains(normalize(detail.getStatus()))
+                "CHECKED_IN".equalsIgnoreCase(normalize(detail.getStatus()))
                         && detail.getCheckOutTarget() != null
                         && detail.getCheckOutTarget().isAfter(now));
     }
@@ -212,12 +215,22 @@ public class PublicAmenityServiceImpl implements PublicAmenityService {
 
     private EligibleServiceBookingResponse toEligibleResponse(List<BookingDetail> details) {
         Booking booking = details.get(0).getBooking();
-        BookingDetail first = details.stream().min(Comparator.comparing(BookingDetail::getCheckInTarget)).orElse(details.get(0));
-        LocalDateTime checkout = details.stream().map(BookingDetail::getCheckOutTarget)
+        List<BookingDetail> activeDetails = details.stream()
+                .filter(d -> "CHECKED_IN".equalsIgnoreCase(normalize(d.getStatus())))
+                .toList();
+        List<BookingDetail> sourceList = activeDetails.isEmpty() ? details : activeDetails;
+
+        BookingDetail first = sourceList.stream().min(Comparator.comparing(BookingDetail::getCheckInTarget)).orElse(sourceList.get(0));
+        LocalDateTime checkout = sourceList.stream().map(BookingDetail::getCheckOutTarget)
                 .max(LocalDateTime::compareTo).orElse(first.getCheckOutTarget());
-        String roomTypeName = first.getRoomType() != null ? first.getRoomType().getName() : "Phòng tại Home Stays";
+
+        String roomNumbers = sourceList.stream()
+                .map(d -> d.getRoom() != null ? "Phòng " + d.getRoom().getRoomNumber() : (d.getRoomType() != null ? d.getRoomType().getName() : "Phòng"))
+                .distinct()
+                .collect(Collectors.joining(", "));
+
         return new EligibleServiceBookingResponse(
-                booking.getId(), booking.getBookingCode(), booking.getStatus(), roomTypeName, details.size(), first.getCheckInTarget(), checkout
+                booking.getId(), booking.getBookingCode(), booking.getStatus(), roomNumbers, sourceList.size(), first.getCheckInTarget(), checkout
         );
     }
 

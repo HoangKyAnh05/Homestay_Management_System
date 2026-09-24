@@ -25,10 +25,31 @@ public interface ServiceUsageRepository extends JpaRepository<ServiceUsage, Long
     @Query("""
             select s from ServiceUsage s
             join fetch s.checkInRecord cr
+            join cr.bookingDetail bd
+            left join fetch s.facilityService
+            left join fetch s.inventoryService
+            where bd.booking.id in :bookingIds
+            order by s.id
+            """)
+    List<ServiceUsage> findByBookingIdsForInvoice(@Param("bookingIds") java.util.Collection<Long> bookingIds);
+
+    @Query("""
+            select s from ServiceUsage s
+            join fetch s.checkInRecord cr
             left join fetch s.facilityService
             left join fetch s.inventoryService
             where cr.bookingDetail.id = :bookingDetailId
             order by s.id
             """)
     List<ServiceUsage> findByBookingDetailIdForAdmin(@Param("bookingDetailId") Long bookingDetailId);
+
+    @Query("""
+            select s from ServiceUsage s
+            join fetch s.checkInRecord cr
+            left join fetch s.facilityService
+            left join fetch s.inventoryService
+            where cr.bookingDetail.id in :bookingDetailIds
+            order by s.id
+            """)
+    List<ServiceUsage> findByBookingDetailIdsForAdmin(@Param("bookingDetailIds") java.util.Collection<Long> bookingDetailIds);
 }

@@ -54,62 +54,128 @@ public class GiveawayServiceImpl implements GiveawayService {
         this.marketingSocialPublisher = marketingSocialPublisher;
     }
 
-    private static final List<GiveawayConfigResponse.PrizeOption> PRIZES = List.of(
+    private static final List<GiveawayConfigResponse.PrizeOption> DEFAULT_PRIZES = List.of(
             GiveawayConfigResponse.PrizeOption.builder()
                     .index(0)
+                    .shortTitle("GIẢM 50%")
+                    .subText("Toàn Chuyến Đi")
+                    .fullName("Chuyến Đi Giảm Giá 50%")
                     .name("Chuyến Đi Giảm Giá 50%")
                     .codePrefix("LADO50")
                     .discountPercent(50)
-                    .color("#E11D48")
+                    .color("#b91c1c")
+                    .sliceColor1("#b91c1c")
+                    .sliceColor2("#991b1b")
+                    .textColor("#fef08a")
                     .icon("👑")
                     .badge("HOT NHẤT")
                     .build(),
             GiveawayConfigResponse.PrizeOption.builder()
                     .index(1)
+                    .shortTitle("GIẢM 30%")
+                    .subText("Tiền Phòng Sa Pa")
+                    .fullName("Voucher Giảm 30% Tiền Phòng")
                     .name("Voucher Giảm 30% Tiền Phòng")
                     .codePrefix("LADO30")
                     .discountPercent(30)
-                    .color("#D97706")
+                    .color("#d97706")
+                    .sliceColor1("#d97706")
+                    .sliceColor2("#b45309")
+                    .textColor("#fef08a")
                     .icon("🎟️")
                     .badge("GIẢM SỐC")
                     .build(),
             GiveawayConfigResponse.PrizeOption.builder()
                     .index(2)
+                    .shortTitle("TẶNG BBQ")
+                    .subText("Tiệc Nướng Sân Vườn")
+                    .fullName("Tặng 01 Set Nướng BBQ Sân Vườn")
                     .name("Tặng 01 Set Nướng BBQ Sân Vườn")
                     .codePrefix("LADOBBQ")
                     .discountPercent(0)
-                    .color("#059669")
+                    .color("#15803d")
+                    .sliceColor1("#15803d")
+                    .sliceColor2("#166534")
+                    .textColor("#ffffff")
                     .icon("🍢")
                     .badge("ĐẶC BIỆT")
                     .build(),
             GiveawayConfigResponse.PrizeOption.builder()
                     .index(3)
+                    .shortTitle("GIẢM 20%")
+                    .subText("Phòng View Săn Mây")
+                    .fullName("Voucher Giảm 20% Tiền Phòng")
                     .name("Voucher Giảm 20% Tiền Phòng")
                     .codePrefix("LADO20")
                     .discountPercent(20)
-                    .color("#2563EB")
+                    .color("#be185d")
+                    .sliceColor1("#be185d")
+                    .sliceColor2("#9d174d")
+                    .textColor("#ffffff")
                     .icon("🎁")
                     .badge("ƯU ĐÃI")
                     .build(),
             GiveawayConfigResponse.PrizeOption.builder()
                     .index(4)
-                    .name("Miễn Phí 02 Đồ Uống Ngắm Mây")
+                    .shortTitle("02 ĐỒ UỐNG")
+                    .subText("Ngắm Hoàng Hôn")
+                    .fullName("Miễn Phí 02 Đồ Uống Ngắm Hoàng Hôn")
+                    .name("Miễn Phí 02 Đồ Uống Ngắm Hoàng Hôn")
                     .codePrefix("LADODRINK")
                     .discountPercent(0)
-                    .color("#7C3AED")
+                    .color("#0d9488")
+                    .sliceColor1("#0d9488")
+                    .sliceColor2("#0f766e")
+                    .textColor("#ffffff")
                     .icon("☕")
                     .badge("THƯ GIÃN")
                     .build(),
             GiveawayConfigResponse.PrizeOption.builder()
                     .index(5)
+                    .shortTitle("VOUCHER 100K")
+                    .subText("Đặt Phòng Ngay")
+                    .fullName("Voucher Giảm 100K Khi Đặt Phòng")
                     .name("Voucher Giảm 100K Khi Đặt Phòng")
                     .codePrefix("LADO100K")
                     .discountPercent(10)
-                    .color("#0D9488")
+                    .color("#ea580c")
+                    .sliceColor1("#ea580c")
+                    .sliceColor2("#c2410c")
+                    .textColor("#ffffff")
                     .icon("🧧")
                     .badge("MAY MẮN")
                     .build()
     );
+
+    private final List<GiveawayConfigResponse.PrizeOption> activePrizes = new java.util.concurrent.CopyOnWriteArrayList<>(DEFAULT_PRIZES);
+
+    @Override
+    public List<GiveawayConfigResponse.PrizeOption> getPrizes() {
+        return new java.util.ArrayList<>(activePrizes);
+    }
+
+    @Override
+    public List<GiveawayConfigResponse.PrizeOption> updatePrizes(List<GiveawayConfigResponse.PrizeOption> newPrizes) {
+        if (newPrizes != null && !newPrizes.isEmpty()) {
+            activePrizes.clear();
+            for (int i = 0; i < newPrizes.size(); i++) {
+                GiveawayConfigResponse.PrizeOption p = newPrizes.get(i);
+                p.setIndex(i);
+                if (p.getName() == null || p.getName().isEmpty()) {
+                    p.setName(p.getFullName() != null && !p.getFullName().isEmpty() ? p.getFullName() : p.getShortTitle());
+                }
+                activePrizes.add(p);
+            }
+        }
+        return getPrizes();
+    }
+
+    @Override
+    public List<GiveawayConfigResponse.PrizeOption> resetPrizes() {
+        activePrizes.clear();
+        activePrizes.addAll(DEFAULT_PRIZES);
+        return getPrizes();
+    }
 
     @Override
     public GiveawayConfigResponse getConfig() {
@@ -121,7 +187,7 @@ public class GiveawayServiceImpl implements GiveawayService {
                 .zaloNumber("0981123456")
                 .facebookMessengerUrl("https://m.me/ladohomestaysapa")
                 .address("Đường Fansipan, Thị xã Sa Pa, Lào Cai")
-                .prizes(PRIZES)
+                .prizes(new java.util.ArrayList<>(activePrizes))
                 .build();
     }
 
@@ -183,11 +249,13 @@ public class GiveawayServiceImpl implements GiveawayService {
             targetIndex = 5; // 100k
         }
 
-        GiveawayConfigResponse.PrizeOption wonPrize = PRIZES.get(targetIndex);
+        GiveawayConfigResponse.PrizeOption wonPrize = targetIndex < activePrizes.size()
+                ? activePrizes.get(targetIndex)
+                : DEFAULT_PRIZES.get(targetIndex % DEFAULT_PRIZES.size());
 
-        // Sinh mã code độc nhất
+        String prefix = wonPrize.getCodePrefix() != null && !wonPrize.getCodePrefix().isEmpty() ? wonPrize.getCodePrefix() : "LADO";
         String randomSuffix = UUID.randomUUID().toString().substring(0, 4).toUpperCase();
-        String prizeCode = wonPrize.getCodePrefix() + "-" + randomSuffix;
+        String prizeCode = prefix + "-" + randomSuffix;
 
         // Nếu là giải có giảm giá %, tự động tạo Voucher thực tế trong DB để khách có thể đặt trực tiếp
         if (wonPrize.getDiscountPercent() > 0) {

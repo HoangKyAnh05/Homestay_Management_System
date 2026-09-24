@@ -1,5 +1,5 @@
 import React from 'react';
-import { calculateDistanceMeters, formatDistance, estimateWalkingTime } from '../../utils/geoUtils';
+import { calculateDistanceMeters, formatDistance, estimateWalkingTime, getPlaceDistanceMeters } from '../../utils/geoUtils';
 import { HOMESTAY_LOCATION } from '../../data/places';
 import './PlaceCard.css';
 
@@ -64,11 +64,10 @@ export default function PlaceCard({
   onHover,
   onLeave
 }) {
-  const distanceMeters = calculateDistanceMeters(
+  const distanceMeters = getPlaceDistanceMeters(
+    place,
     HOMESTAY_LOCATION.lat,
-    HOMESTAY_LOCATION.lng,
-    place.latitude,
-    place.longitude
+    HOMESTAY_LOCATION.lng
   );
 
   const formattedDistance = formatDistance(distanceMeters);

@@ -153,11 +153,9 @@ public interface BookingDetailRepository extends JpaRepository<BookingDetail, Lo
     @Query("""
             select count(bd) > 0
             from BookingDetail bd
-            join bd.booking b
             where bd.room.id = :roomId
               and (
                    bd.status = 'CHECKED_IN'
-                   or b.status = 'CHECKED_IN'
                    or (bd.status = 'CONFIRMED' and bd.checkInTarget <= :now and bd.checkOutTarget > :now and bd.roomAssignmentStatus = 'ASSIGNED')
               )
             """)

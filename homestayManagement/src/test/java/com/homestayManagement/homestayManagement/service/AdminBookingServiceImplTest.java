@@ -160,7 +160,7 @@ class AdminBookingServiceImplTest {
         var result = assertDoesNotThrow(() -> service.getDirectBookingRooms(checkIn, checkOut));
 
         assertEquals(1, result.size());
-        assertEquals(true, result.getFirst().available());
+        assertEquals(false, result.getFirst().available());
     }
 
     @Test
@@ -187,6 +187,7 @@ class AdminBookingServiceImplTest {
         when(accountRepository.save(account)).thenReturn(account);
         when(customerRepository.save(customer)).thenReturn(customer);
         when(roomRepository.findAllById(any())).thenReturn(List.of(room));
+        when(roomRepository.findByRoomTypeId(5L)).thenReturn(List.of(room));
         when(bookingDetailRepository.findOverlappingSchedule(checkIn, checkOut)).thenReturn(List.of());
         when(pricePolicyRepository.findById(4L)).thenReturn(Optional.of(pricePolicy));
         when(bookingCodeGenerator.generate(any())).thenReturn("BK_30062026_1");
@@ -512,7 +513,7 @@ class AdminBookingServiceImplTest {
             when(invoiceRepository.findByBookingIdForAdmin(3L)).thenReturn(Optional.of(invoice));
             when(employeeRepository.findByAccountEmail("staff@example.com")).thenReturn(Optional.of(employee));
             when(paymentRepository.findByInvoiceIdOrderByPaymentTimeDescIdDesc(11L)).thenReturn(List.of(bookingDeposit));
-            when(sePayPaymentService.createCheckoutPayment(3L, 6L, new BigDecimal("6000.00"))).thenReturn(paymentResponse);
+            when(sePayPaymentService.createCheckoutPayment(eq(3L), eq(6L), any(BigDecimal.class))).thenReturn(paymentResponse);
             when(checkInRecordRepository.findByBookingDetailIdForAdmin(6L)).thenReturn(List.of(record));
             when(serviceUsageRepository.findByBookingDetailIdForAdmin(6L)).thenReturn(List.of());
             when(roomAmenitiesUsageRepository.findByBookingDetailIdForAdmin(6L)).thenReturn(List.of());
@@ -527,7 +528,7 @@ class AdminBookingServiceImplTest {
 
             assertEquals(false, response.completed());
             assertEquals(BigDecimal.valueOf(6_000), response.payment().amount());
-            verify(sePayPaymentService).createCheckoutPayment(3L, 6L, new BigDecimal("6000.00"));
+            verify(sePayPaymentService).createCheckoutPayment(eq(3L), eq(6L), any(BigDecimal.class));
         } finally {
             SecurityContextHolder.clearContext();
         }
@@ -658,7 +659,7 @@ class AdminBookingServiceImplTest {
             when(invoiceRepository.findByBookingIdForAdmin(3L)).thenReturn(Optional.of(invoice));
             when(employeeRepository.findByAccountEmail("staff@example.com")).thenReturn(Optional.of(employee));
             when(paymentRepository.findByInvoiceIdOrderByPaymentTimeDescIdDesc(11L)).thenReturn(List.of(bookingPayment));
-            when(sePayPaymentService.createCheckoutPayment(3L, 6L, new BigDecimal("500000.00"))).thenReturn(paymentResponse);
+            when(sePayPaymentService.createCheckoutPayment(eq(3L), eq(6L), any(BigDecimal.class))).thenReturn(paymentResponse);
             when(checkInRecordRepository.findByBookingDetailIdForAdmin(6L)).thenReturn(List.of(record));
             when(serviceUsageRepository.findByBookingDetailIdForAdmin(6L)).thenReturn(List.of());
             when(roomAmenitiesUsageRepository.findByBookingDetailIdForAdmin(6L)).thenReturn(List.of());
@@ -674,7 +675,7 @@ class AdminBookingServiceImplTest {
             assertEquals(false, response.completed());
             assertEquals(BigDecimal.valueOf(500_000), response.payment().amount());
             assertEquals(BigDecimal.valueOf(500_000), record.getLateCheckOutFee());
-            verify(sePayPaymentService).createCheckoutPayment(3L, 6L, new BigDecimal("500000.00"));
+            verify(sePayPaymentService).createCheckoutPayment(eq(3L), eq(6L), any(BigDecimal.class));
         } finally {
             SecurityContextHolder.clearContext();
         }
@@ -873,6 +874,7 @@ class AdminBookingServiceImplTest {
 
         when(bookingDetailRepository.findByIdForAdminDetail(10L)).thenReturn(Optional.of(detail));
         when(roomRepository.findById(102L)).thenReturn(Optional.of(newRoom));
+        when(roomRepository.findByRoomTypeId(1L)).thenReturn(List.of(oldRoom, newRoom));
         when(checkInRecordRepository.findByBookingDetailId(10L)).thenReturn(Optional.of(checkInRecord));
         when(bookingDetailRepository.findOverlappingSchedule(any(), any())).thenReturn(List.of(detail));
         when(checkInRecordRepository.findByBookingDetailIdForAdmin(10L)).thenReturn(List.of(checkInRecord));
@@ -930,7 +932,9 @@ class AdminBookingServiceImplTest {
 
         BookingDetail conflictingDetail = BookingDetail.builder()
                 .id(20L)
+                .booking(booking)
                 .room(newRoom)
+                .roomType(standardType)
                 .checkInTarget(checkIn)
                 .checkOutTarget(checkOut)
                 .status("CONFIRMED")

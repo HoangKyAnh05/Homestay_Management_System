@@ -8,6 +8,7 @@ import java.util.Optional;
 
 public interface PaymentRepository extends JpaRepository<Payment, Long> {
     List<Payment> findByInvoiceIdOrderByPaymentTimeDescIdDesc(Long invoiceId);
+    List<Payment> findByInvoiceIdInOrderByPaymentTimeDescIdDesc(java.util.Collection<Long> invoiceIds);
     Optional<Payment> findByPaymentCodeIgnoreCase(String paymentCode);
     Optional<Payment> findBySepayTransactionId(Long sepayTransactionId);
     Optional<Payment> findFirstByInvoiceIdAndPaymentMethodAndStatusOrderByIdDesc(
@@ -50,6 +51,7 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
     @org.springframework.data.jpa.repository.Query("SELECT p FROM Payment p " +
             "JOIN FETCH p.invoice inv " +
             "JOIN FETCH inv.booking b " +
+            "LEFT JOIN FETCH b.customer c " +
             "WHERE p.status = 'SUCCESS' AND " +
             "(:fromTime IS NULL OR p.paymentTime >= :fromTime) AND " +
             "(:toTime IS NULL OR p.paymentTime <= :toTime) ORDER BY p.paymentTime DESC")

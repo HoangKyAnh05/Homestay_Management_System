@@ -495,7 +495,7 @@ function StayPage() {
                   {/* Days Selection */}
                   <div style={{ marginBottom: '18px' }}>
                     <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#334155', marginBottom: '8px' }}>
-                      Chọn số ngày muốn book thêm (trả phòng lúc 11:00 trưa):
+                      Chọn số ngày muốn book thêm (trả phòng lúc 12:00 trưa):
                     </label>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                       {[1, 2, 3, 5, 7].map((d) => (
@@ -515,7 +515,7 @@ function StayPage() {
                           }}
                           onClick={() => setExtDays(d)}
                         >
-                          +{d} Ngày {d === 1 ? '(đến 11:00 ngày mai)' : ''}
+                          +{d} Ngày {d === 1 ? '(đến 12:00 ngày mai)' : ''}
                         </button>
                       ))}
                     </div>

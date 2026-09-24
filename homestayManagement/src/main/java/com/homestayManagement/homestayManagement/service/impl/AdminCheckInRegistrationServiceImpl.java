@@ -34,6 +34,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @Service
@@ -119,7 +120,7 @@ public class AdminCheckInRegistrationServiceImpl implements AdminCheckInRegistra
             // Linh hoạt hỗ trợ Lễ tân đổi phòng / nâng hạng phòng ngay tại bước Check-in khi phòng cũ bảo trì hoặc theo yêu cầu
             detail.setRoomType(room.getRoomType());
         }
-        if (!isRoomAvailable(room.getId(), detail)) {
+        if (!isRoomAvailable(room, detail)) {
             throw new IllegalArgumentException("Phòng vừa được gán cho booking khác, vui lòng chọn phòng khác");
         }
 
@@ -236,8 +237,12 @@ public class AdminCheckInRegistrationServiceImpl implements AdminCheckInRegistra
         if (repEmail == null || repEmail.isBlank()) {
             if (!request.guests().isEmpty() && request.guests().getFirst().email() != null && !request.guests().getFirst().email().isBlank()) {
                 repEmail = request.guests().getFirst().email();
-            } else if (customer != null && customer.getEmail() != null && !customer.getEmail().isBlank()) {
-                repEmail = customer.getEmail();
+            } else if (customer != null) {
+                if (customer.getEmail() != null && !customer.getEmail().isBlank()) {
+                    repEmail = customer.getEmail();
+                } else if (customer.getAccount() != null && customer.getAccount().getEmail() != null && !customer.getAccount().getEmail().isBlank()) {
+                    repEmail = customer.getAccount().getEmail();
+                }
             }
         }
         if (repEmail == null || repEmail.isBlank()) {
@@ -296,38 +301,101 @@ public class AdminCheckInRegistrationServiceImpl implements AdminCheckInRegistra
         return detail;
     }
 
+    private boolean isPhysicalRoomReady(Room room) {
+        if (room == null) return false;
+        if (room.getStatus() == null) return true;
+        return "AVAILABLE".equalsIgnoreCase(room.getStatus());
+    }
+
+    private boolean isRoomAvailable(Room room, BookingDetail currentDetail) {
+        if (room == null || !isPhysicalRoomReady(room)) {
+            return false;
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        if (bookingDetailRepository.hasActiveGuestInRoom(room.getId(), now)) {
+            return false;
+        }
+
+        List<BookingDetail> overlapping = bookingDetailRepository.findOverlappingSchedule(
+                currentDetail.getCheckInTarget(), currentDetail.getCheckOutTarget()
+        ).stream()
+        .filter(com.homestayManagement.homestayManagement.service.support.BookingInventoryPolicy::blocksInventory)
+        .filter(d -> !d.getId().equals(currentDetail.getId()))
+        .toList();
+
+        boolean hasDirectConflict = overlapping.stream()
+                .anyMatch(detail -> detail.getRoom() != null && room.getId().equals(detail.getRoom().getId()));
+        if (hasDirectConflict) {
+            return false;
+        }
+
+        if (room.getRoomType() != null && room.getRoomType().getId() != null) {
+            Long rtId = room.getRoomType().getId();
+            List<Room> typeRooms = roomRepository.findByRoomTypeId(rtId);
+            if (typeRooms != null && !typeRooms.isEmpty()) {
+                long totalUsable = typeRooms.stream()
+                        .filter(rm -> isPhysicalRoomReady(rm) 
+                                && !bookingDetailRepository.hasActiveGuestInRoom(rm.getId(), now))
+                        .count();
+                long assignedBusy = overlapping.stream()
+                        .filter(d -> d.getRoom() != null && d.getRoom().getRoomType() != null && rtId.equals(d.getRoom().getRoomType().getId()))
+                        .count();
+                long unassignedBusy = overlapping.stream()
+                        .filter(d -> (d.getRoom() == null || d.getRoom().getId() == null) && d.getRoomType() != null && rtId.equals(d.getRoomType().getId()))
+                        .count();
+                long avail = Math.max(0, totalUsable - (assignedBusy + unassignedBusy));
+                if (avail <= 0) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
     private List<AdminBookingRoomResponse> findAvailableRooms(BookingDetail detail) {
-        Set<Long> inProgressRoomIds = roomIncidentRepository != null
-                ? new HashSet<>(roomIncidentRepository.findRoomIdsWithInProgressIncidents())
-                : java.util.Collections.emptySet();
-        return roomRepository.findByRoomTypeId(detail.getRoomType().getId()).stream()
-                .filter(room -> !"MAINTENANCE".equalsIgnoreCase(room.getStatus()) && !inProgressRoomIds.contains(room.getId()))
-                .filter(room -> isRoomAvailable(room.getId(), detail))
-                .map(room -> new AdminBookingRoomResponse(
+        if (detail.getRoomType() == null || detail.getRoomType().getId() == null) return List.of();
+        Long typeId = detail.getRoomType().getId();
+        List<Room> typeRooms = roomRepository.findByRoomTypeId(typeId);
+        if (typeRooms == null || typeRooms.isEmpty()) return List.of();
+
+        List<AdminBookingRoomResponse> result = new java.util.ArrayList<>();
+        for (Room room : typeRooms) {
+            if (isRoomAvailable(room, detail)) {
+                result.add(new AdminBookingRoomResponse(
                         room.getId(), room.getRoomNumber(), room.getRoomType().getName()
-                ))
-                .toList();
+                ));
+            }
+        }
+        return result;
     }
 
     private List<AdminBookingRoomResponse> findOtherAvailableRooms(BookingDetail detail) {
         Long currentTypeId = detail.getRoomType() != null ? detail.getRoomType().getId() : null;
-        Set<Long> inProgressRoomIds = roomIncidentRepository != null
-                ? new HashSet<>(roomIncidentRepository.findRoomIdsWithInProgressIncidents())
-                : java.util.Collections.emptySet();
-        return roomRepository.findAll().stream()
-                .filter(room -> currentTypeId == null || room.getRoomType() == null || !currentTypeId.equals(room.getRoomType().getId()))
-                .filter(room -> !"MAINTENANCE".equalsIgnoreCase(room.getStatus()) && !inProgressRoomIds.contains(room.getId()))
-                .filter(room -> isRoomAvailable(room.getId(), detail))
-                .map(room -> new AdminBookingRoomResponse(
-                        room.getId(), room.getRoomNumber(), room.getRoomType() != null ? room.getRoomType().getName() : "Khác"
-                ))
-                .toList();
+        List<Room> allRooms = roomRepository.findAll();
+        if (allRooms == null || allRooms.isEmpty()) return List.of();
+
+        List<AdminBookingRoomResponse> result = new java.util.ArrayList<>();
+        for (Room room : allRooms) {
+            if (room.getRoomType() == null || (currentTypeId != null && currentTypeId.equals(room.getRoomType().getId()))) {
+                continue;
+            }
+            if (isRoomAvailable(room, detail)) {
+                result.add(new AdminBookingRoomResponse(
+                        room.getId(), room.getRoomNumber(), room.getRoomType().getName()
+                ));
+            }
+        }
+        return result;
     }
 
     private boolean hasCompletePreRegistration(BookingDetail detail, List<BookingGuest> guests) {
         int expectedCount = valueOrZero(detail.getNumberOfAdults()) + valueOrZero(detail.getNumberOfChildren());
         return detail.getRoom() != null
                 && detail.getRoom().getId() != null
+                && isPhysicalRoomReady(detail.getRoom())
+                && isRoomAvailable(detail.getRoom(), detail)
                 && guests.size() == expectedCount
                 && guests.stream().allMatch(guest -> guest.getFullName() != null && !guest.getFullName().isBlank()
                         && guest.getIdentityDocumentNumber() != null && !guest.getIdentityDocumentNumber().isBlank());
@@ -347,15 +415,6 @@ public class AdminCheckInRegistrationServiceImpl implements AdminCheckInRegistra
                 guest.getNationality(), guest.getPhone(), guest.getEmail(), guest.getAddress(),
                 guest.isPrimaryGuest()
         );
-    }
-
-    private boolean isRoomAvailable(Long roomId, BookingDetail currentDetail) {
-        return bookingDetailRepository.findOverlappingSchedule(
-                        currentDetail.getCheckInTarget(), currentDetail.getCheckOutTarget()
-                ).stream()
-                .filter(detail -> !detail.getId().equals(currentDetail.getId()))
-                .filter(detail -> detail.getRoom() != null && roomId.equals(detail.getRoom().getId()))
-                .noneMatch(com.homestayManagement.homestayManagement.service.support.BookingInventoryPolicy::blocksInventory);
     }
 
     private void validateGuests(BookingDetail detail, List<AdminCheckInGuestRequest> guests) {

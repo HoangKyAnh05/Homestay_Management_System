@@ -240,6 +240,11 @@
   border: 1.5px solid #ef4444;
 }
 
+.legend-dot.is-pending {
+  background: #fef9c3;
+  border: 1.5px solid #eab308;
+}
+
 .legend-dot.is-maintenance {
   background: #ffedd5;
   border: 1.5px solid #f97316;

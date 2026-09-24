@@ -80,23 +80,6 @@ public class RoomIncidentServiceImpl implements RoomIncidentService {
         this.adminBookingService = adminBookingService;
     }
 
-    @jakarta.annotation.PostConstruct
-    @Transactional
-    public void syncActiveIncidentRoomsOnStartup() {
-        try {
-            List<Long> lockedRoomIds = roomIncidentRepository.findRoomIdsWithInProgressIncidents();
-            for (Long roomId : lockedRoomIds) {
-                roomRepository.findById(roomId).ifPresent(room -> {
-                    if (!"MAINTENANCE".equalsIgnoreCase(room.getStatus())) {
-                        room.setStatus("MAINTENANCE");
-                        roomRepository.save(room);
-                    }
-                });
-            }
-        } catch (Exception ignored) {
-        }
-    }
-
     @Override
     @Transactional(readOnly = true)
     public List<RoomIncidentResponse> getIncidents(String status, String type, Long roomId) {
@@ -109,17 +92,6 @@ public class RoomIncidentServiceImpl implements RoomIncidentService {
 
         String normalizedStatus = status != null ? status.trim().toUpperCase() : "ALL";
         String normalizedType = type != null ? type.trim().toUpperCase() : "ALL";
-
-        // Tự động đồng bộ phòng sang MAINTENANCE nếu đang có sự cố IN_PROGRESS
-        incidents.stream()
-                .filter(i -> "IN_PROGRESS".equals(i.getStatus()))
-                .map(RoomIncident::getRoom)
-                .filter(r -> r != null && !"MAINTENANCE".equalsIgnoreCase(r.getStatus()))
-                .distinct()
-                .forEach(r -> {
-                    r.setStatus("MAINTENANCE");
-                    roomRepository.save(r);
-                });
 
         return incidents.stream()
                 .filter(i -> "ALL".equals(normalizedStatus) || normalizedStatus.equalsIgnoreCase(i.getStatus()))
@@ -215,11 +187,7 @@ public class RoomIncidentServiceImpl implements RoomIncidentService {
 
         RoomIncident saved = roomIncidentRepository.save(incident);
 
-        // 1. Khóa phòng sang MAINTENANCE ngay lập tức khi phát hiện sự cố
-        room.setStatus("MAINTENANCE");
-        roomRepository.save(room);
-
-        // 2. Tự động cộng thẳng tiền bồi thường vào hóa đơn của khách
+        // Tự động cộng thẳng tiền bồi thường vào hóa đơn của khách nếu có ước tính chi phí
         if (hasEstimatedCost) {
             CheckInRecord record = getCheckInRecordForIncident(saved);
             if (record != null) {
@@ -249,24 +217,6 @@ public class RoomIncidentServiceImpl implements RoomIncidentService {
 
         if (request.adminNotes() != null && !request.adminNotes().isBlank()) {
             incident.setAdminNotes(request.adminNotes().trim());
-        }
-
-        Room room = incident.getRoom();
-        if (room != null) {
-            if ("IN_PROGRESS".equals(newStatus) || "REPORTED".equals(newStatus)) {
-                room.setStatus("MAINTENANCE");
-                roomRepository.save(room);
-            } else if ("RESOLVED".equals(newStatus) || "DISMISSED".equals(newStatus)) {
-                long remainingActive = roomIncidentRepository.findAll().stream()
-                        .filter(other -> !other.getId().equals(incident.getId()))
-                        .filter(other -> other.getRoom() != null && other.getRoom().getId().equals(room.getId()))
-                        .filter(other -> "REPORTED".equalsIgnoreCase(other.getStatus()) || "IN_PROGRESS".equalsIgnoreCase(other.getStatus()))
-                        .count();
-                if (remainingActive == 0 && "MAINTENANCE".equalsIgnoreCase(room.getStatus())) {
-                    room.setStatus("AVAILABLE");
-                    roomRepository.save(room);
-                }
-            }
         }
 
         RoomIncident saved = roomIncidentRepository.save(incident);
@@ -316,19 +266,7 @@ public class RoomIncidentServiceImpl implements RoomIncidentService {
             syncIncidentPenalty(incident, record, BigDecimal.ZERO);
         }
 
-        Room room = incident.getRoom();
         roomIncidentRepository.delete(incident);
-
-        if (room != null) {
-            long remainingActive = roomIncidentRepository.findAll().stream()
-                    .filter(other -> other.getRoom() != null && other.getRoom().getId().equals(room.getId()))
-                    .filter(other -> "REPORTED".equalsIgnoreCase(other.getStatus()) || "IN_PROGRESS".equalsIgnoreCase(other.getStatus()))
-                    .count();
-            if (remainingActive == 0 && "MAINTENANCE".equalsIgnoreCase(room.getStatus())) {
-                room.setStatus("AVAILABLE");
-                roomRepository.save(room);
-            }
-        }
     }
 
     private CheckInRecord getCheckInRecordForIncident(RoomIncident incident) {

@@ -121,6 +121,11 @@ public class AdminMarketingController {
         adminMarketingService.deleteSocialAccount(id);
     }
 
+    @PostMapping("/social-accounts/{id}/test")
+    public Map<String, Object> testSocialAccount(@PathVariable Long id) {
+        return adminMarketingService.testSocialAccount(id);
+    }
+
     @PostMapping("/social-auth/start")
     public MarketingSocialAuthStartResponse startSocialAuth(@Valid @RequestBody MarketingSocialAuthStartRequest request) {
         return adminMarketingService.startSocialAuth(request);

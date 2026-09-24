@@ -678,7 +678,7 @@ export default function AdminIncidentsPage() {
                       <div className="action-btns">
                         <button
                           type="button"
-                          className="btn-action-view"
+                          className={`btn-action-view ${isAdmin && item.status !== 'RESOLVED' ? 'btn-action-process-urgent' : ''}`}
                           onClick={() => handleOpenActionModal(item)}
                         >
                           {isAdmin ? (item.status === 'RESOLVED' ? 'Chi tiết' : 'Xử lý') : 'Chi tiết'}
@@ -757,10 +757,10 @@ export default function AdminIncidentsPage() {
                 <div className="incident-card-actions">
                   <button
                     type="button"
-                    className="btn-action-view incident-card-btn-view"
+                    className={`btn-action-view incident-card-btn-view ${isAdmin && item.status !== 'RESOLVED' ? 'btn-action-process-urgent' : ''}`}
                     onClick={() => handleOpenActionModal(item)}
                   >
-                    {isAdmin ? (item.status === 'RESOLVED' ? '️ Xem chi tiết' : ' Xử lý / Chi tiết') : '️ Xem chi tiết'}
+                    {isAdmin ? (item.status === 'RESOLVED' ? '️ Xem chi tiết' : ' Xử lý') : '️ Xem chi tiết'}
                   </button>
                   {isAdmin && (
                     <button

@@ -166,3 +166,9 @@ tool_remotion/.git_backup/
 homestayManagement/exports/
 homestayManagement/invoive/
 homestayManagement/uploads/
+ENV_CONFIG_BUNDLE/
+HOMESTAY_ENV_CONFIGS.zip
+/*.png
+scratch_*
+
+

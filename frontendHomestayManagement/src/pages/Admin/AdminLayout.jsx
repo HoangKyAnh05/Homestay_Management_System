@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { getStoredToken, getStoredUser, logout } from '../../services/authService'
 import { ShiftGuardProvider } from '../../context/ShiftGuardContext'
-import AdminDailyReportsModal from '../../components/DailyClosingReport/AdminDailyReportsModal'
 import { NAV_KEYS_BY_ROLE } from '../../utils/roleUtils'
 import './AdminLayout.css'
 
@@ -85,6 +84,7 @@ const NAV_ITEMS = [
   { key: 'reviews', label: 'Quản lý Đánh giá', path: '/admin/reviews', icon: ICONS.rules },
   { key: 'invoices', label: 'Quản lý Hóa đơn', path: '/admin/invoices', icon: ICONS.invoices },
   { key: 'sheets', label: 'Bảng Tính & Sheet Homestay', path: '/admin/sheets', icon: ICONS.sheets },
+  { key: 'incidents', label: 'Sự cố đồ hỏng & mất', path: '/admin/housekeeping/incidents', icon: ICONS.rules },
   {
     key: 'housekeeping',
     label: 'Quản lý Housekeeping',
@@ -111,7 +111,7 @@ const NAV_ITEMS = [
   },
 ]
 
-const ADMIN_HIDDEN_NAV_KEYS = new Set(['receptionist-overview'])
+const ADMIN_HIDDEN_NAV_KEYS = new Set(['receptionist-overview', 'incidents'])
 
 export function navigate(path) {
   window.history.pushState(null, '', path)
@@ -140,7 +140,6 @@ function AdminLayoutInner({ activePage, children }) {
   const user = getStoredUser()
   const role = user?.role || 'ROLE_ADMIN'
   const [collapsed, setCollapsed] = useState(false)
-  const [showAdminReportsModal, setShowAdminReportsModal] = useState(false)
 
   // Lọc menu theo role: null = toàn bộ (admin)
   // Dùng useMemo để tránh tạo array mới mỗi render (gây reset openGroupKey)
@@ -182,7 +181,6 @@ function AdminLayoutInner({ activePage, children }) {
   const [bookingCounts, setBookingCounts] = useState({ todayCheckIns: 0, todayCheckOuts: 0 })
   const [checkoutAlerts, setCheckoutAlerts] = useState([])
   const [marketingUnreadCount, setMarketingUnreadCount] = useState(0)
-  const [hasPendingDailyReport, setHasPendingDailyReport] = useState(false)
   const [showNotificationDropdown, setShowNotificationDropdown] = useState(false)
   const [marketingNotifications, setMarketingNotifications] = useState([])
   const [loadingNotifications, setLoadingNotifications] = useState(false)
@@ -448,25 +446,12 @@ function AdminLayoutInner({ activePage, children }) {
       fetchMarketingNotifications()
     } catch (_) {}
 
-    // 7. Kiểm tra Báo cáo cuối ngày mới cho Admin
-    if (role === 'ROLE_ADMIN') {
-      try {
-        const reportRes = await fetch((import.meta.env.VITE_API_URL || '') + '/api/admin/daily-reports?size=10', { headers })
-        if (reportRes.ok) {
-          const reportData = await reportRes.json()
-          const reports = reportData?.content || []
-          const hasPending = reports.some(r => r.status === 'SUBMITTED')
-          setHasPendingDailyReport(hasPending)
-        }
-      } catch (_) {}
-    }
-
     setNavAlerts(updated)
   }
 
   useEffect(() => {
     fetchAllAlerts()
-    const timer = setInterval(fetchAllAlerts, 15000)
+    const timer = setInterval(fetchAllAlerts, 45000)
     const handleUpdate = () => fetchAllAlerts()
     window.addEventListener('booking_updated', handleUpdate)
     window.addEventListener('incident_updated', handleUpdate)
@@ -694,49 +679,6 @@ function AdminLayoutInner({ activePage, children }) {
           </div>
 
           <div className="admin-topbar-right">
-            {role === 'ROLE_ADMIN' && (
-              <button
-                type="button"
-                onClick={() => {
-                  setHasPendingDailyReport(false)
-                  setShowAdminReportsModal(true)
-                }}
-                title="Xem các Báo cáo cuối ngày do Lễ tân gửi"
-                style={{
-                  position: 'relative',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  padding: '6px 14px',
-                  borderRadius: 8,
-                  border: hasPendingDailyReport ? '1px solid #f97316' : '1px solid #cbd5e1',
-                  background: hasPendingDailyReport ? '#fff7ed' : '#f8fafc',
-                  color: hasPendingDailyReport ? '#c2410c' : '#0f172a',
-                  fontSize: 13,
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  marginRight: 8,
-                  transition: 'all 0.2s',
-                }}
-              >
-                <span>Báo cáo cuối ngày</span>
-                {hasPendingDailyReport && (
-                  <span
-                    style={{
-                      width: 8,
-                      height: 8,
-                      borderRadius: '50%',
-                      background: '#ef4444',
-                      display: 'inline-block',
-                      boxShadow: '0 0 0 2px #fee2e2',
-                      animation: 'adminPulseDot 1.5s infinite',
-                    }}
-                    title="Có báo cáo mới cần duyệt"
-                  />
-                )}
-              </button>
-            )}
-
             <div ref={notifDropdownRef} style={{ position: 'relative' }}>
               <button
                 className="admin-topbar-bell"
@@ -750,17 +692,17 @@ function AdminLayoutInner({ activePage, children }) {
                   })
                 }}
                 title={
-                  (checkoutAlerts.length + (hasPendingDailyReport ? 1 : 0) + marketingNotifications.filter(n => !n.isRead).length) > 0
-                    ? `${checkoutAlerts.length + (hasPendingDailyReport ? 1 : 0) + marketingNotifications.filter(n => !n.isRead).length} thông báo mới`
+                  (checkoutAlerts.length + marketingNotifications.filter(n => !n.isRead).length) > 0
+                    ? `${checkoutAlerts.length + marketingNotifications.filter(n => !n.isRead).length} thông báo mới`
                     : 'Thông báo phòng'
                 }
               >
                 <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-                {(checkoutAlerts.length + (hasPendingDailyReport ? 1 : 0) + marketingNotifications.filter(n => !n.isRead).length) > 0 && (
+                {(checkoutAlerts.length + marketingNotifications.filter(n => !n.isRead).length) > 0 && (
                   <span className="admin-bell-badge">
-                    {(checkoutAlerts.length + (hasPendingDailyReport ? 1 : 0) + marketingNotifications.filter(n => !n.isRead).length) > 99
+                    {(checkoutAlerts.length + marketingNotifications.filter(n => !n.isRead).length) > 99
                       ? '99+'
-                      : (checkoutAlerts.length + (hasPendingDailyReport ? 1 : 0) + marketingNotifications.filter(n => !n.isRead).length)}
+                      : (checkoutAlerts.length + marketingNotifications.filter(n => !n.isRead).length)}
                   </span>
                 )}
               </button>
@@ -770,9 +712,9 @@ function AdminLayoutInner({ activePage, children }) {
                   <div className="admin-notif-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div className="admin-notif-title">
                       <span>Trung tâm thông báo phòng & lưu trú</span>
-                      {(checkoutAlerts.length + (hasPendingDailyReport ? 1 : 0) + marketingNotifications.filter(n => !n.isRead).length) > 0 && (
+                      {(checkoutAlerts.length + marketingNotifications.filter(n => !n.isRead).length) > 0 && (
                         <span className="admin-notif-pill">
-                          {checkoutAlerts.length + (hasPendingDailyReport ? 1 : 0) + marketingNotifications.filter(n => !n.isRead).length} mới
+                          {checkoutAlerts.length + marketingNotifications.filter(n => !n.isRead).length} mới
                         </span>
                       )}
                     </div>
@@ -875,34 +817,6 @@ function AdminLayoutInner({ activePage, children }) {
                             <span className="admin-notif-dot" style={{ background: alert.severity === 'critical' ? '#e11d48' : '#f59e0b' }} />
                           </div>
                         ))}
-
-                        {hasPendingDailyReport && (
-                          <div
-                            className="admin-notif-item admin-notif-item--unread"
-                            style={{ background: '#fff7ed', borderColor: '#fed7aa' }}
-                            onClick={() => {
-                              setShowNotificationDropdown(false)
-                              setHasPendingDailyReport(false)
-                              setShowAdminReportsModal(true)
-                            }}
-                          >
-                            <span className="admin-notif-icon">📄</span>
-                            <div className="admin-notif-content">
-                              <div className="admin-notif-item-title" style={{ color: '#c2410c', fontWeight: 700 }}>
-                                Báo cáo cuối ngày chờ Admin duyệt
-                              </div>
-                              <div className="admin-notif-item-message">
-                                Lễ tân vừa gửi bảng tổng kết doanh thu và phòng cần kiểm tra đối soát.
-                              </div>
-                              <div className="admin-notif-item-meta">
-                                <span>HỆ THỐNG</span>
-                                <span>•</span>
-                                <span style={{ color: '#ea580c', fontWeight: 600 }}>Nhấn để mở xem</span>
-                              </div>
-                            </div>
-                            <span className="admin-notif-dot" style={{ background: '#ea580c' }} />
-                          </div>
-                        )}
                       </>
                     )}
                   </div>
@@ -925,11 +839,6 @@ function AdminLayoutInner({ activePage, children }) {
           {children}
         </main>
       </div>
-
-      <AdminDailyReportsModal
-        isOpen={showAdminReportsModal}
-        onClose={() => setShowAdminReportsModal(false)}
-      />
     </div>
   )
 }
