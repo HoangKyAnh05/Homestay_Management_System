@@ -125,7 +125,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/admin/dashboard/**").hasAuthority("ROLE_ADMIN")
                         // Thông báo hệ thống & Yêu cầu đổi phòng cho Admin và Lễ tân
                         .requestMatchers("/api/admin/marketing/notifications/**").hasAnyAuthority("ROLE_ADMIN", "ROLE_RECEPTIONIST", "ROLE_MARKETING")
-                        .requestMatchers("/api/admin/marketing/**").hasAnyAuthority("ROLE_ADMIN", "ROLE_MARKETING")
+                        .requestMatchers("/api/admin/marketing/**").hasAnyAuthority("ROLE_ADMIN", "ROLE_RECEPTIONIST", "ROLE_MARKETING")
 
                         // Các API admin còn lại không tự động mở cho role chuyên biệt.
                         .requestMatchers("/api/admin/**").hasAuthority("ROLE_ADMIN")

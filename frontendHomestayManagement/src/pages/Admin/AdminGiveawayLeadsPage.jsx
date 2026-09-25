@@ -87,9 +87,15 @@ export default function AdminGiveawayLeadsPage() {
         body: JSON.stringify(wheelPrizes),
       })
 
-      if (res.ok) {
-        const saved = await res.json()
-        if (Array.isArray(saved) && saved.length > 0) setWheelPrizes(saved)
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}))
+        throw new Error(errData.message || `Lỗi máy chủ (${res.status}) khi lưu cấu hình quà`)
+      }
+
+      const saved = await res.json()
+      if (Array.isArray(saved) && saved.length > 0) {
+        setWheelPrizes(saved)
+        localStorage.setItem('la_do_lucky_wheel_custom_prizes', JSON.stringify(saved))
       }
 
       setPrizeFeedback({ type: 'success', msg: '✅ Đã lưu cấu hình phần quà vòng quay thành công! Dữ liệu đã được cập nhật trên máy chủ và trang Minigame.' })

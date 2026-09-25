@@ -320,24 +320,41 @@ public class GiveawayServiceImpl implements GiveawayService {
         String randomSuffix = UUID.randomUUID().toString().substring(0, 4).toUpperCase();
         String prizeCode = prefix + "-" + randomSuffix;
 
-        // Nếu là giải có giảm giá %, tự động tạo Voucher thực tế trong DB để khách có thể đặt trực tiếp
-        if (wonPrize.getDiscountPercent() > 0) {
-            try {
-                Voucher voucher = Voucher.builder()
-                        .code(prizeCode)
-                        .discountType("PERCENT")
-                        .discountValue(BigDecimal.valueOf(wonPrize.getDiscountPercent()))
-                        .minOrderValue(BigDecimal.valueOf(500000))
-                        .maxDiscountAmount(BigDecimal.valueOf(2000000))
-                        .startDate(LocalDateTime.now())
-                        .endDate(LocalDateTime.now().plusDays(30))
-                        .usageLimit(1)
-                        .usedCount(0)
-                        .build();
-                voucherRepository.save(voucher);
-            } catch (Exception ignored) {
-                // Bỏ qua nếu mã trùng lặp hiếm gặp
+        // Tự động tạo Voucher thực tế trong DB để khách có thể áp dụng khi đặt phòng trực tuyến
+        try {
+            BigDecimal discountVal;
+            String type;
+            BigDecimal minOrder = BigDecimal.valueOf(300000);
+            BigDecimal maxDiscount = BigDecimal.valueOf(2000000);
+
+            if (wonPrize.getDiscountPercent() > 0) {
+                type = "PERCENT";
+                discountVal = BigDecimal.valueOf(wonPrize.getDiscountPercent());
+            } else if (wonPrize.getShortTitle() != null && wonPrize.getShortTitle().toUpperCase().contains("100K")) {
+                type = "AMOUNT";
+                discountVal = BigDecimal.valueOf(100000);
+            } else if (wonPrize.getShortTitle() != null && wonPrize.getShortTitle().toUpperCase().contains("BBQ")) {
+                type = "AMOUNT";
+                discountVal = BigDecimal.valueOf(150000);
+            } else {
+                type = "AMOUNT";
+                discountVal = BigDecimal.valueOf(50000);
             }
+
+            Voucher voucher = Voucher.builder()
+                    .code(prizeCode)
+                    .discountType(type)
+                    .discountValue(discountVal)
+                    .minOrderValue(minOrder)
+                    .maxDiscountAmount(maxDiscount)
+                    .startDate(LocalDateTime.now())
+                    .endDate(LocalDateTime.now().plusDays(30))
+                    .usageLimit(1)
+                    .usedCount(0)
+                    .build();
+            voucherRepository.save(voucher);
+        } catch (Exception ignored) {
+            // Bỏ qua nếu mã trùng lặp hiếm gặp
         }
 
         // Cập nhật Lead trong database
@@ -547,9 +564,11 @@ public class GiveawayServiceImpl implements GiveawayService {
 
     private String normalizePhone(String phone) {
         if (phone == null) return "";
-        String clean = phone.replaceAll("[^0-9+]", "");
-        if (clean.startsWith("+84")) {
-            clean = "0" + clean.substring(3);
+        String clean = phone.replaceAll("[^0-9]", "");
+        if (clean.startsWith("84") && clean.length() == 11) {
+            clean = "0" + clean.substring(2);
+        } else if (clean.startsWith("0084") && clean.length() == 13) {
+            clean = "0" + clean.substring(4);
         }
         return clean;
     }

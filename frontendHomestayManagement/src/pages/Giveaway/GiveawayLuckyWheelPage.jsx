@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { getStoredUser } from '../../services/authService'
 import './GiveawayLuckyWheelPage.css'
 
 const API_PUBLIC = (import.meta.env.VITE_API_URL || '') + '/api/public/giveaway'
@@ -104,6 +105,21 @@ export default function GiveawayLuckyWheelPage() {
   const [errorMsg, setErrorMsg] = useState('')
   const [copied, setCopied] = useState(false)
   const [showContactModal, setShowContactModal] = useState(false)
+
+  // Auto-fill user profile if logged in
+  useEffect(() => {
+    try {
+      const user = getStoredUser()
+      if (user) {
+        setFormData((prev) => ({
+          ...prev,
+          fullName: prev.fullName || user.fullName || user.name || '',
+          phone: prev.phone || user.phone || user.phoneNumber || '',
+          email: prev.email || user.email || '',
+        }))
+      }
+    } catch {}
+  }, [])
 
   // Listen to cross-tab storage changes when Admin updates prizes
   useEffect(() => {
@@ -309,9 +325,26 @@ export default function GiveawayLuckyWheelPage() {
     window.scrollTo({ top: 350, behavior: 'smooth' })
   }
 
+  const handleCenterClick = (e) => {
+    if (spinning || hasSpun) return
+    if (!spinToken) {
+      if (formData.fullName.trim() && formData.phone.trim()) {
+        handleSubmitForm(e)
+      } else {
+        const input = document.querySelector('.gw-input')
+        if (input) {
+          input.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          input.focus()
+        }
+      }
+      return
+    }
+    handleSpinWheel()
+  }
+
   // Handle Form Submit -> Register Spin
   const handleSubmitForm = async (e) => {
-    e.preventDefault()
+    if (e && e.preventDefault) e.preventDefault()
     setErrorMsg('')
 
     if (!formData.fullName.trim()) {
@@ -510,8 +543,9 @@ export default function GiveawayLuckyWheelPage() {
             <button
               type="button"
               className="gw-wheel-center-btn"
-              disabled={!spinToken || spinning || hasSpun}
-              onClick={handleSpinWheel}
+              disabled={spinning || hasSpun}
+              onClick={handleCenterClick}
+              title={!spinToken ? 'Điền thông tin và bấm để nhận lượt quay' : 'Bấm để quay số may mắn'}
             >
               {spinning ? '...' : hasSpun ? 'XONG' : 'QUAY'}
             </button>
@@ -519,12 +553,12 @@ export default function GiveawayLuckyWheelPage() {
 
           {!spinToken && (
             <p style={{ color: '#fbbf24', fontSize: '0.95rem', fontWeight: 600, marginTop: '10px' }}>
-               Vui lòng điền thông tin bên cạnh để nhận 1 lượt quay miễn phí!
+              👉 Điền thông tin và bấm &quot;QUAY&quot; để nhận 1 lượt quay miễn phí!
             </p>
           )}
           {spinToken && !hasSpun && (
             <p style={{ color: '#34d399', fontSize: '1rem', fontWeight: 700, marginTop: '10px' }}>
-               Đã cấp lượt quay! Bạn hãy bấm nút &quot;QUAY&quot; ở tâm vòng quay!
+              🎉 Đã cấp lượt quay! Bạn hãy bấm nút &quot;QUAY&quot; ở tâm vòng quay!
             </p>
           )}
         </section>
@@ -532,15 +566,40 @@ export default function GiveawayLuckyWheelPage() {
         {/* Right: Form or Winner Result */}
         <section className="gw-card">
           {errorMsg && (
-            <div style={{ background: '#f43f5e22', border: '1px solid #f43f5e', color: '#fda4af', padding: '12px 16px', borderRadius: '12px', marginBottom: '18px', fontSize: '0.92rem' }}>
-              ️ {errorMsg}
+            <div style={{ background: '#f43f5e22', border: '1px solid #f43f5e', color: '#fda4af', padding: '14px 18px', borderRadius: '12px', marginBottom: '18px', fontSize: '0.94rem', lineHeight: 1.5 }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '10px' }}>
+                <div>
+                  <strong>⚠️ Thông báo:</strong> {errorMsg}
+                </div>
+                <button
+                  type="button"
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.15)',
+                    border: '1px solid rgba(255, 255, 255, 0.3)',
+                    color: '#fff',
+                    borderRadius: '8px',
+                    padding: '4px 10px',
+                    fontSize: '0.82rem',
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                  }}
+                  onClick={() => {
+                    setFormData((prev) => ({ ...prev, phone: '' }))
+                    setErrorMsg('')
+                    const phoneInput = document.querySelector('input[type="tel"]')
+                    if (phoneInput) phoneInput.focus()
+                  }}
+                >
+                  ✕ Đổi số khác
+                </button>
+              </div>
             </div>
           )}
 
           {!hasSpun ? (
             <div>
               <div className="gw-card-header">
-                <h2 className="gw-card-title"> Thông Tin Nhận Lượt Quay</h2>
+                <h2 className="gw-card-title">🎁 Thông Tin Nhận Lượt Quay</h2>
                 <p className="gw-card-desc">Thông tin của bạn được bảo mật tuyệt đối và chỉ dùng để trao mã ưu đãi đặt phòng trực tiếp.</p>
               </div>
 
@@ -559,16 +618,44 @@ export default function GiveawayLuckyWheelPage() {
                 </div>
 
                 <div className="gw-form-group">
-                  <label className="gw-label">Số điện thoại nhận quà *</label>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                    <label className="gw-label" style={{ margin: 0 }}>Số điện thoại nhận quà *</label>
+                    {formData.phone && !spinToken && (
+                      <button
+                        type="button"
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: '#38bdf8',
+                          fontSize: '0.82rem',
+                          cursor: 'pointer',
+                          textDecoration: 'underline',
+                          padding: 0,
+                        }}
+                        onClick={() => {
+                          setFormData((prev) => ({ ...prev, phone: '' }))
+                          setErrorMsg('')
+                        }}
+                      >
+                        Nhập số mới
+                      </button>
+                    )}
+                  </div>
                   <input
                     type="tel"
                     className="gw-input"
                     placeholder="VD: 0912 345 678"
                     value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    onChange={(e) => {
+                      setFormData({ ...formData, phone: e.target.value })
+                      if (errorMsg) setErrorMsg('')
+                    }}
                     required
                     disabled={Boolean(spinToken)}
                   />
+                  <span style={{ fontSize: '0.8rem', color: '#a8a29e', marginTop: '4px', display: 'block' }}>
+                    * Mỗi số điện thoại chỉ được quay 1 lần duy nhất.
+                  </span>
                 </div>
 
                 <div className="gw-form-group">
