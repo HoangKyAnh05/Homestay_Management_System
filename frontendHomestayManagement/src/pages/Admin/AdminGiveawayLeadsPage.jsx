@@ -1196,22 +1196,23 @@ export default function AdminGiveawayLeadsPage() {
 
         {/* Lucky Wheel Prize Configuration Modal */}
         {isPrizeConfigModalOpen && (
-          <div className="gw-modal-overlay" onClick={() => setIsPrizeConfigModalOpen(false)}>
-            <div className="gw-modal-dialog gw-prize-modal-dialog" onClick={(e) => e.stopPropagation()}>
-              <div className="gw-modal-header">
-                <div className="gw-modal-header-left">
-                  <div className="gw-modal-icon" style={{ background: '#ffe4e6', color: '#e11d48' }}>
+          <div className="gw-prize-config-backdrop" onClick={() => setIsPrizeConfigModalOpen(false)}>
+            <div className="gw-prize-config-modal" onClick={(e) => e.stopPropagation()}>
+              <div className="gw-prize-modal-header">
+                <div className="gw-prize-modal-header-left">
+                  <div className="gw-prize-modal-icon">
                     🎁
                   </div>
                   <div>
-                    <h2 className="gw-modal-title">Cấu Hình Phần Quà Vòng Quay May Mắn</h2>
-                    <p className="gw-modal-subtitle">Tùy chỉnh 6 ô phần quà hiển thị trên vòng quay của khách hàng</p>
+                    <h2 className="gw-prize-modal-title">Cấu Hình Phần Quà Vòng Quay May Mắn</h2>
+                    <p className="gw-prize-modal-subtitle">Tùy chỉnh 6 ô phần quà hiển thị trên vòng quay của khách hàng</p>
                   </div>
                 </div>
                 <button
                   type="button"
-                  className="gw-modal-close-btn"
+                  className="gw-prize-modal-close"
                   onClick={() => setIsPrizeConfigModalOpen(false)}
+                  title="Đóng cửa sổ"
                 >
                   ✕
                 </button>
@@ -1219,145 +1220,152 @@ export default function AdminGiveawayLeadsPage() {
 
               {prizeFeedback.msg && (
                 <div
-                  className={`gw-alert-banner ${prizeFeedback.type === 'success' ? 'gw-alert-success' : 'gw-alert-error'}`}
-                  style={{ margin: '16px 24px 0' }}
+                  className={`gw-prize-alert-banner ${prizeFeedback.type === 'success' ? 'gw-prize-alert-success' : 'gw-prize-alert-error'}`}
                 >
-                  {prizeFeedback.msg}
+                  <span style={{ fontSize: '1.2rem' }}>{prizeFeedback.type === 'success' ? '🎉' : '⚠️'}</span>
+                  <div>{prizeFeedback.msg}</div>
                 </div>
               )}
 
-              <form onSubmit={handleSavePrizes} className="gw-modal-body gw-prize-modal-body">
-                <div className="gw-prize-list-grid">
-                  {wheelPrizes.map((pz, idx) => (
-                    <div key={idx} className="gw-prize-card">
-                      <div className="gw-prize-card-header">
-                        <div className="gw-prize-badge" style={{ background: pz.sliceColor1 || '#991b1b', color: pz.textColor || '#fff' }}>
-                          Ô #{idx + 1}
+              <form onSubmit={handleSavePrizes} className="gw-prize-modal-form">
+                <div className="gw-prize-modal-body">
+                  <div className="gw-prize-grid">
+                    {wheelPrizes.map((pz, idx) => (
+                      <div key={idx} className="gw-prize-card">
+                        <div className="gw-prize-card-header">
+                          <div
+                            className="gw-prize-card-badge"
+                            style={{
+                              backgroundColor: pz.sliceColor1 || '#991b1b',
+                              color: pz.textColor || '#ffffff'
+                            }}
+                          >
+                            Ô #{idx + 1}
+                          </div>
+                          <span className="gw-prize-card-title">{pz.shortTitle || `Phần quà ${idx + 1}`}</span>
                         </div>
-                        <span className="gw-prize-preview-label">{pz.shortTitle || `Phần quà ${idx + 1}`}</span>
-                      </div>
 
-                      <div className="gw-prize-card-body">
-                        <div className="gw-form-row">
-                          <div className="gw-form-group" style={{ flex: 1 }}>
-                            <label className="gw-form-label">
-                              <span>Tiêu đề ô bánh xe:</span>
-                              <span className="gw-required">*</span>
+                        <div className="gw-prize-card-body">
+                          <div className="gw-form-row">
+                            <div className="gw-prize-field-group" style={{ flex: 1 }}>
+                              <label className="gw-prize-label">
+                                <span>Tiêu đề ô bánh xe:</span>
+                                <span className="gw-prize-required">*</span>
+                              </label>
+                              <input
+                                type="text"
+                                className="gw-prize-input"
+                                value={pz.shortTitle}
+                                onChange={(e) => handlePrizeChange(idx, 'shortTitle', e.target.value)}
+                                placeholder="VD: GIẢM 50%"
+                                required
+                              />
+                            </div>
+                            <div className="gw-prize-field-group" style={{ flex: 1 }}>
+                              <label className="gw-prize-label">
+                                <span>Dòng phụ (Subtext):</span>
+                              </label>
+                              <input
+                                type="text"
+                                className="gw-prize-input"
+                                value={pz.subText}
+                                onChange={(e) => handlePrizeChange(idx, 'subText', e.target.value)}
+                                placeholder="VD: Toàn Chuyến Đi"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="gw-prize-field-group">
+                            <label className="gw-prize-label">
+                              <span>Tên đầy đủ phần thưởng:</span>
+                              <span className="gw-prize-required">*</span>
                             </label>
                             <input
                               type="text"
-                              className="gw-form-input"
-                              value={pz.shortTitle}
-                              onChange={(e) => handlePrizeChange(idx, 'shortTitle', e.target.value)}
-                              placeholder="VD: GIẢM 50%"
+                              className="gw-prize-input"
+                              value={pz.fullName}
+                              onChange={(e) => handlePrizeChange(idx, 'fullName', e.target.value)}
+                              placeholder="VD: Voucher Giảm 50% Tiền Phòng"
                               required
                             />
                           </div>
-                          <div className="gw-form-group" style={{ flex: 1 }}>
-                            <label className="gw-form-label">
-                              <span>Dòng phụ (Subtext):</span>
-                            </label>
-                            <input
-                              type="text"
-                              className="gw-form-input"
-                              value={pz.subText}
-                              onChange={(e) => handlePrizeChange(idx, 'subText', e.target.value)}
-                              placeholder="VD: Toàn Chuyến Đi"
-                            />
-                          </div>
-                        </div>
 
-                        <div className="gw-form-group">
-                          <label className="gw-form-label">
-                            <span>Tên đầy đủ phần thưởng:</span>
-                            <span className="gw-required">*</span>
-                          </label>
-                          <input
-                            type="text"
-                            className="gw-form-input"
-                            value={pz.fullName}
-                            onChange={(e) => handlePrizeChange(idx, 'fullName', e.target.value)}
-                            placeholder="VD: Voucher Giảm 50% Tiền Phòng"
-                            required
-                          />
-                        </div>
-
-                        <div className="gw-form-row">
-                          <div className="gw-form-group" style={{ flex: 1 }}>
-                            <label className="gw-form-label">
-                              <span>Tiền tố mã Voucher:</span>
-                            </label>
-                            <input
-                              type="text"
-                              className="gw-form-input"
-                              value={pz.codePrefix}
-                              onChange={(e) => handlePrizeChange(idx, 'codePrefix', e.target.value.toUpperCase())}
-                              placeholder="VD: LADO50"
-                            />
-                          </div>
-                          <div className="gw-form-group" style={{ flex: 1 }}>
-                            <label className="gw-form-label">
-                              <span>Mức giảm (%):</span>
-                            </label>
-                            <input
-                              type="number"
-                              min="0"
-                              max="100"
-                              className="gw-form-input"
-                              value={pz.discountPercent}
-                              onChange={(e) => handlePrizeChange(idx, 'discountPercent', Number(e.target.value) || 0)}
-                              placeholder="VD: 50"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="gw-form-row gw-color-picker-row">
-                          <div className="gw-form-group" style={{ flex: 1 }}>
-                            <label className="gw-form-label"><span>Màu lát 1:</span></label>
-                            <div className="gw-color-input-wrap">
+                          <div className="gw-form-row">
+                            <div className="gw-prize-field-group" style={{ flex: 1 }}>
+                              <label className="gw-prize-label">
+                                <span>Tiền tố mã Voucher:</span>
+                              </label>
                               <input
-                                type="color"
-                                value={pz.sliceColor1}
-                                onChange={(e) => handlePrizeChange(idx, 'sliceColor1', e.target.value)}
+                                type="text"
+                                className="gw-prize-input"
+                                value={pz.codePrefix}
+                                onChange={(e) => handlePrizeChange(idx, 'codePrefix', e.target.value.toUpperCase())}
+                                placeholder="VD: LADO50"
                               />
-                              <span>{pz.sliceColor1}</span>
+                            </div>
+                            <div className="gw-prize-field-group" style={{ flex: 1 }}>
+                              <label className="gw-prize-label">
+                                <span>Mức giảm (%):</span>
+                              </label>
+                              <input
+                                type="number"
+                                min="0"
+                                max="100"
+                                className="gw-prize-input"
+                                value={pz.discountPercent}
+                                onChange={(e) => handlePrizeChange(idx, 'discountPercent', Number(e.target.value) || 0)}
+                                placeholder="VD: 50"
+                              />
                             </div>
                           </div>
-                          <div className="gw-form-group" style={{ flex: 1 }}>
-                            <label className="gw-form-label"><span>Màu lát 2:</span></label>
-                            <div className="gw-color-input-wrap">
-                              <input
-                                type="color"
-                                value={pz.sliceColor2}
-                                onChange={(e) => handlePrizeChange(idx, 'sliceColor2', e.target.value)}
-                              />
-                              <span>{pz.sliceColor2}</span>
+
+                          <div className="gw-form-row gw-color-picker-row">
+                            <div className="gw-prize-field-group" style={{ flex: 1 }}>
+                              <label className="gw-prize-label"><span>Màu lát 1:</span></label>
+                              <div className="gw-prize-color-box">
+                                <input
+                                  type="color"
+                                  value={pz.sliceColor1}
+                                  onChange={(e) => handlePrizeChange(idx, 'sliceColor1', e.target.value)}
+                                />
+                                <span className="gw-prize-color-code">{pz.sliceColor1}</span>
+                              </div>
                             </div>
-                          </div>
-                          <div className="gw-form-group" style={{ flex: 1 }}>
-                            <label className="gw-form-label"><span>Màu chữ:</span></label>
-                            <div className="gw-color-input-wrap">
-                              <input
-                                type="color"
-                                value={pz.textColor}
-                                onChange={(e) => handlePrizeChange(idx, 'textColor', e.target.value)}
-                              />
-                              <span>{pz.textColor}</span>
+                            <div className="gw-prize-field-group" style={{ flex: 1 }}>
+                              <label className="gw-prize-label"><span>Màu lát 2:</span></label>
+                              <div className="gw-prize-color-box">
+                                <input
+                                  type="color"
+                                  value={pz.sliceColor2}
+                                  onChange={(e) => handlePrizeChange(idx, 'sliceColor2', e.target.value)}
+                                />
+                                <span className="gw-prize-color-code">{pz.sliceColor2}</span>
+                              </div>
+                            </div>
+                            <div className="gw-prize-field-group" style={{ flex: 1 }}>
+                              <label className="gw-prize-label"><span>Màu chữ:</span></label>
+                              <div className="gw-prize-color-box">
+                                <input
+                                  type="color"
+                                  value={pz.textColor}
+                                  onChange={(e) => handlePrizeChange(idx, 'textColor', e.target.value)}
+                                />
+                                <span className="gw-prize-color-code">{pz.textColor}</span>
+                              </div>
                             </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
 
-                <div className="gw-modal-footer" style={{ marginTop: 20 }}>
-                  <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                <div className="gw-prize-modal-footer">
+                  <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
                     <button
                       type="button"
-                      className="mkt-btn mkt-btn--secondary"
+                      className="gw-prize-btn-reset"
                       onClick={handleResetDefaultPrizes}
-                      style={{ color: '#dc2626', borderColor: '#fca5a5' }}
                     >
                       🔄 Khôi Phục Mặc Định
                     </button>
@@ -1365,24 +1373,22 @@ export default function AdminGiveawayLeadsPage() {
                       href="/giveaway"
                       target="_blank"
                       rel="noreferrer"
-                      className="mkt-btn mkt-btn--secondary"
-                      style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                      className="gw-prize-btn-preview"
                     >
                       🎯 Xem Vòng Quay
                     </a>
                   </div>
-                  <div style={{ display: 'flex', gap: 10 }}>
+                  <div style={{ display: 'flex', gap: 12 }}>
                     <button
                       type="button"
-                      className="mkt-btn mkt-btn--secondary"
+                      className="gw-prize-btn-close"
                       onClick={() => setIsPrizeConfigModalOpen(false)}
                     >
                       Đóng
                     </button>
                     <button
                       type="submit"
-                      className="mkt-btn mkt-btn--primary"
-                      style={{ minWidth: 160, background: 'linear-gradient(135deg, #e11d48 0%, #be123c 100%)', borderColor: '#be123c' }}
+                      className="gw-prize-btn-save"
                     >
                       💾 Lưu Cấu Hình Quà
                     </button>
