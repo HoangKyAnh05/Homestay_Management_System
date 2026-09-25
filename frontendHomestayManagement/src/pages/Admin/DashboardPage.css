@@ -1479,29 +1479,26 @@
   filter: brightness(1.1);
 }
 
-.dash-cash-dual-bars {
+.dash-cash-single-bar-wrap {
   width: 100%;
   height: calc(100% - 24px);
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  gap: 3px;
 }
 
 .dash-cash-bar {
-  width: 45%;
-  max-width: 16px;
-  border-radius: 4px 4px 0 0;
+  width: 100%;
+  max-width: 28px;
+  border-radius: 6px 6px 0 0;
   position: relative;
   transition: height 0.3s ease;
+  background: linear-gradient(180deg, #10b981 0%, #059669 100%);
+  box-shadow: 0 2px 6px rgba(5, 150, 105, 0.25);
 }
 
 .dash-cash-bar--cash {
   background: linear-gradient(180deg, #10b981 0%, #059669 100%);
-}
-
-.dash-cash-bar--transfer {
-  background: linear-gradient(180deg, #3b82f6 0%, #1d4ed8 100%);
 }
 
 .dash-cash-bar-label {
