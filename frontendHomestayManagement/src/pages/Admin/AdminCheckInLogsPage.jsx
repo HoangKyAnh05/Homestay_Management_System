@@ -13,9 +13,10 @@ import './AdminCheckInLogsPage.css'
 const API_BASE = (import.meta.env.VITE_API_URL || '') + '/api/admin/bookings'
 
 const CHECKOUT_PAYMENT_OPTIONS = [
+  { value: 'QR', label: 'VietQR / SePay', description: 'Tạo mã QR SePay tự động' },
   { value: 'CASH', label: 'Tiền mặt', description: 'Thu trực tiếp tại quầy' },
-  { value: 'CARD', label: 'Thẻ', description: 'Quẹt máy POS rồi ghi nhận' },
-  { value: 'QR', label: 'QR', description: 'Tạo mã SePay tự động' },
+  { value: 'CARD', label: 'Thẻ / POS', description: 'Quẹt máy POS rồi ghi nhận' },
+  { value: 'SPLIT', label: 'Thanh toán kết hợp', description: 'Thu 2 đợt (Tiền mặt + Chuyển khoản QR/Thẻ)' },
 ]
 
 function bookingDisplay(booking) {
@@ -804,13 +805,20 @@ function QuickAddServiceModal({ bookingDetailId, onClose, onCompleted }) {
         response = await fetch(`${API_BASE}/details/${bookingDetailId}/mini-bar`, {
           method: 'POST',
           headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-          body: JSON.stringify({ itemId: Number(selectedItemId), quantity: Number(quantity) || 1 }),
+          body: JSON.stringify({
+            itemId: Number(selectedItemId),
+            quantity: Number(quantity) || 1,
+          }),
         })
       } else {
         response = await fetch(`${API_BASE}/details/${bookingDetailId}/services`, {
           method: 'POST',
           headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-          body: JSON.stringify({ serviceId: Number(selectedItemId), quantity: Number(quantity) || 1, type: 'FACILITY' }),
+          body: JSON.stringify({
+            serviceId: Number(selectedItemId),
+            quantity: Number(quantity) || 1,
+            type: 'FACILITY',
+          }),
         })
       }
       const data = await response.json().catch(() => ({}))
@@ -884,7 +892,7 @@ function QuickAddServiceModal({ bookingDetailId, onClose, onCompleted }) {
               </button>
             </div>
 
-            <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
               <select
                 value={selectedItemId}
                 onChange={e => setSelectedItemId(e.target.value)}
@@ -908,7 +916,7 @@ function QuickAddServiceModal({ bookingDetailId, onClose, onCompleted }) {
                 onClick={handleAdd}
                 style={{ padding: '9px 16px', background: '#166534', color: '#fff', border: 'none', borderRadius: 6, fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: !selectedItemId || saving ? 0.6 : 1 }}
               >
-                {saving ? 'Đang thêm...' : '+ Ghi vào HĐ'}
+                {saving ? 'Đang thêm...' : '+ Ghi vào hóa đơn'}
               </button>
             </div>
 
@@ -972,6 +980,9 @@ function CheckOutModal({ bookingDetailId, onClose, onCompleted }) {
   const [selectedItemId, setSelectedItemId] = useState('')
   const [serviceQty, setServiceQty] = useState(1)
   const [savingService, setSavingService] = useState(false)
+  const [splitFirstMethod, setSplitFirstMethod] = useState('CASH')
+  const [splitFirstAmount, setSplitFirstAmount] = useState('')
+  const [splitSecondMethod, setSplitSecondMethod] = useState('QR')
 
   useEffect(() => {
     const controller = new AbortController()
@@ -998,13 +1009,20 @@ function CheckOutModal({ bookingDetailId, onClose, onCompleted }) {
         response = await fetch(`${API_BASE}/details/${bookingDetailId}/mini-bar`, {
           method: 'POST',
           headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-          body: JSON.stringify({ itemId: Number(selectedItemId), quantity: Number(serviceQty) || 1 }),
+          body: JSON.stringify({
+            itemId: Number(selectedItemId),
+            quantity: Number(serviceQty) || 1,
+          }),
         })
       } else {
         response = await fetch(`${API_BASE}/details/${bookingDetailId}/services`, {
           method: 'POST',
           headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-          body: JSON.stringify({ serviceId: Number(selectedItemId), quantity: Number(serviceQty) || 1, type: 'FACILITY' }),
+          body: JSON.stringify({
+            serviceId: Number(selectedItemId),
+            quantity: Number(serviceQty) || 1,
+            type: 'FACILITY',
+          }),
         })
       }
       const data = await response.json().catch(() => ({}))
@@ -1039,7 +1057,7 @@ function CheckOutModal({ bookingDetailId, onClose, onCompleted }) {
     }
   }
 
-  const submitCheckout = async (counterPaymentMethod) => {
+  const submitCheckout = async (counterPaymentMethod, customAmount) => {
     setCheckingOut(true)
     setError('')
     try {
@@ -1047,7 +1065,12 @@ function CheckOutModal({ bookingDetailId, onClose, onCompleted }) {
       const response = await fetch(`${API_BASE}/details/${bookingDetailId}/${useCounterPayment ? 'checkout-payment' : 'prepare-check-out'}`, {
         method: 'POST',
         headers: authHeaders(),
-        ...(useCounterPayment ? { body: JSON.stringify({ paymentMethod: counterPaymentMethod }) } : {}),
+        ...(useCounterPayment ? {
+          body: JSON.stringify({
+            paymentMethod: counterPaymentMethod,
+            amount: customAmount ? Number(customAmount) : null,
+          }),
+        } : {}),
       })
       const data = await response.json().catch(() => ({}))
       if (!response.ok) throw new Error(data.message || 'Không thể thực hiện check-out')
@@ -1069,6 +1092,19 @@ function CheckOutModal({ bookingDetailId, onClose, onCompleted }) {
       setCashReceived('')
       setCashError('')
       setCashDialogOpen(true)
+      return
+    }
+    if (remaining > 0 && checkoutPaymentMethod === 'SPLIT') {
+      const firstAmt = parseMoneyInput(splitFirstAmount) || Math.round(remaining / 2)
+      if (firstAmt <= 0) {
+        setError('Vui lòng nhập số tiền thanh toán cho đợt 1.')
+        return
+      }
+      if (firstAmt > remaining) {
+        setError('Số tiền đợt 1 không được lớn hơn tổng số dư còn lại.')
+        return
+      }
+      await submitCheckout(splitFirstMethod, firstAmt)
       return
     }
     const counterPaymentMethod = remaining > 0 && checkoutPaymentMethod === 'CARD' ? 'CARD' : null
@@ -1369,7 +1405,7 @@ function CheckOutModal({ bookingDetailId, onClose, onCompleted }) {
                     <div style={{ margin: '12px 0', padding: '10px 12px', background: '#f0fdf4', borderRadius: 8, border: '1px dashed #86efac' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <strong style={{ fontSize: 13, color: '#166534', display: 'flex', alignItems: 'center', gap: 5 }}>
-                           Thêm nước uống / dịch vụ vào hóa đơn
+                           Thêm nước uống / dịch vụ vào ca lưu trú
                         </strong>
                         <button
                           type="button"
@@ -1397,7 +1433,7 @@ function CheckOutModal({ bookingDetailId, onClose, onCompleted }) {
                               Dịch vụ tiện ích
                             </button>
                           </div>
-                          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                          <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 8 }}>
                             <select
                               value={selectedItemId}
                               onChange={e => setSelectedItemId(e.target.value)}
@@ -1421,7 +1457,7 @@ function CheckOutModal({ bookingDetailId, onClose, onCompleted }) {
                               onClick={handleAddServiceItem}
                               style={{ padding: '7px 12px', background: '#166534', color: '#fff', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer', opacity: !selectedItemId || savingService ? 0.6 : 1, whiteSpace: 'nowrap' }}
                             >
-                              {savingService ? '...' : '+ Ghi vào HĐ'}
+                              {savingService ? '...' : '+ Ghi vào hóa đơn'}
                             </button>
                           </div>
                         </div>
@@ -1495,6 +1531,32 @@ function CheckOutModal({ bookingDetailId, onClose, onCompleted }) {
                       </div>
                     </div>
 
+                    {/* Lịch sử các khoản đã thanh toán */}
+                    {detail.payments?.length > 0 && (
+                      <div style={{ marginTop: 12, padding: '10px 12px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: '#334155', marginBottom: 6, display: 'flex', justifyContent: 'space-between' }}>
+                          <span>📋 Lịch sử thanh toán ({detail.payments.length})</span>
+                          <span style={{ color: '#059669' }}>Đã thu: {formatMoney(paidAmount)}</span>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 110, overflowY: 'auto' }}>
+                          {detail.payments.map((p, idx) => (
+                            <div key={p.id || idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11, padding: '4px 8px', background: '#fff', borderRadius: 4, border: '1px solid #f1f5f9' }}>
+                              <div>
+                                <span style={{ fontWeight: 600, color: '#0f172a' }}>
+                                  {p.paymentMethod === 'CASH' ? '💵 Tiền mặt' : p.paymentMethod === 'CARD' ? '💳 Thẻ / POS' : '📱 VietQR / SePay'}
+                                </span>
+                                <span style={{ marginLeft: 6, color: '#64748b' }}>
+                                  {p.paymentPurpose === 'BOOKING' ? '(Đặt cọc)' : p.paymentPurpose === 'CHECKOUT' ? '(Check-out)' : p.paymentPurpose === 'SERVICE' ? '(Dịch vụ tại chỗ)' : ''}
+                                </span>
+                                {p.paymentTime && <small style={{ color: '#94a3b8', marginLeft: 6 }}>{new Date(p.paymentTime).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</small>}
+                              </div>
+                              <strong style={{ color: '#059669' }}>+{formatMoney(p.amount)}</strong>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
                     {/* Trạng thái cuối */}
                     {remaining > 0 ? (
                       <div className="aco-balance aco-balance--due">
@@ -1544,6 +1606,96 @@ function CheckOutModal({ bookingDetailId, onClose, onCompleted }) {
                             </div>
                           )}
                         </div>
+
+                        {/* Giao diện Thanh toán kết hợp (Split Payment) */}
+                        {checkoutPaymentMethod === 'SPLIT' && (
+                          <div style={{ marginTop: 12, padding: '12px', background: '#f8fafc', borderRadius: 8, border: '1px solid #cbd5e1' }}>
+                            <div style={{ fontSize: 12, fontWeight: 700, color: '#0f172a', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <span>🔀 Chia thanh toán làm 2 đợt:</span>
+                            </div>
+
+                            {/* Đợt 1 */}
+                            <div style={{ padding: '8px 10px', background: '#fff', borderRadius: 6, border: '1px solid #e2e8f0', marginBottom: 8 }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                                <span style={{ fontSize: 12, fontWeight: 600, color: '#334155' }}>Đợt 1 (Thu ngay tại quầy):</span>
+                                <select
+                                  value={splitFirstMethod}
+                                  onChange={e => setSplitFirstMethod(e.target.value)}
+                                  style={{ padding: '3px 8px', borderRadius: 4, border: '1px solid #cbd5e1', fontSize: 12, background: '#f8fafc', fontWeight: 600 }}
+                                >
+                                  <option value="CASH">Tiền mặt</option>
+                                  <option value="CARD">Thẻ / POS</option>
+                                </select>
+                              </div>
+                              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                                <input
+                                  type="text"
+                                  placeholder={`Số tiền đợt 1 (Mặc định: ${formatMoney(Math.round(remaining / 2))})`}
+                                  value={splitFirstAmount ? new Intl.NumberFormat('vi-VN').format(parseMoneyInput(splitFirstAmount)) : ''}
+                                  onChange={e => setSplitFirstAmount(e.target.value)}
+                                  style={{ flex: 1, padding: '6px 8px', borderRadius: 4, border: '1px solid #cbd5e1', fontSize: 13, fontWeight: 700, color: '#0f172a' }}
+                                />
+                                <span style={{ fontSize: 12, fontWeight: 700, color: '#64748b' }}>đ</span>
+                              </div>
+                              {/* Nút gợi ý nhanh */}
+                              <div style={{ display: 'flex', gap: 4, marginTop: 6, flexWrap: 'wrap' }}>
+                                <button
+                                  type="button"
+                                  style={{ padding: '2px 6px', fontSize: 11, borderRadius: 4, border: '1px solid #e2e8f0', background: '#f1f5f9', cursor: 'pointer' }}
+                                  onClick={() => setSplitFirstAmount(String(Math.round(remaining / 2)))}
+                                >
+                                  50% ({formatMoney(Math.round(remaining / 2))})
+                                </button>
+                                {remaining >= 100000 && (
+                                  <button
+                                    type="button"
+                                    style={{ padding: '2px 6px', fontSize: 11, borderRadius: 4, border: '1px solid #e2e8f0', background: '#f1f5f9', cursor: 'pointer' }}
+                                    onClick={() => setSplitFirstAmount('100000')}
+                                  >
+                                    100.000đ
+                                  </button>
+                                )}
+                                {remaining >= 200000 && (
+                                  <button
+                                    type="button"
+                                    style={{ padding: '2px 6px', fontSize: 11, borderRadius: 4, border: '1px solid #e2e8f0', background: '#f1f5f9', cursor: 'pointer' }}
+                                    onClick={() => setSplitFirstAmount('200000')}
+                                  >
+                                    200.000đ
+                                  </button>
+                                )}
+                                {remaining >= 500000 && (
+                                  <button
+                                    type="button"
+                                    style={{ padding: '2px 6px', fontSize: 11, borderRadius: 4, border: '1px solid #e2e8f0', background: '#f1f5f9', cursor: 'pointer' }}
+                                    onClick={() => setSplitFirstAmount('500000')}
+                                  >
+                                    500.000đ
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Đợt 2 (Số tiền còn lại) */}
+                            {(() => {
+                              const firstAmt = parseMoneyInput(splitFirstAmount) || Math.round(remaining / 2)
+                              const secondAmt = Math.max(0, remaining - firstAmt)
+                              return (
+                                <div style={{ padding: '8px 10px', background: '#ecfdf5', borderRadius: 6, border: '1px solid #a7f3d0' }}>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <span style={{ fontSize: 12, fontWeight: 600, color: '#065f46' }}>Đợt 2 (Còn lại sau đợt 1):</span>
+                                    <strong style={{ fontSize: 13, color: '#047857' }}>{formatMoney(secondAmt)}</strong>
+                                  </div>
+                                  <div style={{ fontSize: 11, color: '#047857', marginTop: 4 }}>
+                                    {secondAmt > 0
+                                      ? 'Sau khi thu đợt 1, hệ thống sẽ mở ngay mã VietQR SePay để quét số tiền còn lại.'
+                                      : 'Đợt 1 đã thanh toán đủ 100% hóa đơn.'}
+                                  </div>
+                                </div>
+                              )
+                            })()}
+                          </div>
+                        )}
                       </div>
                     ) : (
                       <div className="aco-balance aco-balance--clear">
@@ -1575,9 +1727,13 @@ function CheckOutModal({ bookingDetailId, onClose, onCompleted }) {
                 {checkingOut ? (
                   <><span className="aco-spinner" />Đang xử lý...</>
                 ) : remaining > 0 ? (
-                  checkoutPaymentMethod === 'QR'
-                    ? `Tạo QR thanh toán ${formatMoney(remaining)}`
-                    : `Xác nhận ${selectedPaymentMethod.label} ${formatMoney(remaining)}`
+                  checkoutPaymentMethod === 'SPLIT' ? (
+                    `Xác nhận thu Đợt 1 (${formatMoney(parseMoneyInput(splitFirstAmount) || Math.round(remaining / 2))})`
+                  ) : checkoutPaymentMethod === 'QR' ? (
+                    `Tạo QR thanh toán ${formatMoney(remaining)}`
+                  ) : (
+                    `Xác nhận ${selectedPaymentMethod.label} ${formatMoney(remaining)}`
+                  )
                 ) : (
                   'Xác nhận Check-out'
                 )}
@@ -2477,10 +2633,7 @@ function AdminCheckInLogsPage() {
   const [error, setError] = useState('')
   const [actionError, setActionError] = useState('')
   const [actionLoading, setActionLoading] = useState(null)
-  const [checkInTargetId, setCheckInTargetId] = useState(() => {
-    const value = new URLSearchParams(window.location.search).get('bookingDetailId')
-    return value && /^\d+$/.test(value) ? Number(value) : null
-  })
+  const [checkInTargetId, setCheckInTargetId] = useState(null)
   const [checkOutTargetId, setCheckOutTargetId] = useState(null)
   const [changeRoomTargetId, setChangeRoomTargetId] = useState(null)
   const [quickAddTargetId, setQuickAddTargetId] = useState(null)
@@ -2539,6 +2692,8 @@ function AdminCheckInLogsPage() {
     }
   }, [fromDate, toDate])
 
+  const handledUrlParamRef = useRef(false)
+
   useEffect(() => {
     // The request updates loading state before synchronizing with the API.
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -2546,6 +2701,32 @@ function AdminCheckInLogsPage() {
     const refreshTimer = window.setInterval(() => loadLogs(true), 10_000)
     return () => window.clearInterval(refreshTimer)
   }, [loadLogs])
+
+  // Handle URL navigation parameters (e.g. from Invoice preview or Direct link)
+  useEffect(() => {
+    if (!handledUrlParamRef.current && bookings.length > 0) {
+      const searchParams = new URLSearchParams(window.location.search)
+      const targetDetailId = searchParams.get('bookingDetailId')
+      const targetAction = searchParams.get('action')
+      if (targetDetailId) {
+        const numDetailId = Number(targetDetailId)
+        const matchingBooking = bookings.find(b =>
+          (b.details || []).some(d => Number(d.bookingDetailId) === numDetailId)
+        )
+        if (matchingBooking) {
+          setSelectedBookingId(matchingBooking.bookingId)
+          if (targetAction === 'checkout') {
+            setCheckOutTargetId(numDetailId)
+          } else if (targetAction === 'checkin') {
+            setCheckInTargetId(numDetailId)
+          } else if (targetAction === 'service') {
+            setQuickAddTargetId(numDetailId)
+          }
+          handledUrlParamRef.current = true
+        }
+      }
+    }
+  }, [bookings])
 
   const filteredBookings = useMemo(() => {
     const keyword = search.trim().toLowerCase()

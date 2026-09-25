@@ -15,6 +15,7 @@ public record RoomTypeResponse(
         BigDecimal weekendPrice,
         String rentType,
         Integer availableRooms,
+        String status,
         String primaryImageUrl,
         List<String> imageUrls,
         List<RoomPublicPriceResponse> prices,

@@ -9,7 +9,14 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -25,19 +32,59 @@ public class ReviewServiceImpl implements ReviewService {
     private final com.homestayManagement.homestayManagement.config.ReviewDataSeeder reviewDataSeeder;
 
     @Override
+    public String uploadReviewImage(MultipartFile file) throws IOException {
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("File ảnh không hợp lệ hoặc đang trống");
+        }
+        String contentType = file.getContentType();
+        if (contentType != null && !contentType.toLowerCase().startsWith("image/")) {
+            throw new IllegalArgumentException("Chỉ chấp nhận file định dạng hình ảnh (JPG, PNG, WEBP, GIF)");
+        }
+        Path uploadDir = Paths.get("uploads").toAbsolutePath().normalize();
+        Files.createDirectories(uploadDir);
+        String originalName = file.getOriginalFilename();
+        String ext = (originalName != null && originalName.contains("."))
+                ? originalName.substring(originalName.lastIndexOf("."))
+                : ".jpg";
+        String filename = "review-" + UUID.randomUUID() + ext;
+        Path target = uploadDir.resolve(filename).normalize();
+        file.transferTo(target);
+        return "/uploads/" + filename;
+    }
+
+    private boolean isCustomerBookingOwner(Booking booking, Account account, Customer customer, String userEmail) {
+        if (booking == null) return false;
+        if (customer != null && booking.getCustomer() != null && booking.getCustomer().getId().equals(customer.getId())) {
+            return true;
+        }
+        if (account != null && booking.getCustomer() != null && booking.getCustomer().getAccount() != null
+                && booking.getCustomer().getAccount().getId().equals(account.getId())) {
+            return true;
+        }
+        if (userEmail != null && booking.getCustomer() != null && booking.getCustomer().getEmail() != null
+                && booking.getCustomer().getEmail().equalsIgnoreCase(userEmail.trim())) {
+            return true;
+        }
+        if (account != null && account.getEmail() != null && userEmail != null
+                && account.getEmail().equalsIgnoreCase(userEmail.trim())) {
+            return true;
+        }
+        return false;
+    }
+
+    @Override
     @Transactional
     public ReviewResponseDto createReview(CreateReviewRequestDto request, String userEmail) {
         Account account = accountRepository.findByEmail(userEmail)
-                .orElseThrow(() -> new IllegalArgumentException("Khong tim thay tai khoan nguoi dung"));
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy tài khoản người dùng"));
 
-        Customer customer = customerRepository.findByAccountId(account.getId())
-                .orElseThrow(() -> new IllegalArgumentException("Khong tim thay thong tin khach hang"));
+        Customer customer = customerRepository.findByAccountId(account.getId()).orElse(null);
 
         Booking booking = bookingRepository.findById(request.getBookingId())
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đơn đặt phòng"));
 
         // Check ownership
-        if (!booking.getCustomer().getId().equals(customer.getId())) {
+        if (!isCustomerBookingOwner(booking, account, customer, userEmail)) {
             throw new IllegalArgumentException("Bạn không có quyền đánh giá đơn đặt phòng này");
         }
 
@@ -47,9 +94,17 @@ public class ReviewServiceImpl implements ReviewService {
             throw new IllegalArgumentException("Bạn chỉ có thể đánh giá sau khi hoàn thành kỳ nghỉ (CHECKED_OUT/COMPLETED)");
         }
 
-        // Check if review already exists for this booking
-        if (reviewRepository.existsByBooking(booking)) {
-            throw new IllegalArgumentException("Đơn đặt phòng này đã được đánh giá trước đó");
+        // Check if review already exists for this booking -> If so, update it gracefully
+        Review existing = reviewRepository.findByBooking(booking).orElse(null);
+        if (existing != null) {
+            String imgStr = request.getImageUrls() != null ? String.join(",", request.getImageUrls()) : null;
+            existing.setRatingStars(request.getRatingStars());
+            existing.setComment(request.getComment());
+            existing.setImageUrls(imgStr);
+            existing.setStatus("APPROVED");
+            Review updated = reviewRepository.save(existing);
+            updateRoomTypeRatingStats(updated.getRoomType());
+            return mapToDto(updated);
         }
 
         // Find RoomType from BookingDetail
@@ -123,14 +178,15 @@ public class ReviewServiceImpl implements ReviewService {
         Account account = accountRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy tài khoản người dùng"));
 
-        Customer customer = customerRepository.findByAccountId(account.getId())
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy thông tin khách hàng"));
+        Customer customer = customerRepository.findByAccountId(account.getId()).orElse(null);
 
         Review review = reviewRepository.findById(reviewId)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đánh giá ID: " + reviewId));
 
-        if (!review.getAccount().getId().equals(account.getId()) &&
-                (review.getBooking() == null || !review.getBooking().getCustomer().getId().equals(customer.getId()))) {
+        boolean isOwner = (review.getAccount() != null && review.getAccount().getId().equals(account.getId()))
+                || (review.getBooking() != null && isCustomerBookingOwner(review.getBooking(), account, customer, userEmail));
+
+        if (!isOwner) {
             throw new IllegalArgumentException("Bạn không có quyền chỉnh sửa đánh giá này");
         }
 
@@ -138,6 +194,7 @@ public class ReviewServiceImpl implements ReviewService {
         review.setRatingStars(request.getRatingStars());
         review.setComment(request.getComment());
         review.setImageUrls(imgStr);
+        review.setStatus("APPROVED");
 
         Review updated = reviewRepository.save(review);
         updateRoomTypeRatingStats(updated.getRoomType());
@@ -151,29 +208,47 @@ public class ReviewServiceImpl implements ReviewService {
         Account account = accountRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy tài khoản người dùng"));
 
-        Customer customer = customerRepository.findByAccountId(account.getId())
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy thông tin khách hàng"));
+        Customer customer = customerRepository.findByAccountId(account.getId()).orElse(null);
 
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đơn đặt phòng ID: " + bookingId));
 
-        if (!booking.getCustomer().getId().equals(customer.getId())) {
+        if (!isCustomerBookingOwner(booking, account, customer, userEmail)) {
             throw new IllegalArgumentException("Bạn không có quyền chỉnh sửa đánh giá đơn đặt phòng này");
         }
 
-        Review review = reviewRepository.findByBooking(booking)
-                .orElseThrow(() -> new IllegalArgumentException("Chưa có đánh giá nào cho đơn đặt phòng này để cập nhật"));
-
+        Review review = reviewRepository.findByBooking(booking).orElse(null);
         String imgStr = request.getImageUrls() != null ? String.join(",", request.getImageUrls()) : null;
-        review.setRatingStars(request.getRatingStars());
-        review.setComment(request.getComment());
-        review.setImageUrls(imgStr);
+
+        if (review == null) {
+            List<BookingDetail> details = bookingDetailRepository.findByBookingId(booking.getId());
+            if (details.isEmpty()) {
+                throw new IllegalArgumentException("Không tìm thấy chi tiết phòng cho đơn đặt phòng này");
+            }
+            RoomType roomType = details.get(0).getRoomType();
+
+            review = Review.builder()
+                    .booking(booking)
+                    .roomType(roomType)
+                    .account(account)
+                    .ratingStars(request.getRatingStars())
+                    .comment(request.getComment())
+                    .imageUrls(imgStr)
+                    .status("APPROVED")
+                    .build();
+        } else {
+            review.setRatingStars(request.getRatingStars());
+            review.setComment(request.getComment());
+            review.setImageUrls(imgStr);
+            review.setStatus("APPROVED");
+        }
 
         Review updated = reviewRepository.save(review);
         updateRoomTypeRatingStats(updated.getRoomType());
 
         return mapToDto(updated);
     }
+
 
     @Override
     @Transactional
@@ -221,9 +296,17 @@ public class ReviewServiceImpl implements ReviewService {
         String name = cust != null && cust.getFullName() != null && !cust.getFullName().isBlank() ? cust.getFullName() : "Khách hàng";
         String avatar = cust != null ? (cust.getAvatarUrl() != null && !cust.getAvatarUrl().isBlank() ? cust.getAvatarUrl() : cust.getGoogleAvatarUrl()) : null;
 
+        String bCode = null;
+        if (review.getBooking() != null) {
+            bCode = review.getBooking().getBookingCode() != null && !review.getBooking().getBookingCode().isBlank()
+                    ? review.getBooking().getBookingCode()
+                    : "BK_" + review.getBooking().getId();
+        }
+
         return ReviewResponseDto.builder()
                 .reviewId(review.getId())
-                .bookingId(review.getBooking().getId())
+                .bookingId(review.getBooking() != null ? review.getBooking().getId() : null)
+                .bookingCode(bCode)
                 .roomTypeId(review.getRoomType().getId())
                 .roomTypeName(review.getRoomType().getName())
                 .customerName(name)

@@ -1159,6 +1159,9 @@ public class PublicBookingServiceImpl implements PublicBookingService {
     }
 
     private BigDecimal calculateHourlyRate(RoomType roomType, BookingDetail detail) {
+        if (detail != null && detail.getPriceAtBooking() != null && detail.getPriceAtBooking().compareTo(BigDecimal.ZERO) > 0) {
+            return detail.getPriceAtBooking().divide(BigDecimal.valueOf(20), 0, RoundingMode.HALF_UP).max(BigDecimal.valueOf(50_000));
+        }
         if (roomType == null) {
             return BigDecimal.valueOf(80_000);
         }
@@ -1168,9 +1171,6 @@ public class PublicBookingServiceImpl implements PublicBookingService {
                 int limitHours = cfg.getPricePolicy().getLimitHours() != null && cfg.getPricePolicy().getLimitHours() > 0 ? cfg.getPricePolicy().getLimitHours() : 1;
                 return cfg.getPrice().divide(BigDecimal.valueOf(limitHours), 0, RoundingMode.HALF_UP);
             }
-        }
-        if (detail != null && detail.getPriceAtBooking() != null && detail.getPriceAtBooking().compareTo(BigDecimal.ZERO) > 0) {
-            return detail.getPriceAtBooking().divide(BigDecimal.valueOf(20), 0, RoundingMode.HALF_UP).max(BigDecimal.valueOf(50_000));
         }
         for (RoomPriceConfig cfg : configs) {
             if (cfg.getPrice() != null && cfg.getPrice().compareTo(BigDecimal.ZERO) > 0) {

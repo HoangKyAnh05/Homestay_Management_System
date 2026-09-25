@@ -210,7 +210,12 @@ function AdminHousekeepingChecklistsPage() {
                 <button type="button" key={type.roomTypeId} className={`hkc-type${active ? ' is-active' : ''}`} onClick={() => selectScope(type)}>
                   <span className="hkc-type-icon">{String(type.roomTypeId || type.id || '').slice(-1) || 'N'}</span>
                   <span><strong>{houseTypeName(type)}</strong><small>{type.rooms?.length || 0} phòng · {customized} tùy chỉnh</small></span>
-                  <i className={type.defaultTemplate ? 'is-ready' : ''}>{type.defaultTemplate ? '✓' : '!'}</i>
+                  <i
+                    className={type.defaultTemplate ? 'is-ready' : ''}
+                    title={type.defaultTemplate ? 'Đã có mẫu checklist tiêu chuẩn' : 'Chưa thiết lập checklist tiêu chuẩn (Cần cấu hình)'}
+                  >
+                    {type.defaultTemplate ? '✓' : '!'}
+                  </i>
                 </button>
               )
             })}

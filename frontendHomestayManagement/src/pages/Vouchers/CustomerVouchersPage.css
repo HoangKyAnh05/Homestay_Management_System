@@ -720,15 +720,87 @@
   cursor: pointer;
 }
 
+/* Lucky Minigame Promo Banner */
+.cvp-lucky-promo-banner {
+  background: linear-gradient(135deg, #064e3b 0%, #047857 50%, #065f46 100%);
+  border: 1px solid #34d399;
+  border-radius: 16px;
+  padding: 24px 28px;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  box-shadow: 0 10px 25px rgba(4, 120, 87, 0.2);
+  color: #ffffff;
+}
+
+.cvp-lucky-promo-icon {
+  font-size: 48px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.cvp-lucky-promo-content h3 {
+  margin: 0 0 6px 0;
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #fef08a;
+  letter-spacing: -0.01em;
+}
+
+.cvp-lucky-promo-content p {
+  margin: 0 0 14px 0;
+  font-size: 0.92rem;
+  line-height: 1.5;
+  color: #d1fae5;
+  max-width: 620px;
+}
+
+.cvp-lucky-promo-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: #1c1917 !important;
+  font-weight: 800;
+  font-size: 0.95rem;
+  padding: 10px 22px;
+  border-radius: 9999px;
+  text-decoration: none;
+  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.35);
+  transition: all 0.2s ease;
+}
+
+.cvp-lucky-promo-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.5);
+}
+
 /* Empty / State Boxes */
 .cvp-status-box,
 .cvp-empty-box,
 .cvp-error-box {
   background: #ffffff;
-  border-radius: 14px;
-  border: 1px dashed #cbd5e1;
+  border-radius: 16px;
+  border: 1.5px dashed #cbd5e1;
   padding: 48px 24px;
   text-align: center;
+  color: #1e293b !important;
+}
+
+.cvp-empty-box h3 {
+  color: #0f172a !important;
+  font-size: 1.25rem;
+  font-weight: 800;
+  margin: 0 0 8px 0;
+}
+
+.cvp-empty-box p {
+  color: #475569 !important;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  max-width: 500px;
+  margin: 0 auto 18px auto;
 }
 
 .cvp-spinner {
@@ -748,17 +820,30 @@
 }
 
 .cvp-empty-icon {
-  font-size: 44px;
+  font-size: 48px;
   margin-bottom: 12px;
 }
 
 .cvp-giveaway-link {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   margin-top: 14px;
-  color: #166534;
+  background: #166534;
+  color: #ffffff !important;
   font-weight: 700;
+  padding: 11px 24px;
+  border-radius: 9999px;
   text-decoration: none;
-  font-size: 14px;
+  font-size: 0.92rem;
+  box-shadow: 0 4px 14px rgba(22, 101, 52, 0.25);
+  transition: all 0.2s ease;
+}
+
+.cvp-giveaway-link:hover {
+  background: #14532d;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(22, 101, 52, 0.35);
 }
 
 @media (max-width: 768px) {

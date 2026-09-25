@@ -11,6 +11,7 @@ public record RoomDetailPublicResponse(
         Integer maxAdults,
         Integer maxChildren,
         String description,
+        String status,
         Long depositPolicyId,
         String depositPolicyName,
         String depositCalculationType,

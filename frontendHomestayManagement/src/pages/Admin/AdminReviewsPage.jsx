@@ -307,22 +307,6 @@ export default function AdminReviewsPage() {
           <p>Theo dõi, kiểm duyệt và quản lý các phản hồi, đánh giá chất lượng trải nghiệm của khách hàng.</p>
         </div>
         <div style={{ display: 'flex', gap: '8px' }}>
-          <button
-            type="button"
-            className="arv-refresh-btn"
-            style={{
-              background: '#047857',
-              borderColor: '#047857',
-              color: '#ffffff',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px'
-            }}
-            onClick={handleSyncGoogle}
-            disabled={syncing || loading}
-          >
-            {syncing ? 'Đang đồng bộ...' : ' Đồng bộ Google Reviews'}
-          </button>
           <button type="button" className="arv-refresh-btn" onClick={fetchReviews} disabled={loading}>
             {loading ? 'Đang tải...' : '↻ Làm mới'}
           </button>
@@ -450,7 +434,7 @@ export default function AdminReviewsPage() {
                         </div>
                         <div className="arv-customer-info">
                           <strong>{r.customerName || 'Khách lưu trú'}</strong>
-                          <span>Đơn #{r.bookingId}</span>
+                          <span>{r.bookingCode ? `Đơn ${r.bookingCode}` : `Đơn #${r.bookingId}`}</span>
                         </div>
                       </div>
                     </td>

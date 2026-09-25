@@ -54,6 +54,10 @@ export default function PlaceDetailModal({
               src={images[activeImageIndex] || place.image}
               alt={place.name}
               className="place-modal-main-img"
+              onError={(e) => {
+                e.currentTarget.onerror = null;
+                e.currentTarget.src = '/home_1/image.png';
+              }}
             />
             <div className="place-modal-category-tag">
               {place.categoryName || place.tags?.[0]}
@@ -70,7 +74,14 @@ export default function PlaceDetailModal({
                   onClick={() => setActiveImageIndex(idx)}
                   aria-label={`Xem ảnh ${idx + 1}`}
                 >
-                  <img src={img} alt="" />
+                  <img
+                    src={img}
+                    alt=""
+                    onError={(e) => {
+                      e.currentTarget.onerror = null;
+                      e.currentTarget.src = '/home_1/image.png';
+                    }}
+                  />
                 </button>
               ))}
             </div>

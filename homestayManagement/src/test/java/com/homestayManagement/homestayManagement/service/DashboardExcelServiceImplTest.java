@@ -67,6 +67,7 @@ class DashboardExcelServiceImplTest {
                 List.of(new AdminDashboardNameValueResponse("Tiền phòng", BigDecimal.valueOf(4420000), 0L)),
                 List.of(new AdminDashboardNameValueResponse("Phòng 102", BigDecimal.valueOf(1300000), 0L)),
                 List.of(new AdminDashboardNameValueResponse("Phòng 1", BigDecimal.ZERO, 26L)),
+                null,
                 null
         );
 
@@ -117,6 +118,7 @@ class DashboardExcelServiceImplTest {
                 List.of(),
                 List.of(),
                 List.of(),
+                null,
                 null
         );
         when(adminDashboardService.getSummary(any(), any())).thenReturn(summary);

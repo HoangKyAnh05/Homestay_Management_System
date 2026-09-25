@@ -6,7 +6,42 @@ import './AdminServiceCategoriesPage.css'
 const API = (import.meta.env.VITE_API_URL || '') + '/api/admin/services'
 
 // ── Image storage helpers ─────────────────────────────────────────────
-const DEFAULT_IMAGE = '/img.png'
+const DEFAULT_IMAGE = '/home_1/image_2.jpg'
+
+function getServiceDefaultImage(name) {
+  const n = String(name || '').toLowerCase()
+  if (n.includes('sáng') || n.includes('buffet') || n.includes('ăn')) {
+    return 'https://images.unsplash.com/photo-1533089860892-a7c6f0a88666?auto=format&fit=crop&w=800&q=80'
+  }
+  if (n.includes('bể bơi') || n.includes('hồ bơi')) {
+    return 'https://images.unsplash.com/photo-1576013551627-0cc20b96c2a7?auto=format&fit=crop&w=800&q=80'
+  }
+  if (n.includes('gym') || n.includes('thể hình')) {
+    return 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=800&q=80'
+  }
+  if (n.includes('sân bbq') || n.includes('tiệc bbq')) {
+    return 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=800&q=80'
+  }
+  if (n.includes('dọn phòng') || n.includes('buồng phòng')) {
+    return 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=800&q=80'
+  }
+  if (n.includes('xe đạp')) {
+    return 'https://images.unsplash.com/photo-1485965120184-e220f721d03e?auto=format&fit=crop&w=800&q=80'
+  }
+  if (n.includes('xe máy')) {
+    return 'https://images.unsplash.com/photo-1558981403-c5f9899a28bc?auto=format&fit=crop&w=800&q=80'
+  }
+  if (n.includes('giặt') || n.includes('ủi')) {
+    return 'https://images.unsplash.com/photo-1545173168-9f1947eebb7f?auto=format&fit=crop&w=800&q=80'
+  }
+  if (n.includes('bếp nướng') || n.includes('nướng mini')) {
+    return 'https://images.unsplash.com/photo-1529193591184-b1d58069ecdd?auto=format&fit=crop&w=800&q=80'
+  }
+  if (n.includes('áo phao') || n.includes('phao')) {
+    return 'https://images.unsplash.com/photo-1563245372-f21724e3856d?auto=format&fit=crop&w=800&q=80'
+  }
+  return DEFAULT_IMAGE
+}
 
 // ── Image upload component ────────────────────────────────────────────
 function ServiceImageCell({ type, item, onImageUpdated }) {
@@ -46,9 +81,10 @@ function ServiceImageCell({ type, item, onImageUpdated }) {
     }
   }
 
+  const defaultPhoto = getServiceDefaultImage(item?.name)
   const resolvedSrc = imgUrl
     ? (imgUrl.startsWith('/uploads/') ? `${import.meta.env.VITE_API_URL || ''}${imgUrl}` : imgUrl)
-    : DEFAULT_IMAGE
+    : defaultPhoto
 
   return (
     <div className="asc-img-cell">
@@ -56,7 +92,7 @@ function ServiceImageCell({ type, item, onImageUpdated }) {
         src={resolvedSrc}
         alt=""
         className="asc-thumb"
-        onError={e => { e.currentTarget.src = DEFAULT_IMAGE }}
+        onError={e => { e.currentTarget.src = defaultPhoto }}
       />
       <button
         type="button"

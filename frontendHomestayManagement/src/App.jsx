@@ -1,51 +1,55 @@
-import { useEffect, useState } from 'react'
-import HomePage from './pages/Home/HomePage'
+import { useEffect, useState, lazy, Suspense } from 'react'
 import FloatingContactWidget from './components/FloatingContact/FloatingContactWidget'
 import { getStoredUser } from './services/authService'
 import { STAFF_ROLES, roleCanAccess, roleDefaultPath } from './utils/roleUtils'
 
-// Direct imported customer & shared pages
-import LandingPage from './pages/Landing/LandingPage'
-import GiveawayLuckyWheelPage from './pages/Giveaway/GiveawayLuckyWheelPage'
-import LoginPage from './pages/Login/LoginPage'
-import RegisterPage from './pages/Register/RegisterPage'
-import ForgotPasswordPage from './pages/ForgotPassword/ForgotPasswordPage'
-import ProfilePage from './pages/Profile/ProfilePage'
-import BookingHistoryPage from './pages/BookingHistory/BookingHistoryPage'
-import AmenitiesPage from './pages/Amenities/AmenitiesPage'
-import WishlistPage from './pages/Wishlist/WishlistPage'
-import CustomerVouchersPage from './pages/Vouchers/CustomerVouchersPage'
-import CalendarShowcasePage from './pages/Test/CalendarShowcasePage'
-import ExplorePage from './pages/Explore/ExplorePage'
-import StayActivationPage from './pages/Stay/StayActivationPage'
-import StayPage from './pages/Stay/StayPage'
-import RoomsPage from './pages/Rooms/RoomsPage'
-import RoomDetailPage from './pages/Rooms/RoomDetailPage'
+// Eagerly loaded primary customer pages for instant first paint
+import HomePage from './pages/Home/HomePage'
 
-// Direct imported admin & staff pages
-import AdminRoomsPage from './pages/Admin/AdminRoomsPage'
-import AdminLoginPage from './pages/Admin/AdminLoginPage'
-import AdminInvoicesPage from './pages/Admin/AdminInvoicesPage'
-import AdminBookingsPage from './pages/Admin/AdminBookingsPage'
-import AdminCancellationsPage from './pages/Admin/AdminCancellationsPage'
-import AdminCheckInLogsPage from './pages/Admin/AdminCheckInLogsPage'
-import AdminHousekeepingChecklistsPage from './pages/Admin/AdminHousekeepingChecklistsPage'
-import AdminHousekeepingCalendarPage from './pages/Admin/AdminHousekeepingCalendarPage'
-import AdminRulesPenaltiesPage from './pages/Admin/AdminRulesPenaltiesPage'
-import AdminServiceCategoriesPage from './pages/Admin/AdminServiceCategoriesPage'
-import AdminSurchargesPage from './pages/Admin/AdminSurchargesPage'
-import AdminUsersPage from './pages/Admin/AdminUsersPage'
-import AdminReviewsPage from './pages/Admin/AdminReviewsPage'
-import DashboardPage from './pages/Admin/DashboardPage'
-import HousekeepingPage from './pages/Admin/HousekeepingPage'
-import AdminIncidentsPage from './pages/Admin/AdminIncidentsPage'
-import AdminTravelArticlesPage from './pages/Admin/AdminTravelArticlesPage'
-import AdminGiveawayLeadsPage from './pages/Admin/AdminGiveawayLeadsPage'
-import ReceptionistOverviewPage from './pages/Admin/ReceptionistOverviewPage'
-import ReceptionistSheetsPage from './pages/Admin/ReceptionistSheetsPage'
+// Lazy loaded customer & shared pages (Loaded on demand)
+const LandingPage = lazy(() => import('./pages/Landing/LandingPage'))
+const GiveawayLuckyWheelPage = lazy(() => import('./pages/Giveaway/GiveawayLuckyWheelPage'))
+const LoginPage = lazy(() => import('./pages/Login/LoginPage'))
+const RegisterPage = lazy(() => import('./pages/Register/RegisterPage'))
+const ForgotPasswordPage = lazy(() => import('./pages/ForgotPassword/ForgotPasswordPage'))
+const ProfilePage = lazy(() => import('./pages/Profile/ProfilePage'))
+const BookingHistoryPage = lazy(() => import('./pages/BookingHistory/BookingHistoryPage'))
+const AmenitiesPage = lazy(() => import('./pages/Amenities/AmenitiesPage'))
+const WishlistPage = lazy(() => import('./pages/Wishlist/WishlistPage'))
+const CustomerVouchersPage = lazy(() => import('./pages/Vouchers/CustomerVouchersPage'))
+const CalendarShowcasePage = lazy(() => import('./pages/Test/CalendarShowcasePage'))
+const ExplorePage = lazy(() => import('./pages/Explore/ExplorePage'))
+const StayActivationPage = lazy(() => import('./pages/Stay/StayActivationPage'))
+const StayPage = lazy(() => import('./pages/Stay/StayPage'))
+const RoomsPage = lazy(() => import('./pages/Rooms/RoomsPage'))
+const RoomDetailPage = lazy(() => import('./pages/Rooms/RoomDetailPage'))
 
-import { MarketingAIAgentPage, MarketingPostLogsPage, MarketingVouchersPage } from './pages/Admin/MarketingPages'
-import MarketingEngagementInboxPage from './pages/Admin/MarketingEngagementInboxPage'
+// Lazy loaded admin & staff pages (Zero weight on customer page load)
+const AdminRoomsPage = lazy(() => import('./pages/Admin/AdminRoomsPage'))
+const AdminLoginPage = lazy(() => import('./pages/Admin/AdminLoginPage'))
+const AdminInvoicesPage = lazy(() => import('./pages/Admin/AdminInvoicesPage'))
+const AdminBookingsPage = lazy(() => import('./pages/Admin/AdminBookingsPage'))
+const AdminCancellationsPage = lazy(() => import('./pages/Admin/AdminCancellationsPage'))
+const AdminCheckInLogsPage = lazy(() => import('./pages/Admin/AdminCheckInLogsPage'))
+const AdminHousekeepingChecklistsPage = lazy(() => import('./pages/Admin/AdminHousekeepingChecklistsPage'))
+const AdminHousekeepingCalendarPage = lazy(() => import('./pages/Admin/AdminHousekeepingCalendarPage'))
+const AdminRulesPenaltiesPage = lazy(() => import('./pages/Admin/AdminRulesPenaltiesPage'))
+const AdminServiceCategoriesPage = lazy(() => import('./pages/Admin/AdminServiceCategoriesPage'))
+const AdminSurchargesPage = lazy(() => import('./pages/Admin/AdminSurchargesPage'))
+const AdminUsersPage = lazy(() => import('./pages/Admin/AdminUsersPage'))
+const AdminReviewsPage = lazy(() => import('./pages/Admin/AdminReviewsPage'))
+const DashboardPage = lazy(() => import('./pages/Admin/DashboardPage'))
+const HousekeepingPage = lazy(() => import('./pages/Admin/HousekeepingPage'))
+const AdminIncidentsPage = lazy(() => import('./pages/Admin/AdminIncidentsPage'))
+const AdminTravelArticlesPage = lazy(() => import('./pages/Admin/AdminTravelArticlesPage'))
+const AdminGiveawayLeadsPage = lazy(() => import('./pages/Admin/AdminGiveawayLeadsPage'))
+const ReceptionistOverviewPage = lazy(() => import('./pages/Admin/ReceptionistOverviewPage'))
+const ReceptionistSheetsPage = lazy(() => import('./pages/Admin/ReceptionistSheetsPage'))
+
+const MarketingAIAgentPage = lazy(() => import('./pages/Admin/MarketingPages').then(m => ({ default: m.MarketingAIAgentPage })))
+const MarketingPostLogsPage = lazy(() => import('./pages/Admin/MarketingPages').then(m => ({ default: m.MarketingPostLogsPage })))
+const MarketingVouchersPage = lazy(() => import('./pages/Admin/MarketingPages').then(m => ({ default: m.MarketingVouchersPage })))
+const MarketingEngagementInboxPage = lazy(() => import('./pages/Admin/MarketingEngagementInboxPage'))
 
 function PageLoadingFallback() {
   return (
@@ -261,7 +265,11 @@ function App() {
     return <CustomerSurface><HomePage /></CustomerSurface>
   }
 
-  return renderContent()
+  return (
+    <Suspense fallback={<PageLoadingFallback />}>
+      {renderContent()}
+    </Suspense>
+  )
 }
 
 export default App

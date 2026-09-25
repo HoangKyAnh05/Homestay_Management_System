@@ -73,10 +73,6 @@ public class RoomServiceImpl implements RoomService {
     @Transactional(readOnly = true)
     public List<RoomTypeResponse> getAllRoomTypes() {
         return roomTypeRepository.findAll().stream()
-                .filter(rt -> {
-                    List<Room> rooms = roomRepository.findByRoomTypeId(rt.getId());
-                    return rooms.stream().anyMatch(this::isRoomAvailable);
-                })
                 .map(this::toRoomTypeResponse)
                 .toList();
     }
@@ -124,6 +120,9 @@ public class RoomServiceImpl implements RoomService {
             room = activeTypeRooms.get(0);
         }
 
+        boolean allInMaintenance = !allTypeRooms.isEmpty() && activeTypeRooms.isEmpty();
+        String status = allInMaintenance ? "MAINTENANCE" : (activeTypeRooms.isEmpty() ? "OCCUPIED" : "AVAILABLE");
+
         Long effectiveRoomId = room != null ? room.getId() : null;
         DepositPolicy depositPolicy = roomType.getDepositPolicy();
         List<String> imageUrls = effectiveRoomId != null ? buildRoomImageUrls(effectiveRoomId) : List.of();
@@ -144,7 +143,8 @@ public class RoomServiceImpl implements RoomService {
                 .toList();
 
         List<RoomBusySlotResponse> busySlots;
-        if (!allTypeRooms.isEmpty() && activeTypeRooms.isEmpty()) {
+        if (allInMaintenance) {
+            // ONLY when ALL physical rooms of this room type are set to MAINTENANCE
             busySlots = List.of(new RoomBusySlotResponse(
                     -1L,
                     startDate.atStartOfDay(),
@@ -157,7 +157,7 @@ public class RoomServiceImpl implements RoomService {
                             detail.getId(),
                             detail.getCheckInTarget(),
                             detail.getCheckOutTarget(),
-                            detail.getStatus()
+                            normalizeDetailStatus(detail.getStatus())
                     ))
                     .toList();
         } else {
@@ -189,6 +189,7 @@ public class RoomServiceImpl implements RoomService {
                 roomType.getMaxAdults(),
                 roomType.getMaxChildren(),
                 roomType.getDescription(),
+                status,
                 depositPolicy != null ? depositPolicy.getId() : null,
                 depositPolicy != null ? depositPolicy.getPolicyName() : null,
                 depositPolicy != null ? depositPolicy.getCalculationType() : null,
@@ -276,7 +277,13 @@ public class RoomServiceImpl implements RoomService {
         if (roomType == null) {
             return false;
         }
-        return roomType.getMaxAdults() >= adultsPerRoom && roomType.getMaxChildren() >= childrenPerRoom;
+        int maxAdults = roomType.getMaxAdults() != null ? roomType.getMaxAdults() : 0;
+        int maxChildren = roomType.getMaxChildren() != null ? roomType.getMaxChildren() : 0;
+        if (adultsPerRoom > maxAdults) {
+            return false;
+        }
+        int remainingAdultCap = maxAdults - adultsPerRoom;
+        return (maxChildren >= childrenPerRoom) || (maxChildren + remainingAdultCap >= childrenPerRoom);
     }
 
     private Optional<RoomSearchResponse> toSearchResponse(RoomType roomType, String dayType, int availableRooms, int requestedRooms) {
@@ -298,6 +305,10 @@ public class RoomServiceImpl implements RoomService {
         String primaryImageUrl = imageUrls.isEmpty() ? null : imageUrls.get(0);
         List<RoomPublicPriceResponse> prices = buildPublicPrices(roomType.getId());
 
+        List<Room> physicalRooms = roomRepository.findByRoomTypeId(roomType.getId());
+        boolean allInMaintenance = !physicalRooms.isEmpty() && physicalRooms.stream().noneMatch(this::isRoomAvailable);
+        String status = allInMaintenance ? "MAINTENANCE" : (availableRooms > 0 ? "AVAILABLE" : "OCCUPIED");
+
         return Optional.of(new RoomSearchResponse(
                 null,
                 null,
@@ -309,6 +320,7 @@ public class RoomServiceImpl implements RoomService {
                 priceConfig.get().getPrice(),
                 priceConfig.get().getPricePolicy().getRentType(),
                 availableRooms,
+                status,
                 primaryImageUrl,
                 imageUrls,
                 prices,
@@ -332,6 +344,7 @@ public class RoomServiceImpl implements RoomService {
                 roomType.getMaxAdults(),
                 roomType.getMaxChildren(),
                 roomType.getDescription(),
+                room.getStatus(),
                 findDisplayPrice(roomType.getId(), "WEEKDAY"),
                 findDisplayPrice(roomType.getId(), "WEEKEND"),
                 findDisplayRentType(roomType.getId()),
@@ -396,6 +409,9 @@ public class RoomServiceImpl implements RoomService {
                 .filter(this::isRoomAvailable)
                 .count();
         int availableRooms = Math.max(0, totalPhysicalAvailable - (int) bookedCount);
+        boolean allInMaintenance = !rooms.isEmpty() && totalPhysicalAvailable == 0;
+        String status = allInMaintenance ? "MAINTENANCE" : (availableRooms > 0 ? "AVAILABLE" : "OCCUPIED");
+
         List<String> allUrls = rooms.stream()
                 .flatMap(room -> roomImageRepository.findByRoomId(room.getId()).stream())
                 .sorted(Comparator.comparing(RoomImage::isPrimary).reversed().thenComparing(Comparator.comparing(RoomImage::getId).reversed()))
@@ -422,6 +438,7 @@ public class RoomServiceImpl implements RoomService {
                 findDisplayPrice(roomType.getId(), "WEEKEND"),
                 findDisplayRentType(roomType.getId()),
                 availableRooms,
+                status,
                 primaryUrl,
                 allUrls,
                 prices,
@@ -485,6 +502,16 @@ public class RoomServiceImpl implements RoomService {
     private boolean isWeekend(LocalDate date) {
         DayOfWeek day = date.getDayOfWeek();
         return day == DayOfWeek.SATURDAY || day == DayOfWeek.SUNDAY;
+    }
+
+    private String normalizeDetailStatus(String status) {
+        if (status == null) return "CONFIRMED";
+        String s = status.trim().toUpperCase();
+        if ("CHECKED_IN".equals(s)) return "CHECKED_IN";
+        if ("PENDING".equals(s)) return "PENDING";
+        if ("COMPLETED".equals(s)) return "CONFIRMED";
+        if ("MAINTENANCE".equals(s)) return "CONFIRMED"; // Booking details must never be maintenance
+        return s;
     }
 
     private String normalize(String value) {

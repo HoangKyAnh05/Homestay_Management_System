@@ -192,7 +192,7 @@ function MetricInspectModal({ info, onClose }) {
                         <th>#</th>
                         <th>Mã đơn</th>
                         <th>Khách hàng</th>
-                        <th>Mục đích</th>
+                        <th>Phương thức & Mục đích</th>
                         <th>Thời gian thu</th>
                         <th>Số tiền</th>
                         <th>Trạng thái</th>
@@ -205,9 +205,16 @@ function MetricInspectModal({ info, onClose }) {
                           <td><span className="dash-cash-code">{tx.bookingCode || '—'}</span></td>
                           <td><strong>{tx.customerName || 'Khách vãng lai'}</strong></td>
                           <td>
-                            <span className="dash-cash-purpose-badge">
-                              {tx.paymentPurpose === 'BOOKING' ? 'Đặt cọc phòng' : tx.paymentPurpose === 'CHECKOUT' ? 'Thanh toán check-out' : tx.paymentPurpose || 'Thanh toán'}
-                            </span>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                              <span className="dash-cash-purpose-badge">
+                                {tx.paymentPurpose === 'BOOKING' ? 'Đặt cọc phòng' : tx.paymentPurpose === 'CHECKOUT' ? 'Thanh toán check-out' : tx.paymentPurpose === 'SERVICE' ? 'Dịch vụ tại chỗ' : tx.paymentPurpose || 'Thanh toán'}
+                              </span>
+                              {tx.paymentMethod && (
+                                <span className={tx.isCombined ? "dash-card-tag-combined" : "dash-card-tag-pure"} style={{ fontSize: '11px', fontWeight: '500' }}>
+                                  {tx.isCombined ? '⚡ Kết hợp QR + Thẻ' : `💳 ${tx.paymentMethod}`}
+                                </span>
+                              )}
+                            </div>
                           </td>
                           <td>{tx.paymentTime ? new Date(tx.paymentTime).toLocaleString('vi-VN') : '—'}</td>
                           <td><strong className="dash-cash-amount">{formatExactMoney(tx.amount)}</strong></td>
@@ -816,6 +823,241 @@ function CashStatisticsSection({ cashStats, fromDate, toDate, onInspectClick }) 
   )
 }
 
+function CardStatisticsSection({ cardStats, fromDate, toDate, onInspectClick }) {
+  if (!cardStats) return null
+
+  const cardToday = Number(cardStats.cardToday || 0)
+  const cardThisWeek = Number(cardStats.cardThisWeek || 0)
+  const cardThisMonth = Number(cardStats.cardThisMonth || 0)
+  const cardInRange = Number(cardStats.cardInFilterRange || 0)
+  const pureCardInRange = Number(cardStats.pureCardInFilterRange || 0)
+  const combinedInRange = Number(cardStats.combinedInFilterRange || 0)
+
+  const trendData = cardStats.dailyCardTrend || []
+  const transactions = cardStats.recentCardTransactions || []
+
+  const maxCardVal = Math.max(...trendData.map(d => Number(d.cardAmount || 0)), 1)
+
+  const todayStr = toDateInputValue(new Date())
+  const todayTxs = transactions.filter(tx => isSameDay(tx.paymentTime, todayStr))
+  const cardTodayInspect = {
+    title: 'Thanh toán Quẹt thẻ / POS trong ngày hôm nay',
+    subtitle: `Hôm nay đã thanh toán ${formatExactMoney(cardToday)} qua thẻ (${todayTxs.length} giao dịch)`,
+    formula: 'Thanh toán thẻ hôm nay = SUM(Payment.amount WHERE isCardPayment = true AND status = "SUCCESS" trong ngày hôm nay)',
+    calculation: todayTxs.length > 0
+      ? `${todayTxs.map(t => `${formatExactMoney(t.amount)} (${t.customerName || 'Khách'}) [${t.isCombined ? 'QR+Thẻ' : t.paymentMethod || 'Thẻ'}]`).join(' + ')} = ${formatExactMoney(cardToday)}`
+      : 'Chưa có giao dịch quẹt thẻ nào trong ngày hôm nay (0đ)',
+    breakdown: [
+      { icon: '💳', label: 'Quẹt thẻ / POS hôm nay', value: formatExactMoney(cardToday), desc: `${todayTxs.length} giao dịch thanh toán qua thẻ ngân hàng/POS đã thu từ 00:00 hôm nay` }
+    ],
+    transactions: todayTxs,
+    source: 'Bảng Payments (giao dịch quẹt thẻ POS / ATM / Visa / Master và giao dịch kết hợp QR + thẻ)'
+  }
+
+  const now = new Date()
+  const dayOfWeek = (now.getDay() + 6) % 7
+  const mondayDate = new Date(now)
+  mondayDate.setDate(now.getDate() - dayOfWeek)
+  const mondayStr = toDateInputValue(mondayDate)
+  const weekTxs = transactions.filter(tx => {
+    if (!tx.paymentTime) return false
+    const d = toDateInputValue(new Date(tx.paymentTime))
+    return d >= mondayStr && d <= todayStr
+  })
+  const cardWeekInspect = {
+    title: 'Thanh toán Quẹt thẻ / POS trong tuần này',
+    subtitle: `Tuần này đã thanh toán ${formatExactMoney(cardThisWeek)} qua thẻ (${weekTxs.length} giao dịch)`,
+    formula: 'Thẻ tuần này = SUM(Payment.amount WHERE isCardPayment = true AND status = "SUCCESS" từ Thứ Hai đến nay)',
+    calculation: `Tổng cộng: ${formatExactMoney(cardThisWeek)} thanh toán thẻ từ ${weekTxs.length} giao dịch trong tuần`,
+    breakdown: [
+      { icon: '💳', label: 'Thẻ tuần này', value: formatExactMoney(cardThisWeek), desc: `${weekTxs.length} giao dịch quẹt thẻ POS từ đầu tuần (Thứ 2) đến nay` }
+    ],
+    transactions: weekTxs,
+    source: 'Bảng Payments (giao dịch thanh toán quẹt thẻ và kết hợp QR + thẻ)'
+  }
+
+  const firstDayOfMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
+  const monthTxs = transactions.filter(tx => {
+    if (!tx.paymentTime) return false
+    const d = toDateInputValue(new Date(tx.paymentTime))
+    return d >= firstDayOfMonthStr && d <= todayStr
+  })
+  const cardMonthInspect = {
+    title: 'Thanh toán Quẹt thẻ / POS trong tháng này',
+    subtitle: `Tháng này đã thanh toán ${formatExactMoney(cardThisMonth)} qua thẻ (${monthTxs.length} giao dịch)`,
+    formula: 'Thẻ tháng này = SUM(Payment.amount WHERE isCardPayment = true AND status = "SUCCESS" từ ngày 1 của tháng đến nay)',
+    calculation: `Tổng cộng: ${formatExactMoney(cardThisMonth)} thanh toán thẻ từ ${monthTxs.length} giao dịch trong tháng`,
+    breakdown: [
+      { icon: '💳', label: 'Thẻ tháng này', value: formatExactMoney(cardThisMonth), desc: `${monthTxs.length} giao dịch quẹt thẻ POS từ đầu tháng đến nay` }
+    ],
+    transactions: monthTxs,
+    source: 'Bảng Payments (giao dịch thanh toán quẹt thẻ và kết hợp QR + thẻ)'
+  }
+
+  const cardRangeInspect = {
+    title: `Tổng kết Thanh toán Quẹt thẻ & POS trong kỳ (${formatFullDate(fromDate)} → ${formatFullDate(toDate)})`,
+    subtitle: `Tổng tiền thanh toán thẻ: ${formatExactMoney(cardInRange)} (${transactions.length} giao dịch)`,
+    formula: 'Thanh toán thẻ trong kỳ = SUM(Payment.amount WHERE isCardPayment = true AND status = "SUCCESS" trong kỳ lọc)',
+    calculation: `Tổng cộng: ${formatExactMoney(cardInRange)} từ ${transactions.length} giao dịch (Quẹt thẻ thuần: ${formatExactMoney(pureCardInRange)} · Kết hợp QR: ${formatExactMoney(combinedInRange)})`,
+    breakdown: [
+      { icon: '💳', label: 'Tổng thanh toán qua thẻ', value: formatExactMoney(cardInRange), percent: '100%', desc: `${transactions.length} giao dịch quẹt thẻ POS / ngân hàng / kết hợp` },
+      { icon: '🔹', label: 'Quẹt thẻ thuần (POS/ATM)', value: formatExactMoney(pureCardInRange), percent: cardInRange > 0 ? `${((pureCardInRange / cardInRange) * 100).toFixed(1)}%` : '0%', desc: 'Giao dịch chỉ thanh toán bằng quẹt thẻ tại máy POS' },
+      { icon: '🔸', label: 'Kết hợp QR + Quẹt thẻ', value: formatExactMoney(combinedInRange), percent: cardInRange > 0 ? `${((combinedInRange / cardInRange) * 100).toFixed(1)}%` : '0%', desc: 'Giao dịch thanh toán chia phần hoặc kết hợp QR và quẹt thẻ' },
+    ],
+    transactions: transactions,
+    source: `Bảng Payments: Tất cả giao dịch quẹt thẻ từ ${formatFullDate(fromDate)} đến ${formatFullDate(toDate)}`
+  }
+
+  return (
+    <section className="dash-card-section">
+      <div className="dash-card-section-head">
+        <div>
+          <h2>💳 Thống kê Thanh toán Quẹt thẻ / POS & Kết hợp QR + Thẻ</h2>
+          <p>Hệ thống tự động tổng hợp toàn bộ các khoản thanh toán qua máy POS quẹt thẻ ngân hàng, thẻ ATM/Visa/Master và giao dịch kết hợp QR + Thẻ.</p>
+        </div>
+        <div className="dash-card-badge-pill">
+          <span>💳 POS & Quẹt thẻ</span>
+        </div>
+      </div>
+
+      {/* 4 Metric Cards */}
+      <div className="dash-card-kpis-grid">
+        <div
+          className="dash-card-kpi-card dash-inspectable"
+          onClick={() => onInspectClick(cardTodayInspect)}
+          title="Bấm để xem danh sách chi tiết các khoản quẹt thẻ hôm nay"
+        >
+          <div className="dash-card-kpi-icon" style={{ background: '#eef2ff', color: '#4f46e5' }}>
+            <span>📅</span>
+          </div>
+          <div className="dash-card-kpi-info">
+            <span className="dash-card-kpi-label">Quẹt thẻ Hôm nay</span>
+            <strong className="dash-card-kpi-value" style={{ color: '#4f46e5' }}>{formatExactMoney(cardToday)}</strong>
+            <small className="dash-card-kpi-sub">Thu trong ngày {new Date().toLocaleDateString('vi-VN')} ({todayTxs.length} đơn)</small>
+          </div>
+        </div>
+
+        <div
+          className="dash-card-kpi-card dash-inspectable"
+          onClick={() => onInspectClick(cardWeekInspect)}
+          title="Bấm để xem danh sách chi tiết các khoản quẹt thẻ tuần này"
+        >
+          <div className="dash-card-kpi-icon" style={{ background: '#eff6ff', color: '#2563eb' }}>
+            <span>📆</span>
+          </div>
+          <div className="dash-card-kpi-info">
+            <span className="dash-card-kpi-label">Quẹt thẻ Tuần này</span>
+            <strong className="dash-card-kpi-value" style={{ color: '#2563eb' }}>{formatExactMoney(cardThisWeek)}</strong>
+            <small className="dash-card-kpi-sub">Từ đầu tuần (Thứ Hai) đến nay ({weekTxs.length} đơn)</small>
+          </div>
+        </div>
+
+        <div
+          className="dash-card-kpi-card dash-inspectable"
+          onClick={() => onInspectClick(cardMonthInspect)}
+          title="Bấm để xem danh sách chi tiết các khoản quẹt thẻ tháng này"
+        >
+          <div className="dash-card-kpi-icon" style={{ background: '#faf5ff', color: '#9333ea' }}>
+            <span>🗓️</span>
+          </div>
+          <div className="dash-card-kpi-info">
+            <span className="dash-card-kpi-label">Quẹt thẻ Tháng này</span>
+            <strong className="dash-card-kpi-value" style={{ color: '#9333ea' }}>{formatExactMoney(cardThisMonth)}</strong>
+            <small className="dash-card-kpi-sub">Tháng {new Date().getMonth() + 1}/{new Date().getFullYear()} ({monthTxs.length} đơn)</small>
+          </div>
+        </div>
+
+        <div
+          className="dash-card-kpi-card dash-card-kpi-card--range dash-inspectable"
+          onClick={() => onInspectClick(cardRangeInspect)}
+          title="Bấm để xem danh sách toàn bộ các khoản quẹt thẻ trong kỳ lọc"
+        >
+          <div className="dash-card-kpi-icon" style={{ background: '#eef2ff', color: '#4f46e5' }}>
+            <span>💳</span>
+          </div>
+          <div className="dash-card-kpi-info">
+            <span className="dash-card-kpi-label">Trong kỳ lọc ({formatShortDate(fromDate)} → {formatShortDate(toDate)})</span>
+            <strong className="dash-card-kpi-value" style={{ color: '#4f46e5', fontSize: '18px' }}>
+              {formatExactMoney(cardInRange)}
+            </strong>
+            <small className="dash-card-kpi-sub">
+              {transactions.length} đơn ({formatExactMoney(pureCardInRange)} thẻ · {formatExactMoney(combinedInRange)} QR+thẻ)
+            </small>
+          </div>
+        </div>
+      </div>
+
+      {/* Daily Card Chart */}
+      <div className="dash-card-chart-panel">
+        <div className="dash-panel-head">
+          <div>
+            <h3>📊 Biểu đồ Thống kê Thanh toán Quẹt thẻ / POS theo ngày</h3>
+            <p>Doanh thu quẹt thẻ và kết hợp QR + thẻ theo từng ngày trong kỳ lọc. <em>(Bấm vào từng cột ngày để xem danh sách chi tiết các khoản quẹt thẻ)</em></p>
+          </div>
+          <div className="dash-revenue-legend-head">
+            <span className="dash-leg-tag" style={{ background: '#eef2ff', color: '#4338ca', border: '1px solid #c7d2fe' }}>
+              💳 Tổng thanh toán thẻ trong kỳ: {formatExactMoney(cardInRange)} ({transactions.length} giao dịch)
+            </span>
+            {combinedInRange > 0 && (
+              <span className="dash-leg-tag" style={{ background: '#faf5ff', color: '#7e22ce', border: '1px solid #e9d5ff' }}>
+                ⚡ Kết hợp QR + Thẻ: {formatExactMoney(combinedInRange)}
+              </span>
+            )}
+          </div>
+        </div>
+
+        <div className="dash-card-chart-scroll">
+          <div className="dash-card-chart" style={{ '--card-days': Math.max(trendData.length, 1) }}>
+            <div className="dash-card-bars-wrapper">
+              {trendData.map(item => {
+                const c = Number(item.cardAmount || 0)
+                const cHeight = Math.max(c > 0 ? 8 : 2, (c / maxCardVal) * 100)
+                const dayTxs = transactions.filter(tx => isSameDay(tx.paymentTime, item.date))
+
+                const dayCardInspectInfo = {
+                  title: `Chi tiết Thanh toán Quẹt thẻ Ngày ${formatFullDate(item.date)}`,
+                  subtitle: `Tổng tiền thanh toán thẻ: ${formatExactMoney(c)} (${dayTxs.length} giao dịch)`,
+                  formula: `Thẻ ngày ${formatFullDate(item.date)} = SUM(Payment.amount WHERE isCardPayment = true AND status = "SUCCESS")`,
+                  calculation: dayTxs.length > 0
+                    ? `${dayTxs.map(t => `${formatExactMoney(t.amount)} (${t.customerName || 'Khách'}) [${t.isCombined ? 'QR+Thẻ' : t.paymentMethod || 'Thẻ'}]`).join(' + ')} = ${formatExactMoney(c)}`
+                    : `Không có giao dịch thanh toán thẻ trong ngày ${formatFullDate(item.date)} (0đ)`,
+                  breakdown: [
+                    {
+                      icon: '💳',
+                      label: `Thanh toán thẻ ngày ${formatShortDate(item.date)}`,
+                      value: formatExactMoney(c),
+                      percent: cardInRange > 0 ? `${((c / cardInRange) * 100).toFixed(1)}%` : '100%',
+                      desc: `${dayTxs.length} giao dịch thanh toán quẹt thẻ / POS / kết hợp`
+                    },
+                  ],
+                  transactions: dayTxs,
+                  source: `Bảng Payments: Tất cả giao dịch thanh toán thẻ thành công ngày ${formatFullDate(item.date)}`
+                }
+
+                return (
+                  <div
+                    className="dash-card-day-col dash-inspectable"
+                    key={item.date}
+                    onClick={() => onInspectClick(dayCardInspectInfo)}
+                    title={`Bấm để xem danh sách ${dayTxs.length} khoản quẹt thẻ ngày ${formatFullDate(item.date)} (Tổng: ${formatExactMoney(c)})`}
+                  >
+                    <div className="dash-card-single-bar-wrap">
+                      <div className="dash-card-bar" style={{ height: `${cHeight}%` }}>
+                        {c > 0 && <span className="dash-card-bar-label">{formatCompactMoney(c)}</span>}
+                      </div>
+                    </div>
+                    <span className="dash-card-day-date">{formatShortDate(item.date)}</span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
 function WeeklyReportsModal({
   onClose,
   reports,
@@ -1288,6 +1530,13 @@ function triggerFileDownload(blob, fileName) {
 
           <CashStatisticsSection
             cashStats={summary.cashStatistics}
+            fromDate={fromDate}
+            toDate={toDate}
+            onInspectClick={handleInspectClick}
+          />
+
+          <CardStatisticsSection
+            cardStats={summary.cardStatistics}
             fromDate={fromDate}
             toDate={toDate}
             onInspectClick={handleInspectClick}

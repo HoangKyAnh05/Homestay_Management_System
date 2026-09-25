@@ -4,12 +4,14 @@ import com.homestayManagement.homestayManagement.dto.request.AddBookingFacilityS
 import com.homestayManagement.homestayManagement.dto.response.AddedBookingServiceResponse;
 import com.homestayManagement.homestayManagement.dto.response.EligibleServiceBookingResponse;
 import com.homestayManagement.homestayManagement.dto.response.PublicAmenityResponse;
+import com.homestayManagement.homestayManagement.dto.response.SePayPaymentResponse;
 import com.homestayManagement.homestayManagement.entity.Booking;
 import com.homestayManagement.homestayManagement.entity.BookingDetail;
 import com.homestayManagement.homestayManagement.entity.BookingServiceItem;
 import com.homestayManagement.homestayManagement.entity.FacilityService;
 import com.homestayManagement.homestayManagement.entity.Invoice;
 import com.homestayManagement.homestayManagement.entity.InventoryService;
+import com.homestayManagement.homestayManagement.repository.AccountRepository;
 import com.homestayManagement.homestayManagement.repository.BookingDetailRepository;
 import com.homestayManagement.homestayManagement.repository.BookingRepository;
 import com.homestayManagement.homestayManagement.repository.BookingServiceItemRepository;
@@ -17,6 +19,7 @@ import com.homestayManagement.homestayManagement.repository.FacilityServiceRepos
 import com.homestayManagement.homestayManagement.repository.InventoryServiceRepository;
 import com.homestayManagement.homestayManagement.repository.InvoiceRepository;
 import com.homestayManagement.homestayManagement.service.PublicAmenityService;
+import com.homestayManagement.homestayManagement.service.SePayPaymentService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,6 +35,7 @@ import java.util.stream.Stream;
 public class PublicAmenityServiceImpl implements PublicAmenityService {
 
     private static final Set<String> ELIGIBLE_STATUSES = Set.of("CHECKED_IN");
+    private static final Set<String> STAFF_ROLES = Set.of("ROLE_ADMIN", "ROLE_RECEPTIONIST", "ROLE_MANAGER", "ROLE_STAFF");
 
     private final FacilityServiceRepository facilityServiceRepository;
     private final InventoryServiceRepository inventoryServiceRepository;
@@ -39,6 +43,8 @@ public class PublicAmenityServiceImpl implements PublicAmenityService {
     private final BookingDetailRepository bookingDetailRepository;
     private final BookingServiceItemRepository bookingServiceItemRepository;
     private final InvoiceRepository invoiceRepository;
+    private final SePayPaymentService sePayPaymentService;
+    private final AccountRepository accountRepository;
 
     public PublicAmenityServiceImpl(
             FacilityServiceRepository facilityServiceRepository,
@@ -46,7 +52,9 @@ public class PublicAmenityServiceImpl implements PublicAmenityService {
             BookingRepository bookingRepository,
             BookingDetailRepository bookingDetailRepository,
             BookingServiceItemRepository bookingServiceItemRepository,
-            InvoiceRepository invoiceRepository
+            InvoiceRepository invoiceRepository,
+            SePayPaymentService sePayPaymentService,
+            AccountRepository accountRepository
     ) {
         this.facilityServiceRepository = facilityServiceRepository;
         this.inventoryServiceRepository = inventoryServiceRepository;
@@ -54,6 +62,15 @@ public class PublicAmenityServiceImpl implements PublicAmenityService {
         this.bookingDetailRepository = bookingDetailRepository;
         this.bookingServiceItemRepository = bookingServiceItemRepository;
         this.invoiceRepository = invoiceRepository;
+        this.sePayPaymentService = sePayPaymentService;
+        this.accountRepository = accountRepository;
+    }
+
+    private boolean isStaffOrAdmin(String email) {
+        if (email == null || email.isBlank()) return false;
+        return accountRepository.findByEmailIgnoreCase(email.trim())
+                .map(account -> account.getRole() != null && STAFF_ROLES.contains(account.getRole().getName()))
+                .orElse(false);
     }
 
     @Override
@@ -78,10 +95,14 @@ public class PublicAmenityServiceImpl implements PublicAmenityService {
     @Transactional(readOnly = true)
     public List<EligibleServiceBookingResponse> getEligibleBookings(String email) {
         LocalDateTime now = LocalDateTime.now();
-        return bookingDetailRepository.findByCustomerEmailForHistory(email).stream()
+        List<BookingDetail> details = bookingDetailRepository.findByCustomerEmailForHistory(email);
+        if (details.isEmpty() && isStaffOrAdmin(email)) {
+            details = bookingDetailRepository.findAllActiveForStaff();
+        }
+        return details.stream()
                 .collect(Collectors.groupingBy(detail -> detail.getBooking().getId()))
                 .values().stream()
-                .filter(details -> isEligible(details, now))
+                .filter(bDetails -> isEligible(bDetails, now))
                 .map(this::toEligibleResponse)
                 .sorted(Comparator.comparing(EligibleServiceBookingResponse::checkInTarget))
                 .toList();
@@ -96,9 +117,16 @@ public class PublicAmenityServiceImpl implements PublicAmenityService {
     ) {
         Booking booking = bookingRepository.findByIdForPaymentUpdate(bookingId)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đơn đặt phòng"));
-        String ownerEmail = booking.getCustomer() != null && booking.getCustomer().getAccount() != null
+
+        boolean isStaff = isStaffOrAdmin(email);
+        String accountEmail = booking.getCustomer() != null && booking.getCustomer().getAccount() != null
                 ? booking.getCustomer().getAccount().getEmail() : null;
-        if (ownerEmail == null || !ownerEmail.equalsIgnoreCase(email)) {
+        String customerEmail = booking.getCustomer() != null ? booking.getCustomer().getEmail() : null;
+
+        boolean isOwner = (accountEmail != null && accountEmail.equalsIgnoreCase(email))
+                || (customerEmail != null && customerEmail.equalsIgnoreCase(email));
+
+        if (!isStaff && !isOwner) {
             throw new IllegalArgumentException("Bạn không có quyền cập nhật đơn đặt phòng này");
         }
 
@@ -108,8 +136,10 @@ public class PublicAmenityServiceImpl implements PublicAmenityService {
         }
 
         BookingDetail targetDetail = details.stream()
-                .min(Comparator.comparing(BookingDetail::getCheckInTarget))
-                .orElseThrow(() -> new IllegalArgumentException("Đơn đặt phòng chưa có thông tin phòng"));
+                .filter(d -> "CHECKED_IN".equalsIgnoreCase(normalize(d.getStatus())))
+                .findFirst()
+                .orElseGet(() -> details.stream().min(Comparator.comparing(BookingDetail::getCheckInTarget))
+                        .orElseThrow(() -> new IllegalArgumentException("Đơn đặt phòng chưa có thông tin phòng")));
 
         List<Long> detailIds = details.stream().map(BookingDetail::getId).toList();
         String type = normalize(request.type());
@@ -143,6 +173,11 @@ public class PublicAmenityServiceImpl implements PublicAmenityService {
         BigDecimal roomCharge = details.stream().map(BookingDetail::getPriceAtBooking)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
+        SePayPaymentResponse payment = null;
+        if (Boolean.TRUE.equals(request.payNow()) && addedAmount.compareTo(BigDecimal.ZERO) > 0) {
+            payment = sePayPaymentService.createServicePayment(bookingId, targetDetail.getId(), addedAmount);
+        }
+
         return new AddedBookingServiceResponse(
                 bookingId,
                 booking.getBookingCode(),
@@ -152,7 +187,8 @@ public class PublicAmenityServiceImpl implements PublicAmenityService {
                 selected.price(),
                 addedAmount,
                 serviceCharge,
-                roomCharge.add(serviceCharge)
+                roomCharge.add(serviceCharge),
+                payment
         );
     }
 
@@ -199,10 +235,16 @@ public class PublicAmenityServiceImpl implements PublicAmenityService {
         if ("COMPLETED".equals(bookingStatus) || "CANCELLED".equals(bookingStatus) || "CHECKED_OUT".equals(bookingStatus)) {
             return false;
         }
-        return details.stream().anyMatch(detail ->
-                "CHECKED_IN".equalsIgnoreCase(normalize(detail.getStatus()))
-                        && detail.getCheckOutTarget() != null
-                        && detail.getCheckOutTarget().isAfter(now));
+        return details.stream().anyMatch(detail -> {
+            String s = normalize(detail.getStatus());
+            if ("CHECKED_IN".equalsIgnoreCase(s)) {
+                return true;
+            }
+            if ("CONFIRMED".equalsIgnoreCase(s)) {
+                return detail.getCheckOutTarget() == null || detail.getCheckOutTarget().isAfter(now);
+            }
+            return false;
+        });
     }
 
     private void decreaseInventoryStock(InventoryService inventoryService, int quantity) {

@@ -14,6 +14,7 @@ import java.time.LocalDateTime;
 public class ReviewResponseDto {
     private Long reviewId;
     private Long bookingId;
+    private String bookingCode;
     private Long roomTypeId;
     private String roomTypeName;
     private String customerName;

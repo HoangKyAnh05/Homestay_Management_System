@@ -27,7 +27,8 @@ export default defineConfig({
     },
   ],
   build: {
-    chunkSizeWarningLimit: 600,
+    chunkSizeWarningLimit: 800,
+    cssCodeSplit: true,
     rollupOptions: {
       output: {
         manualChunks(id) {
@@ -35,13 +36,19 @@ export default defineConfig({
             if (id.includes('react') || id.includes('react-dom')) {
               return 'vendor-react'
             }
-            if (id.includes('leaflet')) {
+            if (id.includes('leaflet') || id.includes('react-leaflet')) {
               return 'vendor-leaflet'
             }
             if (id.includes('lucide-react')) {
               return 'vendor-lucide'
             }
-            return 'vendor-others'
+            if (id.includes('xlsx') || id.includes('exceljs')) {
+              return 'vendor-excel'
+            }
+            if (id.includes('chart.js') || id.includes('react-chartjs-2') || id.includes('recharts')) {
+              return 'vendor-charts'
+            }
+            return 'vendor-core'
           }
         },
       },

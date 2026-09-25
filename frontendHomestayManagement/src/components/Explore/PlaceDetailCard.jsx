@@ -42,6 +42,10 @@ export default function PlaceDetailCard({
           src={place.image}
           alt={place.name}
           className="place-detail-img"
+          onError={(e) => {
+            e.currentTarget.onerror = null;
+            e.currentTarget.src = '/home_1/image.png';
+          }}
         />
         <div className="place-detail-category-badge">
           <span>{place.categoryName || place.tags?.[0]}</span>

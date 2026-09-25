@@ -25,6 +25,9 @@ const METHOD_LABEL = {
   VNPAY: 'VNPAY',
   MOMO: 'MoMo',
   BANK_TRANSFER: 'Chuyển khoản',
+  SEPAY: 'SEPAY',
+  VOUCHER: 'Voucher giảm 100%',
+  FREE: 'Miễn phí',
 }
 
 const STATUS_LABEL = {
@@ -34,6 +37,7 @@ const STATUS_LABEL = {
 }
 
 function methodLabel(method) {
+  if (method === 'FREE' || method === 'VOUCHER') return METHOD_LABEL[method]
   return METHOD_LABEL[method] || method || 'Chưa thanh toán'
 }
 
@@ -42,7 +46,7 @@ function statusLabel(status) {
 }
 
 function statusClass(status) {
-  if (status === 'SUCCESS') return 'ain-badge ain-badge--success'
+  if (status === 'SUCCESS' || status === 'COMPLETED') return 'ain-badge ain-badge--success'
   if (status === 'FAILED') return 'ain-badge ain-badge--failed'
   return 'ain-badge ain-badge--pending'
 }

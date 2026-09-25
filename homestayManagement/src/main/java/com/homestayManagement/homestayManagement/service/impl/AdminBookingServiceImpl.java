@@ -662,9 +662,9 @@ public class AdminBookingServiceImpl implements AdminBookingService {
             BookingDetail detail = bookingDetailRepository.save(BookingDetail.builder()
                     .booking(booking)
                     .roomType(roomType)
-                    .room(room)
-                    .roomAssignmentStatus("ASSIGNED")
-                    .assignedAt(LocalDateTime.now())
+                    .room(null)
+                    .roomAssignmentStatus("UNASSIGNED")
+                    .assignedAt(null)
                     .checkInTarget(request.checkInTarget())
                     .checkOutTarget(request.checkOutTarget())
                     .numberOfAdults(selectedRoom.numberOfAdults())
@@ -968,21 +968,36 @@ public class AdminBookingServiceImpl implements AdminBookingService {
         Invoice invoice = invoiceRepository.findByBookingIdForAdmin(detail.getBooking().getId())
                 .orElseThrow(() -> new IllegalArgumentException("Không thể tạo hóa đơn checkout"));
         BigDecimal remainingBalance = calculateDetailOutstandingBalance(detail);
-        if (remainingBalance.compareTo(BigDecimal.ZERO) == 0) {
+        if (remainingBalance.compareTo(BigDecimal.ZERO) <= 0) {
             return new AdminCheckoutResponse(true, checkOut(bookingDetailId), null);
         }
+
+        BigDecimal paymentAmount = (request.amount() != null && request.amount().compareTo(BigDecimal.ZERO) > 0)
+                ? request.amount().min(remainingBalance)
+                : remainingBalance;
 
         paymentRepository.save(Payment.builder()
                 .invoice(invoice)
                 .bookingDetail(detail)
                 .paymentMethod(paymentMethod)
                 .paymentPurpose("CHECKOUT")
-                .amount(remainingBalance)
+                .amount(paymentAmount)
                 .status("SUCCESS")
                 .transactionNo(paymentMethod + "-" + bookingDetailId + "-" + System.currentTimeMillis())
                 .paymentTime(LocalDateTime.now())
                 .build());
-        return new AdminCheckoutResponse(true, checkOut(bookingDetailId), null);
+
+        BigDecimal newRemainingBalance = calculateDetailOutstandingBalance(detail);
+        if (newRemainingBalance.compareTo(BigDecimal.ZERO) <= 0) {
+            return new AdminCheckoutResponse(true, checkOut(bookingDetailId), null);
+        }
+
+        SePayPaymentResponse nextPayment = sePayPaymentService.createCheckoutPayment(
+                detail.getBooking().getId(),
+                detail.getId(),
+                newRemainingBalance
+        );
+        return new AdminCheckoutResponse(false, getBookingDetail(bookingDetailId), nextPayment);
     }
 
     @Override
@@ -993,10 +1008,12 @@ public class AdminBookingServiceImpl implements AdminBookingService {
         ServiceUsage.ServiceUsageBuilder builder = ServiceUsage.builder()
                 .checkInRecord(record)
                 .quantity(request.quantity());
+        BigDecimal priceAtUse = BigDecimal.ZERO;
         if ("FACILITY".equals(type)) {
             FacilityService service = facilityServiceRepository.findById(request.serviceId())
                     .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy dịch vụ tiện ích"));
-            builder.facilityService(service).priceAtUse(service.getPrice());
+            priceAtUse = service.getPrice() != null ? service.getPrice() : BigDecimal.ZERO;
+            builder.facilityService(service).priceAtUse(priceAtUse);
         } else if ("INVENTORY".equals(type)) {
             InventoryService service = inventoryServiceRepository.findById(request.serviceId())
                     .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy dịch vụ kho"));
@@ -1007,12 +1024,33 @@ public class AdminBookingServiceImpl implements AdminBookingService {
                 service.setQuantityInStock(service.getQuantityInStock() - request.quantity());
                 inventoryServiceRepository.save(service);
             }
-            builder.inventoryService(service).priceAtUse(service.getPrice());
+            priceAtUse = service.getPrice() != null ? service.getPrice() : BigDecimal.ZERO;
+            builder.inventoryService(service).priceAtUse(priceAtUse);
         } else {
             throw new IllegalArgumentException("Loại dịch vụ không hợp lệ");
         }
         serviceUsageRepository.save(builder.build());
         generateInvoice(bookingDetailId);
+
+        if (Boolean.TRUE.equals(request.paidNow())) {
+            BookingDetail detail = record.getBookingDetail();
+            Invoice invoice = invoiceRepository.findByBookingIdForAdmin(detail.getBooking().getId()).orElse(null);
+            if (invoice != null) {
+                BigDecimal totalCost = priceAtUse.multiply(BigDecimal.valueOf(request.quantity()));
+                String method = request.paymentMethod() != null ? normalizeCounterPaymentMethod(request.paymentMethod()) : "CASH";
+                paymentRepository.save(Payment.builder()
+                        .invoice(invoice)
+                        .bookingDetail(detail)
+                        .paymentMethod(method)
+                        .paymentPurpose("SERVICE")
+                        .amount(totalCost)
+                        .status("SUCCESS")
+                        .transactionNo("SERVICE-" + detail.getId() + "-" + System.currentTimeMillis())
+                        .paymentTime(LocalDateTime.now())
+                        .build());
+            }
+        }
+
         return getBookingDetail(bookingDetailId);
     }
 
@@ -1023,6 +1061,13 @@ public class AdminBookingServiceImpl implements AdminBookingService {
         RoomMiniBarItem item = roomMiniBarItemRepository.findById(request.itemId())
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy mini-bar"));
         
+        int currentStock = item.getQuantityInStock() != null ? item.getQuantityInStock() : 0;
+        if (request.quantity() > currentStock) {
+            throw new IllegalArgumentException("Số lượng " + item.getName() + " vượt quá tồn kho (Còn: " + currentStock + ")");
+        }
+        item.setQuantityInStock(Math.max(0, currentStock - request.quantity()));
+        roomMiniBarItemRepository.save(item);
+
         List<RoomAmenitiesUsage> existing = roomAmenitiesUsageRepository.findByCheckInRecordId(record.getId());
         RoomAmenitiesUsage matched = existing.stream()
                 .filter(u -> u.getItem() != null && u.getItem().getId().equals(item.getId()))
@@ -1038,6 +1083,27 @@ public class AdminBookingServiceImpl implements AdminBookingService {
                     .build());
         }
         generateInvoice(bookingDetailId);
+
+        if (Boolean.TRUE.equals(request.paidNow())) {
+            BookingDetail detail = record.getBookingDetail();
+            Invoice invoice = invoiceRepository.findByBookingIdForAdmin(detail.getBooking().getId()).orElse(null);
+            if (invoice != null) {
+                BigDecimal priceAtUse = item.getPrice() != null ? item.getPrice() : BigDecimal.ZERO;
+                BigDecimal totalCost = priceAtUse.multiply(BigDecimal.valueOf(request.quantity()));
+                String method = request.paymentMethod() != null ? normalizeCounterPaymentMethod(request.paymentMethod()) : "CASH";
+                paymentRepository.save(Payment.builder()
+                        .invoice(invoice)
+                        .bookingDetail(detail)
+                        .paymentMethod(method)
+                        .paymentPurpose("SERVICE")
+                        .amount(totalCost)
+                        .status("SUCCESS")
+                        .transactionNo("MINIBAR-" + detail.getId() + "-" + System.currentTimeMillis())
+                        .paymentTime(LocalDateTime.now())
+                        .build());
+            }
+        }
+
         return getBookingDetail(bookingDetailId);
     }
 
@@ -1064,6 +1130,14 @@ public class AdminBookingServiceImpl implements AdminBookingService {
         ServiceUsage usage = serviceUsageRepository.findById(serviceUsageId)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy dịch vụ đã chọn"));
         requireSameCheckInRecord(record, usage.getCheckInRecord().getId());
+
+        if (usage.getInventoryService() != null && usage.getQuantity() != null) {
+            InventoryService service = usage.getInventoryService();
+            int currentStock = service.getQuantityInStock() != null ? service.getQuantityInStock() : 0;
+            service.setQuantityInStock(currentStock + usage.getQuantity());
+            inventoryServiceRepository.save(service);
+        }
+
         serviceUsageRepository.delete(usage);
         generateInvoice(bookingDetailId);
         return getBookingDetail(bookingDetailId);
@@ -1076,6 +1150,14 @@ public class AdminBookingServiceImpl implements AdminBookingService {
         RoomAmenitiesUsage usage = roomAmenitiesUsageRepository.findById(miniBarUsageId)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy mini-bar đã chọn"));
         requireSameCheckInRecord(record, usage.getCheckInRecord().getId());
+
+        if (usage.getItem() != null && usage.getQuantityUsed() != null) {
+            RoomMiniBarItem item = usage.getItem();
+            int currentStock = item.getQuantityInStock() != null ? item.getQuantityInStock() : 0;
+            item.setQuantityInStock(currentStock + usage.getQuantityUsed());
+            roomMiniBarItemRepository.save(item);
+        }
+
         roomAmenitiesUsageRepository.delete(usage);
         generateInvoice(bookingDetailId);
         return getBookingDetail(bookingDetailId);
@@ -1907,6 +1989,9 @@ public class AdminBookingServiceImpl implements AdminBookingService {
     }
 
     private BigDecimal calculateHourlyRate(RoomType roomType, BookingDetail detail) {
+        if (detail != null && detail.getPriceAtBooking() != null && detail.getPriceAtBooking().compareTo(BigDecimal.ZERO) > 0) {
+            return detail.getPriceAtBooking().divide(BigDecimal.valueOf(20), 0, RoundingMode.HALF_UP).max(BigDecimal.valueOf(50_000));
+        }
         if (roomType == null) {
             return BigDecimal.valueOf(80_000);
         }
@@ -1916,9 +2001,6 @@ public class AdminBookingServiceImpl implements AdminBookingService {
                 int limitHours = cfg.getPricePolicy().getLimitHours() != null && cfg.getPricePolicy().getLimitHours() > 0 ? cfg.getPricePolicy().getLimitHours() : 1;
                 return cfg.getPrice().divide(BigDecimal.valueOf(limitHours), 0, RoundingMode.HALF_UP);
             }
-        }
-        if (detail != null && detail.getPriceAtBooking() != null && detail.getPriceAtBooking().compareTo(BigDecimal.ZERO) > 0) {
-            return detail.getPriceAtBooking().divide(BigDecimal.valueOf(20), 0, RoundingMode.HALF_UP).max(BigDecimal.valueOf(50_000));
         }
         for (RoomPriceConfig cfg : configs) {
             if (cfg.getPrice() != null && cfg.getPrice().compareTo(BigDecimal.ZERO) > 0) {
@@ -1973,6 +2055,16 @@ public class AdminBookingServiceImpl implements AdminBookingService {
         if (detail == null) {
             return BigDecimal.valueOf(500_000);
         }
+
+        if (detail.getPriceAtBooking() != null && detail.getPriceAtBooking().compareTo(BigDecimal.ZERO) > 0) {
+            if (detail.getCheckInTarget() != null && detail.getCheckOutTarget() != null) {
+                long hours = Duration.between(detail.getCheckInTarget(), detail.getCheckOutTarget()).toHours();
+                long days = Math.max(1, (hours + 23) / 24);
+                return detail.getPriceAtBooking().divide(BigDecimal.valueOf(days), 0, RoundingMode.HALF_UP);
+            }
+            return detail.getPriceAtBooking();
+        }
+
         RoomType roomType = detail.getRoomType() != null
                 ? detail.getRoomType()
                 : (detail.getRoom() != null ? detail.getRoom().getRoomType() : null);
@@ -1985,15 +2077,6 @@ public class AdminBookingServiceImpl implements AdminBookingService {
                     return cfg.getPrice();
                 }
             }
-        }
-
-        if (detail.getPriceAtBooking() != null && detail.getPriceAtBooking().compareTo(BigDecimal.ZERO) > 0) {
-            if (detail.getCheckInTarget() != null && detail.getCheckOutTarget() != null) {
-                long hours = Duration.between(detail.getCheckInTarget(), detail.getCheckOutTarget()).toHours();
-                long days = Math.max(1, (hours + 23) / 24);
-                return detail.getPriceAtBooking().divide(BigDecimal.valueOf(days), 0, RoundingMode.HALF_UP);
-            }
-            return detail.getPriceAtBooking();
         }
 
         return BigDecimal.valueOf(500_000);

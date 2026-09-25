@@ -66,7 +66,7 @@ public interface BookingDetailRepository extends JpaRepository<BookingDetail, Lo
             left join fetch c.account
             join fetch bd.roomType
             left join fetch bd.room r
-            where c.account.email = :email
+            where (c.account.email = :email or lower(c.email) = lower(:email))
             order by b.bookingDate desc, b.id desc, bd.checkInTarget asc
             """)
     List<BookingDetail> findByCustomerEmailForHistory(@Param("email") String email);
@@ -80,7 +80,7 @@ public interface BookingDetailRepository extends JpaRepository<BookingDetail, Lo
             left join fetch c.account
             join fetch bd.roomType
             left join fetch bd.room r
-            where c.account.email = :email
+            where (c.account.email = :email or lower(c.email) = lower(:email))
               and b.id = :bookingId
             order by bd.checkInTarget asc
             """)
@@ -88,6 +88,21 @@ public interface BookingDetailRepository extends JpaRepository<BookingDetail, Lo
             @Param("email") String email,
             @Param("bookingId") Long bookingId
     );
+
+    @Query("""
+            select bd
+            from BookingDetail bd
+            join fetch bd.booking b
+            left join fetch b.depositPolicy
+            join fetch b.customer c
+            left join fetch c.account
+            join fetch bd.roomType
+            left join fetch bd.room r
+            where b.status not in ('COMPLETED', 'CANCELLED', 'CHECKED_OUT')
+              and bd.status in ('CHECKED_IN', 'CONFIRMED')
+            order by b.bookingDate desc, b.id desc, bd.checkInTarget asc
+            """)
+    List<BookingDetail> findAllActiveForStaff();
 
     @Query("""
             select bd

@@ -1042,25 +1042,48 @@ function BookingHistoryPage() {
   const [reviewImages, setReviewImages] = useState([])
   const [reviewImageInput, setReviewImageInput] = useState('')
   const [reviewSubmitting, setReviewSubmitting] = useState(false)
+  const [uploadingImage, setUploadingImage] = useState(false)
   const [reviewError, setReviewError] = useState('')
   const [reviewData, setReviewData] = useState(null)
 
   const token = getStoredToken()
 
-  const handleFileUpload = (e) => {
+  const handleFileUpload = async (e) => {
     const files = Array.from(e.target.files || [])
-    files.forEach((file) => {
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        setReviewImages((prev) => [...prev, reader.result])
+    if (files.length === 0) return
+    setUploadingImage(true)
+    setReviewError('')
+    try {
+      for (const file of files) {
+        const formData = new FormData()
+        formData.append('file', file)
+        const res = await fetch(`${API_BASE_URL}/customer/reviews/upload-image`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          body: formData,
+        })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok) {
+          throw new Error(data.message || `Lỗi tải ảnh ${file.name}`)
+        }
+        if (data.url) {
+          setReviewImages((prev) => [...prev, data.url])
+        }
       }
-      reader.readAsDataURL(file)
-    })
+    } catch (err) {
+      setReviewError(err.message || 'Lỗi khi tải tệp hình ảnh lên')
+    } finally {
+      setUploadingImage(false)
+      e.target.value = ''
+    }
   }
 
   const addImageUrl = () => {
-    if (reviewImageInput.trim()) {
-      setReviewImages((prev) => [...prev, reviewImageInput.trim()])
+    const trimmed = reviewImageInput.trim()
+    if (trimmed) {
+      setReviewImages((prev) => [...prev, trimmed])
       setReviewImageInput('')
     }
   }
@@ -1086,7 +1109,7 @@ function BookingHistoryPage() {
         body: JSON.stringify({
           bookingId: detail.bookingId,
           ratingStars: reviewStars,
-          comment: reviewComment,
+          comment: reviewComment.trim(),
           imageUrls: reviewImages,
         }),
       })
@@ -1808,22 +1831,37 @@ function BookingHistoryPage() {
                 type="file"
                 accept="image/*"
                 multiple
+                disabled={uploadingImage || reviewSubmitting}
                 onChange={handleFileUpload}
                 style={{ display: 'block', marginBottom: '8px', fontSize: '13px' }}
               />
+
+              {uploadingImage && (
+                <div style={{ fontSize: '12px', color: '#0284c7', marginBottom: '8px', fontWeight: 600 }}>
+                  ⏳ Đang tải ảnh lên hệ thống...
+                </div>
+              )}
 
               <div style={{ display: 'flex', gap: '6px' }}>
                 <input
                   type="text"
                   placeholder="https://example.com/anh-phong.jpg"
                   value={reviewImageInput}
+                  disabled={uploadingImage || reviewSubmitting}
                   onChange={(e) => setReviewImageInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      addImageUrl()
+                    }
+                  }}
                   style={{ flex: 1, padding: '6px 10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px' }}
                 />
                 <button
                   type="button"
                   onClick={addImageUrl}
-                  style={{ padding: '6px 12px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px' }}
+                  disabled={uploadingImage || reviewSubmitting || !reviewImageInput.trim()}
+                  style={{ padding: '6px 12px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', opacity: reviewImageInput.trim() ? 1 : 0.6 }}
                 >
                   Thêm URL
                 </button>
@@ -1833,7 +1871,7 @@ function BookingHistoryPage() {
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '10px' }}>
                   {reviewImages.map((url, idx) => (
                     <div key={idx} style={{ position: 'relative', width: '60px', height: '60px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #cbd5e1' }}>
-                      <img src={url} alt="Review thumb" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <img src={resolveImageUrl(url)} alt="Review thumb" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       <button
                         type="button"
                         onClick={() => removeReviewImage(idx)}
@@ -1849,12 +1887,13 @@ function BookingHistoryPage() {
 
             <div className="history-feedback-actions" style={{ marginTop: '16px' }}>
               <button type="button" onClick={() => setReviewOpen(false)}>Hủy</button>
-              <button type="submit" disabled={reviewSubmitting || !reviewComment.trim()}>
-                {reviewSubmitting ? 'Đang lưu...' : reviewData ? 'Cập nhật đánh giá' : 'Gửi đánh giá'}
+              <button type="submit" disabled={reviewSubmitting || uploadingImage || !reviewComment.trim()}>
+                {reviewSubmitting ? 'Đang lưu...' : uploadingImage ? 'Đang tải ảnh...' : reviewData ? 'Cập nhật đánh giá' : 'Gửi đánh giá'}
               </button>
             </div>
           </form>
         </div>
+
       )}
 
       {/* Modal: Thuê Thêm Giờ / Gia Hạn Lưu Trú */}

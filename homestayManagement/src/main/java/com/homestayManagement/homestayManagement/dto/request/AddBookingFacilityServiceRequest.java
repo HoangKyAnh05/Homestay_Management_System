@@ -16,6 +16,11 @@ public record AddBookingFacilityServiceRequest(
         @NotNull(message = "Vui lòng nhập số lượng")
         @Min(value = 1, message = "Số lượng dịch vụ phải lớn hơn 0")
         @Max(value = 20, message = "Mỗi dịch vụ chỉ được chọn tối đa 20 lần")
-        Integer quantity
+        Integer quantity,
+
+        Boolean payNow
 ) {
+    public AddBookingFacilityServiceRequest(Long serviceId, String type, Integer quantity) {
+        this(serviceId, type, quantity, false);
+    }
 }

@@ -97,6 +97,10 @@ export default function PlaceCard({
           alt={place.name}
           className="place-card-img"
           loading="lazy"
+          onError={(e) => {
+            e.currentTarget.onerror = null;
+            e.currentTarget.src = '/home_1/image.png';
+          }}
         />
       </div>
 

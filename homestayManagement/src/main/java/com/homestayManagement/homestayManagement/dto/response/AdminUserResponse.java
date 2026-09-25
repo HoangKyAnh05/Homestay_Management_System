@@ -1,5 +1,6 @@
 package com.homestayManagement.homestayManagement.dto.response;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 public record AdminUserResponse(
@@ -13,6 +14,8 @@ public record AdminUserResponse(
         Long roleId,
         boolean isActive,
         boolean isVerified,
-        LocalDateTime createdAt
+        LocalDateTime createdAt,
+        LocalDate dateOfBirth,
+        String address
 ) {
 }

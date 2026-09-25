@@ -77,7 +77,7 @@ const NAV_ITEMS = [
     icon: ICONS.services,
     children: [
       { key: 'service-categories', label: 'Danh mục Dịch vụ', path: '/admin/services/categories' },
-      { key: 'surcharges', label: 'Phụ phí', path: '/admin/services/surcharges' },
+      { key: 'surcharges', label: 'Mini-bar', path: '/admin/services/surcharges' },
     ],
   },
   { key: 'rules', label: 'Cấu hình Nội quy & Phạt & Phụ thu', path: '/admin/rules-penalties', icon: ICONS.rules },
@@ -98,11 +98,11 @@ const NAV_ITEMS = [
   },
   {
     key: 'marketing',
-    label: 'Marketing & AI Agent',
+    label: 'Marketing',
     icon: ICONS.marketing,
     children: [
       { key: 'engagement-inbox', label: 'Tương tác & Bình luận', path: '/admin/marketing/engagement-inbox' },
-      { key: 'ai-post-agent', label: 'AI Agent Đăng bài', path: '/admin/marketing/ai-agent' },
+      { key: 'ai-post-agent', label: 'Đăng bài', path: '/admin/marketing/ai-agent' },
       { key: 'post-logs', label: 'Nhật ký Bài đăng', path: '/admin/marketing/post-logs' },
       { key: 'vouchers', label: 'Mã giảm giá (Vouchers)', path: '/admin/marketing/vouchers' },
       { key: 'travel-articles', label: 'Điểm đến & Bài review Sa Pa', path: '/admin/marketing/travel-articles' },

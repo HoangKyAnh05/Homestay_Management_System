@@ -71,25 +71,25 @@ export const DEFAULT_LUXURY_PRIZES = [
     sliceColor2: '#c2410c',
     textColor: '#ffffff',
   },
-];
+]
 
 export function getActiveWheelPrizes() {
   try {
-    const saved = localStorage.getItem('la_do_lucky_wheel_custom_prizes');
+    const saved = localStorage.getItem('la_do_lucky_wheel_custom_prizes')
     if (saved) {
-      const parsed = JSON.parse(saved);
+      const parsed = JSON.parse(saved)
       if (Array.isArray(parsed) && parsed.length >= 4) {
-        return parsed;
+        return parsed
       }
     }
   } catch (e) {
-    console.warn('Error loading custom wheel prizes:', e);
+    console.warn('Error loading custom wheel prizes:', e)
   }
-  return DEFAULT_LUXURY_PRIZES;
+  return DEFAULT_LUXURY_PRIZES
 }
 
 export default function GiveawayLuckyWheelPage() {
-  const [wheelPrizes, setWheelPrizes] = useState(getActiveWheelPrizes);
+  const [wheelPrizes, setWheelPrizes] = useState(getActiveWheelPrizes)
   const [config, setConfig] = useState(null)
   const [formData, setFormData] = useState({
     fullName: '',
@@ -98,13 +98,16 @@ export default function GiveawayLuckyWheelPage() {
     travelPlan: 'Trong tháng này',
     notes: '',
   })
-  const [spinToken, setSpinToken] = useState(null)
   const [spinning, setSpinning] = useState(false)
   const [hasSpun, setHasSpun] = useState(false)
   const [wonResult, setWonResult] = useState(null)
   const [errorMsg, setErrorMsg] = useState('')
   const [copied, setCopied] = useState(false)
   const [showContactModal, setShowContactModal] = useState(false)
+
+  const canvasRef = useRef(null)
+  const confettiCanvasRef = useRef(null)
+  const currentRotationRef = useRef(0)
 
   // Auto-fill user profile if logged in
   useEffect(() => {
@@ -125,27 +128,23 @@ export default function GiveawayLuckyWheelPage() {
   useEffect(() => {
     const handleStorageChange = (e) => {
       if (e.key === 'la_do_lucky_wheel_custom_prizes') {
-        setWheelPrizes(getActiveWheelPrizes());
+        setWheelPrizes(getActiveWheelPrizes())
       }
-    };
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
-  }, []);
+    }
+    window.addEventListener('storage', handleStorageChange)
+    return () => window.removeEventListener('storage', handleStorageChange)
+  }, [])
 
-  const canvasRef = useRef(null)
-  const confettiCanvasRef = useRef(null)
-  const currentRotationRef = useRef(0)
-
-  // Web Audio synthetic tick sound
+  // Web Audio synthetic tick sound with dynamic pitch
   const playTickSound = () => {
     try {
       const ctx = new (window.AudioContext || window.webkitAudioContext)()
       const osc = ctx.createOscillator()
       const gain = ctx.createGain()
       osc.type = 'sine'
-      osc.frequency.setValueAtTime(580, ctx.currentTime)
+      osc.frequency.setValueAtTime(620, ctx.currentTime)
       osc.frequency.exponentialRampToValueAtTime(260, ctx.currentTime + 0.04)
-      gain.gain.setValueAtTime(0.12, ctx.currentTime)
+      gain.gain.setValueAtTime(0.15, ctx.currentTime)
       gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.04)
       osc.connect(gain)
       gain.connect(ctx.destination)
@@ -254,15 +253,15 @@ export default function GiveawayLuckyWheelPage() {
       ctx.strokeStyle = 'rgba(254, 240, 138, 0.6)'
       ctx.stroke()
 
-      // 3. Draw Clean Slice Typography (2 Lines - Never overlaps center hub!)
+      // 3. Draw Clean Slice Typography
       ctx.save()
       ctx.translate(center, center)
       ctx.rotate(startAngle + arc / 2)
 
-      // Position text along slice centerline: distance is 62% of wheelRadius
+      // Position text along slice centerline
       const textX = wheelRadius * 0.64
 
-      // Primary Title (e.g. GIẢM 50%)
+      // Primary Title
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
       ctx.font = 'bold 26px "Plus Jakarta Sans", sans-serif'
@@ -271,7 +270,7 @@ export default function GiveawayLuckyWheelPage() {
       ctx.shadowBlur = 6
       ctx.fillText(title, textX, sub ? -10 : 0)
 
-      // Secondary Subtext (e.g. Toàn Chuyến Đi)
+      // Secondary Subtext
       if (sub) {
         ctx.font = '600 15px "Plus Jakarta Sans", sans-serif'
         ctx.fillStyle = '#f5f5f4'
@@ -311,7 +310,6 @@ export default function GiveawayLuckyWheelPage() {
   }, [wheelPrizes])
 
   const handleSpinAnotherPhone = () => {
-    setSpinToken(null)
     setHasSpun(false)
     setWonResult(null)
     setErrorMsg('')
@@ -322,109 +320,130 @@ export default function GiveawayLuckyWheelPage() {
       travelPlan: 'Trong tháng này',
       notes: '',
     })
-    window.scrollTo({ top: 350, behavior: 'smooth' })
-  }
-
-  const handleCenterClick = (e) => {
-    if (spinning || hasSpun) return
-    if (!spinToken) {
-      if (formData.fullName.trim() && formData.phone.trim()) {
-        handleSubmitForm(e)
-      } else {
-        const input = document.querySelector('.gw-input')
-        if (input) {
-          input.scrollIntoView({ behavior: 'smooth', block: 'center' })
-          input.focus()
-        }
-      }
-      return
+    const canvas = canvasRef.current
+    if (canvas) {
+      canvas.style.transition = 'none'
+      canvas.style.transform = 'rotate(0deg)'
+      currentRotationRef.current = 0
     }
-    handleSpinWheel()
+    window.scrollTo({ top: 320, behavior: 'smooth' })
   }
 
-  // Handle Form Submit -> Register Spin
-  const handleSubmitForm = async (e) => {
+  // Unified 1-Click Spin Handler
+  const handleStartSpin = async (e) => {
     if (e && e.preventDefault) e.preventDefault()
+    if (spinning || hasSpun) return
     setErrorMsg('')
 
-    if (!formData.fullName.trim()) {
+    // 1. Form Validations
+    if (!formData.fullName || !formData.fullName.trim()) {
       setErrorMsg('Vui lòng nhập họ và tên của bạn.')
+      const input = document.querySelector('input[name="fullName"]')
+      if (input) input.focus()
       return
     }
     const phoneRegex = /^(0|\+84)(\d{9})$/
-    if (!phoneRegex.test(formData.phone.trim())) {
+    if (!formData.phone || !phoneRegex.test(formData.phone.trim())) {
       setErrorMsg('Vui lòng nhập số điện thoại hợp lệ (10 chữ số).')
+      const input = document.querySelector('input[type="tel"]')
+      if (input) input.focus()
+      return
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!formData.email || !formData.email.trim()) {
+      setErrorMsg('Vui lòng nhập địa chỉ Gmail/Email để nhận thông báo xác nhận và bằng chứng trúng thưởng.')
+      const input = document.querySelector('input[type="email"]')
+      if (input) input.focus()
+      return
+    }
+    if (!emailRegex.test(formData.email.trim())) {
+      setErrorMsg('Địa chỉ Gmail/Email không đúng định dạng (VD: example@gmail.com).')
+      const input = document.querySelector('input[type="email"]')
+      if (input) input.focus()
       return
     }
 
+    setSpinning(true)
+
     try {
-      const res = await fetch(`${API_PUBLIC}/register-spin`, {
+      // Step 1: Register lead & get spin token
+      const regRes = await fetch(`${API_PUBLIC}/register-spin`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
       })
-      const data = await res.json()
-      if (!res.ok) {
-        throw new Error(data.message || 'Không thể nhận lượt quay.')
+      const regData = await regRes.json()
+      if (!regRes.ok) {
+        throw new Error(regData.message || 'Không thể đăng ký lượt quay.')
       }
-      setSpinToken(data.spinToken)
-      setErrorMsg('')
-    } catch (err) {
-      setErrorMsg(err.message)
-    }
-  }
+      const token = regData.spinToken
 
-  // Trigger Spin Action
-  const handleSpinWheel = async () => {
-    if (!spinToken || spinning || hasSpun) return
-    setSpinning(true)
-    setErrorMsg('')
-
-    try {
-      const res = await fetch(`${API_PUBLIC}/spin`, {
+      // Step 2: Spin and get won prize result
+      const spinRes = await fetch(`${API_PUBLIC}/spin`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ spinToken }),
+        body: JSON.stringify({ spinToken: token }),
       })
-      const result = await res.json()
-      if (!res.ok) {
-        throw new Error(result.message || 'Lỗi khi quay số.')
+      const result = await spinRes.json()
+      if (!spinRes.ok) {
+        throw new Error(result.message || 'Lỗi khi quay số trúng thưởng.')
       }
 
-      // Calculate Rotation
+      // Step 3: Exact Trigonometric Target Angle Calculation
       const total = wheelPrizes.length
       const arcDegrees = 360 / total
-      const targetIndex = result.targetIndex
-      // Pointer is at top (270 degrees in standard canvas angles)
-      const targetAngle = 270 - (targetIndex * arcDegrees + arcDegrees / 2)
-      const extraRounds = 5 * 360
-      const finalRotation = currentRotationRef.current + extraRounds + (targetAngle - (currentRotationRef.current % 360)) + 360
+      const targetIndex = Number(result.targetIndex ?? 0)
+
+      // In initial coordinates, center of slice targetIndex is at:
+      const sliceCenter = targetIndex * arcDegrees + arcDegrees / 2
+      // Pointer is at the top (12 o'clock, corresponding to 270 degrees in canvas coordinates)
+      let baseRotation = (270 - sliceCenter) % 360
+      if (baseRotation < 0) baseRotation += 360
+
+      const currentRot = currentRotationRef.current || 0
+      const currentMod = ((currentRot % 360) + 360) % 360
+      const extraAngle = ((baseRotation - currentMod) + 360) % 360
+      const extraRounds = 6 * 360 // 6 full spectacular rotations
+      const finalRotation = currentRot + extraRounds + extraAngle
 
       currentRotationRef.current = finalRotation
 
+      // Step 4: Apply Smooth Physics Deceleration Animation
       const canvas = canvasRef.current
       if (canvas) {
-        canvas.style.transform = `rotate(${finalRotation}deg)`
+        canvas.style.transition = 'none'
+        canvas.style.transform = `rotate(${currentRot}deg)`
+        void canvas.offsetHeight // Force layout reflow
+        canvas.style.transition = 'transform 5s cubic-bezier(0.12, 0.98, 0.24, 1)'
+        requestAnimationFrame(() => {
+          canvas.style.transform = `rotate(${finalRotation}deg)`
+        })
       }
 
-      // Sound ticker
-      let ticks = 0
-      const tickInterval = setInterval(() => {
-        playTickSound()
-        ticks++
-        if (ticks > 26) clearInterval(tickInterval)
-      }, 145)
+      // Step 5: Realistic Decelerating Mechanical Audio Ticks
+      let tickCount = 0
+      const maxTicks = 32
+      const runTicker = (delay) => {
+        if (tickCount < maxTicks) {
+          playTickSound()
+          tickCount++
+          const nextDelay = 80 + Math.pow(tickCount / maxTicks, 2.4) * 280
+          setTimeout(() => runTicker(nextDelay), nextDelay)
+        }
+      }
+      runTicker(70)
 
+      // Step 6: Reveal Winning Screen after 5.2 seconds
       setTimeout(() => {
-        clearInterval(tickInterval)
         setSpinning(false)
         setHasSpun(true)
         setWonResult(result)
         launchConfetti()
-      }, 4500)
+      }, 5200)
+
     } catch (err) {
       setSpinning(false)
-      setErrorMsg(err.message)
+      setErrorMsg(err.message || 'Đã xảy ra lỗi khi quay.')
     }
   }
 
@@ -439,18 +458,18 @@ export default function GiveawayLuckyWheelPage() {
     const particles = []
     const colors = ['#f43f5e', '#f59e0b', '#10b981', '#38bdf8', '#fbbf24', '#ffffff']
 
-    for (let i = 0; i < 160; i++) {
+    for (let i = 0; i < 170; i++) {
       particles.push({
         x: canvas.width / 2,
         y: canvas.height / 2,
-        vx: (Math.random() - 0.5) * 15,
-        vy: (Math.random() - 0.5) * 15 - 4,
+        vx: (Math.random() - 0.5) * 16,
+        vy: (Math.random() - 0.5) * 16 - 5,
         size: Math.random() * 8 + 4,
         color: colors[Math.floor(Math.random() * colors.length)],
         tilt: Math.random() * 10,
         tiltAngle: Math.random() * Math.PI,
         tiltSpeed: 0.08,
-        life: 130,
+        life: 140,
       })
     }
 
@@ -493,16 +512,16 @@ export default function GiveawayLuckyWheelPage() {
       <canvas id="gw-confetti-canvas" ref={confettiCanvasRef} />
 
       {/* Top Navigation Bar */}
-      <div style={{ maxWidth: '1180px', margin: '0 auto', padding: '16px 20px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative', zIndex: 10 }}>
-        <a href="/home" style={{ color: '#fef08a', textDecoration: 'none', fontSize: '13.5px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.07)', padding: '7px 16px', borderRadius: '30px', border: '1px solid rgba(254, 240, 138, 0.25)' }}>
+      <div className="gw-navbar">
+        <a href="/home" className="gw-nav-back">
           ← Về Trang Chủ Lá Đỏ Homestay
         </a>
-        <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-          <a href="/rooms" style={{ color: '#e2e8f0', textDecoration: 'none', fontSize: '13px', fontWeight: 600 }}>
-            Phòng nghỉ
+        <div className="gw-nav-links">
+          <a href="/rooms" className="gw-nav-link">
+            Phòng nghỉ Sa Pa
           </a>
-          <a href="/home#about" style={{ color: '#e2e8f0', textDecoration: 'none', fontSize: '13px', fontWeight: 600 }}>
-            Giới thiệu
+          <a href="/vouchers" className="gw-nav-link">
+            Kho Voucher
           </a>
         </div>
       </div>
@@ -521,7 +540,7 @@ export default function GiveawayLuckyWheelPage() {
         {/* Left: The Wheel */}
         <section className="gw-wheel-section">
           <div className="gw-wheel-wrapper">
-            {/* Elegant Metallic Gold Pointer */}
+            {/* Elegant Metallic Gold Pointer at Top Center */}
             <div className="gw-wheel-pointer">
               <svg viewBox="0 0 38 46" fill="none">
                 <polygon points="19,46 2,4 36,4" fill="url(#goldPtrGrad)" stroke="#78350f" strokeWidth="2.5" />
@@ -544,21 +563,18 @@ export default function GiveawayLuckyWheelPage() {
               type="button"
               className="gw-wheel-center-btn"
               disabled={spinning || hasSpun}
-              onClick={handleCenterClick}
-              title={!spinToken ? 'Điền thông tin và bấm để nhận lượt quay' : 'Bấm để quay số may mắn'}
+              onClick={handleStartSpin}
+              title="Bấm để quay vòng may mắn"
             >
               {spinning ? '...' : hasSpun ? 'XONG' : 'QUAY'}
             </button>
           </div>
 
-          {!spinToken && (
-            <p style={{ color: '#fbbf24', fontSize: '0.95rem', fontWeight: 600, marginTop: '10px' }}>
-              👉 Điền thông tin và bấm &quot;QUAY&quot; để nhận 1 lượt quay miễn phí!
-            </p>
-          )}
-          {spinToken && !hasSpun && (
-            <p style={{ color: '#34d399', fontSize: '1rem', fontWeight: 700, marginTop: '10px' }}>
-              🎉 Đã cấp lượt quay! Bạn hãy bấm nút &quot;QUAY&quot; ở tâm vòng quay!
+          {!hasSpun && (
+            <p className="gw-wheel-hint">
+              {spinning
+                ? '🎰 Vòng quay đang chạy... Chúc bạn may mắn trúng giải thưởng lớn nhất!'
+                : '👉 Điền thông tin bên phải và bấm nút "QUAY NGAY" để nhận giải thưởng!'}
             </p>
           )}
         </section>
@@ -566,31 +582,20 @@ export default function GiveawayLuckyWheelPage() {
         {/* Right: Form or Winner Result */}
         <section className="gw-card">
           {errorMsg && (
-            <div style={{ background: '#f43f5e22', border: '1px solid #f43f5e', color: '#fda4af', padding: '14px 18px', borderRadius: '12px', marginBottom: '18px', fontSize: '0.94rem', lineHeight: 1.5 }}>
-              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '10px' }}>
+            <div className="gw-error-banner">
+              <div className="gw-error-banner-content">
                 <div>
                   <strong>⚠️ Thông báo:</strong> {errorMsg}
                 </div>
                 <button
                   type="button"
-                  style={{
-                    background: 'rgba(255, 255, 255, 0.15)',
-                    border: '1px solid rgba(255, 255, 255, 0.3)',
-                    color: '#fff',
-                    borderRadius: '8px',
-                    padding: '4px 10px',
-                    fontSize: '0.82rem',
-                    cursor: 'pointer',
-                    whiteSpace: 'nowrap',
-                  }}
+                  className="gw-btn-retry-phone"
                   onClick={() => {
-                    setFormData((prev) => ({ ...prev, phone: '' }))
+                    setFormData((prev) => ({ ...prev, phone: '', email: '' }))
                     setErrorMsg('')
-                    const phoneInput = document.querySelector('input[type="tel"]')
-                    if (phoneInput) phoneInput.focus()
                   }}
                 >
-                  ✕ Đổi số khác
+                  ✕ Nhập lại
                 </button>
               </div>
             </div>
@@ -600,38 +605,33 @@ export default function GiveawayLuckyWheelPage() {
             <div>
               <div className="gw-card-header">
                 <h2 className="gw-card-title">🎁 Thông Tin Nhận Lượt Quay</h2>
-                <p className="gw-card-desc">Thông tin của bạn được bảo mật tuyệt đối và chỉ dùng để trao mã ưu đãi đặt phòng trực tiếp.</p>
+                <p className="gw-card-desc">
+                  Điền thông tin chính xác để hệ thống gửi thư xác nhận kèm mã thưởng làm bằng chứng nhận giải!
+                </p>
               </div>
 
-              <form onSubmit={handleSubmitForm}>
+              <form onSubmit={handleStartSpin}>
                 <div className="gw-form-group">
                   <label className="gw-label">Họ và tên của bạn *</label>
                   <input
                     type="text"
+                    name="fullName"
                     className="gw-input"
                     placeholder="VD: Nguyễn Thị Mai"
                     value={formData.fullName}
                     onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
                     required
-                    disabled={Boolean(spinToken)}
+                    disabled={spinning}
                   />
                 </div>
 
                 <div className="gw-form-group">
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                    <label className="gw-label" style={{ margin: 0 }}>Số điện thoại nhận quà *</label>
-                    {formData.phone && !spinToken && (
+                  <div className="gw-label-row">
+                    <label className="gw-label">Số điện thoại nhận quà *</label>
+                    {formData.phone && !spinning && (
                       <button
                         type="button"
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          color: '#38bdf8',
-                          fontSize: '0.82rem',
-                          cursor: 'pointer',
-                          textDecoration: 'underline',
-                          padding: 0,
-                        }}
+                        className="gw-btn-text-link"
                         onClick={() => {
                           setFormData((prev) => ({ ...prev, phone: '' }))
                           setErrorMsg('')
@@ -651,23 +651,31 @@ export default function GiveawayLuckyWheelPage() {
                       if (errorMsg) setErrorMsg('')
                     }}
                     required
-                    disabled={Boolean(spinToken)}
+                    disabled={spinning}
                   />
-                  <span style={{ fontSize: '0.8rem', color: '#a8a29e', marginTop: '4px', display: 'block' }}>
+                  <span className="gw-field-hint">
                     * Mỗi số điện thoại chỉ được quay 1 lần duy nhất.
                   </span>
                 </div>
 
                 <div className="gw-form-group">
-                  <label className="gw-label">Email (Nhận xác nhận voucher)</label>
+                  <label className="gw-label">Gmail / Email nhận bằng chứng trúng thưởng *</label>
                   <input
                     type="email"
+                    name="email"
                     className="gw-input"
-                    placeholder="VD: ban@gmail.com"
+                    placeholder="VD: nguyenvana@gmail.com"
                     value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    disabled={Boolean(spinToken)}
+                    onChange={(e) => {
+                      setFormData({ ...formData, email: e.target.value })
+                      if (errorMsg) setErrorMsg('')
+                    }}
+                    required
+                    disabled={spinning}
                   />
+                  <span className="gw-field-hint">
+                    * Bắt buộc nhập Gmail để hệ thống gửi thư xác nhận & bằng chứng nhận thưởng về hộp thư của bạn.
+                  </span>
                 </div>
 
                 <div className="gw-form-group">
@@ -676,7 +684,7 @@ export default function GiveawayLuckyWheelPage() {
                     className="gw-select"
                     value={formData.travelPlan}
                     onChange={(e) => setFormData({ ...formData, travelPlan: e.target.value })}
-                    disabled={Boolean(spinToken)}
+                    disabled={spinning}
                   >
                     <option value="Cuối tuần này">Cuối tuần này</option>
                     <option value="Trong tháng này">Trong tháng này</option>
@@ -693,26 +701,24 @@ export default function GiveawayLuckyWheelPage() {
                     placeholder="VD: Thích phòng ban công ngắm biển mây, cần dịch vụ BBQ nướng ngoài trời..."
                     value={formData.notes}
                     onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                    disabled={Boolean(spinToken)}
+                    disabled={spinning}
                   />
                 </div>
 
-                {!spinToken ? (
-                  <button type="submit" className="gw-btn-submit">
-                     NHẬN LƯỢT QUAY MIỄN PHÍ NGAY
-                  </button>
-                ) : (
-                  <button type="button" className="gw-btn-submit" style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)' }} onClick={handleSpinWheel} disabled={spinning}>
-                    {spinning ? 'ĐANG QUAY VÒNG SỐ...' : ' BẤM QUAY VÒNG MAY MẮN NGAY!'}
-                  </button>
-                )}
+                <button
+                  type="submit"
+                  className="gw-btn-submit"
+                  disabled={spinning}
+                >
+                  {spinning ? '🎰 ĐANG QUAY VÒNG SỐ...' : '🎰 BẤM QUAY VÒNG MAY MẮN NGAY!'}
+                </button>
               </form>
             </div>
           ) : (
             <div className="gw-winner-box">
-              <span className="gw-winner-badge"> CHÚC MỪNG BẠN ĐÃ TRÚNG THƯỞNG</span>
+              <span className="gw-winner-badge">🏆 CHÚC MỪNG BẠN ĐÃ TRÚNG THƯỞNG</span>
               <h3 className="gw-winner-title">{wonResult?.prizeName}</h3>
-              <p style={{ color: '#e7e5e4', fontSize: '0.96rem', lineHeight: 1.5 }}>
+              <p className="gw-winner-msg">
                 {wonResult?.congratulationsMessage}
               </p>
 
@@ -723,8 +729,19 @@ export default function GiveawayLuckyWheelPage() {
                 </button>
               </div>
 
-              <p style={{ color: '#a8a29e', fontSize: '0.85rem' }}>
-                 {wonResult?.voucherExpiry || 'Hạn dùng: 30 ngày kể từ ngày nhận'}.
+              {/* Email Sent Confirmation Alert Card */}
+              <div className="gw-email-notice-card">
+                <div className="gw-email-notice-icon">✉️</div>
+                <div className="gw-email-notice-body">
+                  <div className="gw-email-notice-title">Đã gửi bằng chứng trúng thưởng về Gmail!</div>
+                  <div className="gw-email-notice-desc">
+                    Hệ thống đã tự động gửi thư xác nhận giải thưởng kèm mã voucher <strong>{wonResult?.prizeCode}</strong> đến địa chỉ <strong>{formData.email}</strong>. Quý khách vui lòng kiểm tra hộp thư (hoặc mục Spam/Quảng cáo) để lưu lại bằng chứng nhận thưởng nhé!
+                  </div>
+                </div>
+              </div>
+
+              <p className="gw-winner-expiry">
+                ⏳ {wonResult?.voucherExpiry || 'Hạn dùng: 30 ngày kể từ ngày nhận'}.
               </p>
 
               {/* Contact Button */}
@@ -739,26 +756,10 @@ export default function GiveawayLuckyWheelPage() {
               {/* Spin with another phone button */}
               <button
                 type="button"
-                style={{
-                  marginTop: '12px',
-                  width: '100%',
-                  padding: '12px 18px',
-                  borderRadius: '12px',
-                  border: '1px solid rgba(254, 240, 138, 0.4)',
-                  background: 'rgba(255, 255, 255, 0.08)',
-                  color: '#fef08a',
-                  fontWeight: 700,
-                  fontSize: '0.92rem',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  transition: 'all 0.2s ease',
-                }}
+                className="gw-btn-spin-again"
                 onClick={handleSpinAnotherPhone}
               >
-                <span>🔄 Quay Lượt Khác (Nhập Số Điện Thoại Mới)</span>
+                <span>🔄 Quay Lượt Khác (Nhập Số Điện Thoại & Gmail Mới)</span>
               </button>
             </div>
           )}
@@ -772,10 +773,10 @@ export default function GiveawayLuckyWheelPage() {
             <button type="button" className="gw-modal-close" onClick={() => setShowContactModal(false)}>
               &times;
             </button>
-            <h3 style={{ fontFamily: 'Playfair Display, serif', fontSize: '1.5rem', fontWeight: 800, color: '#fef08a', marginBottom: '8px' }}>
+            <h3 className="gw-modal-title">
               🍁 Liên Hệ Lá Đỏ Homestay Sa Pa
             </h3>
-            <p style={{ color: '#d6d3d1', fontSize: '0.92rem', marginBottom: '22px', lineHeight: 1.5 }}>
+            <p className="gw-modal-desc">
               Quý khách vui lòng cung cấp mã ưu đãi <strong>{wonResult?.prizeCode}</strong> để được nhân viên hỗ trợ giữ phòng và áp dụng giảm giá ngay!
             </p>
 
@@ -827,12 +828,12 @@ export default function GiveawayLuckyWheelPage() {
                   gap: '8px',
                   padding: '13px 18px',
                   borderRadius: '12px',
-                  background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+                  background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
                   color: '#ffffff',
                   fontWeight: 700,
                   fontSize: '1rem',
                   textDecoration: 'none',
-                  boxShadow: '0 4px 14px rgba(2, 132, 199, 0.4)',
+                  boxShadow: '0 4px 14px rgba(5, 150, 105, 0.4)',
                   transition: 'all 0.2s ease',
                 }}
               >
@@ -848,12 +849,12 @@ export default function GiveawayLuckyWheelPage() {
                   gap: '6px',
                   padding: '10px 14px',
                   borderRadius: '10px',
-                  background: 'rgba(255, 255, 255, 0.06)',
-                  color: '#38bdf8',
+                  background: 'rgba(255, 255, 255, 0.08)',
+                  color: '#fef08a',
                   fontSize: '0.9rem',
                   fontWeight: 600,
                   textDecoration: 'none',
-                  border: '1px solid rgba(56, 189, 248, 0.3)',
+                  border: '1px solid rgba(254, 240, 138, 0.3)',
                 }}
               >
                 <span> Xem Danh Sách Phòng & Giá Ưu Đãi &rarr;</span>

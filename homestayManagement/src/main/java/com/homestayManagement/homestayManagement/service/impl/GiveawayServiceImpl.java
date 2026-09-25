@@ -5,6 +5,7 @@ import com.homestayManagement.homestayManagement.entity.*;
 import com.homestayManagement.homestayManagement.repository.*;
 import com.homestayManagement.homestayManagement.service.GiveawayService;
 import com.homestayManagement.homestayManagement.service.MarketingSocialPublisher;
+import com.homestayManagement.homestayManagement.service.event.GiveawayPrizeEmailEvent;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PostConstruct;
@@ -13,6 +14,7 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -40,6 +42,7 @@ public class GiveawayServiceImpl implements GiveawayService {
     private final MarketingPostChannelRepository marketingPostChannelRepository;
     private final MarketingPostMediaRepository marketingPostMediaRepository;
     private final MarketingSocialPublisher marketingSocialPublisher;
+    private final ApplicationEventPublisher eventPublisher;
     private final SecureRandom secureRandom = new SecureRandom();
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -53,7 +56,8 @@ public class GiveawayServiceImpl implements GiveawayService {
             MarketingPostRepository marketingPostRepository,
             MarketingPostChannelRepository marketingPostChannelRepository,
             MarketingPostMediaRepository marketingPostMediaRepository,
-            MarketingSocialPublisher marketingSocialPublisher
+            MarketingSocialPublisher marketingSocialPublisher,
+            ApplicationEventPublisher eventPublisher
     ) {
         this.giveawayLeadRepository = giveawayLeadRepository;
         this.voucherRepository = voucherRepository;
@@ -62,6 +66,7 @@ public class GiveawayServiceImpl implements GiveawayService {
         this.marketingPostChannelRepository = marketingPostChannelRepository;
         this.marketingPostMediaRepository = marketingPostMediaRepository;
         this.marketingSocialPublisher = marketingSocialPublisher;
+        this.eventPublisher = eventPublisher;
     }
 
     private static final List<GiveawayConfigResponse.PrizeOption> DEFAULT_PRIZES = List.of(
@@ -260,6 +265,14 @@ public class GiveawayServiceImpl implements GiveawayService {
     public String registerSpin(GiveawayRegisterSpinRequest request, String ipAddress) {
         String cleanPhone = normalizePhone(request.getPhone());
 
+        if (request.getEmail() == null || request.getEmail().trim().isEmpty()) {
+            throw new IllegalArgumentException("Vui lòng nhập địa chỉ Gmail/Email để nhận thông báo và bằng chứng xác nhận phần thưởng.");
+        }
+        String cleanEmail = request.getEmail().trim().toLowerCase();
+        if (!cleanEmail.matches("^[\\w._%+-]+@[\\w.-]+\\.[A-Za-z]{2,64}$")) {
+            throw new IllegalArgumentException("Địa chỉ Gmail/Email không đúng định dạng (VD: example@gmail.com).");
+        }
+
         if (giveawayLeadRepository.existsByPhone(cleanPhone)) {
             throw new IllegalArgumentException("Số điện thoại này (" + cleanPhone + ") đã tham gia vòng quay may mắn trước đó! Mỗi số điện thoại chỉ được quay 1 lần duy nhất. Vui lòng nhập số điện thoại mới để nhận lượt quay tiếp theo.");
         }
@@ -269,7 +282,7 @@ public class GiveawayServiceImpl implements GiveawayService {
         GiveawayLead lead = GiveawayLead.builder()
                 .fullName(request.getFullName().trim())
                 .phone(cleanPhone)
-                .email(request.getEmail() != null ? request.getEmail().trim() : null)
+                .email(cleanEmail)
                 .travelPlan(request.getTravelPlan())
                 .notes(request.getNotes())
                 .prizeName("Đang chờ quay...")
@@ -319,6 +332,7 @@ public class GiveawayServiceImpl implements GiveawayService {
         String prefix = wonPrize.getCodePrefix() != null && !wonPrize.getCodePrefix().isEmpty() ? wonPrize.getCodePrefix() : "LADO";
         String randomSuffix = UUID.randomUUID().toString().substring(0, 4).toUpperCase();
         String prizeCode = prefix + "-" + randomSuffix;
+        LocalDateTime expiryDate = LocalDateTime.now().plusDays(30);
 
         // Tự động tạo Voucher thực tế trong DB để khách có thể áp dụng khi đặt phòng trực tuyến
         try {
@@ -348,7 +362,7 @@ public class GiveawayServiceImpl implements GiveawayService {
                     .minOrderValue(minOrder)
                     .maxDiscountAmount(maxDiscount)
                     .startDate(LocalDateTime.now())
-                    .endDate(LocalDateTime.now().plusDays(30))
+                    .endDate(expiryDate)
                     .usageLimit(1)
                     .usedCount(0)
                     .build();
@@ -368,6 +382,24 @@ public class GiveawayServiceImpl implements GiveawayService {
         String congratsMsg = wonPrize.getDiscountPercent() >= 50
                 ? "CHÚC MỪNG BẠN ĐÃ TRÚNG ĐỈNH CHÓP: Chuyến đi giảm giá 50% tại Lá Đỏ Homestay Sa Pa!"
                 : "Chúc mừng bạn đã trúng: " + wonPrize.getName() + "!";
+
+        // Gửi thông báo và bằng chứng nhận thưởng tới email/gmail của khách hàng
+        if (lead.getEmail() != null && !lead.getEmail().isBlank()) {
+            try {
+                eventPublisher.publishEvent(new GiveawayPrizeEmailEvent(
+                        lead.getEmail().trim(),
+                        lead.getFullName(),
+                        lead.getPhone(),
+                        wonPrize.getName(),
+                        prizeCode,
+                        wonPrize.getDiscountPercent(),
+                        expiryDate,
+                        congratsMsg
+                ));
+            } catch (Exception e) {
+                log.error("Không thể phát sự kiện gửi email xác nhận giải thưởng cho {}: {}", lead.getEmail(), e.getMessage());
+            }
+        }
 
         return GiveawaySpinResponse.builder()
                 .targetIndex(targetIndex)

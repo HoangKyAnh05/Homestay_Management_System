@@ -168,7 +168,9 @@ public class AdminUserServiceImpl implements AdminUserService {
                 account.getRole().getId(),
                 account.isActive(),
                 true,
-                account.getCreatedAt()
+                account.getCreatedAt(),
+                detail != null ? detail.getDateOfBirth() : null,
+                detail != null ? detail.getAddress() : employee != null ? employee.getAddress() : null
         );
     }
 

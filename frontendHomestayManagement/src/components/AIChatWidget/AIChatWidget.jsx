@@ -60,7 +60,7 @@ function generateSmartAssistantResponse(query, history = []) {
   }
 
   if (q.includes('voucher') || q.includes('khuyến mãi') || q.includes('giam gia') || q.includes('giảm giá') || q.includes('minigame') || q.includes('giveaway') || q.includes('marketing')) {
-    return `🎁 **HƯỚNG DẪN MARKETING & QUẢN LÝ VOUCHER KHUYẾN MÃI:**\n\n1. **Tạo Voucher mới:**\n   - Vào menu **Marketing & AI Agent** > **Mã giảm giá (Vouchers)**.\n   - Bấm **Tạo Voucher Mới**, nhập mã (VD: \`LADO50\`, \`MUASANMAY\`), chọn giảm theo % hoặc số tiền cố định, đặt ngày hết hạn.\n\n2. **Vòng Quay May Mắn (Giveaway):**\n   - Khách hàng tham gia quay thưởng tại link \`/giveaway\`.\n   - Tất cả thông tin khách trúng thưởng sẽ được lưu tự động tại mục **Khách hàng tiềm năng & Minigame**.\n   - Lễ tân/Sale có thể bấm trực tiếp nút **Zalo**, **Gọi** để tư vấn chốt phòng cho khách.`
+    return `🎁 **HƯỚNG DẪN MARKETING & QUẢN LÝ VOUCHER KHUYẾN MÃI:**\n\n1. **Tạo Voucher mới:**\n   - Vào menu **Marketing** > **Mã giảm giá (Vouchers)**.\n   - Bấm **Tạo Voucher Mới**, nhập mã (VD: \`LADO50\`, \`MUASANMAY\`), chọn giảm theo % hoặc số tiền cố định, đặt ngày hết hạn.\n\n2. **Vòng Quay May Mắn (Giveaway):**\n   - Khách hàng tham gia quay thưởng tại link \`/giveaway\`.\n   - Tất cả thông tin khách trúng thưởng sẽ được lưu tự động tại mục **Khách hàng tiềm năng & Minigame**.\n   - Lễ tân/Sale có thể bấm trực tiếp nút **Zalo**, **Gọi** để tư vấn chốt phòng cho khách.`
   }
 
   if (q.includes('dọn phòng') || q.includes('buồng') || q.includes('housekeeping') || q.includes('vệ sinh') || q.includes('checklist')) {
@@ -76,7 +76,7 @@ function generateSmartAssistantResponse(query, history = []) {
   }
 
   // General helpful contextual assistant response
-  return `Chào Quản trị viên, tôi đã phân tích yêu cầu của bạn: **"${query}"**.\n\nĐể hỗ trợ bạn tốt nhất, bạn có thể thực hiện theo các bước sau:\n- Nếu liên quan đến **đơn đặt phòng hoặc khách hàng**: Vui lòng tra cứu tại mục **Quản lý Đặt & Trả phòng** hoặc **Quản lý Hóa đơn**.\n- Nếu liên quan đến **buồng phòng và kiểm tra phòng**: Tra cứu tại mục **Quản lý Housekeeping**.\n- Nếu liên quan đến **chương trình ưu đãi**: Tra cứu tại mục **Marketing & AI Agent**.\n\nNếu bạn muốn tôi soạn thảo nội dung bài đăng, viết tin nhắn chăm sóc khách hàng hoặc giải thích chính sách cụ thể, hãy cho tôi biết chi tiết nhé!`
+  return `Chào Quản trị viên, tôi đã phân tích yêu cầu của bạn: **"${query}"**.\n\nĐể hỗ trợ bạn tốt nhất, bạn có thể thực hiện theo các bước sau:\n- Nếu liên quan đến **đơn đặt phòng hoặc khách hàng**: Vui lòng tra cứu tại mục **Quản lý Đặt & Trả phòng** hoặc **Quản lý Hóa đơn**.\n- Nếu liên quan đến **buồng phòng và kiểm tra phòng**: Tra cứu tại mục **Quản lý Housekeeping**.\n- Nếu liên quan đến **chương trình ưu đãi**: Tra cứu tại mục **Marketing**.\n\nNếu bạn muốn tôi soạn thảo nội dung bài đăng, viết tin nhắn chăm sóc khách hàng hoặc giải thích chính sách cụ thể, hãy cho tôi biết chi tiết nhé!`
 }
 
 async function callAIChat(prompt, chatHistory = [], customKey = '') {

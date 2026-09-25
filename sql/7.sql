@@ -327,30 +327,32 @@ ON DUPLICATE KEY UPDATE
 -- ============================================================
 -- 13. facility_services
 -- ============================================================
-INSERT INTO facility_services (id, name, price, is_active) VALUES
-(1, 'Vé bể bơi', 80000.00, TRUE),
-(2, 'Vé phòng gym', 60000.00, TRUE),
-(3, 'Sử dụng sân BBQ', 200000.00, TRUE),
-(4, 'Bữa sáng buffet', 120000.00, TRUE),
-(5, 'Dọn phòng thêm trong ngày', 70000.00, TRUE)
+INSERT INTO facility_services (id, name, price, is_active, image_url) VALUES
+(1, 'Vé bể bơi', 80000.00, TRUE, 'https://images.unsplash.com/photo-1576013551627-0cc20b96c2a7?auto=format&fit=crop&w=800&q=80'),
+(2, 'Vé phòng gym', 60000.00, TRUE, 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=800&q=80'),
+(3, 'Sử dụng sân BBQ', 200000.00, TRUE, 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=800&q=80'),
+(4, 'Bữa sáng buffet', 120000.00, TRUE, 'https://images.unsplash.com/photo-1533089860892-a7c6f0a88666?auto=format&fit=crop&w=800&q=80'),
+(5, 'Dọn phòng thêm trong ngày', 70000.00, TRUE, 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=800&q=80')
 ON DUPLICATE KEY UPDATE
     name = VALUES(name),
     price = VALUES(price),
-    is_active = VALUES(is_active);
+    is_active = VALUES(is_active),
+    image_url = VALUES(image_url);
 
 -- ============================================================
 -- 14. inventory_services
 -- ============================================================
-INSERT INTO inventory_services (id, name, price, quantity_in_stock) VALUES
-(1, 'Thuê xe đạp', 50000.00, 12),
-(2, 'Thuê xe máy', 150000.00, 6),
-(3, 'Giặt ủi theo kg', 30000.00, 100),
-(4, 'Thuê bếp nướng mini', 100000.00, 4),
-(5, 'Thuê áo phao trẻ em', 40000.00, 20)
+INSERT INTO inventory_services (id, name, price, quantity_in_stock, image_url) VALUES
+(1, 'Thuê xe đạp', 50000.00, 12, 'https://images.unsplash.com/photo-1485965120184-e220f721d03e?auto=format&fit=crop&w=800&q=80'),
+(2, 'Thuê xe máy', 150000.00, 6, 'https://images.unsplash.com/photo-1558981403-c5f9899a28bc?auto=format&fit=crop&w=800&q=80'),
+(3, 'Giặt ủi theo kg', 30000.00, 100, 'https://images.unsplash.com/photo-1545173168-9f1947eebb7f?auto=format&fit=crop&w=800&q=80'),
+(4, 'Thuê bếp nướng mini', 100000.00, 4, 'https://images.unsplash.com/photo-1529193591184-b1d58069ecdd?auto=format&fit=crop&w=800&q=80'),
+(5, 'Thuê áo phao trẻ em', 40000.00, 20, 'https://images.unsplash.com/photo-1563245372-f21724e3856d?auto=format&fit=crop&w=800&q=80')
 ON DUPLICATE KEY UPDATE
     name = VALUES(name),
     price = VALUES(price),
-    quantity_in_stock = VALUES(quantity_in_stock);
+    quantity_in_stock = VALUES(quantity_in_stock),
+    image_url = VALUES(image_url);
 
 -- ============================================================
 -- 15. room_mini_bar_items

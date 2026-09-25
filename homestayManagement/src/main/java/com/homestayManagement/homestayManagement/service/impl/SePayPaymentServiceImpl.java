@@ -279,6 +279,43 @@ public class SePayPaymentServiceImpl implements SePayPaymentService {
         return toResponse(booking, payment, transferContent);
     }
 
+    @Override
+    @Transactional
+    public SePayPaymentResponse createServicePayment(Long bookingId, Long bookingDetailId, BigDecimal amount) {
+        validatePaymentConfiguration();
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Chi phí dịch vụ phải lớn hơn 0");
+        }
+        Booking booking = bookingRepository.findByIdForPaymentUpdate(bookingId)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy booking"));
+        Invoice invoice = invoiceRepository.findByBookingIdForAdmin(bookingId)
+                .orElseThrow(() -> new IllegalArgumentException("Chưa tạo hóa đơn cho booking"));
+
+        BookingDetail bookingDetail = null;
+        if (bookingDetailId != null) {
+            bookingDetail = bookingDetailRepository.findById(bookingDetailId)
+                    .filter(detail -> detail.getBooking() != null && bookingId.equals(detail.getBooking().getId()))
+                    .orElse(null);
+        }
+
+        Payment payment = paymentRepository.save(Payment.builder()
+                .invoice(invoice)
+                .bookingDetail(bookingDetail)
+                .paymentMethod("SEPAY")
+                .paymentPurpose("SERVICE")
+                .amount(amount)
+                .status("PENDING")
+                .build());
+        payment.setPaymentCode(normalizedPaymentCodePrefix() + payment.getId());
+
+        String transferContent = transferPrefix.trim() + payment.getPaymentCode();
+        payment.setBookingDetail(bookingDetail);
+        payment.setAmount(amount);
+        payment.setQrCodeUrl(buildQrCodeUrl(amount, transferContent));
+        payment = paymentRepository.save(payment);
+        return toResponse(booking, payment, transferContent);
+    }
+
     private boolean sameAmount(BigDecimal first, BigDecimal second) {
         return first != null && second != null && first.compareTo(second) == 0;
     }
@@ -347,6 +384,8 @@ public class SePayPaymentServiceImpl implements SePayPaymentService {
 
         if ("CHECKOUT".equalsIgnoreCase(payment.getPaymentPurpose())) {
             completeCheckout(booking, payment.getBookingDetail());
+        } else if ("SERVICE".equalsIgnoreCase(payment.getPaymentPurpose())) {
+            // Thanh toán dịch vụ phát sinh trực tiếp: không thay đổi trạng thái booking CHECKED_IN
         } else {
             booking.setStatus("CONFIRMED");
             booking.setPaymentHoldExpiresAt(null);
@@ -912,6 +951,8 @@ public class SePayPaymentServiceImpl implements SePayPaymentService {
 
         if ("CHECKOUT".equalsIgnoreCase(payment.getPaymentPurpose())) {
             completeCheckout(booking, payment.getBookingDetail());
+        } else if ("SERVICE".equalsIgnoreCase(payment.getPaymentPurpose())) {
+            // Thanh toán dịch vụ phát sinh trực tiếp: không thay đổi trạng thái booking CHECKED_IN
         } else {
             booking.setStatus("CONFIRMED");
             booking.setPaymentHoldExpiresAt(null);

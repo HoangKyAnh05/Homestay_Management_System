@@ -193,6 +193,25 @@ function roomPrice(room, targetDate) {
   return 0
 }
 
+function roomWeekdayPrice(room) {
+  if (!room) return 0
+  if (room.weekdayPrice != null && Number(room.weekdayPrice) > 0) {
+    return Number(room.weekdayPrice)
+  }
+  if (Array.isArray(room.prices) && room.prices.length > 0) {
+    const weekdayItem = room.prices.find(
+      (p) => String(p.dayType || '').toUpperCase() === 'WEEKDAY' && Number(p.price) > 0
+    )
+    if (weekdayItem) return Number(weekdayItem.price)
+  }
+  if (room.price != null && Number(room.price) > 0) return Number(room.price)
+  if (Array.isArray(room.prices) && room.prices.length > 0) {
+    const validPrices = room.prices.map((p) => Number(p.price || 0)).filter((p) => p > 0)
+    if (validPrices.length > 0) return Math.min(...validPrices)
+  }
+  return 0
+}
+
 function toDateTimeLocal(date = new Date()) {
   const value = new Date(date)
   const year = value.getFullYear()
@@ -1899,9 +1918,15 @@ export function MultiBookingModal({ selectedRooms, criteria, onClose, onCreated 
                       {(() => {
                         const sched = roomSchedules.find((item) => roomKey(item.room) === roomKey(room))
                         const hasConflict = sched && findOverlappingSlot(sched.busySlots, form.checkInTarget, form.checkOutTarget)
+                        const isMaint = String(room.status || '').toUpperCase() === 'MAINTENANCE' ||
+                          (sched?.busySlots || []).some(s => s.status === 'MAINTENANCE' && s.id === -1)
                         return (
                           <>
-                            {hasConflict ? (
+                            {isMaint ? (
+                              <span style={{ fontSize: 11, background: '#fee2e2', color: '#dc2626', padding: '2px 8px', borderRadius: 4, fontWeight: 600 }}>
+                                🛠️ Đang bảo trì
+                              </span>
+                            ) : hasConflict ? (
                               <span style={{ fontSize: 11, background: '#fee2e2', color: '#dc2626', padding: '2px 8px', borderRadius: 4, fontWeight: 600 }}>
                                 ️ Đã kín lịch khung giờ này
                               </span>
@@ -2297,19 +2322,32 @@ function RoomsPage() {
   const [sidebarDates, setSidebarDates] = useState({
     checkInDate: initialCriteria?.checkInDate || '',
     checkOutDate: initialCriteria?.checkOutDate || '',
-    rooms: Number(initialCriteria?.rooms || 1),
-    adults: Number(initialCriteria?.adults || 2),
-    children: Number(initialCriteria?.children || 0),
+    rooms: Math.max(1, Number(initialCriteria?.rooms || 1)),
+    adults: Math.max(1, Number(initialCriteria?.adults || 1)),
+    children: Math.max(0, Number(initialCriteria?.children || 0)),
   })
   const [rooms, setRooms] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [maxPrice, setMaxPrice] = useState(10000000)
+  const [maxPrice, setMaxPrice] = useState(Infinity)
   const [selectedRooms, setSelectedRooms] = useState(() => readBookingCart())
   const [bookingModalOpen, setBookingModalOpen] = useState(false)
   const [createdBooking, setCreatedBooking] = useState(null)
   const [luckyReward, setLuckyReward] = useState(null)
   const [unavailableNotice, setUnavailableNotice] = useState('')
+
+  // Sync sidebar state when searchCriteria updates
+  useEffect(() => {
+    if (searchCriteria) {
+      setSidebarDates({
+        checkInDate: searchCriteria.checkInDate || '',
+        checkOutDate: searchCriteria.checkOutDate || '',
+        rooms: Math.max(1, Number(searchCriteria.rooms || 1)),
+        adults: Math.max(1, Number(searchCriteria.adults || 1)),
+        children: Math.max(0, Number(searchCriteria.children || 0)),
+      })
+    }
+  }, [searchCriteria])
 
   const handleSidebarSearch = () => {
     if (!sidebarDates.checkInDate || !sidebarDates.checkOutDate) {
@@ -2323,9 +2361,9 @@ function RoomsPage() {
     const nextCriteria = {
       checkInDate: sidebarDates.checkInDate,
       checkOutDate: sidebarDates.checkOutDate,
-      rooms: sidebarDates.rooms || 1,
-      adults: sidebarDates.adults || 1,
-      children: sidebarDates.children || 0,
+      rooms: Math.max(1, Number(sidebarDates.rooms) || 1),
+      adults: Math.max(1, Number(sidebarDates.adults) || 1),
+      children: Math.max(0, Number(sidebarDates.children) || 0),
       isDefaultRoomTypeList: false,
     }
     setSearchCriteria(nextCriteria)
@@ -2345,10 +2383,11 @@ function RoomsPage() {
       checkInDate: '',
       checkOutDate: '',
       rooms: 1,
-      adults: 2,
+      adults: 1,
       children: 0,
     })
     setSearchCriteria(defaultCrit)
+    setMaxPrice(Infinity)
     window.history.replaceState(null, '', window.location.pathname)
   }
 
@@ -2385,9 +2424,6 @@ function RoomsPage() {
             setUnavailableNotice(`️ ${targetName} hiện đã hết phòng hoặc đang bảo trì ${dateRange}. Dưới đây là các hạng phòng còn trống khác để bạn lựa chọn:`)
           }
         }
-
-        const highest = Math.max(...allRooms.map((room) => roomPrice(room, searchCriteria?.checkInDate)), 0)
-        setMaxPrice(Math.max(highest, 100000))
       })
       .catch(() => setError('Không thể tải danh sách phòng.'))
       .finally(() => setLoading(false))
@@ -2413,24 +2449,24 @@ function RoomsPage() {
     writeBookingCart(selectedRooms)
   }, [selectedRooms])
 
-  const visibleRooms = useMemo(() => {
-    return rooms
-      .filter((room) => {
-        if (!isRoomSelectable(room)) return false
-        const price = roomPrice(room, searchCriteria?.checkInDate)
-        const matchesPrice = price <= maxPrice
-        return matchesPrice
-      })
-      .sort((a, b) => roomPrice(a, searchCriteria?.checkInDate) - roomPrice(b, searchCriteria?.checkInDate))
-  }, [rooms, maxPrice, searchCriteria])
-
   const highestPrice = useMemo(() => {
-    const validPrices = rooms.map(room => roomPrice(room, searchCriteria?.checkInDate)).filter(p => p > 0)
+    const validPrices = rooms.map((room) => roomWeekdayPrice(room)).filter((p) => p > 0)
     const max = validPrices.length > 0 ? Math.max(...validPrices) : 0
     if (max <= 0) return 5000000
     const rounded = Math.ceil(max / 1000000) * 1000000
     return Math.max(rounded, 5000000)
-  }, [rooms, searchCriteria])
+  }, [rooms])
+
+  const visibleRooms = useMemo(() => {
+    return rooms
+      .filter((room) => {
+        if (!isRoomSelectable(room)) return false
+        const filterPrice = roomWeekdayPrice(room)
+        const matchesPrice = maxPrice >= highestPrice || filterPrice <= maxPrice
+        return matchesPrice
+      })
+      .sort((a, b) => roomWeekdayPrice(a) - roomWeekdayPrice(b))
+  }, [rooms, maxPrice, highestPrice])
 
   const requestedRooms = searchCriteria?.rooms || Math.max(1, selectedRooms.length || 1)
   const selectedRoomIds = useMemo(() => new Set(selectedRooms.filter(isRoomSelectable).map(roomKey)), [selectedRooms])
@@ -2523,8 +2559,8 @@ function RoomsPage() {
                   />
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: 2 }}>
-                  <label style={{ display: 'flex', flexDirection: 'column', gap: 4, minHeight: 'auto', padding: '6px 10px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px', marginTop: 2 }}>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: 4, minHeight: 'auto', padding: '6px 8px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8 }}>
                     <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 600 }}>Số phòng</span>
                     <input
                       type="number"
@@ -2532,17 +2568,27 @@ function RoomsPage() {
                       max="10"
                       value={sidebarDates.rooms}
                       onChange={(e) => setSidebarDates((prev) => ({ ...prev, rooms: Math.max(1, Number(e.target.value) || 1) }))}
-                      style={{ fontSize: '13px', fontWeight: 700, padding: 0 }}
+                      style={{ fontSize: '13px', fontWeight: 700, padding: 0, width: '100%', border: 'none', background: 'transparent' }}
                     />
                   </label>
-                  <label style={{ display: 'flex', flexDirection: 'column', gap: 4, minHeight: 'auto', padding: '6px 10px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8 }}>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: 4, minHeight: 'auto', padding: '6px 8px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8 }}>
                     <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 600 }}>Người lớn</span>
                     <input
                       type="number"
                       min="1"
                       value={sidebarDates.adults}
                       onChange={(e) => setSidebarDates((prev) => ({ ...prev, adults: Math.max(1, Number(e.target.value) || 1) }))}
-                      style={{ fontSize: '13px', fontWeight: 700, padding: 0 }}
+                      style={{ fontSize: '13px', fontWeight: 700, padding: 0, width: '100%', border: 'none', background: 'transparent' }}
+                    />
+                  </label>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: 4, minHeight: 'auto', padding: '6px 8px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8 }}>
+                    <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 600 }}>Trẻ em</span>
+                    <input
+                      type="number"
+                      min="0"
+                      value={sidebarDates.children}
+                      onChange={(e) => setSidebarDates((prev) => ({ ...prev, children: Math.max(0, Number(e.target.value) || 0) }))}
+                      style={{ fontSize: '13px', fontWeight: 700, padding: 0, width: '100%', border: 'none', background: 'transparent' }}
                     />
                   </label>
                 </div>
@@ -2596,22 +2642,23 @@ function RoomsPage() {
                   <span style={{ fontSize: '13px', fontWeight: 600 }}>
                     {maxPrice >= highestPrice ? 'Tất cả mức giá' : `Tối đa: ${formatPrice(maxPrice)}`}
                   </span>
+                  <span style={{ fontSize: '11px', color: '#64748b' }}>(Giá ngày thường)</span>
                 </div>
 
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', margin: '2px 0 8px' }}>
                   {[
-                    { label: 'Tất cả', value: highestPrice },
+                    { label: 'Tất cả', value: Infinity },
                     { label: '≤ 1tr', value: 1000000 },
                     { label: '≤ 2tr', value: 2000000 },
                     { label: '≤ 3tr', value: 3000000 },
                     { label: '≤ 5tr', value: 5000000 },
                   ].map((preset) => {
-                    const isActive = preset.value === highestPrice ? maxPrice >= highestPrice : maxPrice === preset.value
+                    const isActive = preset.value === Infinity ? maxPrice >= highestPrice : maxPrice === preset.value
                     return (
                       <button
                         key={preset.label}
                         type="button"
-                        onClick={() => setMaxPrice(preset.value)}
+                        onClick={() => setMaxPrice(preset.value === Infinity ? highestPrice : preset.value)}
                         style={{
                           padding: '4px 8px',
                           borderRadius: '8px',
@@ -2634,7 +2681,7 @@ function RoomsPage() {
                   min="0"
                   max={highestPrice}
                   step="500000"
-                  value={Math.min(maxPrice, highestPrice)}
+                  value={maxPrice >= highestPrice ? highestPrice : maxPrice}
                   onChange={(event) => setMaxPrice(Number(event.target.value))}
                 />
                 <div className="search-filter-range" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#64748b', marginTop: '2px' }}>

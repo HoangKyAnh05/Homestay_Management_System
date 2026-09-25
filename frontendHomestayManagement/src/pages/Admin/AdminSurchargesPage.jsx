@@ -226,8 +226,8 @@ function AdminSurchargesPage() {
     <AdminLayout activePage="surcharges">
       <div className="asc-header">
         <div>
-          <h1>Phụ phí Mini-bar</h1>
-          <p>Quản lý thực phẩm đặt sẵn ở phòng và số lượng tồn kho tổng.</p>
+          <h1>Mini-bar</h1>
+          <p>Quản lý đồ uống, thực phẩm đặt sẵn ở phòng và số lượng tồn kho tổng.</p>
         </div>
         <button type="button" className="asc-btn asc-btn--primary" onClick={() => { setEditItem(null); setModalOpen(true) }}>
           + Thêm mặt hàng
@@ -255,7 +255,7 @@ function AdminSurchargesPage() {
               <tr>
                 <th style={{ width: 72 }}>Ảnh</th>
                 <th>Tên mặt hàng</th>
-                <th>Giá bán/phụ phí</th>
+                <th>Giá bán</th>
                 <th>Tồn kho tổng</th>
                 <th></th>
               </tr>

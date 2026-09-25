@@ -221,14 +221,20 @@ function TaskDetail({ task, busy, onStart, onSubmitInspection, onCompleteCleanin
 
   const changeQuantity = (item, delta) => {
     if (inspectionDone) return
+    const minAllowed = Number(item.quantityUsed || 0)
     setQuantities(current => {
-      const next = Math.max(0, Math.min(item.quantityInStock, Number(current[item.itemId] || 0) + delta))
+      const currentVal = Number(current[item.itemId] || 0)
+      const next = Math.max(minAllowed, Math.min(item.quantityInStock, currentVal + delta))
       return { ...current, [item.itemId]: next }
     })
   }
 
   const submitInspection = () => onSubmitInspection({
-    items: task.miniBarItems.map(item => ({ itemId: item.itemId, quantityUsed: Number(quantities[item.itemId] || 0) })),
+    items: task.miniBarItems.map(item => {
+      const minAllowed = Number(item.quantityUsed || 0)
+      const selectedQty = Number(quantities[item.itemId] || 0)
+      return { itemId: item.itemId, quantityUsed: Math.max(minAllowed, selectedQty) }
+    }),
     penaltyRuleIds: task.penaltyItems.filter(item => penaltySelections[item.ruleId]).map(item => item.ruleId),
     note,
   })
@@ -295,36 +301,74 @@ function TaskDetail({ task, busy, onStart, onSubmitInspection, onCompleteCleanin
             <div className="hk-items">
               {task.miniBarItems.length === 0 ? (
                 <div className="hk-no-items">Chưa có mặt hàng mini-bar trong danh mục phòng.</div>
-              ) : task.miniBarItems.map(item => (
-                <div className="hk-item" key={item.itemId}>
-                  <div className="hk-item__icon">{item.name?.charAt(0)?.toUpperCase()}</div>
-                  <div className="hk-item__name">
-                    <strong>{item.name}</strong>
-                    <span>{money(item.unitPrice)} / sản phẩm</span>
-                    <small style={{ color: '#64748b', display: 'block', fontSize: '11.5px', marginTop: '2px' }}>
-                      Có sẵn trong kho: {item.quantityInStock}
-                    </small>
+              ) : task.miniBarItems.map(item => {
+                const recordedQty = Number(item.quantityUsed || 0)
+                const currentQty = Number(quantities[item.itemId] || 0)
+                const isMinReached = currentQty <= recordedQty
+                const baseStock = Number(item.quantityInStock || 0)
+                const additionalUsed = Math.max(0, currentQty - recordedQty)
+                const remainingStock = Math.max(0, baseStock - additionalUsed)
+
+                return (
+                  <div className="hk-item" key={item.itemId}>
+                    <div className="hk-item__icon">{item.name?.charAt(0)?.toUpperCase()}</div>
+                    <div className="hk-item__name">
+                      <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '6px' }}>
+                        <strong>{item.name}</strong>
+                        {recordedQty > 0 && (
+                          <span style={{
+                            fontSize: '11px',
+                            fontWeight: '600',
+                            padding: '1px 6px',
+                            borderRadius: '4px',
+                            backgroundColor: '#e0f2fe',
+                            color: '#0369a1',
+                            border: '1px solid #bae6fd',
+                            whiteSpace: 'nowrap'
+                          }}>
+                            Đã book: {recordedQty} (chỉ tăng)
+                          </span>
+                        )}
+                      </div>
+                      <span>{money(item.unitPrice)} / sản phẩm</span>
+                      <small style={{
+                        color: remainingStock === 0 ? '#ef4444' : '#64748b',
+                        display: 'block',
+                        fontSize: '11.5px',
+                        marginTop: '2px',
+                        fontWeight: remainingStock === 0 ? 600 : 400
+                      }}>
+                        Có sẵn trong kho: {remainingStock}
+                        {additionalUsed > 0 && (
+                          <span style={{ color: '#059669', marginLeft: 4, fontWeight: 600 }}>
+                            (-{additionalUsed})
+                          </span>
+                        )}
+                      </small>
+                    </div>
+                    <div className="hk-stepper">
+                      <button
+                        type="button"
+                        disabled={inspectionDone || busy || isMinReached}
+                        onClick={() => changeQuantity(item, -1)}
+                        title={isMinReached && recordedQty > 0 ? "Dịch vụ/nước đã ghi nhận trước, không thể giảm" : "Giảm"}
+                      >
+                        −
+                      </button>
+                      <b>{currentQty}</b>
+                      <button
+                        type="button"
+                        disabled={inspectionDone || busy || remainingStock <= 0}
+                        onClick={() => changeQuantity(item, 1)}
+                        title={remainingStock <= 0 ? "Hết hàng trong kho" : "Tăng"}
+                      >
+                        +
+                      </button>
+                    </div>
+                    <strong className="hk-item__total">{money(Number(item.unitPrice) * currentQty)}</strong>
                   </div>
-                  <div className="hk-stepper">
-                    <button
-                      type="button"
-                      disabled={inspectionDone || busy || (quantities[item.itemId] || 0) <= 0}
-                      onClick={() => changeQuantity(item, -1)}
-                    >
-                      −
-                    </button>
-                    <b>{quantities[item.itemId] || 0}</b>
-                    <button
-                      type="button"
-                      disabled={inspectionDone || busy || (quantities[item.itemId] || 0) >= item.quantityInStock}
-                      onClick={() => changeQuantity(item, 1)}
-                    >
-                      +
-                    </button>
-                  </div>
-                  <strong className="hk-item__total">{money(Number(item.unitPrice) * Number(quantities[item.itemId] || 0))}</strong>
-                </div>
-              ))}
+                )
+              })}
             </div>
           </section>
 
@@ -367,48 +411,50 @@ function TaskDetail({ task, busy, onStart, onSubmitInspection, onCompleteCleanin
             </button>
           </div>
 
-          <section className="hk-cleaning-checklist">
-            <div className="hk-checklist-head">
-              <div>
-                <span>TIÊU CHUẨN VỆ SINH</span>
-                <h3>Checklist hoàn thiện phòng</h3>
-                <p>Hoàn thành đầy đủ các mục bắt buộc trước khi chuyển phòng sang sẵn sàng.</p>
+          {inspectionDone && (
+            <section className="hk-cleaning-checklist">
+              <div className="hk-checklist-head">
+                <div>
+                  <span>TIÊU CHUẨN VỆ SINH</span>
+                  <h3>Checklist hoàn thiện phòng</h3>
+                  <p>Hoàn thành đầy đủ các mục bắt buộc trước khi chuyển phòng sang sẵn sàng.</p>
+                </div>
+                <div className="hk-checklist-progress">
+                  <strong>{completedChecklistCount}/{checklistItems.length}</strong>
+                  <span>đã hoàn thành</span>
+                </div>
               </div>
-              <div className="hk-checklist-progress">
-                <strong>{completedChecklistCount}/{checklistItems.length}</strong>
-                <span>đã hoàn thành</span>
-              </div>
-            </div>
 
-            {checklistItems.length === 0 ? (
-              <div className="hk-checklist-empty">Phòng này chưa được cấu hình checklist vệ sinh.</div>
-            ) : (
-              <div className="hk-checklist-items">
-                {checklistItems.map(item => {
-                  const checked = Boolean(checklistSelections[item.id])
-                  return (
-                    <label className={`hk-checklist-item${checked ? ' is-completed' : ''}`} key={item.id}>
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        disabled={cleaningDone || busy}
-                        onChange={event => setChecklistSelections(current => ({ ...current, [item.id]: event.target.checked }))}
-                      />
-                      <span className="hk-checklist-box">✓</span>
-                      <span className="hk-checklist-copy">
-                        <strong>{item.title}</strong>
-                        {item.description && <small>{item.description}</small>}
-                        {item.completedAt && <small>Hoàn thành bởi {item.completedByName || 'nhân viên'} · {time(item.completedAt)}</small>}
-                      </span>
-                      <span className={`hk-checklist-requirement${item.required ? ' is-required' : ''}`}>
-                        {item.required ? 'Bắt buộc' : 'Tùy chọn'}
-                      </span>
-                    </label>
-                  )
-                })}
-              </div>
-            )}
-          </section>
+              {checklistItems.length === 0 ? (
+                <div className="hk-checklist-empty">Phòng này chưa được cấu hình checklist vệ sinh.</div>
+              ) : (
+                <div className="hk-checklist-items">
+                  {checklistItems.map(item => {
+                    const checked = Boolean(checklistSelections[item.id])
+                    return (
+                      <label className={`hk-checklist-item${checked ? ' is-completed' : ''}`} key={item.id}>
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          disabled={cleaningDone || busy}
+                          onChange={event => setChecklistSelections(current => ({ ...current, [item.id]: event.target.checked }))}
+                        />
+                        <span className="hk-checklist-box">✓</span>
+                        <span className="hk-checklist-copy">
+                          <strong>{item.title}</strong>
+                          {item.description && <small>{item.description}</small>}
+                          {item.completedAt && <small>Hoàn thành bởi {item.completedByName || 'nhân viên'} · {time(item.completedAt)}</small>}
+                        </span>
+                        <span className={`hk-checklist-requirement${item.required ? ' is-required' : ''}`}>
+                          {item.required ? 'Bắt buộc' : 'Tùy chọn'}
+                        </span>
+                      </label>
+                    )
+                  })}
+                </div>
+              )}
+            </section>
+          )}
 
           <div className="hk-summary">
             <div className="hk-summary-lines">

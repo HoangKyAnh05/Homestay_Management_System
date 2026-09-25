@@ -9,6 +9,10 @@ public record AdminBookingAddMiniBarRequest(
 
         @NotNull(message = "Vui lòng nhập số lượng")
         @Min(value = 1, message = "Số lượng phải lớn hơn 0")
-        Integer quantity
+        Integer quantity,
+
+        Boolean paidNow,
+
+        String paymentMethod
 ) {
 }

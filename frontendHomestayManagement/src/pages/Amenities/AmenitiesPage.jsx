@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { getStoredToken, getStoredUser, logout } from '../../services/authService'
 import { houseTypeName } from '../../utils/houseType'
 import { resolveImageUrl } from '../../utils/imageUrl'
+import SePayQrPayment from '../../components/SePayQrPayment/SePayQrPayment'
 import '../Home/HomePage.css'
 import './AmenitiesPage.css'
 
@@ -121,18 +122,49 @@ const amenities = [
 ]
 
 const API_BASE_URL = (import.meta.env.VITE_API_URL || '') + '/api'
-const PENDING_SERVICE_KEY = 'homeStayPendingAmenityService'
-
 // ── Đọc ảnh dịch vụ từ API response (field imageUrl) ───────────────
 const BACKEND = (import.meta.env.VITE_API_URL || '') + ''
-const DEFAULT_SERVICE_IMAGE = '/img.png'
+const DEFAULT_SERVICE_IMAGE = '/home_1/image_2.jpg'
 
 function resolveServiceImage(service) {
   const url = service?.imageUrl
-  if (!url) return DEFAULT_SERVICE_IMAGE
-  if (url.startsWith('http')) return url
-  if (url.startsWith('/uploads/')) return `${BACKEND}${url}`
-  return url
+  if (url && typeof url === 'string') {
+    if (url.startsWith('http')) return url
+    if (url.startsWith('/uploads/')) return `${BACKEND}${url}`
+    return url
+  }
+  const name = String(service?.name || '').toLowerCase()
+  if (name.includes('sáng') || name.includes('buffet') || name.includes('ăn')) {
+    return 'https://images.unsplash.com/photo-1533089860892-a7c6f0a88666?auto=format&fit=crop&w=800&q=80'
+  }
+  if (name.includes('bể bơi') || name.includes('hồ bơi')) {
+    return 'https://images.unsplash.com/photo-1576013551627-0cc20b96c2a7?auto=format&fit=crop&w=800&q=80'
+  }
+  if (name.includes('gym') || name.includes('thể hình')) {
+    return 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=800&q=80'
+  }
+  if (name.includes('sân bbq') || name.includes('tiệc bbq')) {
+    return 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=800&q=80'
+  }
+  if (name.includes('dọn phòng') || name.includes('buồng phòng')) {
+    return 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=800&q=80'
+  }
+  if (name.includes('xe đạp')) {
+    return 'https://images.unsplash.com/photo-1485965120184-e220f721d03e?auto=format&fit=crop&w=800&q=80'
+  }
+  if (name.includes('xe máy')) {
+    return 'https://images.unsplash.com/photo-1558981403-c5f9899a28bc?auto=format&fit=crop&w=800&q=80'
+  }
+  if (name.includes('giặt') || name.includes('ủi')) {
+    return 'https://images.unsplash.com/photo-1545173168-9f1947eebb7f?auto=format&fit=crop&w=800&q=80'
+  }
+  if (name.includes('bếp nướng') || name.includes('nướng mini')) {
+    return 'https://images.unsplash.com/photo-1529193591184-b1d58069ecdd?auto=format&fit=crop&w=800&q=80'
+  }
+  if (name.includes('áo phao') || name.includes('phao')) {
+    return 'https://images.unsplash.com/photo-1563245372-f21724e3856d?auto=format&fit=crop&w=800&q=80'
+  }
+  return DEFAULT_SERVICE_IMAGE
 }
 // ─────────────────────────────────────────────────────────────────────
 
@@ -272,23 +304,17 @@ function AmenitiesPage() {
   const [databaseServices, setDatabaseServices] = useState([])
   const [servicesLoading, setServicesLoading] = useState(true)
   const [servicesError, setServicesError] = useState('')
-  const [selectedService, setSelectedService] = useState(null)
-  const [eligibleBookings, setEligibleBookings] = useState([])
-  const [selectedBookingId, setSelectedBookingId] = useState('')
-  const [quantity, setQuantity] = useState(1)
-  const [modalLoading, setModalLoading] = useState(false)
-  const [modalError, setModalError] = useState('')
-  const [successMessage, setSuccessMessage] = useState('')
+
   const visibleAmenities = useMemo(() => amenities.filter(item => {
     const matchesGroup = activeGroup === 'all' || item.category === activeGroup
     const matchesPrice = priceFilter === 'all'
       || (priceFilter === 'free' ? item.price === 0 : item.price > 0)
     return matchesGroup && matchesPrice
   }), [activeGroup, priceFilter])
+
   const visibleDatabaseServices = useMemo(() => databaseServices.filter(service => (
     bookableServiceFilter === 'all' || service.type === bookableServiceFilter
   )), [bookableServiceFilter, databaseServices])
-  const preferredBookingId = useMemo(() => new URLSearchParams(window.location.search).get('bookingId'), [])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -309,81 +335,6 @@ function AmenitiesPage() {
     return () => controller.abort()
   }, [])
 
-  const rememberService = (service) => {
-    window.sessionStorage.setItem(PENDING_SERVICE_KEY, JSON.stringify({
-      type: normalizeServiceType(service.type), serviceId: service.id, name: service.name,
-    }))
-  }
-
-  const chooseService = async (service) => {
-    setSuccessMessage('')
-    setModalError('')
-    rememberService(service)
-    const token = getStoredToken()
-    if (!token) {
-      window.location.assign('/login?next=/amenities')
-      return
-    }
-    setModalLoading(true)
-    try {
-      const response = await fetch(`${API_BASE_URL}/amenities/eligible-bookings`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      const data = await response.json().catch(() => ([]))
-      if (!response.ok) throw new Error(data.message || 'Không thể kiểm tra đơn đặt phòng.')
-      if (!Array.isArray(data) || data.length === 0) {
-        window.location.assign('/rooms?from=amenities')
-        return
-      }
-      setSelectedService(service)
-      setEligibleBookings(data)
-      const preferred = data.find(booking => String(booking.bookingId) === String(preferredBookingId))
-      setSelectedBookingId(String((preferred || data[0]).bookingId))
-      setQuantity(1)
-    } catch (error) {
-      setModalError(error.message)
-      setSelectedService(service)
-    } finally {
-      setModalLoading(false)
-    }
-  }
-
-  const addServiceToBooking = async () => {
-    const token = getStoredToken()
-    if (!token || !selectedService || !selectedBookingId) return
-    setModalLoading(true)
-    setModalError('')
-    try {
-      const selectedType = normalizeServiceType(selectedService.type)
-      const addedQuantity = Number(quantity)
-      const response = await fetch(`${API_BASE_URL}/amenities/bookings/${selectedBookingId}/services`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ serviceId: selectedService.id, type: selectedType, quantity: addedQuantity }),
-      })
-      const data = await response.json().catch(() => ({}))
-      if (!response.ok) throw new Error(data.message || 'Không thể thêm dịch vụ vào đơn đặt phòng.')
-      window.sessionStorage.removeItem(PENDING_SERVICE_KEY)
-      if (selectedType === 'INVENTORY') {
-        setDatabaseServices(services => services
-          .map(service => {
-            const sameService = service.id === selectedService.id && normalizeServiceType(service.type) === selectedType
-            if (!sameService || service.quantityInStock == null) return service
-            return { ...service, quantityInStock: Math.max(0, Number(service.quantityInStock || 0) - addedQuantity) }
-          })
-          .filter(service => normalizeServiceType(service.type) !== 'INVENTORY'
-            || service.quantityInStock == null
-            || Number(service.quantityInStock) > 0))
-      }
-      setSelectedService(null)
-      setSuccessMessage(`Đã thêm ${data.serviceName} vào booking ${bookingDisplay(data)}.`)
-    } catch (error) {
-      setModalError(error.message)
-    } finally {
-      setModalLoading(false)
-    }
-  }
-
   return (
     <div className="amenities-page">
       <AmenitiesHeader />
@@ -395,7 +346,7 @@ function AmenitiesPage() {
             <span>TRỌN VẸN TỪ NHỮNG ĐIỀU NHỎ NHẤT</span>
             <h1>Tiện nghi dành cho<br />kỳ nghỉ của bạn</h1>
             <p>Từ căn phòng ấm áp đến khoảng sân xanh, mọi trải nghiệm đều được chuẩn bị để bạn thực sự thảnh thơi.</p>
-            <a href="#explore">Khám phá tiện nghi <span>↓</span></a>
+            <a href="#services">Khám phá dịch vụ & tiện nghi <span>↓</span></a>
           </div>
           <div className="amenities-hero-note">
             <strong>24/7</strong><span>Luôn sẵn sàng<br />hỗ trợ bạn</span>
@@ -404,10 +355,14 @@ function AmenitiesPage() {
 
         <section className="bookable-services" id="services">
           <div className="bookable-services-head">
-            <div><span>MỚI TẠI LÁ ĐỎ HOMESTAY</span><h2>Dịch vụ cho chuyến đi</h2><p>Thêm trực tiếp vào booking hiện tại hoặc chọn trước khi bắt đầu đặt phòng.</p></div>
-            <a href="/booking-history">Xem chuyến đi của bạn</a>
+            <div>
+              <span>TIỆN ÍCH NỔI BẬT TẠI LÁ ĐỎ HOMESTAY</span>
+              <h2>Dịch vụ & Tiện ích</h2>
+              <p>Danh sách các dịch vụ tiện ích và dịch vụ cho thuê phục vụ quý khách trong suốt kỳ nghỉ.</p>
+            </div>
+            <a href="/rooms">Đặt phòng ngay</a>
           </div>
-          <div className="bookable-service-tabs" aria-label="Lọc dịch vụ cho chuyến đi">
+          <div className="bookable-service-tabs" aria-label="Lọc dịch vụ">
             {bookableServiceTabs.map(tab => (
               <button
                 key={tab.id}
@@ -419,7 +374,6 @@ function AmenitiesPage() {
               </button>
             ))}
           </div>
-          {successMessage && <div className="amenities-success" role="status">✓ {successMessage}</div>}
           {servicesLoading ? (
             <div className="services-state">Đang tải dịch vụ...</div>
           ) : servicesError ? (
@@ -439,13 +393,13 @@ function AmenitiesPage() {
                   <div className="bookable-service-body">
                     <h3>{service.name}</h3>
                     <p>{serviceDescription(service.name)}</p>
-                    <div><strong>{Number(service.price) === 0 ? 'Miễn phí' : formatPrice(service.price)}</strong><span>{serviceUnitLabel(service.type)}</span></div>
+                    <div>
+                      <strong>{Number(service.price) === 0 ? 'Miễn phí' : formatPrice(service.price)}</strong>
+                      <span>{serviceUnitLabel(service.type)}</span>
+                    </div>
                     <small className={`bookable-service-stock${normalizeServiceType(service.type) !== 'INVENTORY' ? ' is-placeholder' : ''}`}>
-                      {normalizeServiceType(service.type) === 'INVENTORY' ? `${service.quantityInStock} còn lại` : 'Còn hàng'}
+                      {normalizeServiceType(service.type) === 'INVENTORY' ? `${service.quantityInStock} còn lại` : 'Sẵn sàng phục vụ'}
                     </small>
-                    <button type="button" disabled={modalLoading} onClick={() => chooseService(service)}>
-                      {modalLoading ? 'Đang kiểm tra...' : 'Thêm vào chuyến đi'}
-                    </button>
                   </div>
                 </article>
               ))}
@@ -517,42 +471,6 @@ function AmenitiesPage() {
           <div><span>ĐÃ SẴN SÀNG CHO CHUYẾN ĐI?</span><h2>Chọn căn phòng<br />dành riêng cho bạn.</h2><p>Những ngày bình yên đang chờ ở Lá Đỏ Homestay.</p><a href="/rooms">Khám phá phòng <b>→</b></a></div>
         </section>
       </main>
-
-      {selectedService && (
-        <div className="amenity-modal-overlay" onMouseDown={event => event.target === event.currentTarget && setSelectedService(null)}>
-          <section className="amenity-reservation-modal" role="dialog" aria-modal="true" aria-labelledby="amenity-modal-title">
-            <button className="amenity-modal-close" type="button" aria-label="Đóng" onClick={() => setSelectedService(null)}>×</button>
-            <div className="amenity-modal-heading"><span>THÊM DỊCH VỤ</span><h2 id="amenity-modal-title">{selectedService.name}</h2><p>Chọn chuyến đi bạn muốn sử dụng dịch vụ này.</p></div>
-            {modalError && <div className="amenity-modal-error">{modalError}</div>}
-            {eligibleBookings.length > 0 && (
-              <>
-                <div className="amenity-booking-list">
-                  {eligibleBookings.map(booking => (
-                    <label className={String(booking.bookingId) === selectedBookingId ? 'selected' : ''} key={booking.bookingId}>
-                      <input type="radio" name="booking" value={booking.bookingId} checked={String(booking.bookingId) === selectedBookingId} onChange={event => setSelectedBookingId(event.target.value)} />
-                      <span><strong>Booking {bookingDisplay(booking)} · {houseTypeName(booking)}</strong><small>{formatDateTime(booking.checkInTarget)} → {formatDateTime(booking.checkOutTarget)} · {booking.roomCount} loại phòng</small></span>
-                      <b>{booking.status}</b>
-                    </label>
-                  ))}
-                </div>
-                <div className="amenity-quantity-row">
-                  <span>Số lượng</span>
-                  <div>
-                    <button type="button" onClick={() => setQuantity(value => Math.max(1, value - 1))}>−</button>
-                    <strong>{quantity}</strong>
-                    <button type="button" onClick={() => setQuantity(value => Math.min(serviceMaxQuantity(selectedService), value + 1))}>+</button>
-                  </div>
-                </div>
-                {normalizeServiceType(selectedService.type) === 'INVENTORY' && (
-                  <p className="amenity-stock-note">Còn {selectedService.quantityInStock} trong kho, mỗi lần thêm tối đa {serviceMaxQuantity(selectedService)}.</p>
-                )}
-                <div className="amenity-total-row"><span>Tổng cộng</span><strong>{formatPrice(Number(selectedService.price) * quantity)}</strong></div>
-                <button className="amenity-confirm-button" type="button" disabled={modalLoading} onClick={addServiceToBooking}>{modalLoading ? 'Đang thêm...' : 'Xác nhận thêm dịch vụ'}</button>
-              </>
-            )}
-          </section>
-        </div>
-      )}
 
       <footer className="amenities-footer">
         <div><a className="home-logo" href="/home">Lá Đỏ Homestay</a><p>Khu nghỉ dưỡng sinh thái biệt lập giữa thung lũng Mường Hoa, Sa Pa.</p></div>

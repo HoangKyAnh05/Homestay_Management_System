@@ -11,6 +11,7 @@ public record RoomPublicResponse(
         Integer maxAdults,
         Integer maxChildren,
         String description,
+        String status,
         BigDecimal weekdayPrice,
         BigDecimal weekendPrice,
         String rentType,

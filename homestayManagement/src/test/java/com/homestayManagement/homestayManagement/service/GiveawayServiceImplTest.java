@@ -4,6 +4,7 @@ import com.homestayManagement.homestayManagement.dto.giveaway.*;
 import com.homestayManagement.homestayManagement.entity.GiveawayLead;
 import com.homestayManagement.homestayManagement.entity.Voucher;
 import com.homestayManagement.homestayManagement.repository.*;
+import com.homestayManagement.homestayManagement.service.event.GiveawayPrizeEmailEvent;
 import com.homestayManagement.homestayManagement.service.impl.GiveawayServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -11,12 +12,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
+import org.springframework.context.ApplicationEventPublisher;
 
-import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -47,6 +44,9 @@ class GiveawayServiceImplTest {
     @Mock
     private MarketingSocialPublisher marketingSocialPublisher;
 
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
+
     private GiveawayServiceImpl giveawayService;
 
     @BeforeEach
@@ -58,7 +58,8 @@ class GiveawayServiceImplTest {
                 marketingPostRepository,
                 marketingPostChannelRepository,
                 marketingPostMediaRepository,
-                marketingSocialPublisher
+                marketingSocialPublisher,
+                eventPublisher
         );
     }
 
@@ -75,9 +76,9 @@ class GiveawayServiceImplTest {
     }
 
     @Test
-    @DisplayName("registerSpin: Đăng ký lượt quay thành công và trả về spinToken")
+    @DisplayName("registerSpin: Đăng ký lượt quay thành công và trả về spinToken khi có email hợp lệ")
     void testRegisterSpinSuccess() {
-        when(giveawayLeadRepository.existsByPhoneAndCreatedAtAfter(anyString(), any(LocalDateTime.class)))
+        when(giveawayLeadRepository.existsByPhone(anyString()))
                 .thenReturn(false);
         when(giveawayLeadRepository.save(any(GiveawayLead.class)))
                 .thenAnswer(inv -> inv.getArgument(0));
@@ -97,30 +98,62 @@ class GiveawayServiceImplTest {
     }
 
     @Test
-    @DisplayName("registerSpin: Báo lỗi nếu số điện thoại đã quay trong 24h qua")
-    void testRegisterSpinDuplicatePhone() {
-        when(giveawayLeadRepository.existsByPhoneAndCreatedAtAfter(anyString(), any(LocalDateTime.class)))
-                .thenReturn(true);
-
+    @DisplayName("registerSpin: Báo lỗi nếu thiếu email hoặc để trống email")
+    void testRegisterSpinMissingEmail() {
         GiveawayRegisterSpinRequest request = GiveawayRegisterSpinRequest.builder()
                 .fullName("Nguyễn Văn A")
                 .phone("0912345678")
+                .email("")
                 .build();
 
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
                 () -> giveawayService.registerSpin(request, "127.0.0.1"));
 
-        assertTrue(ex.getMessage().contains("24h qua"));
+        assertTrue(ex.getMessage().contains("Vui lòng nhập địa chỉ Gmail/Email"));
     }
 
     @Test
-    @DisplayName("spin: Quay số thành công, cập nhật giải thưởng và vô hiệu token")
+    @DisplayName("registerSpin: Báo lỗi nếu email sai định dạng")
+    void testRegisterSpinInvalidEmail() {
+        GiveawayRegisterSpinRequest request = GiveawayRegisterSpinRequest.builder()
+                .fullName("Nguyễn Văn A")
+                .phone("0912345678")
+                .email("invalid-email-format")
+                .build();
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> giveawayService.registerSpin(request, "127.0.0.1"));
+
+        assertTrue(ex.getMessage().contains("không đúng định dạng"));
+    }
+
+    @Test
+    @DisplayName("registerSpin: Báo lỗi nếu số điện thoại đã quay trước đó")
+    void testRegisterSpinDuplicatePhone() {
+        when(giveawayLeadRepository.existsByPhone(anyString()))
+                .thenReturn(true);
+
+        GiveawayRegisterSpinRequest request = GiveawayRegisterSpinRequest.builder()
+                .fullName("Nguyễn Văn A")
+                .phone("0912345678")
+                .email("vana@gmail.com")
+                .build();
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> giveawayService.registerSpin(request, "127.0.0.1"));
+
+        assertTrue(ex.getMessage().contains("đã tham gia vòng quay"));
+    }
+
+    @Test
+    @DisplayName("spin: Quay số thành công, cập nhật giải thưởng, vô hiệu token và phát sự kiện gửi email")
     void testSpinSuccess() {
         String token = "test-spin-token";
         GiveawayLead lead = GiveawayLead.builder()
                 .id(1L)
                 .fullName("Nguyễn Văn A")
                 .phone("0912345678")
+                .email("vana@gmail.com")
                 .status("PENDING_SPIN")
                 .spinToken(token)
                 .build();
@@ -136,6 +169,7 @@ class GiveawayServiceImplTest {
         assertNotNull(response.getPrizeCode());
         assertEquals("NEW", lead.getStatus());
         assertNull(lead.getSpinToken());
+        verify(eventPublisher, times(1)).publishEvent(any(GiveawayPrizeEmailEvent.class));
     }
 
     @Test

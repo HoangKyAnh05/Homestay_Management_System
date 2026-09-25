@@ -205,9 +205,24 @@ public class HousekeepingServiceImpl implements HousekeepingService {
                 mergedQuantities.put(existing.getItem().getId(), existing.getQuantityUsed() == null ? 0 : existing.getQuantityUsed());
             }
         }
-        // Ghi đè/cập nhật số lượng tiêu thụ từ kiểm tra phòng của housekeeping
+        // Ghi đè/cập nhật số lượng tiêu thụ từ kiểm tra phòng của housekeeping: chỉ cho phép TĂNG LÊN, KHÔNG CHO GIẢM ĐI, và trừ tồn kho tương ứng
         for (HousekeepingInspectionItemRequest item : requestedItems.values()) {
-            mergedQuantities.put(item.itemId(), item.quantityUsed());
+            RoomMiniBarItem catalogItem = catalog.get(item.itemId());
+            if (catalogItem == null) {
+                throw new IllegalArgumentException("Không tìm thấy mặt hàng mini-bar #" + item.itemId());
+            }
+            int existingQty = mergedQuantities.getOrDefault(item.itemId(), 0);
+            int newQty = Math.max(existingQty, item.quantityUsed());
+            int additionalUsed = newQty - existingQty;
+            int stock = catalogItem.getQuantityInStock() != null ? catalogItem.getQuantityInStock() : 0;
+            if (additionalUsed > stock) {
+                throw new IllegalArgumentException("Số lượng " + catalogItem.getName() + " vượt quá tồn kho (Còn: " + stock + ")");
+            }
+            if (additionalUsed > 0) {
+                catalogItem.setQuantityInStock(Math.max(0, stock - additionalUsed));
+                roomMiniBarItemRepository.save(catalogItem);
+            }
+            mergedQuantities.put(item.itemId(), newQty);
         }
 
         List<RoomAmenitiesUsage> updatedUsages = new ArrayList<>();

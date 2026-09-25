@@ -30,6 +30,8 @@ class PublicAmenityServiceImplTest {
     @Mock private BookingDetailRepository bookingDetailRepository;
     @Mock private BookingServiceItemRepository bookingServiceItemRepository;
     @Mock private InvoiceRepository invoiceRepository;
+    @Mock private SePayPaymentService sePayPaymentService;
+    @Mock private AccountRepository accountRepository;
 
     private PublicAmenityServiceImpl service;
 
@@ -41,7 +43,9 @@ class PublicAmenityServiceImplTest {
                 bookingRepository,
                 bookingDetailRepository,
                 bookingServiceItemRepository,
-                invoiceRepository
+                invoiceRepository,
+                sePayPaymentService,
+                accountRepository
         );
     }
 
@@ -144,6 +148,78 @@ class PublicAmenityServiceImplTest {
         assertEquals(7L, savedItem.get().getInventoryService().getId());
         assertEquals(1, rental.getQuantityInStock());
         verify(inventoryServiceRepository).save(rental);
+    }
+
+    @Test
+    void addServiceToBooking_withPayNow_generatesSePayPayment() {
+        Booking booking = booking("guest@example.com");
+        BookingDetail detail = BookingDetail.builder().id(20L).booking(booking)
+                .checkInTarget(LocalDateTime.now().minusHours(2)).checkOutTarget(LocalDateTime.now().plusDays(1))
+                .priceAtBooking(BigDecimal.valueOf(500_000)).status("CHECKED_IN").build();
+        FacilityService bbq = FacilityService.builder().id(5L).name("BBQ").price(BigDecimal.valueOf(150_000)).isActive(true).build();
+
+        when(bookingRepository.findByIdForPaymentUpdate(10L)).thenReturn(Optional.of(booking));
+        when(bookingDetailRepository.findByBookingId(10L)).thenReturn(List.of(detail));
+        when(facilityServiceRepository.findById(5L)).thenReturn(Optional.of(bbq));
+        when(bookingServiceItemRepository.findByBookingDetailIds(List.of(20L))).thenReturn(List.of());
+        when(bookingServiceItemRepository.save(any())).thenAnswer(invocation -> {
+            BookingServiceItem item = invocation.getArgument(0);
+            item.setId(55L);
+            return item;
+        });
+        when(invoiceRepository.findByBookingIdForAdmin(10L)).thenReturn(Optional.empty());
+
+        com.homestayManagement.homestayManagement.dto.response.SePayPaymentResponse mockPayment =
+                new com.homestayManagement.homestayManagement.dto.response.SePayPaymentResponse(
+                        10L, "BK-10", 99L, BigDecimal.valueOf(150_000), "PAY-99", "MB-HOMESTAY", "MB Bank", "0123456789", "HOMESTAY", "http://qr.test", null, 600L
+                );
+        when(sePayPaymentService.createServicePayment(10L, 20L, BigDecimal.valueOf(150_000))).thenReturn(mockPayment);
+
+        var result = service.addServiceToBooking(
+                "guest@example.com", 10L, new AddBookingFacilityServiceRequest(5L, "FACILITY", 1, true)
+        );
+
+        assertEquals("BBQ", result.serviceName());
+        assertEquals(BigDecimal.valueOf(150_000), result.addedAmount());
+        assertEquals(mockPayment, result.payment());
+        verify(sePayPaymentService).createServicePayment(10L, 20L, BigDecimal.valueOf(150_000));
+    }
+
+    @Test
+    void addServiceAllowsStaffToAssistGuestWithCheckedInBookingEvenIfOverdue() {
+        Booking booking = booking("guest@example.com");
+        booking.setStatus("CHECKED_IN");
+        BookingDetail detail = BookingDetail.builder()
+                .id(20L).booking(booking).roomType(RoomType.builder().name("Garden Room").build())
+                .checkInTarget(LocalDateTime.now().minusDays(1)).checkOutTarget(LocalDateTime.now().minusHours(1))
+                .priceAtBooking(BigDecimal.valueOf(500_000)).status("CHECKED_IN").build();
+        FacilityService facility = FacilityService.builder()
+                .id(3L).name("Bữa sáng").price(BigDecimal.valueOf(80_000)).isActive(true).build();
+
+        Account staffAccount = Account.builder()
+                .email("receptionist@homestay.com")
+                .role(Role.builder().name("ROLE_RECEPTIONIST").build())
+                .build();
+
+        when(bookingRepository.findByIdForPaymentUpdate(10L)).thenReturn(Optional.of(booking));
+        when(accountRepository.findByEmailIgnoreCase("receptionist@homestay.com")).thenReturn(Optional.of(staffAccount));
+        when(bookingDetailRepository.findByBookingId(10L)).thenReturn(List.of(detail));
+        when(facilityServiceRepository.findById(3L)).thenReturn(Optional.of(facility));
+        when(bookingServiceItemRepository.findByBookingDetailIds(List.of(20L))).thenReturn(List.of());
+        when(bookingServiceItemRepository.save(any())).thenAnswer(invocation -> {
+            BookingServiceItem item = invocation.getArgument(0);
+            item.setId(35L);
+            return item;
+        });
+        when(invoiceRepository.findByBookingIdForAdmin(10L)).thenReturn(Optional.empty());
+
+        var result = service.addServiceToBooking(
+                "receptionist@homestay.com", 10L, new AddBookingFacilityServiceRequest(3L, "FACILITY", 1)
+        );
+
+        assertEquals("Bữa sáng", result.serviceName());
+        assertEquals(BigDecimal.valueOf(80_000), result.addedAmount());
+        verify(bookingServiceItemRepository).save(any());
     }
 
     private Booking booking(String email) {

@@ -23,6 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
 
@@ -141,11 +142,43 @@ public class AdminInvoiceServiceImpl implements AdminInvoiceService {
                 remainingAmount = BigDecimal.ZERO;
             }
 
-            Payment latestPayment = payments.stream()
+            Payment latestSuccessfulPayment = payments.stream()
+                    .filter(p -> "SUCCESS".equalsIgnoreCase(p.getStatus()))
                     .max(Comparator
                             .comparing(Payment::getPaymentTime, Comparator.nullsFirst(Comparator.naturalOrder()))
                             .thenComparing(Payment::getId))
                     .orElse(null);
+
+            Payment latestPayment = latestSuccessfulPayment != null ? latestSuccessfulPayment : payments.stream()
+                    .max(Comparator
+                            .comparing(Payment::getPaymentTime, Comparator.nullsFirst(Comparator.naturalOrder()))
+                            .thenComparing(Payment::getId))
+                    .orElse(null);
+
+            boolean isCompletedStay = "COMPLETED".equalsIgnoreCase(invoice.getBooking().getStatus());
+            boolean isFullySettled = remainingAmount.compareTo(BigDecimal.ZERO) <= 0;
+
+            String resolvedStatus;
+            String resolvedMethod = latestPayment != null ? latestPayment.getPaymentMethod() : null;
+            LocalDateTime resolvedPaymentTime = latestPayment != null ? latestPayment.getPaymentTime() : null;
+
+            if (isCompletedStay || isFullySettled) {
+                resolvedStatus = "SUCCESS";
+                if (resolvedMethod == null) {
+                    if (invoice.getRoomDiscountAmount() != null && invoice.getRoomDiscountAmount().compareTo(BigDecimal.ZERO) > 0 && invoice.getTotalAmount().compareTo(BigDecimal.ZERO) == 0) {
+                        resolvedMethod = "VOUCHER";
+                    } else if (invoice.getTotalAmount().compareTo(BigDecimal.ZERO) == 0) {
+                        resolvedMethod = "FREE";
+                    } else {
+                        resolvedMethod = "CASH";
+                    }
+                }
+                if (resolvedPaymentTime == null) {
+                    resolvedPaymentTime = invoice.getCreatedAt();
+                }
+            } else {
+                resolvedStatus = latestPayment != null ? latestPayment.getStatus() : "PENDING";
+            }
 
             Customer customer = invoice.getBooking().getCustomer();
             Employee employee = invoice.getEmployee();
@@ -169,9 +202,9 @@ public class AdminInvoiceServiceImpl implements AdminInvoiceService {
                     invoice.getTotalAmount(),
                     paidAmount,
                     remainingAmount,
-                    latestPayment != null ? latestPayment.getPaymentMethod() : null,
-                    latestPayment != null ? latestPayment.getStatus() : "PENDING",
-                    latestPayment != null ? latestPayment.getPaymentTime() : null,
+                    resolvedMethod,
+                    resolvedStatus,
+                    resolvedPaymentTime,
                     invoice.getCreatedAt(),
                     paymentResponses,
                     serviceItems,

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { getStoredToken } from '../../services/authService'
 import { useShiftGuard } from '../../context/ShiftGuardContext'
 import { formatClockTime, formatDateTime as formatAppDateTime } from '../../utils/dateTimeFormat'
@@ -31,6 +31,17 @@ function authUploadHeaders() {
 function serviceImageSrc(imageUrl) {
   if (!imageUrl) return '/img.png'
   return imageUrl.startsWith('/uploads/') ? `${import.meta.env.VITE_API_URL || ''}${imageUrl}` : imageUrl
+}
+
+function getInitials(name, email) {
+  if (name) return name.split(' ').filter(Boolean).slice(-2).map(p => p[0]).join('').toUpperCase()
+  return email?.[0]?.toUpperCase() || '?'
+}
+
+function getAvatarUrl(url) {
+  if (!url) return null
+  if (url.startsWith('http')) return url
+  return `${import.meta.env.VITE_API_URL || ''}${url}`
 }
 
 function toDate(value) {
@@ -524,6 +535,27 @@ function InvoicePreviewModal({ detail, onClose }) {
             <div><span>Đã thanh toán</span><strong>{formatMoney(totals.paidAmount)}</strong></div>
             <div className="abk-invoice-total-due"><span>Còn lại</span><strong>{formatMoney(totals.remainingAmount)}</strong></div>
           </section>
+
+          <div className="abk-invoice-actions-footer" style={{ marginTop: '20px', padding: '16px 20px', background: '#f8fafc', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+            <button
+              type="button"
+              className="abk-action-secondary"
+              onClick={onClose}
+            >
+              Đóng
+            </button>
+            <button
+              type="button"
+              className="abk-action-primary"
+              style={{ padding: '10px 20px', fontSize: '14px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}
+              onClick={() => {
+                window.location.assign(`/admin/check-in-logs?bookingDetailId=${detail.bookingDetailId}`)
+              }}
+            >
+              <span>💳 Thanh toán / Trả phòng tại Nhật ký lưu trú</span>
+              <span>→</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -564,7 +596,11 @@ function BookingDetailModal({ detail, loading, error, actionLoading, actionError
 
   // Reset khi detail thay đổi
   useEffect(() => {
-    setStayOpen(false)
+    const isCheckedIn = detail && (
+      Boolean(detail?.checkInRecords?.length) ||
+      ['CHECKED_IN'].includes(String(detail.detailStatus || detail.bookingStatus).toUpperCase())
+    )
+    setStayOpen(Boolean(isCheckedIn))
     setEditCustomer(false)
     setEditBooking(false)
     setChangeRoomModalOpen(false)
@@ -838,8 +874,13 @@ function BookingDetailModal({ detail, loading, error, actionLoading, actionError
                       Đổi phòng
                     </button>
                   )}
-                  <button type="button" className="abk-action-secondary" onClick={() => setStayOpen(v => !v)}>
-                    Lưu trú
+                  <button
+                    type="button"
+                    className={`abk-action-secondary ${stayOpen ? 'is-active' : ''}`}
+                    style={stayOpen ? { borderColor: '#16a34a', color: '#16a34a', background: '#f0fdf4', fontWeight: 700 } : {}}
+                    onClick={() => setStayOpen(v => !v)}
+                  >
+                    {stayOpen ? '✓ Lưu trú (Đang mở)' : 'Lưu trú'}
                   </button>
                 </div>
               </div>
@@ -1300,9 +1341,13 @@ function DirectBookingModal({ onClose, onCreated }) {
   // 1-click walk-in check-in
   const [isCheckInNow, setIsCheckInNow] = useState(true)
 
-  // Customer auto-fill
+  // Selected existing customer & customer search state
   const [customerList, setCustomerList] = useState([])
-  const [matchedCustomerHint, setMatchedCustomerHint] = useState(null)
+  const [selectedCustomer, setSelectedCustomer] = useState(null)
+  const [customerSearchQuery, setCustomerSearchQuery] = useState('')
+  const [searchDropdownOpen, setSearchDropdownOpen] = useState(false)
+  const [showOcrBox, setShowOcrBox] = useState(false)
+  const customerSearchRef = useRef(null)
 
   // OCR CCCD states
   const [ocrLoading, setOcrLoading] = useState(false)
@@ -1327,7 +1372,7 @@ function DirectBookingModal({ onClose, onCreated }) {
   const [servicesLoading, setServicesLoading] = useState(false)
   const [servicePickerRoomId, setServicePickerRoomId] = useState(null)
 
-  // Load customer list for phone autocomplete
+  // Load customer list for existing customer selection
   useEffect(() => {
     fetch(USERS_API, { headers: authHeaders() })
       .then(res => res.json())
@@ -1336,6 +1381,92 @@ function DirectBookingModal({ onClose, onCreated }) {
       })
       .catch(() => {})
   }, [])
+
+  // Close search dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (customerSearchRef.current && !customerSearchRef.current.contains(e.target)) {
+        setSearchDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const existingCustomers = useMemo(() => {
+    return (customerList || []).filter(u => u.role === 'ROLE_CUSTOMER' || (!u.role && (u.fullName || u.phone)))
+  }, [customerList])
+
+  const filteredCustomers = useMemo(() => {
+    const q = customerSearchQuery.trim().toLowerCase()
+    if (!q) return existingCustomers
+    return existingCustomers.filter(c => {
+      const name = (c.fullName || '').toLowerCase()
+      const phone = (c.phone || '').toLowerCase()
+      const cccd = (c.identityDocumentNumber || '').toLowerCase()
+      const email = (c.email || '').toLowerCase()
+      return name.includes(q) || phone.includes(q) || cccd.includes(q) || email.includes(q)
+    })
+  }, [existingCustomers, customerSearchQuery])
+
+  const handleSelectCustomer = (cust) => {
+    setSelectedCustomer(cust)
+    setCustomerSearchQuery('')
+    setSearchDropdownOpen(false)
+    const sanitizedPhone = (cust.phone || '').replace(/\D/g, '').slice(0, 10)
+    const sanitizedCccd = (cust.identityDocumentNumber || '').replace(/\D/g, '').slice(0, 12)
+    const dob = cust.dateOfBirth ? String(cust.dateOfBirth).substring(0, 10) : ''
+    const email = cust.email && !cust.email.endsWith('@homestay.local') ? cust.email : ''
+    const address = cust.address || ''
+    const fullName = cust.fullName || ''
+
+    setForm(f => {
+      const updatedRooms = { ...f.selectedRooms }
+      const roomKeys = Object.keys(updatedRooms)
+      if (roomKeys.length > 0) {
+        const firstKey = roomKeys[0]
+        const room = updatedRooms[firstKey]
+        if (room && room.guests && room.guests.length > 0) {
+          const guests = [...room.guests]
+          guests[0] = {
+            ...guests[0],
+            fullName,
+            phone: sanitizedPhone,
+            identityDocumentNumber: sanitizedCccd,
+            email,
+            dateOfBirth: dob,
+            address,
+          }
+          updatedRooms[firstKey] = { ...room, guests }
+        }
+      }
+
+      return {
+        ...f,
+        fullName,
+        phone: sanitizedPhone,
+        identityDocumentNumber: sanitizedCccd,
+        email,
+        dateOfBirth: dob,
+        address,
+        selectedRooms: updatedRooms,
+      }
+    })
+  }
+
+  const handleClearSelectedCustomer = () => {
+    setSelectedCustomer(null)
+    setCustomerSearchQuery('')
+    setForm(f => ({
+      ...f,
+      fullName: '',
+      phone: '',
+      identityDocumentNumber: '',
+      email: '',
+      dateOfBirth: '',
+      address: '',
+    }))
+  }
 
   // Load gói thuê + toàn bộ config giá một lần khi mở modal
   useEffect(() => {
@@ -1481,26 +1612,6 @@ function DirectBookingModal({ onClose, onCreated }) {
     if (field === 'phone') {
       const sanitized = String(value || '').replace(/\D/g, '').slice(0, 10)
       setForm(f => ({ ...f, [field]: sanitized }))
-      // Autocomplete customer info when phone matches
-      if (sanitized.length === 10 && customerList.length > 0) {
-        const matched = customerList.find(c => (c.phone || '').replace(/\D/g, '') === sanitized)
-        if (matched) {
-          setMatchedCustomerHint(matched)
-          setForm(f => ({
-            ...f,
-            phone: sanitized,
-            fullName: matched.fullName || f.fullName,
-            identityDocumentNumber: matched.identityDocumentNumber || f.identityDocumentNumber,
-            email: matched.email || f.email,
-            dateOfBirth: matched.dateOfBirth ? String(matched.dateOfBirth).substring(0, 10) : f.dateOfBirth,
-            address: matched.address || f.address,
-          }))
-        } else {
-          setMatchedCustomerHint(null)
-        }
-      } else {
-        setMatchedCustomerHint(null)
-      }
       return
     }
     if (field === 'fullName') {
@@ -1558,16 +1669,41 @@ function DirectBookingModal({ onClose, onCreated }) {
         throw new Error('Ảnh tải lên không đúng nhận dạng thẻ CCCD hoặc ảnh bị mờ. Vui lòng kiểm tra lại ảnh chụp!')
       }
 
-      setForm(prev => ({
-        ...prev,
-        fullName: data.fullName || prev.fullName,
-        identityDocumentNumber: data.identityDocumentNumber || prev.identityDocumentNumber,
-        dateOfBirth: data.dateOfBirth ? (data.dateOfBirth.substring(0, 10)) : prev.dateOfBirth,
-        address: data.address || prev.address,
-      }))
-      setOcrNotice('✓ Đã trích xuất thông tin CCCD thành công! Vui lòng kiểm tra lại họ tên, số CCCD, ngày sinh và địa chỉ.')
+      const ocrFullName = data.fullName || ''
+      const ocrCccd = data.identityDocumentNumber || ''
+      const ocrDob = data.dateOfBirth ? (data.dateOfBirth.substring(0, 10)) : ''
+      const ocrAddress = data.address || ''
+
+      setForm(prev => {
+        const updatedRooms = { ...prev.selectedRooms }
+        const roomKeys = Object.keys(updatedRooms)
+        if (roomKeys.length > 0) {
+          const firstKey = roomKeys[0]
+          const room = updatedRooms[firstKey]
+          if (room && room.guests && room.guests.length > 0) {
+            const guests = [...room.guests]
+            guests[0] = {
+              ...guests[0],
+              fullName: ocrFullName || guests[0].fullName,
+              identityDocumentNumber: ocrCccd || guests[0].identityDocumentNumber,
+              dateOfBirth: ocrDob || guests[0].dateOfBirth,
+              address: ocrAddress || guests[0].address,
+            }
+            updatedRooms[firstKey] = { ...room, guests }
+          }
+        }
+        return {
+          ...prev,
+          fullName: ocrFullName || prev.fullName,
+          identityDocumentNumber: ocrCccd || prev.identityDocumentNumber,
+          dateOfBirth: ocrDob || prev.dateOfBirth,
+          address: ocrAddress || prev.address,
+          selectedRooms: updatedRooms,
+        }
+      })
+      setOcrNotice('✓ Đã trích xuất thông tin CCCD thành công và tự động điền vào thông tin lưu trú!')
     } catch (err) {
-      setError(`️ Lỗi quét CCCD: ${err.message}. Bạn vẫn có thể tự nhập thông tin vào các ô bên dưới.`)
+      setError(`⚠️ Lỗi quét CCCD: ${err.message}. Bạn vẫn có thể nhập trực tiếp thông tin vào từng phòng bên dưới.`)
     } finally {
       setOcrLoading(false)
     }
@@ -1594,12 +1730,12 @@ function DirectBookingModal({ onClose, onCreated }) {
           numberOfAdults: 1,
           numberOfChildren: 0,
           guests: [{
-            fullName: f.fullName,
-            identityDocumentNumber: f.identityDocumentNumber,
-            phone: f.phone,
-            dateOfBirth: f.dateOfBirth,
-            email: f.email,
-            address: f.address,
+            fullName: f.fullName || '',
+            identityDocumentNumber: f.identityDocumentNumber || '',
+            phone: f.phone || '',
+            dateOfBirth: f.dateOfBirth || '',
+            email: f.email || '',
+            address: f.address || '',
           }],
           services: [],
         }
@@ -1640,7 +1776,12 @@ function DirectBookingModal({ onClose, onCreated }) {
       const room = f.selectedRooms[String(roomId)]
       if (!room) return f
       const guests = room.guests.map((guest, index) => index === guestIndex ? { ...guest, [field]: sanitized } : guest)
-      return { ...f, selectedRooms: { ...f.selectedRooms, [String(roomId)]: { ...room, guests } } }
+      const isFirstGuestOfFirstRoom = Object.keys(f.selectedRooms)[0] === String(roomId) && guestIndex === 0
+      return {
+        ...f,
+        ...(isFirstGuestOfFirstRoom && !selectedCustomer ? { [field]: sanitized } : {}),
+        selectedRooms: { ...f.selectedRooms, [String(roomId)]: { ...room, guests } }
+      }
     })
   }
 
@@ -1741,21 +1882,10 @@ function DirectBookingModal({ onClose, onCreated }) {
 
   const submit = async (e) => {
     e.preventDefault()
-    if (!form.fullName?.trim() || form.fullName.trim().length < 2) {
-      setError('Vui lòng nhập họ và tên khách hàng.')
+    if (!selectedRoomEntries.length) {
+      setError('Vui lòng chọn ít nhất một phòng.')
       return
     }
-    const phoneDigits = (form.phone || '').trim().replace(/\D/g, '')
-    if (phoneDigits.length !== 10 || !phoneDigits.startsWith('0')) {
-      setError('Số điện thoại không hợp lệ (phải gồm 10 chữ số bắt đầu bằng 0, ví dụ: 0912345678).')
-      return
-    }
-
-    const emailToUse = form.email?.trim() || `${phoneDigits}@homestay.local`
-    const cccdToUse = (form.identityDocumentNumber || '').trim().replace(/\D/g, '') || phoneDigits.padEnd(12, '0')
-
-    const effectivePolicyId = Number(form.pricePolicyId) || (pricePolicies[0] ? pricePolicies[0].id : 1)
-    if (!selectedRoomEntries.length) { setError('Vui lòng chọn ít nhất một phòng'); return }
 
     for (const room of selectedRoomEntries) {
       for (let i = 0; i < room.guests.length; i++) {
@@ -1767,18 +1897,40 @@ function DirectBookingModal({ onClose, onCreated }) {
       }
     }
 
+    const firstGuest = selectedRoomEntries[0]?.guests?.[0] || {}
+    const effectiveFullName = (form.fullName || firstGuest.fullName || '').trim()
+    const rawPhone = (form.phone || firstGuest.phone || '').trim()
+    const phoneDigits = rawPhone.replace(/\D/g, '')
+
+    if (!effectiveFullName || effectiveFullName.length < 2) {
+      setError('Vui lòng chọn khách hàng cũ hoặc nhập họ và tên người lưu trú tại phòng.')
+      return
+    }
+
+    if (phoneDigits.length !== 10 || !phoneDigits.startsWith('0')) {
+      setError('Số điện thoại người đại diện không hợp lệ (phải gồm 10 chữ số bắt đầu bằng 0, ví dụ: 0912345678). Vui lòng điền số điện thoại tại phòng lưu trú.')
+      return
+    }
+
+    const effectiveEmail = (form.email || firstGuest.email || '').trim() || `${phoneDigits}@homestay.local`
+    const effectiveCccd = (form.identityDocumentNumber || firstGuest.identityDocumentNumber || '').trim().replace(/\D/g, '') || phoneDigits.padEnd(12, '0')
+    const effectiveDob = form.dateOfBirth || firstGuest.dateOfBirth || null
+    const effectiveAddress = (form.address || firstGuest.address || '').trim() || null
+
+    const effectivePolicyId = Number(form.pricePolicyId) || (pricePolicies[0] ? pricePolicies[0].id : 1)
+
     setSubmitLoading(true); setError('')
     try {
       const res = await fetch(`${API_BASE}/direct`, {
         method: 'POST',
         headers: authHeaders(),
         body: JSON.stringify({
-          fullName:       form.fullName.trim(),
+          fullName:       effectiveFullName,
           phone:          phoneDigits,
-          email:          emailToUse,
-          address:        form.address?.trim() || null,
-          dateOfBirth:    form.dateOfBirth || null,
-          identityDocumentNumber: cccdToUse,
+          email:          effectiveEmail,
+          address:        effectiveAddress,
+          dateOfBirth:    effectiveDob,
+          identityDocumentNumber: effectiveCccd,
           checkInTarget:  form.checkInTarget,
           checkOutTarget: form.checkOutTarget,
           rentType:       selectedPolicy?.rentType || 'OVERNIGHT',
@@ -1790,12 +1942,12 @@ function DirectBookingModal({ onClose, onCreated }) {
             numberOfChildren:Number(r.numberOfChildren),
             guests: r.guests.map(guest => ({
               ...guest,
-              fullName: guest.fullName || form.fullName.trim(),
-              identityDocumentNumber: (guest.identityDocumentNumber || '').replace(/\D/g, '') || cccdToUse,
+              fullName: (guest.fullName || effectiveFullName).trim(),
+              identityDocumentNumber: (guest.identityDocumentNumber || '').replace(/\D/g, '') || effectiveCccd,
               phone: (guest.phone || '').replace(/\D/g, '') || phoneDigits,
-              dateOfBirth: guest.dateOfBirth || null,
-              email: guest.email || null,
-              address: guest.address || null,
+              dateOfBirth: guest.dateOfBirth || effectiveDob,
+              email: (guest.email || '').trim() || effectiveEmail,
+              address: (guest.address || '').trim() || effectiveAddress,
             })),
             services: (r.services || []).map(service => ({
               type: service.type,
@@ -1813,18 +1965,6 @@ function DirectBookingModal({ onClose, onCreated }) {
         setPaymentResult(data)
         setPendingPaymentPayload(data.payment)
         return
-      }
-
-      // If check-in now is requested and paid by cash/pay-at-checkin, trigger instant check-in
-      if (isCheckInNow && data.booking?.bookingDetailId && form.paymentMethod !== 'SEPAY') {
-        try {
-          await fetch(`${API_BASE}/details/${data.booking.bookingDetailId}/check-in`, {
-            method: 'POST',
-            headers: authHeaders(),
-          })
-        } catch (checkInErr) {
-          console.warn('Auto check-in error:', checkInErr)
-        }
       }
 
       onCreated(data.booking)
@@ -1855,103 +1995,219 @@ function DirectBookingModal({ onClose, onCreated }) {
             <section className="abk-direct-form">
               <div className="abk-section-title-row">
                 <h4>Thông tin khách hàng</h4>
-                <span className="abk-section-hint">Tự động điền qua SĐT hoặc Quét AI OCR CCCD</span>
+                <span className="abk-section-hint">Chọn khách cũ đã lưu trên hệ thống hoặc nhập trực tiếp tại phòng</span>
               </div>
 
-              {matchedCustomerHint && (
-                <div style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: '8px', padding: '10px 12px', marginBottom: '14px', fontSize: '13px', color: '#065f46', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span>✓</span>
-                  <span>Tìm thấy khách quen: <strong>{matchedCustomerHint.fullName}</strong> — Tự động điền thông tin</span>
+              {selectedCustomer ? (
+                <div className="abk-customer-selected-card">
+                  <div className="abk-csc-header">
+                    <div className="abk-csc-badge">
+                      <span className="abk-csc-check">✓</span>
+                      <span>Khách hàng đã lưu trên hệ thống</span>
+                    </div>
+                    <button
+                      type="button"
+                      className="abk-csc-change-btn"
+                      onClick={handleClearSelectedCustomer}
+                    >
+                      ✕ Đổi khách hàng / Nhập mới
+                    </button>
+                  </div>
+                  <div className="abk-csc-body">
+                    <div className="abk-csc-avatar">
+                      {selectedCustomer.avatarUrl ? (
+                        <img src={getAvatarUrl(selectedCustomer.avatarUrl)} alt="" />
+                      ) : (
+                        <span>{getInitials(selectedCustomer.fullName, selectedCustomer.email)}</span>
+                      )}
+                    </div>
+                    <div className="abk-csc-details">
+                      <div className="abk-csc-name-row">
+                        <strong className="abk-csc-name">{selectedCustomer.fullName || 'Khách hàng'}</strong>
+                        {selectedCustomer.phone && (
+                          <span className="abk-csc-phone">📱 {selectedCustomer.phone}</span>
+                        )}
+                      </div>
+                      <div className="abk-csc-meta-grid">
+                        {selectedCustomer.identityDocumentNumber && (
+                          <div className="abk-csc-meta-item">
+                            <span className="abk-csc-meta-label">CCCD:</span>
+                            <span className="abk-csc-meta-val">{selectedCustomer.identityDocumentNumber}</span>
+                          </div>
+                        )}
+                        {selectedCustomer.email && !selectedCustomer.email.endsWith('@homestay.local') && (
+                          <div className="abk-csc-meta-item">
+                            <span className="abk-csc-meta-label">Email:</span>
+                            <span className="abk-csc-meta-val">{selectedCustomer.email}</span>
+                          </div>
+                        )}
+                        {selectedCustomer.dateOfBirth && (
+                          <div className="abk-csc-meta-item">
+                            <span className="abk-csc-meta-label">Ngày sinh:</span>
+                            <span className="abk-csc-meta-val">{String(selectedCustomer.dateOfBirth).substring(0, 10)}</span>
+                          </div>
+                        )}
+                        {selectedCustomer.address && (
+                          <div className="abk-csc-meta-item abk-csc-meta-full">
+                            <span className="abk-csc-meta-label">Địa chỉ:</span>
+                            <span className="abk-csc-meta-val">{selectedCustomer.address}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="abk-customer-picker-box" ref={customerSearchRef}>
+                  <div className="abk-customer-search-wrapper">
+                    <div className="abk-customer-search-input-group">
+                      <span className="abk-cs-icon">🔍</span>
+                      <input
+                        type="text"
+                        className="abk-customer-search-input"
+                        placeholder="Tìm khách cũ theo Họ tên, Số điện thoại, CCCD hoặc Email..."
+                        value={customerSearchQuery}
+                        onChange={e => {
+                          setCustomerSearchQuery(e.target.value)
+                          setSearchDropdownOpen(true)
+                        }}
+                        onFocus={() => setSearchDropdownOpen(true)}
+                      />
+                      {customerSearchQuery && (
+                        <button
+                          type="button"
+                          className="abk-cs-clear"
+                          onClick={() => { setCustomerSearchQuery(''); setSearchDropdownOpen(false) }}
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+
+                    {searchDropdownOpen && (
+                      <div className="abk-customer-dropdown-menu">
+                        {filteredCustomers.length > 0 ? (
+                          <div className="abk-customer-options-list">
+                            {filteredCustomers.slice(0, 10).map(cust => (
+                              <div
+                                key={cust.id}
+                                className="abk-customer-option-item"
+                                onClick={() => handleSelectCustomer(cust)}
+                              >
+                                <div className="abk-co-avatar">
+                                  {getInitials(cust.fullName, cust.email)}
+                                </div>
+                                <div className="abk-co-info">
+                                  <div className="abk-co-top">
+                                    <strong>{cust.fullName || 'Khách chưa đặt tên'}</strong>
+                                    {cust.phone && <span className="abk-co-phone">📱 {cust.phone}</span>}
+                                  </div>
+                                  <div className="abk-co-sub">
+                                    {cust.identityDocumentNumber && <span>CCCD: {cust.identityDocumentNumber}</span>}
+                                    {cust.email && !cust.email.endsWith('@homestay.local') && <span>✉️ {cust.email}</span>}
+                                    {cust.address && <span>📍 {cust.address}</span>}
+                                  </div>
+                                </div>
+                                <button type="button" className="abk-co-pick-btn">Chọn</button>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="abk-customer-dropdown-empty">
+                            {customerSearchQuery ? 'Không tìm thấy khách hàng nào khớp.' : 'Chưa có thông tin khách hàng.'}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="abk-customer-picker-hint">
+                    <div className="abk-cph-item">
+                      <span className="abk-cph-icon">✨</span>
+                      <span><strong>Khách cũ:</strong> Gõ tìm & chọn ở trên để tự động điền nhanh dữ liệu.</span>
+                    </div>
+                    <div className="abk-cph-item">
+                      <span className="abk-cph-icon">📝</span>
+                      <span><strong>Khách mới:</strong> Nhập trực tiếp thông tin người lưu trú tại phần phòng bên dưới (không cần nhập ở đây).</span>
+                    </div>
+                  </div>
                 </div>
               )}
 
-              {/* ── Box OCR CCCD tự động ── */}
-              <div className="abk-ocr-scanner-box">
-                <div className="abk-ocr-header">
-                  <div className="abk-ocr-title">
-                    <span className="abk-ocr-badge">AI OCR</span>
-                    <strong>Quét Căn cước công dân (CCCD) tự động</strong>
-                  </div>
-                  <span className="abk-ocr-subtitle">Tải 2 mặt ảnh CCCD để tự động trích xuất thông tin người đại diện</span>
-                </div>
-
-                <div className="abk-ocr-inputs">
-                  <label className={`abk-ocr-upload-btn ${ocrImages.front ? 'has-file' : ''} ${ocrLoading ? 'is-loading' : ''}`}>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      disabled={ocrLoading}
-                      style={{ display: 'none' }}
-                      onChange={e => handleOcrImageChange('front', e.target.files?.[0])}
-                    />
-                    {ocrImagePreviews.front ? (
-                      <img src={ocrImagePreviews.front} alt="Mặt trước" className="abk-ocr-thumb" />
-                    ) : (
-                      <span className="abk-ocr-icon"></span>
-                    )}
-                    <div className="abk-ocr-label-text">
-                      <strong>{ocrImages.front ? 'Mặt trước: Đã chọn ✓' : 'Tải mặt trước CCCD'}</strong>
-                      <small>{ocrImages.front ? 'Bấm để đổi ảnh' : 'JPG, PNG hoặc ảnh chụp'}</small>
-                    </div>
-                  </label>
-
-                  <label className={`abk-ocr-upload-btn ${ocrImages.back ? 'has-file' : ''} ${ocrLoading ? 'is-loading' : ''}`}>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      disabled={ocrLoading}
-                      style={{ display: 'none' }}
-                      onChange={e => handleOcrImageChange('back', e.target.files?.[0])}
-                    />
-                    {ocrImagePreviews.back ? (
-                      <img src={ocrImagePreviews.back} alt="Mặt sau" className="abk-ocr-thumb" />
-                    ) : (
-                      <span className="abk-ocr-icon"></span>
-                    )}
-                    <div className="abk-ocr-label-text">
-                      <strong>{ocrImages.back ? 'Mặt sau: Đã chọn ✓' : 'Tải mặt sau CCCD'}</strong>
-                      <small>{ocrImages.back ? 'Bấm để đổi ảnh' : 'JPG, PNG hoặc ảnh chụp'}</small>
-                    </div>
-                  </label>
-                </div>
-
-                {ocrLoading && (
-                  <div className="abk-ocr-status is-loading">
-                    <div className="abk-spinner" /> Đang trích xuất thông tin căn cước qua AI OCR...
-                  </div>
-                )}
-                {ocrNotice && !ocrLoading && (
-                  <div className="abk-ocr-status is-success">
-                    {ocrNotice}
-                  </div>
-                )}
+              {/* ── Quét CCCD AI OCR (Tùy chọn) ── */}
+              <div className="abk-ocr-section-toggle">
+                <button
+                  type="button"
+                  className="abk-ocr-toggle-action"
+                  onClick={() => setShowOcrBox(prev => !prev)}
+                >
+                  <span className="abk-ocr-badge">AI OCR</span>
+                  <span>{showOcrBox ? 'Ẩn bộ quét thẻ Căn cước công dân (CCCD)' : '📷 Quét ảnh CCCD để tự động trích xuất thông tin'}</span>
+                  <span className="abk-ocr-toggle-arrow">{showOcrBox ? '▲' : '▼'}</span>
+                </button>
               </div>
 
-              <div className="abk-form-grid">
-                <label><span>Số điện thoại *</span>
-                  <input required inputMode="numeric" maxLength="10" placeholder="VD: 0912345678" value={form.phone} onChange={e => updateForm('phone', e.target.value)} />
-                </label>
-                <label><span>Họ và tên *</span>
-                  <input required placeholder="VD: Nguyễn Văn An" value={form.fullName} onChange={e => updateForm('fullName', e.target.value)} />
-                </label>
-                <label><span>CCCD người đại diện</span>
-                  <input inputMode="numeric" maxLength="12" placeholder="12 chữ số CCCD" value={form.identityDocumentNumber} onChange={e => updateForm('identityDocumentNumber', e.target.value)} />
-                </label>
-                <label><span>Email</span>
-                  <input type="email" placeholder="khachhang@gmail.com" value={form.email} onChange={e => updateForm('email', e.target.value)} />
-                </label>
-                <label><span>Ngày sinh</span>
-                  <DateDropdownPicker
-                    isDob={true}
-                    value={form.dateOfBirth || ''}
-                    onChange={val => updateForm('dateOfBirth', val)}
-                    allowEmpty={true}
-                  />
-                </label>
-                <label><span>Địa chỉ</span>
-                  <input placeholder="Địa chỉ thường trú" value={form.address} onChange={e => updateForm('address', e.target.value)} />
-                </label>
-              </div>
+              {showOcrBox && (
+                <div className="abk-ocr-scanner-box">
+                  <div className="abk-ocr-header">
+                    <div className="abk-ocr-title">
+                      <strong>Tải 2 mặt ảnh CCCD</strong>
+                    </div>
+                    <span className="abk-ocr-subtitle">AI sẽ tự động đọc Họ tên, CCCD, Ngày sinh và Địa chỉ</span>
+                  </div>
+
+                  <div className="abk-ocr-inputs">
+                    <label className={`abk-ocr-upload-btn ${ocrImages.front ? 'has-file' : ''} ${ocrLoading ? 'is-loading' : ''}`}>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        disabled={ocrLoading}
+                        style={{ display: 'none' }}
+                        onChange={e => handleOcrImageChange('front', e.target.files?.[0])}
+                      />
+                      {ocrImagePreviews.front ? (
+                        <img src={ocrImagePreviews.front} alt="Mặt trước" className="abk-ocr-thumb" />
+                      ) : (
+                        <span className="abk-ocr-icon"></span>
+                      )}
+                      <div className="abk-ocr-label-text">
+                        <strong>{ocrImages.front ? 'Mặt trước: Đã chọn ✓' : 'Tải mặt trước CCCD'}</strong>
+                        <small>{ocrImages.front ? 'Bấm để đổi ảnh' : 'JPG, PNG hoặc ảnh chụp'}</small>
+                      </div>
+                    </label>
+
+                    <label className={`abk-ocr-upload-btn ${ocrImages.back ? 'has-file' : ''} ${ocrLoading ? 'is-loading' : ''}`}>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        disabled={ocrLoading}
+                        style={{ display: 'none' }}
+                        onChange={e => handleOcrImageChange('back', e.target.files?.[0])}
+                      />
+                      {ocrImagePreviews.back ? (
+                        <img src={ocrImagePreviews.back} alt="Mặt sau" className="abk-ocr-thumb" />
+                      ) : (
+                        <span className="abk-ocr-icon"></span>
+                      )}
+                      <div className="abk-ocr-label-text">
+                        <strong>{ocrImages.back ? 'Mặt sau: Đã chọn ✓' : 'Tải mặt sau CCCD'}</strong>
+                        <small>{ocrImages.back ? 'Bấm để đổi ảnh' : 'JPG, PNG hoặc ảnh chụp'}</small>
+                      </div>
+                    </label>
+                  </div>
+
+                  {ocrLoading && (
+                    <div className="abk-ocr-status is-loading">
+                      <div className="abk-spinner" /> Đang trích xuất thông tin căn cước qua AI OCR...
+                    </div>
+                  )}
+                  {ocrNotice && !ocrLoading && (
+                    <div className="abk-ocr-status is-success">
+                      {ocrNotice}
+                    </div>
+                  )}
+                </div>
+              )}
 
               <h4>Thời gian lưu trú & Gói thuê</h4>
               <div className="abk-form-grid">
@@ -2219,7 +2475,7 @@ function DirectBookingModal({ onClose, onCreated }) {
             <button type="button" className="abk-action-secondary" onClick={onClose}>Hủy</button>
             <button type="submit" className="abk-action-primary"
               disabled={submitLoading || selectedRoomEntries.length === 0}>
-              {submitLoading ? 'Đang tạo...' : isCheckInNow ? 'Tạo đơn & Nhận phòng ngay ➜' : 'Tạo đơn đặt phòng'}
+              {submitLoading ? 'Đang tạo...' : 'Tạo đơn đặt phòng'}
             </button>
           </div>
         </form>

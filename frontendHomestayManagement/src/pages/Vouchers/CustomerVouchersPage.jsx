@@ -262,10 +262,10 @@ function getUsedVouchers() {
     if (v.usageLimit != null && v.usedCount != null && Number(v.usedCount) >= Number(v.usageLimit)) return false
 
     if (activeTab === 'HOMESTAY') {
-      return !v.code?.startsWith('LUCKY-') && !v.code?.startsWith('SPIN-')
+      return !v.code?.startsWith('LUCKY-') && !v.code?.startsWith('SPIN-') && !v.code?.startsWith('LADO')
     }
     if (activeTab === 'LUCKY') {
-      return v.code?.startsWith('LUCKY-') || v.code?.startsWith('SPIN-')
+      return v.code?.startsWith('LUCKY-') || v.code?.startsWith('SPIN-') || v.code?.startsWith('LADO')
     }
     return true
   })
@@ -384,6 +384,19 @@ function getUsedVouchers() {
         {/* TAB 1 & 4 & 5: PUBLIC VOUCHERS LIST */}
         {(activeTab === 'ALL' || activeTab === 'HOMESTAY' || activeTab === 'LUCKY') && (
           <>
+            {activeTab === 'LUCKY' && (
+              <div className="cvp-lucky-promo-banner">
+                <div className="cvp-lucky-promo-icon">🎰</div>
+                <div className="cvp-lucky-promo-content">
+                  <h3>Vòng Quay May Mắn • Săn Mây Sa Pa</h3>
+                  <p>Mỗi khách hàng được nhận 01 lượt quay miễn phí với cơ hội trúng chuyến đi giảm 50%, voucher 30%, BBQ sân vườn và nhiều quà tặng giá trị!</p>
+                  <a href="/giveaway" className="cvp-lucky-promo-btn">
+                    Quay Vòng May Mắn Nhận Mã Thưởng Ngay →
+                  </a>
+                </div>
+              </div>
+            )}
+
             {loading && (
               <div className="cvp-status-box">
                 <div className="cvp-spinner" />
@@ -393,7 +406,7 @@ function getUsedVouchers() {
 
             {error && !loading && (
               <div className="cvp-error-box">
-                <p>️ {error}</p>
+                <p>⚠️ {error}</p>
                 <button type="button" onClick={fetchVouchers} className="cvp-retry-btn">
                   Thử lại
                 </button>
@@ -406,7 +419,7 @@ function getUsedVouchers() {
                   const type = String(v.discountType || '').toUpperCase()
                   const isPercentage = type === 'PERCENT' || type === 'PERCENTAGE' || type.includes('PERCENT') || (v.discountValue != null && Number(v.discountValue) <= 100 && type !== 'AMOUNT' && type !== 'FIXED_AMOUNT')
                   const discountDisplay = isPercentage ? `${Number(v.discountValue)}%` : formatPrice(v.discountValue)
-                  const isLucky = v.code?.startsWith('LUCKY-') || v.code?.startsWith('SPIN-')
+                  const isLucky = v.code?.startsWith('LUCKY-') || v.code?.startsWith('SPIN-') || v.code?.startsWith('LADO')
                   const minOrder = v.minOrderValue != null ? v.minOrderValue : v.minOrderAmount
 
                   return (
@@ -421,8 +434,8 @@ function getUsedVouchers() {
 
                       <div className="cvp-card-right">
                         <div className="cvp-card-header">
-                          <h3 className="cvp-card-name">{v.name || 'Mã giảm giá phòng'}</h3>
-                          {isLucky && <span className="cvp-badge-lucky">May mắn</span>}
+                          <h3 className="cvp-card-name">{v.name || 'Mã voucher may mắn'}</h3>
+                          {isLucky && <span className="cvp-badge-lucky">Minigame</span>}
                         </div>
 
                         <p className="cvp-card-desc">
@@ -470,11 +483,11 @@ function getUsedVouchers() {
 
             {!loading && !error && filteredVouchers.length === 0 && (
               <div className="cvp-empty-box">
-                <div className="cvp-empty-icon">️</div>
+                <div className="cvp-empty-icon">🎁</div>
                 <h3>Chưa có mã giảm giá nào trong mục này</h3>
-                <p>Hãy quay lại sau hoặc theo dõi các sự kiện khuyến mãi của Lá Đỏ Homestay để nhận ưu đãi mới nhất!</p>
+                <p>Hãy tham gia Vòng quay may mắn hoặc theo dõi các sự kiện ưu đãi từ Lá Đỏ Homestay Sa Pa để nhận voucher mới nhất!</p>
                 <a href="/giveaway" className="cvp-giveaway-link">
-                   Thử vận may tại Vòng quay may mắn
+                  🎡 Thử Vận May Tại Vòng Quay May Mắn Ngay
                 </a>
               </div>
             )}

@@ -8,6 +8,9 @@ import com.homestayManagement.homestayManagement.dto.response.AdminDashboardSumm
 import com.homestayManagement.homestayManagement.dto.response.AdminDashboardCashStatisticsResponse;
 import com.homestayManagement.homestayManagement.dto.response.AdminDashboardCashTransactionResponse;
 import com.homestayManagement.homestayManagement.dto.response.AdminDashboardCashDailyPointResponse;
+import com.homestayManagement.homestayManagement.dto.response.AdminDashboardCardStatisticsResponse;
+import com.homestayManagement.homestayManagement.dto.response.AdminDashboardCardTransactionResponse;
+import com.homestayManagement.homestayManagement.dto.response.AdminDashboardCardDailyPointResponse;
 import com.homestayManagement.homestayManagement.entity.Booking;
 import com.homestayManagement.homestayManagement.entity.BookingDetail;
 import com.homestayManagement.homestayManagement.entity.Invoice;
@@ -78,6 +81,7 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
         List<AdminDashboardOccupancyPointResponse> occupancyTrend = buildOccupancyTrend(startDate, endDate, details, totalRooms);
         AdminDashboardKpiResponse kpis = buildKpis(invoices, details, incidents, totalRooms, occupancyTrend);
         AdminDashboardCashStatisticsResponse cashStatistics = buildCashStatistics(startDate, endDate, startInclusive, endExclusive);
+        AdminDashboardCardStatisticsResponse cardStatistics = buildCardStatistics(startDate, endDate, startInclusive, endExclusive);
 
         return new AdminDashboardSummaryResponse(
                 startDate,
@@ -89,7 +93,8 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
                 buildRevenueBreakdown(kpis),
                 buildTopRooms(details),
                 buildRoomTypeBreakdown(details),
-                cashStatistics
+                cashStatistics,
+                cardStatistics
         );
     }
 
@@ -361,6 +366,163 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
                 totalInRange,
                 dailyCashTrend,
                 cashTransactions
+        );
+    }
+
+    private boolean isCardPayment(String method) {
+        if (method == null) return false;
+        String m = method.trim().toUpperCase();
+        return m.contains("CARD") || m.contains("POS") || m.contains("ATM")
+                || m.contains("DEBIT") || m.contains("CREDIT") || m.contains("THẺ") || m.contains("THE");
+    }
+
+    private boolean isCombinedPayment(String method) {
+        if (method == null) return false;
+        String m = method.trim().toUpperCase();
+        return (m.contains("CARD") || m.contains("POS") || m.contains("ATM")) &&
+                (m.contains("QR") || m.contains("SEPAY") || m.contains("TRANSFER") || m.contains("SPLIT") || m.contains("COMBINED") || m.contains("CASH"));
+    }
+
+    private AdminDashboardCardStatisticsResponse buildCardStatistics(
+            LocalDate startDate,
+            LocalDate endDate,
+            LocalDateTime startInclusive,
+            LocalDateTime endExclusive
+    ) {
+        LocalDate today = LocalDate.now();
+        LocalDateTime todayStart = today.atStartOfDay();
+        LocalDateTime todayEnd = today.plusDays(1).atStartOfDay();
+
+        LocalDate monday = today.minusDays(today.getDayOfWeek().getValue() - 1);
+        LocalDateTime weekStart = monday.atStartOfDay();
+
+        LocalDate firstDayOfMonth = today.withDayOfMonth(1);
+        LocalDateTime monthStart = firstDayOfMonth.atStartOfDay();
+
+        LocalDateTime earliest = monthStart.isBefore(startInclusive) ? monthStart : startInclusive;
+        if (weekStart.isBefore(earliest)) earliest = weekStart;
+        if (todayStart.isBefore(earliest)) earliest = todayStart;
+
+        LocalDateTime latest = todayEnd.isAfter(endExclusive) ? todayEnd : endExclusive;
+
+        List<Payment> allPayments = paymentRepository.findSuccessfulPaymentsBetween(earliest, latest);
+
+        BigDecimal cardToday = BigDecimal.ZERO;
+        BigDecimal cardThisWeek = BigDecimal.ZERO;
+        BigDecimal cardThisMonth = BigDecimal.ZERO;
+
+        for (Payment p : allPayments) {
+            if (p.getPaymentTime() == null) continue;
+            if (isCardPayment(p.getPaymentMethod())) {
+                BigDecimal amt = nullToZero(p.getAmount());
+                LocalDateTime pt = p.getPaymentTime();
+                if (!pt.isBefore(todayStart) && pt.isBefore(todayEnd)) {
+                    cardToday = cardToday.add(amt);
+                }
+                if (!pt.isBefore(weekStart) && pt.isBefore(todayEnd)) {
+                    cardThisWeek = cardThisWeek.add(amt);
+                }
+                if (!pt.isBefore(monthStart) && pt.isBefore(todayEnd)) {
+                    cardThisMonth = cardThisMonth.add(amt);
+                }
+            }
+        }
+
+        BigDecimal cardInRange = BigDecimal.ZERO;
+        BigDecimal pureCardInRange = BigDecimal.ZERO;
+        BigDecimal combinedInRange = BigDecimal.ZERO;
+
+        Map<LocalDate, BigDecimal> dailyCardMap = new LinkedHashMap<>();
+        Map<LocalDate, BigDecimal> dailyPureCardMap = new LinkedHashMap<>();
+        Map<LocalDate, BigDecimal> dailyCombinedMap = new LinkedHashMap<>();
+        Map<LocalDate, Integer> dailyCardCountMap = new LinkedHashMap<>();
+
+        for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
+            dailyCardMap.put(date, BigDecimal.ZERO);
+            dailyPureCardMap.put(date, BigDecimal.ZERO);
+            dailyCombinedMap.put(date, BigDecimal.ZERO);
+            dailyCardCountMap.put(date, 0);
+        }
+
+        List<AdminDashboardCardTransactionResponse> cardTransactions = new java.util.ArrayList<>();
+
+        for (Payment p : allPayments) {
+            if (p.getPaymentTime() == null) continue;
+            LocalDateTime pt = p.getPaymentTime();
+            if (pt.isBefore(startInclusive) || !pt.isBefore(endExclusive)) {
+                continue;
+            }
+
+            if (isCardPayment(p.getPaymentMethod())) {
+                BigDecimal amt = nullToZero(p.getAmount());
+                boolean combined = isCombinedPayment(p.getPaymentMethod());
+                LocalDate pDate = pt.toLocalDate();
+
+                cardInRange = cardInRange.add(amt);
+                if (combined) {
+                    combinedInRange = combinedInRange.add(amt);
+                } else {
+                    pureCardInRange = pureCardInRange.add(amt);
+                }
+
+                if (dailyCardMap.containsKey(pDate)) {
+                    dailyCardMap.put(pDate, dailyCardMap.get(pDate).add(amt));
+                    dailyCardCountMap.put(pDate, dailyCardCountMap.get(pDate) + 1);
+                    if (combined) {
+                        dailyCombinedMap.put(pDate, dailyCombinedMap.get(pDate).add(amt));
+                    } else {
+                        dailyPureCardMap.put(pDate, dailyPureCardMap.get(pDate).add(amt));
+                    }
+                }
+
+                String bookingCode = "N/A";
+                String customerName = "Khách hàng";
+                if (p.getInvoice() != null && p.getInvoice().getBooking() != null) {
+                    Booking b = p.getInvoice().getBooking();
+                    bookingCode = b.getBookingCode() != null ? b.getBookingCode() : ("#" + b.getId());
+                    if (b.getCustomer() != null && b.getCustomer().getFullName() != null) {
+                        customerName = b.getCustomer().getFullName();
+                    }
+                }
+
+                cardTransactions.add(new AdminDashboardCardTransactionResponse(
+                        p.getId(),
+                        bookingCode,
+                        customerName,
+                        p.getPaymentPurpose() != null ? p.getPaymentPurpose() : "BOOKING",
+                        p.getPaymentMethod(),
+                        combined,
+                        p.getPaymentTime(),
+                        amt,
+                        p.getStatus()
+                ));
+            }
+        }
+
+        List<AdminDashboardCardDailyPointResponse> dailyCardTrend = new java.util.ArrayList<>();
+        for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
+            BigDecimal c = dailyCardMap.getOrDefault(date, BigDecimal.ZERO);
+            BigDecimal pure = dailyPureCardMap.getOrDefault(date, BigDecimal.ZERO);
+            BigDecimal comb = dailyCombinedMap.getOrDefault(date, BigDecimal.ZERO);
+            int count = dailyCardCountMap.getOrDefault(date, 0);
+            dailyCardTrend.add(new AdminDashboardCardDailyPointResponse(
+                    date,
+                    c,
+                    pure,
+                    comb,
+                    count
+            ));
+        }
+
+        return new AdminDashboardCardStatisticsResponse(
+                cardToday,
+                cardThisWeek,
+                cardThisMonth,
+                cardInRange,
+                pureCardInRange,
+                combinedInRange,
+                dailyCardTrend,
+                cardTransactions
         );
     }
 
