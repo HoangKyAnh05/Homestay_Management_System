@@ -879,13 +879,58 @@
 .dash-inspect-modal {
   background: #ffffff;
   border-radius: 16px;
-  max-width: 540px;
+  max-width: 560px;
   width: 100%;
   max-height: 90vh;
   overflow-y: auto;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
   border: 1px solid #e2e8f0;
   animation: dashModalIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dash-inspect-modal--wide {
+  max-width: 860px !important;
+  width: 95vw;
+}
+
+.dash-inspect-tx-wrapper {
+  overflow-x: auto;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  background: #ffffff;
+  max-height: 340px;
+  overflow-y: auto;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+.dash-inspect-tx-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  text-align: left;
+}
+
+.dash-inspect-tx-table th {
+  background: #f8fafc;
+  color: #475569;
+  font-weight: 700;
+  padding: 10px 12px;
+  border-bottom: 2px solid #e2e8f0;
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.dash-inspect-tx-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #f1f5f9;
+  color: #1e293b;
+  vertical-align: middle;
+}
+
+.dash-inspect-tx-table tr:hover td {
+  background: #f8fafc;
 }
 
 @keyframes dashModalIn {

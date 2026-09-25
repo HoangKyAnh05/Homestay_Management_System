@@ -70,6 +70,17 @@ function formatFullDate(value) {
   return `${day}/${month}/${year}`
 }
 
+function isSameDay(paymentTimeStr, targetDateStr) {
+  if (!paymentTimeStr || !targetDateStr) return false
+  if (paymentTimeStr.startsWith(targetDateStr)) return true
+  try {
+    const d1 = toDateInputValue(new Date(paymentTimeStr))
+    return d1 === targetDateStr
+  } catch {
+    return false
+  }
+}
+
 function statusLabel(status) {
   const labels = {
     PENDING: 'Chờ xác nhận',
@@ -103,9 +114,11 @@ function totalValue(items) {
 function MetricInspectModal({ info, onClose }) {
   if (!info) return null
 
+  const hasTransactions = Array.isArray(info.transactions)
+
   return (
     <div className="dash-inspect-modal-overlay" onClick={onClose}>
-      <div className="dash-inspect-modal" onClick={(e) => e.stopPropagation()}>
+      <div className={`dash-inspect-modal${hasTransactions ? ' dash-inspect-modal--wide' : ''}`} onClick={(e) => e.stopPropagation()}>
         <div className="dash-inspect-modal-header">
           <div>
             <span className="dash-inspect-badge">BẢNG GIẢI TRÌNH SỐ LIỆU CHI TIẾT</span>
@@ -153,6 +166,58 @@ function MetricInspectModal({ info, onClose }) {
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* Detailed Transaction List if provided */}
+          {hasTransactions && (
+            <div className="dash-inspect-section" style={{ marginTop: '16px' }}>
+              <div className="dash-inspect-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <span>📋 Danh sách chi tiết từng khoản thanh toán tiền mặt ({info.transactions.length} giao dịch):</span>
+                {info.transactions.length > 0 && (
+                  <span style={{ color: '#059669', fontWeight: 800 }}>
+                    Tổng: {formatExactMoney(info.transactions.reduce((sum, tx) => sum + Number(tx.amount || 0), 0))}
+                  </span>
+                )}
+              </div>
+              {info.transactions.length === 0 ? (
+                <div style={{ padding: '20px', background: '#f8fafc', borderRadius: '10px', textAlign: 'center', color: '#64748b', fontSize: '13px', border: '1px solid #e2e8f0' }}>
+                  Không có giao dịch tiền mặt nào phát sinh trong mục này.
+                </div>
+              ) : (
+                <div className="dash-inspect-tx-wrapper">
+                  <table className="dash-inspect-tx-table">
+                    <thead>
+                      <tr>
+                        <th>#</th>
+                        <th>Mã đơn</th>
+                        <th>Khách hàng</th>
+                        <th>Mục đích</th>
+                        <th>Thời gian thu</th>
+                        <th>Số tiền</th>
+                        <th>Trạng thái</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {info.transactions.map((tx, idx) => (
+                        <tr key={tx.paymentId || idx}>
+                          <td><strong>{idx + 1}</strong></td>
+                          <td><span className="dash-cash-code">{tx.bookingCode || '—'}</span></td>
+                          <td><strong>{tx.customerName || 'Khách vãng lai'}</strong></td>
+                          <td>
+                            <span className="dash-cash-purpose-badge">
+                              {tx.paymentPurpose === 'BOOKING' ? 'Đặt cọc phòng' : tx.paymentPurpose === 'CHECKOUT' ? 'Thanh toán check-out' : tx.paymentPurpose || 'Thanh toán'}
+                            </span>
+                          </td>
+                          <td>{tx.paymentTime ? new Date(tx.paymentTime).toLocaleString('vi-VN') : '—'}</td>
+                          <td><strong className="dash-cash-amount">{formatExactMoney(tx.amount)}</strong></td>
+                          <td><span className="dash-cash-status-tag">✓ Đã thu</span></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           )}
 
@@ -541,37 +606,71 @@ function CashStatisticsSection({ cashStats, fromDate, toDate, onInspectClick }) 
 
   const maxVal = Math.max(...trendData.map(d => Math.max(Number(d.cashAmount || 0), Number(d.transferAmount || 0))), 1)
 
+  const todayStr = toDateInputValue(new Date())
+  const todayTxs = transactions.filter(tx => isSameDay(tx.paymentTime, todayStr))
   const cashTodayInspect = {
     title: 'Tiền mặt thu trong ngày hôm nay',
-    subtitle: `Hôm nay đã thu ${formatExactMoney(cashToday)} bằng tiền mặt`,
+    subtitle: `Hôm nay đã thu ${formatExactMoney(cashToday)} bằng tiền mặt (${todayTxs.length} giao dịch)`,
     formula: 'Tiền mặt hôm nay = SUM(Payment.amount WHERE paymentMethod = "CASH" AND status = "SUCCESS" AND paymentTime trong ngày hôm nay)',
-    calculation: `Tổng cộng: ${formatExactMoney(cashToday)} tiền mặt`,
+    calculation: `Tổng cộng: ${formatExactMoney(cashToday)} tiền mặt từ ${todayTxs.length} giao dịch`,
     breakdown: [
       { icon: '💵', label: 'Tiền mặt hôm nay', value: formatExactMoney(cashToday), desc: 'Các giao dịch tiền mặt đã thu từ 00:00 hôm nay' }
     ],
+    transactions: todayTxs,
     source: 'Bảng Payments (giao dịch thanh toán tiền mặt)'
   }
 
+  const now = new Date()
+  const dayOfWeek = (now.getDay() + 6) % 7
+  const mondayDate = new Date(now)
+  mondayDate.setDate(now.getDate() - dayOfWeek)
+  const mondayStr = toDateInputValue(mondayDate)
+  const weekTxs = transactions.filter(tx => {
+    if (!tx.paymentTime) return false
+    const d = toDateInputValue(new Date(tx.paymentTime))
+    return d >= mondayStr && d <= todayStr
+  })
   const cashWeekInspect = {
     title: 'Tiền mặt thu trong tuần này',
-    subtitle: `Tuần này đã thu ${formatExactMoney(cashThisWeek)} bằng tiền mặt`,
+    subtitle: `Tuần này đã thu ${formatExactMoney(cashThisWeek)} bằng tiền mặt (${weekTxs.length} giao dịch)`,
     formula: 'Tiền mặt tuần này = SUM(Payment.amount WHERE paymentMethod = "CASH" AND status = "SUCCESS" AND paymentTime từ Thứ Hai đến nay)',
     calculation: `Tổng cộng: ${formatExactMoney(cashThisWeek)} tiền mặt trong tuần`,
     breakdown: [
       { icon: '💵', label: 'Tiền mặt tuần này', value: formatExactMoney(cashThisWeek), desc: 'Các giao dịch tiền mặt từ đầu tuần (Thứ 2) đến nay' }
     ],
+    transactions: weekTxs,
     source: 'Bảng Payments (giao dịch thanh toán tiền mặt)'
   }
 
+  const firstDayOfMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
+  const monthTxs = transactions.filter(tx => {
+    if (!tx.paymentTime) return false
+    const d = toDateInputValue(new Date(tx.paymentTime))
+    return d >= firstDayOfMonthStr && d <= todayStr
+  })
   const cashMonthInspect = {
     title: 'Tiền mặt thu trong tháng này',
-    subtitle: `Tháng này đã thu ${formatExactMoney(cashThisMonth)} bằng tiền mặt`,
+    subtitle: `Tháng này đã thu ${formatExactMoney(cashThisMonth)} bằng tiền mặt (${monthTxs.length} giao dịch)`,
     formula: 'Tiền mặt tháng này = SUM(Payment.amount WHERE paymentMethod = "CASH" AND status = "SUCCESS" AND paymentTime từ ngày 1 của tháng đến nay)',
     calculation: `Tổng cộng: ${formatExactMoney(cashThisMonth)} tiền mặt trong tháng`,
     breakdown: [
       { icon: '💵', label: 'Tiền mặt tháng này', value: formatExactMoney(cashThisMonth), desc: 'Các giao dịch tiền mặt từ đầu tháng đến nay' }
     ],
+    transactions: monthTxs,
     source: 'Bảng Payments (giao dịch thanh toán tiền mặt)'
+  }
+
+  const cashRangeInspect = {
+    title: `Tổng kết Tiền mặt & Chuyển khoản trong kỳ (${formatFullDate(fromDate)} → ${formatFullDate(toDate)})`,
+    subtitle: `Tổng thu ${formatExactMoney(totalInRange)} gồm ${formatExactMoney(cashInRange)} tiền mặt (${transactions.length} giao dịch) và ${formatExactMoney(transferInRange)} chuyển khoản`,
+    formula: 'Tổng thu kỳ = Tiền mặt trong kỳ + Chuyển khoản trong kỳ',
+    calculation: `${formatExactMoney(cashInRange)} (Tiền mặt) + ${formatExactMoney(transferInRange)} (Chuyển khoản) = ${formatExactMoney(totalInRange)}`,
+    breakdown: [
+      { icon: '💵', label: 'Tổng tiền mặt thu được', value: formatExactMoney(cashInRange), percent: totalInRange > 0 ? `${((cashInRange / totalInRange) * 100).toFixed(1)}%` : '0%', desc: `${transactions.length} giao dịch thanh toán tiền mặt` },
+      { icon: '💳', label: 'Tổng chuyển khoản', value: formatExactMoney(transferInRange), percent: totalInRange > 0 ? `${((transferInRange / totalInRange) * 100).toFixed(1)}%` : '0%', desc: 'Thanh toán trực tuyến & qua ngân hàng' },
+    ],
+    transactions: transactions,
+    source: `Bảng Payments: Tất cả giao dịch từ ${formatFullDate(fromDate)} đến ${formatFullDate(toDate)}`
   }
 
   return (
@@ -586,12 +685,12 @@ function CashStatisticsSection({ cashStats, fromDate, toDate, onInspectClick }) 
         </div>
       </div>
 
-      {/* 3 Metric Cards */}
+      {/* 4 Metric Cards */}
       <div className="dash-cash-kpis-grid">
         <div
           className="dash-cash-kpi-card dash-inspectable"
           onClick={() => onInspectClick(cashTodayInspect)}
-          title="Bấm để xem chi tiết tiền mặt hôm nay"
+          title="Bấm để xem danh sách chi tiết các khoản tiền mặt hôm nay"
         >
           <div className="dash-cash-kpi-icon" style={{ background: '#ecfdf5', color: '#059669' }}>
             <span>📅</span>
@@ -599,14 +698,14 @@ function CashStatisticsSection({ cashStats, fromDate, toDate, onInspectClick }) 
           <div className="dash-cash-kpi-info">
             <span className="dash-cash-kpi-label">Tiền mặt Hôm nay</span>
             <strong className="dash-cash-kpi-value" style={{ color: '#059669' }}>{formatExactMoney(cashToday)}</strong>
-            <small className="dash-cash-kpi-sub">Thu trong ngày {new Date().toLocaleDateString('vi-VN')}</small>
+            <small className="dash-cash-kpi-sub">Thu trong ngày {new Date().toLocaleDateString('vi-VN')} ({todayTxs.length} đơn)</small>
           </div>
         </div>
 
         <div
           className="dash-cash-kpi-card dash-inspectable"
           onClick={() => onInspectClick(cashWeekInspect)}
-          title="Bấm để xem chi tiết tiền mặt tuần này"
+          title="Bấm để xem danh sách chi tiết các khoản tiền mặt tuần này"
         >
           <div className="dash-cash-kpi-icon" style={{ background: '#eff6ff', color: '#2563eb' }}>
             <span>📆</span>
@@ -614,14 +713,14 @@ function CashStatisticsSection({ cashStats, fromDate, toDate, onInspectClick }) 
           <div className="dash-cash-kpi-info">
             <span className="dash-cash-kpi-label">Tiền mặt Tuần này</span>
             <strong className="dash-cash-kpi-value" style={{ color: '#2563eb' }}>{formatExactMoney(cashThisWeek)}</strong>
-            <small className="dash-cash-kpi-sub">Từ đầu tuần (Thứ Hai) đến nay</small>
+            <small className="dash-cash-kpi-sub">Từ đầu tuần (Thứ Hai) đến nay ({weekTxs.length} đơn)</small>
           </div>
         </div>
 
         <div
           className="dash-cash-kpi-card dash-inspectable"
           onClick={() => onInspectClick(cashMonthInspect)}
-          title="Bấm để xem chi tiết tiền mặt tháng này"
+          title="Bấm để xem danh sách chi tiết các khoản tiền mặt tháng này"
         >
           <div className="dash-cash-kpi-icon" style={{ background: '#fdf4ff', color: '#9333ea' }}>
             <span>🗓️</span>
@@ -629,18 +728,22 @@ function CashStatisticsSection({ cashStats, fromDate, toDate, onInspectClick }) 
           <div className="dash-cash-kpi-info">
             <span className="dash-cash-kpi-label">Tiền mặt Tháng này</span>
             <strong className="dash-cash-kpi-value" style={{ color: '#9333ea' }}>{formatExactMoney(cashThisMonth)}</strong>
-            <small className="dash-cash-kpi-sub">Tháng {new Date().getMonth() + 1}/{new Date().getFullYear()}</small>
+            <small className="dash-cash-kpi-sub">Tháng {new Date().getMonth() + 1}/{new Date().getFullYear()} ({monthTxs.length} đơn)</small>
           </div>
         </div>
 
-        <div className="dash-cash-kpi-card dash-cash-kpi-card--range">
+        <div
+          className="dash-cash-kpi-card dash-cash-kpi-card--range dash-inspectable"
+          onClick={() => onInspectClick(cashRangeInspect)}
+          title="Bấm để xem danh sách toàn bộ các khoản tiền mặt trong kỳ lọc"
+        >
           <div className="dash-cash-kpi-icon" style={{ background: '#fff7ed', color: '#ea580c' }}>
             <span>⚖️</span>
           </div>
           <div className="dash-cash-kpi-info">
             <span className="dash-cash-kpi-label">Trong kỳ lọc ({formatShortDate(fromDate)} → {formatShortDate(toDate)})</span>
             <div className="dash-cash-split-values">
-              <span>Tiền mặt: <strong style={{ color: '#059669' }}>{formatCompactMoney(cashInRange)}</strong></span>
+              <span>Tiền mặt: <strong style={{ color: '#059669' }}>{formatCompactMoney(cashInRange)}</strong> ({transactions.length} đơn)</span>
               <span>Chuyển khoản: <strong style={{ color: '#2563eb' }}>{formatCompactMoney(transferInRange)}</strong></span>
             </div>
             <small className="dash-cash-kpi-sub">Tổng thu: <strong>{formatExactMoney(totalInRange)}</strong></small>
@@ -653,7 +756,7 @@ function CashStatisticsSection({ cashStats, fromDate, toDate, onInspectClick }) 
         <div className="dash-panel-head">
           <div>
             <h3>📈 Biểu đồ so sánh Tiền mặt & Chuyển khoản theo ngày</h3>
-            <p>Đối chiếu lượng tiền mặt thu tại quầy với tiền chuyển khoản online từng ngày trong kỳ lọc.</p>
+            <p>Đối chiếu lượng tiền mặt thu tại quầy với tiền chuyển khoản online từng ngày trong kỳ lọc. <em>(Bấm vào từng cột ngày để xem danh sách chi tiết các khoản thanh toán)</em></p>
           </div>
           <div className="dash-revenue-legend-head">
             <span className="dash-leg-tag" style={{ background: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0' }}>
@@ -673,9 +776,29 @@ function CashStatisticsSection({ cashStats, fromDate, toDate, onInspectClick }) 
                 const t = Number(item.transferAmount || 0)
                 const cHeight = Math.max(c > 0 ? 8 : 2, (c / maxVal) * 100)
                 const tHeight = Math.max(t > 0 ? 8 : 2, (t / maxVal) * 100)
+                const dayTxs = transactions.filter(tx => isSameDay(tx.paymentTime, item.date))
+
+                const dayCashInspectInfo = {
+                  title: `Chi tiết Thu tiền mặt Ngày ${formatFullDate(item.date)}`,
+                  subtitle: `Ghi nhận ${dayTxs.length} khoản tiền mặt (${formatExactMoney(c)}) và chuyển khoản (${formatExactMoney(t)})`,
+                  formula: 'Tổng thu trong ngày = Tổng tiền mặt tại quầy + Tổng chuyển khoản online',
+                  calculation: `${formatExactMoney(c)} (Tiền mặt) + ${formatExactMoney(t)} (Chuyển khoản) = ${formatExactMoney(c + t)}`,
+                  breakdown: [
+                    { icon: '💵', label: 'Tiền mặt thu tại quầy', value: formatExactMoney(c), percent: (c + t) > 0 ? `${((c / (c + t)) * 100).toFixed(1)}%` : '0%', desc: `${dayTxs.length} giao dịch tiền mặt trực tiếp` },
+                    { icon: '💳', label: 'Chuyển khoản / Ngân hàng', value: formatExactMoney(t), percent: (c + t) > 0 ? `${((t / (c + t)) * 100).toFixed(1)}%` : '0%', desc: 'Khách thanh toán chuyển khoản / quét QR / VNPay' },
+                    { icon: '💰', label: 'Tổng doanh thu phát sinh trong ngày', value: formatExactMoney(c + t), desc: 'Tổng tất cả các khoản thanh toán thành công' },
+                  ],
+                  transactions: dayTxs,
+                  source: `Bảng Payments: Tất cả giao dịch thanh toán thành công trong ngày ${formatFullDate(item.date)}`
+                }
 
                 return (
-                  <div className="dash-cash-day-col" key={item.date} title={`Ngày ${formatFullDate(item.date)}: Tiền mặt ${formatExactMoney(c)} | Chuyển khoản ${formatExactMoney(t)}`}>
+                  <div
+                    className="dash-cash-day-col dash-inspectable"
+                    key={item.date}
+                    onClick={() => onInspectClick(dayCashInspectInfo)}
+                    title={`Bấm để xem danh sách ${dayTxs.length} khoản tiền mặt ngày ${formatFullDate(item.date)} (Tiền mặt ${formatExactMoney(c)} | Chuyển khoản ${formatExactMoney(t)})`}
+                  >
                     <div className="dash-cash-dual-bars">
                       <div className="dash-cash-bar dash-cash-bar--cash" style={{ height: `${cHeight}%` }}>
                         {c > 0 && <span className="dash-cash-bar-label">{formatCompactMoney(c)}</span>}
@@ -691,54 +814,6 @@ function CashStatisticsSection({ cashStats, fromDate, toDate, onInspectClick }) 
             </div>
           </div>
         </div>
-      </div>
-
-      {/* Recent Cash Transactions Table */}
-      <div className="dash-cash-table-panel">
-        <div className="dash-panel-head">
-          <div>
-            <h3>📝 Danh sách các khoản tiền mặt phát sinh trong kỳ</h3>
-            <p>Chi tiết các đơn thanh toán bằng tiền mặt để quản trị viên và kế toán đối soát.</p>
-          </div>
-          <span className="dash-cash-table-count">Tổng {transactions.length} giao dịch</span>
-        </div>
-
-        {transactions.length === 0 ? (
-          <div className="dash-empty" style={{ padding: '32px 0' }}>Không có giao dịch tiền mặt nào phát sinh trong khoảng thời gian đã chọn.</div>
-        ) : (
-          <div className="dash-cash-table-wrapper">
-            <table className="dash-cash-table">
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Mã đơn</th>
-                  <th>Khách hàng</th>
-                  <th>Mục đích</th>
-                  <th>Thời gian thu</th>
-                  <th>Số tiền</th>
-                  <th>Trạng thái</th>
-                </tr>
-              </thead>
-              <tbody>
-                {transactions.slice(0, 30).map((tx, idx) => (
-                  <tr key={tx.paymentId || idx}>
-                    <td><strong>{idx + 1}</strong></td>
-                    <td><span className="dash-cash-code">{tx.bookingCode || '—'}</span></td>
-                    <td><strong>{tx.customerName || 'Khách vãng lai'}</strong></td>
-                    <td>
-                      <span className="dash-cash-purpose-badge">
-                        {tx.paymentPurpose === 'BOOKING' ? 'Đặt cọc phòng' : tx.paymentPurpose === 'CHECKOUT' ? 'Thanh toán check-out' : tx.paymentPurpose || 'Thanh toán'}
-                      </span>
-                    </td>
-                    <td>{tx.paymentTime ? new Date(tx.paymentTime).toLocaleString('vi-VN') : '—'}</td>
-                    <td><strong className="dash-cash-amount">{formatExactMoney(tx.amount)}</strong></td>
-                    <td><span className="dash-cash-status-tag">✓ Đã thu</span></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
       </div>
     </section>
   )
